@@ -95,6 +95,19 @@ export default function WithdrawPage() {
       const j = await res.json();
       if (j.success) {
         setMsg("Заявка отправлена. Ожидайте подтверждения.");
+        setAmount("");
+        setAccountId("");
+      } else {
+        setErr(j.message || "Ошибка при отправке заявки");
+      }
+    } catch (error) {
+      setErr("Ошибка сети. Попробуйте позже.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
     <main className="space-y-8">
       {/* Hero header for withdrawal */}
       <section className="relative overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-900/40">
