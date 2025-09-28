@@ -28,9 +28,8 @@ SECRET_KEY = 'django-insecure-luxservice-online-2025-secure-key-change-in-produc
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    'luxservice.online', 
-    'www.luxservice.online', 
-    'admin.luxservice.online',
+    'xendro.pro', 
+    'www.xendro.pro',
     '46.149.69.231',
     'localhost', 
     '127.0.0.1'

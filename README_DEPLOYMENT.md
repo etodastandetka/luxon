@@ -437,24 +437,27 @@ sudo chown $USER:$USER /var/log/pm2
 ### Настройка доменов в DNS панели
 Перед получением SSL сертификатов убедитесь, что DNS записи настроены правильно:
 
-**Для luxservice.online:**
+**Для luxservice.online (клиентский сайт):**
 ```
 A     luxservice.online      → 46.149.69.231
 CNAME www.luxservice.online  → luxservice.online
-A     admin.luxservice.online → 46.149.69.231
-A     api.luxservice.online   → 46.149.69.231
+```
+
+**Для xendro.pro (админка):**
+```
+A     xendro.pro      → 46.149.69.231
+CNAME www.xendro.pro  → xendro.pro
 ```
 
 **Проверка DNS записей:**
 ```bash
 # Проверка основных записей
 nslookup luxservice.online
-nslookup admin.luxservice.online
-nslookup api.luxservice.online
+nslookup xendro.pro
 
 # Или через dig
 dig luxservice.online
-dig admin.luxservice.online
+dig xendro.pro
 ```
 
 ---
@@ -468,14 +471,11 @@ sudo apt install -y certbot python3-certbot-nginx
 
 ### Получение SSL сертификатов
 ```bash
-# Для основного домена
+# Для клиентского сайта
 sudo certbot --nginx -d luxservice.online -d www.luxservice.online
 
 # Для админ-панели
-sudo certbot --nginx -d admin.luxservice.online
-
-# Для API (если нужно)
-sudo certbot --nginx -d api.luxservice.online
+sudo certbot --nginx -d xendro.pro -d www.xendro.pro
 ```
 
 ### Автоматическое обновление сертификатов
@@ -687,9 +687,8 @@ echo "Бэкап создан: $BACKUP_DIR"
 
 ### Домены
 Используемые домены:
-- `luxservice.online` → основной сайт (Next.js)
-- `admin.luxservice.online` → админ-панель (Django)
-- `api.luxservice.online` → API (опционально)
+- `luxservice.online` → клиентский сайт (Next.js)
+- `xendro.pro` → админ-панель (Django)
 - IP сервера: `46.149.69.231`
 
 ---
