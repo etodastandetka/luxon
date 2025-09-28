@@ -23,11 +23,18 @@ except Exception:
     except Exception:
         XBET_CASHDESKID = 0
 
-SECRET_KEY = 'django-insecure-your-secret-key-here'
+SECRET_KEY = 'django-insecure-luxservice-online-2025-secure-key-change-in-production'
 
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = [
+    'luxservice.online', 
+    'www.luxservice.online', 
+    'admin.luxservice.online',
+    '46.149.69.231',
+    'localhost', 
+    '127.0.0.1'
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -118,7 +125,7 @@ DATABASES = {
         # ВНИМАНИЕ: это база Django (models, admin). Не путать с bot universal DB.
         # Если хотите держать её отдельно, укажите, например: BASE_DIR / 'admin.sqlite3'
         # Здесь оставляем как есть, чтобы не ломать миграции, при необходимости поменяем отдельно.
-        'NAME': BASE_DIR / 'admin.sqlite3',
+        'NAME': '/var/www/luxservice/django_admin/admin.sqlite3',
     }
 }
 
@@ -128,10 +135,23 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
+STATIC_ROOT = '/var/www/luxservice/django_admin/staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 BOT_TOKEN = '7489617815:AAFt-qZwXCHZYdjWDiihq9slYxg1c8UCzCg'
 # Единый путь к базе бота (универсальная БД): c:\Users\...\bets\universal_bot.db
-BOT_DATABASE_PATH = BASE_DIR.parent / 'universal_bot.db'
+BOT_DATABASE_PATH = '/var/www/luxservice/universal_bot.db'
+
+# Настройки безопасности для продакшена
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Настройки для работы за прокси
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_TZ = True
