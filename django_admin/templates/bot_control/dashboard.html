@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Панель управления{% endblock %}
+
+{% block content %}
+<!-- Заголовок -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon">
+            <i class="fas fa-tachometer-alt"></i>
+        </div>
+        <div>
+            <div class="card-title">Панель управления</div>
+            <div class="card-subtitle">Обзор заявок и статистика</div>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика за сегодня -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ today_deposits }}</div>
+        <div class="stat-label">Пополнения сегодня</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ today_withdrawals }}</div>
+        <div class="stat-label">Выводы сегодня</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ week_deposits }}</div>
+        <div class="stat-label">Пополнения за неделю</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ week_withdrawals }}</div>
+        <div class="stat-label">Выводы за неделю</div>
+    </div>
+</div>
+
+<!-- Последние пополнения -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon">
+            <i class="fas fa-credit-card"></i>
+        </div>
+        <div>
+            <div class="card-title">Последние пополнения</div>
+            <div class="card-subtitle">Актуальные заявки</div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if recent_deposits %}
+            {% for deposit in recent_deposits %}
+            <div class="list-item" onclick="openDeposit({{ deposit.id }})" style="cursor: pointer;">
+                <div class="list-icon">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <div class="list-content">
+                    <div class="list-title">ID: {{ deposit.user_id }}</div>
+                    <div class="list-subtitle">{{ deposit.created_at|date:"d.m.Y • H:i" }}</div>
+                    <div class="list-status">
+                        <div class="status-dot status-{% if deposit.status == 'pending' %}warning{% elif deposit.status == 'completed' %}success{% elif deposit.status == 'auto_completed' %}success{% elif deposit.status == 'rejected' %}danger{% else %}warning{% endif %}"></div>
+                        {% if deposit.status == 'pending' %}Ожидает{% elif deposit.status == 'completed' %}Завершена{% elif deposit.status == 'auto_completed' %}Автопополнена{% elif deposit.status == 'rejected' %}Отклонена{% else %}{{ deposit.status }}{% endif %}
+                    </div>
+                </div>
+                <div class="list-amount">{{ deposit.amount }} KGS</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center text-muted">
+                <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                Нет заявок на пополнение
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Последние выводы -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon">
+            <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <div>
+            <div class="card-title">Последние выводы</div>
+            <div class="card-subtitle">Актуальные заявки</div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if recent_withdrawals %}
+            {% for withdrawal in recent_withdrawals %}
+            <div class="list-item" onclick="openDeposit({{ withdrawal.id }})" style="cursor: pointer;">
+                <div class="list-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="list-content">
+                    <div class="list-title">ID: {{ withdrawal.user_id }}</div>
+                    <div class="list-subtitle">{{ withdrawal.created_at|date:"d.m.Y • H:i" }}</div>
+                    <div class="list-status">
+                        <div class="status-dot status-{% if withdrawal.status == 'pending' %}warning{% elif withdrawal.status == 'completed' %}success{% elif withdrawal.status == 'rejected' %}danger{% else %}warning{% endif %}"></div>
+                        {% if withdrawal.status == 'pending' %}Ожидает{% elif withdrawal.status == 'completed' %}Завершена{% elif withdrawal.status == 'rejected' %}Отклонена{% else %}{{ withdrawal.status }}{% endif %}
+                    </div>
+                </div>
+                <div class="list-amount">-{{ withdrawal.amount }} KGS</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center text-muted">
+                <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                Нет заявок на вывод
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Быстрые действия -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-icon">
+            <i class="fas fa-bolt"></i>
+        </div>
+        <div>
+            <div class="card-title">Быстрые действия</div>
+            <div class="card-subtitle">Переходы к разделам</div>
+        </div>
+    </div>
+    <div class="card-body">
+        <a href="{% url 'bot_control:deposits_list' %}?status=pending" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
+            <i class="fas fa-clock"></i> Ожидающие пополнения
+        </a>
+        <a href="{% url 'bot_control:deposits_list' %}?status=auto_completed" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
+            <i class="fas fa-robot"></i> Автопополненные
+        </a>
+        <a href="{% url 'bot_control:withdrawals_list' %}?status=pending" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
+            <i class="fas fa-clock"></i> Ожидающие выводы
+        </a>
+        <a href="{% url 'bot_control:deposits_list' %}" class="btn btn-primary" style="width: 100%;">
+            <i class="fas fa-list"></i> Все заявки
+        </a>
+    </div>
+</div>
+
+<script>
+function openDeposit(depositId) {
+    window.location.href = `/bot/deposits/${depositId}/`;
+}
+
+// Автообновление каждые 30 секунд
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

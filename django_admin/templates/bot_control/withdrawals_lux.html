@@ -1,0 +1,114 @@
+{% load humanize %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Выводы • Lux Admin</title>
+  <style>
+    /* Dark + dark-gray minimal theme */
+    :root {
+      --bg: #0b0f19;      /* dark */
+      --panel: #121826;   /* dark gray */
+      --panel-2: #161e2f; /* slightly lighter gray */
+      --border: #212a3b;  /* subtle border */
+      --text: #e6eaf2;
+      --muted: #9aa7bd;
+      --accent: #22c55e;  /* emerald accent (subtle) */
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .wrap { max-width: 980px; margin: 24px auto; padding: 0 12px; }
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
+    .title { font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+    .actions { display:flex; gap:8px; }
+    .btn { appearance: none; border:1px solid var(--border); background: transparent; color: var(--text); padding:8px 12px; border-radius:10px; cursor:pointer; font-size: 13px; }
+    .btn:hover { border-color: rgba(34,197,94,.5); }
+    .filters { display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; background: var(--panel); border:1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+    .field { display:flex; gap:6px; align-items:center; }
+    .label { color: var(--muted); font-size: 12px; }
+    select, input[type="text"] { width:100%; background: var(--panel-2); color: var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 10px; outline:none; font-size: 13px; }
+    select:focus, input:focus { border-color: rgba(34,197,94,.5); }
+    .list { border:1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--panel); }
+    .row { display:flex; justify-content: space-between; align-items:center; padding: 12px 14px; background: #141b2b; border-bottom: 1px solid var(--border); }
+    .row:last-child { border-bottom: 0; }
+    .row:hover { background: #101828; }
+    .left { display:flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .main { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sub { color: var(--muted); font-size: 12px; }
+    .right { display:flex; align-items:center; gap:10px; white-space: nowrap; }
+    .amount { font-weight: 700; }
+    .pill { border:1px solid rgba(34,197,94,.25); color: var(--accent); background: transparent; padding: 6px 10px; border-radius: 999px; font-size: 12px; }
+    .dot { width:8px; height:8px; border-radius:999px; }
+    .dot.pending { background:#f59e0b; }
+    .dot.completed { background:#22c55e; }
+    .dot.rejected { background:#ef4444; }
+    .hint { color: var(--muted); font-size: 12px; margin: 8px 0 12px; }
+    @media (max-width: 640px) {
+      .filters { grid-template-columns: 1fr; }
+      .row { padding: 12px; }
+      .amount { font-weight: 600; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">Список заявок · Lux Minimal v1</div>
+      <div class="actions">
+        <button class="btn" onclick="window.location.reload()">Обновить</button>
+        <button class="btn" id="exportBtn">Экспорт</button>
+      </div>
+    </div>
+
+    <form class="filters" method="get">
+      <div class="field">
+        <span class="label">Статус</span>
+        <select name="status">
+          <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Все</option>
+          <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Ожидает</option>
+          <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Завершено</option>
+          <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Отклонено</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="label">Поиск</span>
+        <input type="text" name="search" value="{{ search_query|default:'' }}" placeholder="ID пользователя или сумма" />
+      </div>
+      <div class="field" style="align-items:end;">
+        <button class="btn" type="submit">Применить</button>
+      </div>
+    </form>
+
+    <div class="hint">Нажмите на строку, чтобы открыть детали заявки.</div>
+
+    <div class="list">
+      {% for req in withdrawals %}
+      <div class="row" onclick="openDetails({{ req.id }})">
+        <div class="left">
+          <div class="main">Пользователь ID {{ req.user_id }}</div>
+          <div class="sub">{% if req.created_at %}{{ req.created_at|date:'d.m.Y • H:i' }}{% endif %}</div>
+        </div>
+        <div class="right">
+          <div class="amount">-{{ req.amount|floatformat:0|intcomma }} KGS</div>
+          {% if req.status == 'pending' %}
+            <span class="pill">Подтвердить</span>
+          {% else %}
+            <span class="dot {{ req.status }}" title="{{ req.status }}"></span>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="row"><div class="left"><div class="sub">Заявок не найдено</div></div></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    function openDetails(id) {
+      // Заглушка: можно привязать к вашему деталям эндпоинту
+      alert('Заявка #' + id);
+    }
+  </script>
+</body>
+</html>

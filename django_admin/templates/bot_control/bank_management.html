@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}Bank Management - Luxon{% endblock %}
+
+{% block header_icon %}university{% endblock %}
+{% block header_title %}Bank Management{% endblock %}
+{% block header_subtitle %}Управление банками{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <div class="card">
+        <div class="card-header">
+            <h3>🏦 Настройки банков</h3>
+        </div>
+        <div class="card-body">
+            <div id="bank-list">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Загрузка списка банков
+async function loadBanks() {
+    try {
+        const response = await fetch('/bot/api/bank-settings/');
+        const data = await response.json();
+        displayBanks(data.banks || []);
+    } catch (error) {
+        console.error('Ошибка загрузки банков:', error);
+        document.getElementById('bank-list').innerHTML = '<div class="error">Ошибка загрузки данных</div>';
+    }
+}
+
+// Отображение списка банков
+function displayBanks(banks) {
+    const container = document.getElementById('bank-list');
+    
+    if (banks.length === 0) {
+        container.innerHTML = '<div class="no-data">Нет банков</div>';
+        return;
+    }
+    
+    const html = banks.map(bank => {
+        // Иконки для банков
+        const bankIcons = {
+            'demirbank': '🏦',
+            'odengi': '💰',
+            'bakai': '🏛️',
+            'balance': '⚖️',
+            'megapay': '💳',
+            'mbank': '🏪'
+        };
+        
+        const bankIcon = bankIcons[bank.bank_code] || '🏦';
+        
+        return `
+            <div class="bank-item">
+                <div class="bank-icon">${bankIcon}</div>
+                <div class="bank-info">
+                    <div class="bank-name">${bank.bank_name}</div>
+                    <div class="bank-code">Код: ${bank.bank_code}</div>
+                </div>
+                <div class="bank-settings">
+                    <div class="setting-group">
+                        <label class="setting-label">
+                            <input type="checkbox" ${bank.is_enabled_deposit ? 'checked' : ''} 
+                                   onchange="toggleBankSetting(${bank.id}, 'deposit', this.checked)">
+                            💳 Пополнение
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label">
+                            <input type="checkbox" ${bank.is_enabled_withdraw ? 'checked' : ''} 
+                                   onchange="toggleBankSetting(${bank.id}, 'withdraw', this.checked)">
+                            💸 Вывод
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = html;
+}
+
+// Переключение настроек банка
+async function toggleBankSetting(bankId, setting, enabled) {
+    try {
+        const response = await fetch(`/bot/api/bank-settings/${bankId}/toggle/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                setting: setting,
+                enabled: enabled
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            // Обновляем отображение
+            loadBanks();
+        } else {
+            alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка переключения настройки:', error);
+        alert('Ошибка переключения настройки');
+    }
+}
+
+// Загружаем данные при загрузке страницы
+document.addEventListener('DOMContentLoaded', loadBanks);
+</script>
+
+<style>
+/* Светлая тема */
+body {
+    background: #f5f5f5;
+    color: #333333;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.card {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 20px;
+    border-radius: 8px 8px 0 0;
+}
+
+.card-header h3 {
+    color: #333333;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.bank-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.bank-item:hover {
+    background: #f8f9fa;
+    border-color: #d0d0d0;
+}
+
+.bank-icon {
+    width: 40px;
+    height: 40px;
+    background: #e3f2fd;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    font-size: 18px;
+}
+
+.bank-info {
+    flex: 1;
+    margin-right: 20px;
+}
+
+.bank-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: #333333;
+    margin-bottom: 4px;
+}
+
+.bank-code {
+    font-size: 12px;
+    color: #666666;
+    font-family: monospace;
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    border: 1px solid #e0e0e0;
+}
+
+.bank-settings {
+    display: flex;
+    gap: 20px;
+    flex-shrink: 0;
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px;
+}
+
+.setting-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333333;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.setting-label:hover {
+    background: #f0f0f0;
+}
+
+.setting-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #2196f3;
+}
+
+.loading, .no-data, .error {
+    text-align: center;
+    padding: 40px 20px;
+    color: #888888;
+    font-size: 16px;
+}
+
+.error {
+    color: #ef4444;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .bank-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .bank-info {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .bank-settings {
+        justify-content: center;
+        gap: 15px;
+    }
+}
+</style>
+{% endblock %}

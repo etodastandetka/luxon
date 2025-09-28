@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+
+{% block title %}История - Управление транзакциями{% endblock %}
+
+{% block header_icon %}history{% endblock %}
+{% block header_title %}История{% endblock %}
+{% block header_subtitle %}Все транзакции{% endblock %}
+
+{% block content %}
+<style>
+.tabs-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.tab {
+    flex: 1;
+    padding: 12px 16px;
+    text-align: center;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #999;
+    font-weight: 500;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.tab i {
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.tab.active {
+    background: transparent;
+    color: #fff;
+    box-shadow: none;
+    border: none;
+}
+
+.tab:hover:not(.active) {
+    background: #333;
+    color: #ccc;
+    border: none;
+}
+
+.tab-refresh {
+    padding: 12px;
+    text-align: center;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #999;
+    background: transparent;
+    font-size: 16px;
+    border: none;
+    box-shadow: none;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tab-refresh:hover {
+    background: #333;
+    color: #fff;
+    border: none;
+}
+
+.list-item {
+    background: transparent;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    box-shadow: none;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.list-item:hover {
+    background: #1a1a1a;
+    transform: none;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.list-icon {
+    margin-right: 16px;
+}
+
+.list-content {
+    flex: 1;
+}
+
+.list-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.list-subtitle {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 4px;
+}
+
+.list-tag {
+    font-size: 11px;
+    color: #666;
+    background: #333;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.list-right {
+    text-align: right;
+}
+
+.list-date {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 4px;
+}
+
+.list-amount {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.list-status {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-size: 11px;
+    color: #999;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.status-pending { background: #ffa500; }
+.status-completed { background: #999; }
+.status-rejected { background: #ff4444; }
+</style>
+
+<!-- Фильтры транзакций -->
+<div class="tabs-container">
+    <div class="tab active" onclick="switchTab('all')">
+        <i class="fas fa-list"></i>
+        <span>Все</span>
+    </div>
+    <div class="tab" onclick="switchTab('deposits')">
+        <i class="fas fa-arrow-down"></i>
+        <span>Пополнения</span>
+    </div>
+    <div class="tab" onclick="switchTab('withdrawals')">
+        <i class="fas fa-arrow-up"></i>
+        <span>Выводы</span>
+    </div>
+    <div class="tab-refresh" onclick="loadTransactions()" title="Обновить">
+        <i class="fas fa-sync-alt"></i>
+    </div>
+</div>
+
+<!-- Список транзакций -->
+<div id="transactions-container">
+    <div style="text-align: center; color: #cccccc; padding: 20px;">
+        <i class="fas fa-spinner fa-spin"></i> Загрузка истории...
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentTab = 'all';
+
+// Загружаем данные при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    loadTransactions();
+    
+    // Обновляем данные каждые 30 секунд
+    setInterval(function() {
+        loadTransactions();
+    }, 30000);
+});
+
+function switchTab(tab) {
+    // Убираем активный класс со всех табов
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    
+    // Добавляем активный класс к выбранному табу
+    event.target.closest('.tab').classList.add('active');
+    
+    currentTab = tab;
+    
+    // Показываем индикатор загрузки
+    const container = document.getElementById('transactions-container');
+    container.innerHTML = `
+        <div style="text-align: center; color: #999; padding: 20px;">
+            <i class="fas fa-spinner fa-spin"></i> Загрузка ${tab === 'all' ? 'всех' : tab === 'deposits' ? 'пополнений' : 'выводов'}...
+        </div>
+    `;
+    
+    loadTransactions();
+}
+
+async function loadTransactions() {
+    try {
+        const url = currentTab === 'all' 
+            ? '{% url "dashboard:api_transaction_history" %}'
+            : `{% url "dashboard:api_transaction_history" %}?type=${currentTab}`;
+        
+        console.log('Loading transactions for tab:', currentTab, 'URL:', url);
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        console.log('API response:', data);
+        
+        const container = document.getElementById('transactions-container');
+        
+        if (data.success && data.transactions && data.transactions.length > 0) {
+            container.innerHTML = '';
+            
+            data.transactions.forEach(transaction => {
+                const transactionItem = document.createElement('div');
+                transactionItem.className = 'list-item';
+                transactionItem.style.cursor = 'pointer';
+                transactionItem.onclick = function() {
+                    window.location.href = `/bot/transactions/${transaction.id}/`;
+                };
+                
+                // Определяем иконку и цвет в зависимости от типа операции
+                const isDeposit = transaction.type === 'deposit';
+                const amountColor = isDeposit ? '#00ff88' : '#ff4444';
+                const amountSign = isDeposit ? '+' : '-';
+                
+                // Определяем статус
+                let statusText = 'Ожидает';
+                let statusClass = 'status-pending';
+                
+                if (transaction.status === 'completed') {
+                    statusText = 'Успешно';
+                    statusClass = 'status-completed';
+                } else if (transaction.status === 'rejected') {
+                    statusText = 'Отклонено';
+                    statusClass = 'status-rejected';
+                }
+                
+                // Генерируем иконку пользователя с цветом по типу операции
+                const userInitial = transaction.user_name ? transaction.user_name.charAt(0).toUpperCase() : 'U';
+                const iconColor = isDeposit ? '#00ff88' : '#ff4444';
+                
+                transactionItem.innerHTML = `
+                    <div class="list-icon">
+                        <div style="width: 40px; height: 40px; background: ${iconColor}; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 2px solid #333; position: relative;">
+                            <span style="color: #fff; font-weight: bold; font-size: 16px;">${userInitial}</span>
+                            <div style="position: absolute; bottom: -2px; right: -2px; width: 16px; height: 16px; background: #666; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #333;">
+                                <i class="fas fa-${isDeposit ? 'arrow-down' : 'arrow-up'}" style="color: #fff; font-size: 8px;"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="list-content">
+                        <div class="list-title">${transaction.user_name || 'Пользователь'}</div>
+                        <div class="list-subtitle">${transaction.bookmaker || 'БУКМЕКЕР'} • ID: ${transaction.user_id || 'Неизвестно'}</div>
+                    </div>
+                    <div class="list-right">
+                        <div class="list-date">${formatDate(transaction.created_at || new Date())}</div>
+                        <div class="list-amount" style="color: ${amountColor}; font-weight: bold; font-size: 16px;">
+                            ${amountSign}${formatAmount(transaction.amount || 0)}
+                        </div>
+                        <div class="list-status">
+                            <div class="status-dot ${statusClass}"></div>
+                            <span>${statusText}</span>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(transactionItem);
+            });
+        } else {
+            container.innerHTML = `
+                <div style="text-align: center; color: #999; padding: 40px;">
+                    <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5; color: #666;"></i><br>
+                    <div style="font-size: 16px; margin-bottom: 8px;">Нет транзакций</div>
+                    <div style="font-size: 12px; color: #666;">Попробуйте изменить фильтр или обновить страницу</div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки истории:', error);
+        document.getElementById('transactions-container').innerHTML = `
+            <div style="text-align: center; color: #ff4444; padding: 20px;">
+                <i class="fas fa-exclamation-triangle"></i><br>
+                Ошибка загрузки истории
+            </div>
+        `;
+    }
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${day}.${month}.${year} • ${hours}:${minutes}`;
+}
+
+function formatAmount(amount) {
+    return new Intl.NumberFormat('ru-RU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
+}
+</script>
+{% endblock %}
+
+
+
+
+
+
+
+
+
+

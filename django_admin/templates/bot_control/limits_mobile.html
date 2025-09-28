@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Лимиты и балансы{% endblock %}
+
+{% block content %}
+<style>
+  .card { border-radius: 14px !important; border: 1px solid #242424 !important; background: #111 !important; }
+  .section-title { font-weight: 700; font-size: 18px; margin: 8px 0 12px; }
+  .muted { color: #9aa7bd; font-size: 12px; }
+  .block { background:#111; border:1px solid #2a2a2a; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; }
+  .name { color:#e5e7eb; }
+  .value { color:#cde8ff; font-weight:700; }
+  .pill { display:inline-block; padding:6px 10px; background:#151515; border:1px solid #2a2a2a; border-radius:10px; color:#c9c9c9; font-size:12px; }
+  .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .stat-label { color:#9aa7bd; font-size:12px; }
+  .stat-value { color:#e7ffee; font-weight:700; font-size:16px; }
+  .small { font-size:11px; color:#9aa7bd; }
+  .actions { display:flex; gap:8px; }
+  input[type=date] { background:#0f0f0f; color:#e5e7eb; border:1px solid #2a2a2a; border-radius:8px; padding:8px 10px; }
+  button.apply { background:#1e293b; color:#c7d2fe; border:1px solid #334155; border-radius:8px; padding:8px 12px; cursor:pointer; }
+  button.apply:hover { background:#243044; }
+</style>
+
+<div class="page-header">
+  <div class="header-avatar"><i class="fas fa-wallet"></i></div>
+  <div class="header-content">
+    <h1>Лимиты и балансы</h1>
+    <p>Платформы 1XBET и MELBET</p>
+  </div>
+</div>
+
+<div class="block">
+  <div class="section-title">Период</div>
+  <form id="period-form" class="actions" method="get">
+    <input type="date" name="start" value="{{ start }}" />
+    <input type="date" name="end" value="{{ end }}" />
+    <button class="apply" type="submit">Применить</button>
+  </form>
+  <div class="small" style="margin-top:6px;">Оставьте пустым, чтобы показать все время</div>
+</div>
+
+<div class="block">
+  <div class="section-title">Лимиты платформ</div>
+  {% for p in platform_limits %}
+  <div class="row">
+    <div class="name">{{ p.name }}</div>
+    <div class="value">{{ p.limit|floatformat:2 }} с</div>
+  </div>
+  {% empty %}
+  <div class="muted">Нет данных по лимитам</div>
+  {% endfor %}
+</div>
+
+<div class="card" style="padding:14px; margin-bottom:12px;">
+  <div class="row" style="margin-bottom:6px;">
+    <div class="name">1xbet</div>
+    <span class="pill">Баланс кассы: {{ xbet.balance|floatformat:2 }} с</span>
+  </div>
+  <div class="grid-2">
+    <div class="block">
+      <div class="stat-label">Пополнения</div>
+      <div class="stat-value">{{ xbet.stats.deposits_sum|floatformat:2 }} с</div>
+      <div class="small">{{ xbet.stats.deposits_count }} операций</div>
+    </div>
+    <div class="block">
+      <div class="stat-label">Выводы</div>
+      <div class="stat-value">{{ xbet.stats.withdrawals_sum|floatformat:2 }} с</div>
+      <div class="small">{{ xbet.stats.withdrawals_count }} операций</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-bottom:12px;">
+  <div class="row" style="margin-bottom:6px;">
+    <div class="name">Melbet</div>
+    <span class="pill">Баланс кассы: {{ melbet.balance|floatformat:2 }} с</span>
+  </div>
+  <div class="grid-2">
+    <div class="block">
+      <div class="stat-label">Пополнения</div>
+      <div class="stat-value">{{ melbet.stats.deposits_sum|floatformat:2 }} с</div>
+      <div class="small">{{ melbet.stats.deposits_count }} операций</div>
+    </div>
+    <div class="block">
+      <div class="stat-label">Выводы</div>
+      <div class="stat-value">{{ melbet.stats.withdrawals_sum|floatformat:2 }} с</div>
+      <div class="small">{{ melbet.stats.withdrawals_count }} операций</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-bottom:12px;">
+  <div class="row" style="margin-bottom:6px;">
+    <div class="name">Mostbet</div>
+    <span class="pill">Баланс кассы: {{ mostbet.balance|floatformat:2 }} с</span>
+  </div>
+  <div class="grid-2">
+    <div class="block">
+      <div class="stat-label">Пополнения</div>
+      <div class="stat-value">{{ mostbet.stats.deposits_sum|floatformat:2 }} с</div>
+      <div class="small">{{ mostbet.stats.deposits_count }} операций</div>
+    </div>
+    <div class="block">
+      <div class="stat-label">Выводы</div>
+      <div class="stat-value">{{ mostbet.stats.withdrawals_sum|floatformat:2 }} с</div>
+      <div class="small">{{ mostbet.stats.withdrawals_count }} операций</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

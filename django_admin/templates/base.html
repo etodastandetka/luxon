@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Заявки - Управление транзакциями{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Мобильный контейнер */
+        .mobile-container {
+            max-width: 414px;
+            margin: 0 auto;
+            background: #000000;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        
+        /* Хедер */
+        .header {
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #cccccc;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        .header-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 20px;
+        }
+        
+        /* Основной контент */
+        .main-content {
+            padding: 20px;
+            padding-bottom: 80px; /* Отступ для нижнего меню */
+            background: #0a0a0a;
+            min-height: calc(100vh - 150px);
+        }
+        
+        /* Карточки */
+        .card {
+            background: #2a2a2a;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid #444444;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #666 0%, #555 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 18px;
+            margin-right: 15px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        .card-subtitle {
+            font-size: 14px;
+            color: #cccccc;
+            margin-top: 5px;
+        }
+        
+        /* Статистические карточки */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #2a2a2a;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid #444444;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #999;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #cccccc;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Кнопки */
+        .btn {
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #666 0%, #555 100%);
+            color: #ffffff;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn-secondary {
+            background: #333333;
+            color: #ffffff;
+        }
+        
+        .btn-secondary:hover {
+            background: #444444;
+        }
+        
+        .btn-danger {
+            background: #ff4444;
+            color: #ffffff;
+        }
+        
+        .btn-danger:hover {
+            background: #cc3333;
+        }
+        
+        /* Навигация */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 414px;
+            background: #1a1a1a;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 1000;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            transition: all 0.3s ease;
+            padding: 8px 12px;
+            position: relative;
+            border-radius: 12px;
+            background: transparent;
+            min-width: 60px;
+        }
+        
+        .nav-item:hover {
+            color: #999;
+            background: #2a2a2a;
+            transform: translateY(-2px);
+        }
+        
+        .nav-item.active {
+            color: #fff;
+            background: #2a2a2a;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 3px;
+            background: #666;
+            border-radius: 2px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                width: 0;
+                opacity: 0;
+            }
+            to {
+                width: 30px;
+                opacity: 1;
+            }
+        }
+        
+        .nav-item i {
+            font-size: 20px;
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item.active i {
+            transform: scale(1.1);
+        }
+        
+        .nav-item span {
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-dot {
+            width: 6px;
+            height: 6px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* Формы */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #333333;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+        }
+        
+        /* Списки */
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 255, 136, 0.1);
+            border: 1px solid #333333;
+        }
+        
+        .list-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000000;
+            margin-right: 15px;
+        }
+        
+        .list-content {
+            flex: 1;
+        }
+        
+        .list-title {
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+        
+        .list-subtitle {
+            font-size: 12px;
+            color: #cccccc;
+        }
+        
+        .list-amount {
+            font-weight: bold;
+            color: #00ff88;
+            font-size: 16px;
+        }
+        
+        .list-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-success {
+            background: #00ff88;
+        }
+        
+        .status-warning {
+            background: #ffaa00;
+        }
+        
+        .status-danger {
+            background: #ff4444;
+        }
+        
+        /* Меню оверлей */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: flex;
+            align-items: flex-end;
+        }
+        
+        .menu-content {
+            background: #1a1a1a;
+            width: 100%;
+            max-width: 414px;
+            margin: 0 auto;
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .menu-header h3 {
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .menu-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #cccccc;
+            cursor: pointer;
+            padding: 5px;
+        }
+        
+        .menu-items {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #333333;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .menu-item:hover {
+            background: #444444;
+        }
+        
+        .menu-item i {
+            margin-right: 15px;
+            font-size: 18px;
+            color: #00ff88;
+        }
+        
+        .menu-item span {
+            font-weight: 500;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .mobile-container {
+                max-width: 100%;
+                box-shadow: none;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <!-- Нижняя навигация -->
+        <nav class="bottom-nav">
+            <a href="{% url 'dashboard:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-home"></i>
+                <span>Главная</span>
+                {% if request.resolver_match.url_name == 'dashboard' %}<div class="nav-dot"></div>{% endif %}
+            </a>
+            <a href="{% url 'dashboard:history' %}" class="nav-item {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
+                <i class="fas fa-history"></i>
+                <span>История</span>
+                {% if request.resolver_match.url_name == 'history' %}<div class="nav-dot"></div>{% endif %}
+            </a>
+            <a href="{% url 'dashboard:wallet' %}" class="nav-item {% if request.resolver_match.url_name == 'wallet' %}active{% endif %}">
+                <i class="fas fa-wallet"></i>
+                <span>Кошелек</span>
+                {% if request.resolver_match.url_name == 'wallet' %}<div class="nav-dot"></div>{% endif %}
+            </a>
+            <a href="{% url 'dashboard:menu' %}" class="nav-item {% if request.resolver_match.url_name == 'menu' %}active{% endif %}">
+                <i class="fas fa-bars"></i>
+                <span>Меню</span>
+                {% if request.resolver_match.url_name == 'menu' %}<div class="nav-dot"></div>{% endif %}
+            </a>
+        </nav>
+
+
+        <!-- Хедер -->
+        <div class="header">
+            <div class="header-icon">
+                <i class="fas fa-{% block header_icon %}chart-bar{% endblock %}"></i>
+            </div>
+            <h1>{% block header_title %}Заявки{% endblock %}</h1>
+            <p>{% block header_subtitle %}Управление транзакциями{% endblock %}</p>
+        </div>
+
+        <!-- Основной контент -->
+        <div class="main-content">
+            {% block content %}{% endblock %}
+        </div>
+
+
+        <!-- Меню оверлей -->
+        <div id="menu-overlay" class="menu-overlay" style="display: none;">
+            <div class="menu-content">
+                <div class="menu-header">
+                    <h3>Меню</h3>
+                    <button onclick="toggleMenu()" class="menu-close">×</button>
+                </div>
+                <div class="menu-items">
+                    <a href="{% url 'bot_control:bot_settings' %}" class="menu-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Настройки бота</span>
+                    </a>
+                    <a href="{% url 'bot_control:broadcast_message' %}" class="menu-item">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Рассылка</span>
+                    </a>
+                    <a href="{% url 'bot_control:statistics' %}" class="menu-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Статистика</span>
+                    </a>
+                    <a href="{% url 'dashboard:wallet' %}" class="menu-item">
+                        <i class="fas fa-wallet"></i>
+                        <span>Кошелек</span>
+                    </a>
+                    <a href="/admin/" target="_blank" class="menu-item">
+                        <i class="fas fa-database"></i>
+                        <span>Django Admin</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Обновление времени
+        function updateTime() {
+            const el = document.getElementById('current-time');
+            if (!el) return; // элемент не используется на всех страницах
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            el.textContent = timeString;
+        }
+        
+        // Обновляем время каждую минуту
+        updateTime();
+        setInterval(updateTime, 60000);
+        
+        // Переключение меню
+        function toggleMenu() {
+            const overlay = document.getElementById('menu-overlay');
+            if (overlay.style.display === 'none') {
+                overlay.style.display = 'flex';
+            } else {
+                overlay.style.display = 'none';
+            }
+        }
+        
+        // Закрытие меню при клике вне его
+        document.getElementById('menu-overlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                toggleMenu();
+            }
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

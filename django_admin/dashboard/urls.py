@@ -1,0 +1,64 @@
+from django.urls import path
+from . import views
+from bot_control.views_deposits import deposits_list, deposit_detail, withdrawals_list
+from bot_control import views as bot_views
+
+app_name = 'dashboard'
+
+urlpatterns = [
+    # Главная теперь — общий дашборд, который показывает и депозиты, и выводы
+    path('', views.dashboard, name='dashboard'),
+    path('request/<int:req_id>/', views.request_detail, name='request_detail'),
+    path('api/update-amount/', views.api_update_amount, name='api_update_amount'),
+    path('deposits/', deposits_list, name='deposits_list'),
+    path('deposits/<int:deposit_id>/', deposit_detail, name='deposit_detail'),
+    path('settings/', bot_views.bot_settings, name='settings'),
+    path('broadcast/', bot_views.broadcast_message, name='broadcast'),
+    path('statistics/', bot_views.statistics, name='statistics'),
+    path('history/', views.history, name='history'),
+    path('wallet/', views.wallet, name='wallet'),
+    path('menu/', views.menu, name='menu'),
+    path('database/', views.database, name='database'),
+    path('about/', views.about, name='about'),
+    path('withdrawals/', withdrawals_list, name='withdrawals_list'),
+    path('api/stats/', views.api_stats, name='api_stats'),
+    path('api/transactions/', views.api_transactions, name='api_transactions'),
+    path('api/pending-requests/', views.api_pending_requests, name='api_pending_requests'),
+    path('api/handle-request/', views.api_handle_request, name='api_handle_request'),
+    path('api/transaction-history/', views.api_transaction_history, name='api_transaction_history'),
+    # Requisites API
+    path('api/requisites/', views.api_requisites, name='api_requisites'),
+    path('api/requisites/<int:rid>/set-active/', views.api_requisites_set_active, name='api_requisites_set_active'),
+    path('api/requisites/<int:rid>/delete/', views.api_requisites_delete, name='api_requisites_delete'),
+    
+    # API для настроек
+    path('api/save-bot-settings/', bot_views.api_save_bot_settings, name='api_save_bot_settings'),
+    path('api/get-bot-settings/', bot_views.api_get_bot_settings, name='api_get_bot_settings'),
+    path('api/save-qr-hash/', bot_views.api_save_qr_hash, name='api_save_qr_hash'),
+    path('api/delete-qr-hash/<int:hash_id>/', bot_views.api_delete_qr_hash, name='api_delete_qr_hash'),
+    path('api/qr-hashes/', bot_views.api_qr_hashes, name='api_qr_hashes'),
+    path('api/save-bank-settings/', bot_views.api_save_bank_settings, name='api_save_bank_settings'),
+    path('api/send-broadcast/', bot_views.api_send_broadcast, name='api_send_broadcast'),
+    path('api/broadcast-history/', bot_views.api_broadcast_history, name='api_broadcast_history'),
+    path('api/statistics/', bot_views.api_statistics, name='api_statistics'),
+    path('api/export-statistics/', bot_views.api_export_statistics, name='api_export_statistics'),
+    
+    # API для букмекеров
+    path('api/1xbet-balance/', bot_views.api_1xbet_balance, name='api_1xbet_balance'),
+    path('api/1xbet-search-player/', bot_views.api_1xbet_search_player, name='api_1xbet_search_player'),
+    path('api/1xbet-deposit/', bot_views.api_1xbet_deposit, name='api_1xbet_deposit'),
+    path('api/1win-deposit/', bot_views.api_1win_deposit, name='api_1win_deposit'),
+    path('api/1win-withdrawal/', bot_views.api_1win_withdrawal, name='api_1win_withdrawal'),
+    path('api/melbet-balance/', bot_views.api_melbet_balance, name='api_melbet_balance'),
+    path('api/melbet-search-player/', bot_views.api_melbet_search_player, name='api_melbet_search_player'),
+    path('api/melbet-deposit/', bot_views.api_melbet_deposit, name='api_melbet_deposit'),
+    path('api/mostbet-balance/', bot_views.api_mostbet_balance, name='api_mostbet_balance'),
+    path('api/mostbet-search-player/', bot_views.api_mostbet_search_player, name='api_mostbet_search_player'),
+    path('api/mostbet-deposit/', bot_views.api_mostbet_deposit, name='api_mostbet_deposit'),
+    path('api/mostbet-withdrawal/', bot_views.api_mostbet_withdrawal, name='api_mostbet_withdrawal'),
+]
+
+
+
+
+

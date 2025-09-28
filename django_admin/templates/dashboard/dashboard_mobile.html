@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Дашборд - Luxon{% endblock %}
+
+{% block header_icon %}history{% endblock %}
+{% block header_title %}Заявки{% endblock %}
+{% block header_subtitle %}Актуальные транзакции{% endblock %}
+
+{% block content %}
+<style>
+.tabs-container { display: flex; gap: 8px; margin-bottom: 16px; background: transparent; border: none; box-shadow: none; }
+.tab { flex: 1; padding: 10px 14px; text-align: center; border-radius: 10px; cursor: pointer; transition: all .2s; color: #999; font-weight: 600; font-size: 13px; background: #1a1a1a; border: 1px solid #222; }
+.tab.active { background: #2a2a2a; color: #fff; border-color: #444; }
+.tab:hover { background: #222; color: #ccc; }
+.tab-refresh { padding: 12px; border-radius: 12px; cursor: pointer; transition: all .3s; color: #999; background: transparent; font-size: 16px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tab-refresh:hover { background: #333; color: #fff; }
+.list-item { background: transparent; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; box-shadow: none; border: none; transition: all .3s; }
+.list-item:hover { background: #1a1a1a; }
+.list-icon { margin-right: 16px; }
+.list-content { flex: 1; }
+.list-title { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.list-subtitle { font-size: 12px; color: #999; margin-bottom: 4px; }
+.list-right { text-align: right; }
+.list-date { font-size: 11px; color: #999; margin-bottom: 4px; }
+.list-amount { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+.list-status { display: flex; align-items: center; justify-content: flex-end; font-size: 11px; color: #999; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
+.status-pending { background: #ffa500; }
+.status-completed { background: #00ff88; }
+.status-rejected { background: #ff4444; }
+</style>
+
+<!-- Фильтры: Ожидающие (по умолчанию) | Оставленные (ручные) -->
+<div class="tabs-container">
+  <div id="tab-pending" class="tab active" onclick="switchStatus('pending')">Ожидающие</div>
+  <div id="tab-left" class="tab" onclick="switchStatus('awaiting_manual')">Оставленные</div>
+  <div class="tab-refresh" onclick="loadRequests()" title="Обновить"><i class="fas fa-sync-alt"></i></div>
+  </div>
+
+<!-- Список заявок -->
+<div id="requests-container">
+    <div style="text-align: center; color: #cccccc; padding: 20px;">
+        <i class="fas fa-spinner fa-spin"></i> Загрузка заявок...
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentStatus = 'pending'; // 'pending' | 'awaiting_manual'
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Читаем ?status= из URL (awaiting_manual | pending)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const s = (params.get('status') || '').toLowerCase();
+      if (s === 'awaiting_manual' || s === 'pending') {
+        currentStatus = s;
+        document.getElementById('tab-pending').classList.toggle('active', currentStatus === 'pending');
+        document.getElementById('tab-left').classList.toggle('active', currentStatus === 'awaiting_manual');
+      }
+    } catch (e) {}
+
+    loadRequests();
+    setInterval(loadRequests, 30000);
+});
+
+function switchStatus(status) {
+  currentStatus = status;
+  document.getElementById('tab-pending').classList.toggle('active', status === 'pending');
+  document.getElementById('tab-left').classList.toggle('active', status === 'awaiting_manual');
+  const container = document.getElementById('requests-container');
+  container.innerHTML = `<div style="text-align:center;color:#999;padding:20px;"><i class='fas fa-spinner fa-spin'></i> Загрузка...</div>`;
+  loadRequests();
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${day}.${month}.${year} • ${hours}:${minutes}`;
+}
+
+// Функция для загрузки заявок
+async function loadRequests() {
+    try {
+        console.log('🔄 Загружаем заявки...');
+        const resp = await fetch('/api/pending-requests/', { headers: { 'Cache-Control': 'no-cache' }, cache: 'no-cache' });
+        const data = resp.ok ? await resp.json() : { success:false, requests: [] };
+
+        const container = document.getElementById('requests-container');
+        const items = (data.requests || []).filter(r => {
+          if (currentStatus === 'awaiting_manual') return r.status === 'awaiting_manual';
+          // Ожидающие: pending + processing
+          return r.status === 'pending' || r.status === 'processing';
+        });
+
+        if (items.length > 0) {
+            container.innerHTML = '';
+            items.forEach(request => {
+                const isDeposit = request.type === 'deposit';
+                const amountColor = isDeposit ? '#00ff88' : '#ff4444';
+                const amountSign = isDeposit ? '+' : '-';
+                let statusClass = 'status-pending';
+                if (request.status === 'rejected') statusClass = 'status-rejected';
+                else if (request.status === 'completed' || request.status === 'approved' || request.status === 'auto_completed') statusClass = 'status-completed';
+                else if (request.status === 'awaiting_manual') statusClass = 'status-rejected';
+
+                const userName = request.username || `Пользователь ${request.user_id}`;
+                const userInitial = (userName || 'U').charAt(0).toUpperCase();
+                const iconColor = isDeposit ? '#00ff88' : '#ff4444';
+
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.style.cursor = 'pointer';
+                item.onclick = () => { window.location.href = `/request/${request.id}/`; };
+                item.innerHTML = `
+                    <div class="list-icon">
+                        <div style="width:40px;height:40px;background:${iconColor};border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid #333;position:relative;">
+                            <span style="color:#fff;font-weight:bold;font-size:16px;">${userInitial}</span>
+                            <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;background:#666;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #333;">
+                                <i class="fas fa-${isDeposit ? 'arrow-down' : 'arrow-up'}" style="color:#fff;font-size:8px;"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="list-content">
+                        <div class="list-title">${userName}</div>
+                        <div class="list-subtitle">${(request.bookmaker || '').toUpperCase()} • ID: ${request.user_id}</div>
+                    </div>
+                    <div class="list-right">
+                        <div class="list-date">${formatDate(request.created_at || new Date())}</div>
+                        <div class="list-amount" style="color:${amountColor};">${amountSign}${Number(request.amount || 0).toFixed(2)}</div>
+                        <div class="list-status"><div class="status-dot ${statusClass}"></div><span>${request.status === 'awaiting_manual' ? 'Оставлена' : (request.status === 'processing' ? 'В работе' : (request.status === 'rejected' ? 'Отклонено' : (request.status === 'completed' || request.status === 'approved' || request.status === 'auto_completed' ? 'Успешно' : 'Ожидает')))}</span></div>
+                    </div>`;
+                container.appendChild(item);
+            });
+        } else {
+            container.innerHTML = `
+                <div style="text-align: center; color: #ccc; padding: 40px;">
+                    <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i><br>
+                    Нет заявок
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки заявок:', error);
+        console.error('❌ Тип ошибки:', error.name);
+        console.error('❌ Сообщение:', error.message);
+        
+        let errorMessage = 'Ошибка загрузки заявок';
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            errorMessage = 'Сервер недоступен. Проверьте подключение.';
+        } else if (error.message.includes('HTTP error')) {
+            errorMessage = `Ошибка сервера: ${error.message}`;
+        }
+        
+        document.getElementById('requests-container').innerHTML = `
+            <div style="text-align: center; color: #ff4444; padding: 20px;">
+                <i class="fas fa-exclamation-triangle"></i><br>
+                ${errorMessage}<br>
+                <small style="color: #888; margin-top: 10px; display: block;">
+                    Попробуйте обновить страницу
+                </small>
+            </div>
+        `;
+    }
+}
+</script>
+{% endblock %}
+

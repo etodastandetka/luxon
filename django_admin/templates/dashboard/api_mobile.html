@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ручное пополнение{% endblock %}
+{% block header_icon %}hand-holding-usd{% endblock %}
+{% block header_title %}Ручное пополнение{% endblock %}
+{% block header_subtitle %}Обработка заявок вручную{% endblock %}
+
+{% block content %}
+
+<!-- Форма ручного пополнения -->
+<div class="manual-deposit-form" style="margin-bottom: 20px;">
+    <div class="stat-card" style="background: #1a1a1a; border-radius: 12px; padding: 20px; border: 1px solid #333;">
+        <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600;">Обработать заявку вручную</h3>
+        
+        <div style="margin-bottom: 16px;">
+            <label style="color: #fff; font-size: 14px; margin-bottom: 8px; display: block;">ID заявки</label>
+            <input type="number" id="request-id" placeholder="Введите ID заявки" style="width: 100%; padding: 12px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px;">
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <label style="color: #fff; font-size: 14px; margin-bottom: 8px; display: block;">Букмекер</label>
+            <select id="bookmaker-select" style="width: 100%; padding: 12px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px;">
+                <option value="">Выберите букмекера</option>
+                <option value="1xbet">1XBET</option>
+                <option value="1win">1WIN</option>
+                <option value="melbet">MELBET</option>
+                <option value="mostbet">MOSTBET</option>
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <label style="color: #fff; font-size: 14px; margin-bottom: 8px; display: block;">Действие</label>
+            <select id="action-select" style="width: 100%; padding: 12px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px;">
+                <option value="">Выберите действие</option>
+                <option value="approve">Одобрить заявку</option>
+                <option value="reject">Отклонить заявку</option>
+                <option value="pending">Оставить в ожидании</option>
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <label style="color: #fff; font-size: 14px; margin-bottom: 8px; display: block;">Комментарий</label>
+            <textarea id="comment-text" placeholder="Добавить комментарий (необязательно)" style="width: 100%; padding: 12px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
+        </div>
+        
+        <button onclick="processRequest()" style="width: 100%; padding: 12px; background: #333; border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.backgroundColor='#444'" onmouseout="this.style.backgroundColor='#333'">
+            <i class="fas fa-check" style="margin-right: 8px;"></i>
+            Обработать заявку
+        </button>
+    </div>
+</div>
+
+
+
+<script>
+function processRequest() {
+    const requestId = document.getElementById('request-id').value;
+    const bookmaker = document.getElementById('bookmaker-select').value;
+    const action = document.getElementById('action-select').value;
+    const comment = document.getElementById('comment-text').value;
+    
+    if (!requestId || !bookmaker || !action) {
+        alert('Пожалуйста, заполните все обязательные поля');
+        return;
+    }
+    
+    // Отправка данных на сервер
+    fetch('/api/process-request/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            request_id: requestId,
+            bookmaker: bookmaker,
+            action: action,
+            comment: comment
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Заявка успешно обработана!');
+            // Очистка формы
+            document.getElementById('request-id').value = '';
+            document.getElementById('bookmaker-select').value = '';
+            document.getElementById('action-select').value = '';
+            document.getElementById('comment-text').value = '';
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Произошла ошибка при обработке заявки');
+    });
+}
+
+function processApiDeposit() {
+    const userId = document.getElementById('user-id').value;
+    const amount = document.getElementById('amount').value;
+    const bookmaker = document.getElementById('api-bookmaker-select').value;
+    const operationType = document.getElementById('operation-type').value;
+    
+    if (!userId || !amount || !bookmaker) {
+        alert('Пожалуйста, заполните все обязательные поля');
+        return;
+    }
+    
+    if (parseFloat(amount) <= 0) {
+        alert('Сумма должна быть больше 0');
+        return;
+    }
+    
+    // Отправка данных на сервер
+    fetch('/api/manual-deposit/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            user_id: userId,
+            amount: amount,
+            bookmaker: bookmaker,
+            operation_type: operationType
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Баланс успешно пополнен!');
+            // Очистка формы
+            document.getElementById('user-id').value = '';
+            document.getElementById('amount').value = '';
+            document.getElementById('api-bookmaker-select').value = '';
+            document.getElementById('operation-type').value = 'deposit';
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Произошла ошибка при пополнении баланса');
+    });
+}
+
+// Быстрые действия
+function approveAll() {
+    if (confirm('Одобрить все ожидающие заявки?')) {
+        fetch('/api/approve-all/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Все заявки одобрены!');
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        });
+    }
+}
+
+function rejectAll() {
+    if (confirm('Отклонить все ожидающие заявки?')) {
+        fetch('/api/reject-all/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Все заявки отклонены!');
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        });
+    }
+}
+
+// Добавляем обработчики для быстрых действий
+document.addEventListener('DOMContentLoaded', function() {
+    const approveAllBtn = document.querySelector('.action-card:first-child');
+    const rejectAllBtn = document.querySelector('.action-card:last-child');
+    
+    if (approveAllBtn) {
+        approveAllBtn.onclick = approveAll;
+    }
+    
+    if (rejectAllBtn) {
+        rejectAllBtn.onclick = rejectAll;
+    }
+});
+</script>
+{% endblock %}

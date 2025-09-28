@@ -1,0 +1,364 @@
+"""
+Views for deposit and withdrawal requests
+"""
+
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.db.models import Q, Count
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from datetime import timedelta
+import json
+import logging
+import sqlite3
+from django.conf import settings
+from .referral_models import ReferralWithdrawalRequest
+
+from .models import BankNotification, AutoDepositRequest, PlayerBalance
+from .auto_deposit_models import BankNotification as BankNotificationModel, AutoDepositRequest
+from .bot_models import BotDepositRequestRaw, BotWithdrawRequestRaw
+
+logger = logging.getLogger(__name__)
+
+def deposits_list(request):
+    """
+    Main page with deposit requests
+    """
+    try:
+        # Get filters
+        status_filter = request.GET.get('status', 'all')
+        search_query = request.GET.get('search', '')
+        page_number = request.GET.get('page', 1)
+        
+        # Connect to the database
+        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Base query for deposits (avoid non-existent columns like u.phone_number)
+        query = '''
+            SELECT r.*, u.username, u.first_name
+            FROM requests r
+            LEFT JOIN users u ON r.user_id = u.user_id
+            WHERE r.request_type = 'deposit'
+        '''
+        
+        params = []
+        
+        # Filter by status
+        if status_filter != 'all':
+            query += ' AND r.status = ?'
+            params.append(status_filter)
+        
+        # Search
+        if search_query:
+            query += ' AND (r.user_id LIKE ? OR r.amount LIKE ? OR u.username LIKE ? OR u.first_name LIKE ?)'
+            search_param = f'%{search_query}%'
+            params.extend([search_param] * 4)
+        
+        # Sorting
+        query += ' ORDER BY r.created_at DESC'
+        
+        # Execute query
+        cursor.execute(query, params)
+        all_deposits = cursor.fetchall()
+        
+        # Get statistics
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
+            FROM requests
+            WHERE request_type = 'deposit'
+        ''')
+        
+        stats_row = cursor.fetchone()
+        stats = {
+            'total': stats_row['total'] or 0,
+            'pending': stats_row['pending'] or 0,
+            'completed': stats_row['completed'] or 0,
+            'rejected': stats_row['rejected'] or 0,
+        }
+        
+        # Pagination
+        paginator = Paginator(all_deposits, 20)
+        page_obj = paginator.get_page(page_number)
+        
+        # Convert rows to dictionaries
+        deposits_list = []
+        for row in page_obj.object_list:
+            item = dict(row)
+            # Если в таблице requests есть флаг auto_completed=1 — помечаем статус для отображения
+            try:
+                if ('auto_completed' in item and (item['auto_completed'] == 1 or item['auto_completed'] == '1')):
+                    item['status'] = 'auto_completed'
+            except Exception:
+                pass
+            deposits_list.append(item)
+        
+        context = {
+            'page_obj': page_obj,
+            'deposits': deposits_list,
+            'stats': stats,
+            'status_filter': status_filter,
+            'search_query': search_query,
+        }
+        
+        conn.close()
+        return render(request, 'bot_control/deposits_list.html', context)
+        
+    except Exception as e:
+        logger.error(f"Error in deposits_list: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})
+
+def transaction_detail(request, trans_id):
+    """Transaction details from requests table"""
+    try:
+        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT r.*, u.username, u.first_name
+            FROM requests r
+            LEFT JOIN users u ON r.user_id = u.user_id
+            WHERE r.id = ?
+        ''', (trans_id,))
+        
+        transaction = cursor.fetchone()
+        
+        if not transaction:
+            return render(request, 'bot_control/404.html')
+        
+        conn.close()
+        from django.conf import settings as dj_settings
+        return render(request, 'bot_control/transaction_detail.html', {
+            'transaction': dict(transaction),
+            'api_token': getattr(dj_settings, 'DJANGO_ADMIN_API_TOKEN', '')
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in transaction_detail: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})
+
+def deposit_detail(request, deposit_id):
+    """Deposit request details"""
+    try:
+        deposit = get_object_or_404(AutoDepositRequest, id=deposit_id)
+        return render(request, 'bot_control/deposit_detail.html', {
+            'deposit': deposit
+        })
+    except Exception as e:
+        logger.error(f"Error in deposit_detail: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})
+
+def withdrawals_list(request):
+    """
+    Withdrawal requests list (Lux minimal). Now sourced from Django model
+    ReferralWithdrawalRequest, so new реферальные заявки отображаются сразу.
+    """
+    try:
+        # Filters
+        status_filter = request.GET.get('status', 'all')
+        search_query = request.GET.get('search', '').strip()
+        page_number = request.GET.get('page', 1)
+
+        qs = ReferralWithdrawalRequest.objects.all().order_by('-created_at')
+        if status_filter != 'all':
+            qs = qs.filter(status=status_filter)
+        if search_query:
+            # Поиск по user_id, сумме, реквизитам, ID аккаунта
+            try:
+                uid = int(search_query)
+                qs = qs.filter(user_id=uid)
+            except ValueError:
+                qs = qs.filter(
+                    Q(wallet_details__icontains=search_query) |
+                    Q(bookmaker_account_id__icontains=search_query) |
+                    Q(amount__icontains=search_query)
+                )
+
+        # Stats
+        stats = {
+            'total': qs.count(),
+            'pending': qs.filter(status='pending').count(),
+            'completed': qs.filter(status='completed').count(),
+            'rejected': qs.filter(status='rejected').count(),
+        }
+
+        paginator = Paginator(qs, 20)
+        page_obj = paginator.get_page(page_number)
+
+        withdrawals_list = [{
+            'id': o.id,
+            'user_id': o.user_id,
+            'amount': float(o.amount),
+            'currency': o.currency,
+            'status': o.status,
+            'created_at': o.created_at,
+            'bookmaker': o.bookmaker,
+            'bookmaker_account_id': o.bookmaker_account_id,
+        } for o in page_obj.object_list]
+
+        context = {
+            'page_obj': page_obj,
+            'withdrawals': withdrawals_list,
+            'stats': stats,
+            'status_filter': status_filter,
+            'search_query': search_query,
+        }
+
+        # Render Lux template
+        return render(request, 'bot_control/withdrawals_lux.html', context)
+
+    except Exception as e:
+        logger.error(f"Error in withdrawals_list: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_deposit_status(request, deposit_id):
+    """API to update deposit status"""
+    try:
+        if request.method == 'POST':
+            data = json.loads(request.body)
+            new_status = data.get('status')
+            admin_comment = data.get('comment', '')
+            
+            deposit = get_object_or_404(AutoDepositRequest, id=deposit_id)
+            deposit.status = new_status
+            deposit.admin_comment = admin_comment
+            deposit.processed_at = timezone.now()
+            deposit.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Deposit request {deposit_id} updated to {new_status}'
+            })
+        else:
+            return JsonResponse({'error': 'Method not allowed'}, status=405)
+            
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def auto_deposit_api(request):
+    """
+    API for processing automatic deposits
+    """
+    try:
+        data = json.loads(request.body)
+        
+        request_id = data.get('request_id')
+        user_id = data.get('user_id')
+        amount = data.get('amount')
+        bookmaker = data.get('bookmaker')
+        transaction_date = data.get('transaction_date')
+        source = data.get('source', 'email_parser')
+        
+        logger.info(f"Received auto deposit: {request_id}, {amount} KGS, {bookmaker}")
+        
+        # Validate required fields
+        if not all([request_id, user_id, amount, bookmaker, transaction_date]):
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing required fields'
+            }, status=400)
+        
+        # Check if request already exists
+        if AutoDepositRequest.objects.filter(request_id=request_id).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Request ID already exists'
+            }, status=400)
+        
+        # Create new deposit request
+        deposit = AutoDepositRequest.objects.create(
+            request_id=request_id,
+            user_id=user_id,
+            amount=amount,
+            bookmaker=bookmaker,
+            transaction_date=transaction_date,
+            source=source,
+            status='pending'
+        )
+        
+        logger.info(f"Created new deposit request: {deposit.id}")
+        
+        return JsonResponse({
+            'success': True,
+            'deposit_id': deposit.id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in auto_deposit_api: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+def dashboard(request):
+    """Main dashboard view"""
+    try:
+        # Get recent deposits
+        recent_deposits = AutoDepositRequest.objects.order_by('-created_at')[:5]
+        
+        # Get recent withdrawals
+        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT wr.*, u.username, u.first_name
+            FROM withdrawal_requests wr
+            LEFT JOIN users u ON wr.user_id = u.user_id
+            ORDER BY wr.created_at DESC
+            LIMIT 5
+        ''')
+        
+        recent_withdrawals = [dict(row) for row in cursor.fetchall()]
+        
+        # Get statistics
+        deposit_stats = AutoDepositRequest.objects.aggregate(
+            total=Count('id'),
+            pending=Count('id', filter=Q(status='pending')),
+            completed=Count('id', filter=Q(status='completed')),
+            rejected=Count('id', filter=Q(status='rejected'))
+        )
+        
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
+            FROM withdrawal_requests
+        ''')
+        
+        withdrawal_stats = dict(cursor.fetchone())
+        
+        # Format stats
+        for stat in [deposit_stats, withdrawal_stats]:
+            for key, value in stat.items():
+                if value is None:
+                    stat[key] = 0
+        
+        conn.close()
+        
+        context = {
+            'recent_deposits': recent_deposits,
+            'recent_withdrawals': recent_withdrawals,
+            'deposit_stats': deposit_stats,
+            'withdrawal_stats': withdrawal_stats,
+        }
+        
+        return render(request, 'bot_control/dashboard.html', context)
+        
+    except Exception as e:
+        logger.error(f"Error in dashboard: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})

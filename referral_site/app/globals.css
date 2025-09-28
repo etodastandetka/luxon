@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --accent: #22c55e; /* Lux ON green */
+  --accent-2: #16a34a;
+  --bg-1: #0b1220;
+  --bg-2: #0f172a;
+}
+
+/* Animated gradient background */
+body {
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(34,197,94,0.08), transparent 60%),
+              radial-gradient(900px 500px at 110% 10%, rgba(34,197,94,0.06), transparent 60%),
+              linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Lux grid overlay + vignette */
+.lux-grid::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px;
+  mask-image: radial-gradient(ellipse at 50% -20%, black 20%, transparent 70%);
+}
+.lux-grid::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(700px 300px at 10% -10%, rgba(34,197,94,0.15), transparent 60%),
+              radial-gradient(600px 250px at 110% 0%, rgba(94,234,212,0.12), transparent 60%);
+  filter: blur(2px);
+}
+
+/* Neon separator */
+.neon-sep { position: relative; padding-top: 6px; }
+.neon-sep::before { content: ""; position: absolute; top: 0; left: 0; height: 2px; width: 120px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), rgba(34,197,94,0)); box-shadow: 0 0 18px rgba(34,197,94,0.6);
+}
+
+.lux-gradient {
+  background: linear-gradient(90deg, var(--accent), #5eead4, var(--accent));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: luxShift 6s ease-in-out infinite, sheen 3.6s linear infinite;
+}
+
+@keyframes luxShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* subtle light sweep */
+@keyframes sheen {
+  0% { text-shadow: 0 0 0 rgba(255,255,255,0); }
+  20% { text-shadow: 0 0 18px rgba(94,234,212,0.35); }
+  40% { text-shadow: 0 0 0 rgba(255,255,255,0); }
+  100% { text-shadow: 0 0 0 rgba(255,255,255,0); }
+}
+
+/* Cards with subtle animated border/glow */
+.card {
+  position: relative;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  padding: 16px;
+}
+.card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(34,197,94,0.0), rgba(34,197,94,0.25), rgba(34,197,94,0.0));
+  filter: blur(8px);
+  opacity: 0.35;
+  animation: borderFlow 7s linear infinite;
+  z-index: -1;
+}
+@keyframes borderFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+button {
+  @apply px-4 py-2 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: transform .15s ease;
+}
+button:active { transform: translateY(1px) scale(0.99); }
+
+input, select {
+  @apply bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2;
+  --tw-ring-color: var(--accent);
+}
+
+.hint { @apply text-slate-400 text-sm; }
+
+/* Running neon bar under header */
+.running-bar {
+  position: relative;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(34,197,94,0.15), rgba(94,234,212,0.15));
+  overflow: hidden;
+}
+.running-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(94,234,212,0.9) 50%, transparent 100%);
+  width: 30%;
+  animation: runbar 2.8s cubic-bezier(.4,.0,.2,1) infinite;
+}
+@keyframes runbar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* Floating orbs */
+.orb { position: absolute; filter: blur(8px); opacity: .55; border-radius: 999px; mix-blend-mode: screen; }
+.orb-emerald { background: radial-gradient(circle at 30% 30%, rgba(34,197,94,.55), rgba(34,197,94,0)); }
+.orb-cyan { background: radial-gradient(circle at 30% 30%, rgba(94,234,212,.45), rgba(94,234,212,0)); }
+.float-1 { animation: float1 10s ease-in-out infinite; }
+.float-2 { animation: float2 12s ease-in-out infinite; }
+@keyframes float1 { 0%{ transform: translate(0,0);} 50%{ transform: translate(20px, -14px);} 100%{ transform: translate(0,0);} }
+@keyframes float2 { 0%{ transform: translate(0,0);} 50%{ transform: translate(-26px, 18px);} 100%{ transform: translate(0,0);} }
+
+/* Animated gradient ring utility for hero */
+.ring-anim { position: relative; }
+.ring-anim::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 16px;
+  background: conic-gradient(from 0deg, rgba(34,197,94,.0), rgba(34,197,94,.5), rgba(94,234,212,.0));
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  padding: 1px;
+  animation: spin 8s linear infinite;
+  pointer-events: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Power icon pulse */
+.power-dot { position: relative; }
+.power-dot::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 999px;
+  background: radial-gradient(circle, rgba(34,197,94,.4), rgba(34,197,94,0));
+  animation: pulse 2.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%{ opacity:.1; transform: scale(.9);} 50%{ opacity:.7; transform: scale(1.15);} 100%{ opacity:.1; transform: scale(.9);} }
+
+/* Mobile tuning: stronger but slower ambient */
+@media (max-width: 480px) {
+  .orb { filter: blur(10px); opacity: .7; }
+  .float-1 { animation-duration: 12s; }
+  .float-2 { animation-duration: 14s; }
+  .running-bar::after { width: 45%; animation-duration: 3.4s; }
+}
+
+/* Accessibility: reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

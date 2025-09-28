@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Заявка #{{ id }}{% endblock %}
+
+{% block header_icon %}info{% endblock %}
+{% block header_title %}Заявка #{{ id }}{% endblock %}
+{% block header_subtitle %}Детали операции{% endblock %}
+
+{% block content %}
+<style>
+.card { background:#111; border-radius:12px; padding:16px; margin-bottom:12px; border:1px solid #222; }
+.row { display:flex; justify-content:space-between; margin:6px 0; font-size:14px; }
+.row .label { color:#999; }
+.row .value { color:#fff; font-weight:600; }
+.actions { display:flex; gap:10px; margin-top:16px; }
+.btn { flex:1; padding:12px 16px; border-radius:10px; border:none; cursor:pointer; font-weight:600; font-size:14px; }
+.btn-approve { background:#113a2b; color:#00ff88; border:1px solid #1f5; }
+.btn-reject { background:#3a1111; color:#ff4444; border:1px solid #f44; }
+.badge { display:inline-block; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600; }
+.badge-deposit { background:#113a2b; color:#00ff88; border:1px solid #1f5; }
+.badge-withdraw { background:#3a1111; color:#ff4444; border:1px solid #f44; }
+.status { display:flex; align-items:center; gap:6px; }
+.status-dot { width:8px; height:8px; border-radius:50%; }
+.status-pending { background:#ffa500; }
+.status-completed { background:#00ff88; }
+.status-rejected { background:#ff4444; }
+.preview { margin-top:10px; border-radius:10px; border:1px solid #222; overflow:hidden; }
+.preview img { width:100%; max-height:420px; object-fit:contain; background:#000; }
+.back { display:inline-flex; align-items:center; gap:6px; margin-top:10px; color:#aaa; text-decoration:none; }
+</style>
+
+{% if not_found %}
+  <div class="card">
+    <div class="row"><div class="label">Заявка</div><div class="value">#{{ req_id }}</div></div>
+    <div class="row"><div class="label" style="color:#ff4444;">Не найдена</div></div>
+  </div>
+  <a class="back" href="/">
+    <i class="fas fa-arrow-left"></i> На главную
+  </a>
+{% elif error %}
+  <div class="card">
+    <div class="row"><div class="label">Ошибка</div><div class="value" style="color:#ff4444;">{{ error }}</div></div>
+  </div>
+  <a class="back" href="/">
+    <i class="fas fa-arrow-left"></i> На главную
+  </a>
+{% else %}
+  <div class="card">
+    <div class="row"><div class="label">Тип</div>
+      <div class="value">
+        {% if type == 'deposit' %}<span class="badge badge-deposit">Пополнение</span>{% else %}<span class="badge badge-withdraw">Вывод</span>{% endif %}
+      </div>
+    </div>
+    <div class="row"><div class="label">Пользователь</div><div class="value">{{ username|default:'Unknown' }} ({{ user_id }})</div></div>
+    <div class="row"><div class="label">Букмекер</div><div class="value">{{ bookmaker|upper }}</div></div>
+    <div class="row"><div class="label">Аккаунт</div><div class="value">{{ account_id }}</div></div>
+    <div class="row"><div class="label">Банк</div><div class="value">{{ bank|default:'—' }}</div></div>
+    <div class="row"><div class="label">Сумма</div><div class="value">{{ amount|floatformat:2 }} KGS</div></div>
+    <div class="row"><div class="label">Создано</div><div class="value">{{ created_at }}</div></div>
+    <div class="row"><div class="label">Статус</div>
+      <div class="value status">
+        <span class="status-dot status-{% if status == 'completed' %}completed{% elif status == 'rejected' %}rejected{% else %}pending{% endif %}"></span>
+        {{ status|title }}
+      </div>
+    </div>
+    {% if withdrawal_code %}
+    <div class="row"><div class="label">Код вывода</div><div class="value">{{ withdrawal_code }}</div></div>
+    {% endif %}
+
+    {% if photo_file_url %}
+    <div class="preview">
+      <img src="{{ photo_file_url }}" alt="Чек">
+    </div>
+    {% endif %}
+
+    <div class="actions">
+      <button class="btn btn-approve" onclick="handleAction('approve')"><i class="fas fa-check"></i> Подтвердить</button>
+      <button class="btn btn-reject" onclick="handleAction('reject')"><i class="fas fa-times"></i> Отклонить</button>
+    </div>
+  </div>
+
+  <a class="back" href="/">
+    <i class="fas fa-arrow-left"></i> На главную
+  </a>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function handleAction(action) {
+  try {
+    const resp = await fetch('/api/handle-request/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request_id: {{ id|default:0 }}, action })
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      alert('Ошибка: ' + (data.error || resp.status + ' ' + resp.statusText));
+      return;
+    }
+    alert(data.message || 'Успешно');
+    // Вернёмся на главную после действия
+    window.location.href = '/';
+  } catch (e) {
+    alert('Ошибка: ' + e);
+  }
+}
+</script>
+{% endblock %}

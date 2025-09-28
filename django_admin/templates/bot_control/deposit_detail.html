@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Заявка #{{ deposit.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-credit-card"></i> Заявка #{{ deposit.id }}
+                        <span class="badge bg-{% if deposit.status == 'pending' %}warning{% elif deposit.status == 'completed' %}success{% elif deposit.status == 'auto_completed' %}info{% elif deposit.status == 'rejected' %}danger{% else %}secondary{% endif %} ms-2">
+                            {% if deposit.status == 'pending' %}Ожидает{% elif deposit.status == 'completed' %}Завершена{% elif deposit.status == 'auto_completed' %}Автопополнена{% elif deposit.status == 'rejected' %}Отклонена{% else %}{{ deposit.status }}{% endif %}
+                        </span>
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{% url 'bot_control:deposits_list' %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Назад к списку
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Основная информация -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-{% if deposit.request_type == 'deposit' %}success{% else %}warning{% endif %} text-white">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-{% if deposit.request_type == 'deposit' %}credit-card{% else %}money-bill-wave{% endif %}"></i>
+                                        {% if deposit.request_type == 'deposit' %}Пополнение{% else %}Вывод{% endif %} #{{ deposit.id }}
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Заголовок как в группе -->
+                                    <div class="alert alert-{% if deposit.request_type == 'deposit' %}success{% else %}warning{% endif %} mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-8">
+                                                <h6 class="mb-1">
+                                                    <strong>ID пользователя:</strong> {{ deposit.user_id }}
+                                                    {% if deposit.username %}
+                                                    <br><small class="text-muted">@{{ deposit.username }}</small>
+                                                    {% endif %}
+                                                </h6>
+                                                <h6 class="mb-1">
+                                                    <strong>Сумма:</strong> 
+                                                    <span class="badge bg-{% if deposit.request_type == 'deposit' %}success{% else %}warning{% endif %} fs-6">
+                                                        {{ deposit.amount }} KGS
+                                                    </span>
+                                                </h6>
+                                            </div>
+                                            <div class="col-md-4 text-end">
+                                                <span class="badge bg-{% if deposit.status == 'pending' %}warning{% elif deposit.status == 'completed' %}success{% elif deposit.status == 'auto_completed' %}info{% elif deposit.status == 'rejected' %}danger{% else %}secondary{% endif %} fs-6">
+                                                    {% if deposit.status == 'pending' %}Ожидает{% elif deposit.status == 'completed' %}Завершена{% elif deposit.status == 'auto_completed' %}Автопополнена{% elif deposit.status == 'rejected' %}Отклонена{% else %}{{ deposit.status }}{% endif %}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Детальная информация -->
+                                    <table class="table table-borderless table-sm">
+                                        <tr>
+                                            <td><strong><i class="fas fa-calendar"></i> Создана:</strong></td>
+                                            <td>{{ deposit.created_at|date:"d.m.Y H:i:s" }}</td>
+                                        </tr>
+                                        {% if deposit.completed_at %}
+                                        <tr>
+                                            <td><strong><i class="fas fa-check-circle"></i> Завершена:</strong></td>
+                                            <td>{{ deposit.completed_at|date:"d.m.Y H:i:s" }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr>
+                                            <td><strong><i class="fas fa-university"></i> Банк:</strong></td>
+                                            <td>
+                                                {% if deposit.bank_name %}
+                                                    {{ deposit.bank_name }}
+                                                {% else %}
+                                                    <span class="text-muted">Не указан</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong><i class="fas fa-hashtag"></i> ID транзакции:</strong></td>
+                                            <td>
+                                                {% if deposit.transaction_id %}
+                                                    <code class="bg-light p-1 rounded">{{ deposit.transaction_id }}</code>
+                                                {% else %}
+                                                    <span class="text-muted">Не указан</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if deposit.admin_comment %}
+                                        <tr>
+                                            <td><strong><i class="fas fa-comment"></i> Комментарий:</strong></td>
+                                            <td>
+                                                <div class="bg-light p-2 rounded">
+                                                    {{ deposit.admin_comment }}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Фото чека/QR -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-qrcode"></i> Фото чека/QR
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    {% if deposit.photo_url %}
+                                        <div class="mb-3">
+                                            <img src="{{ deposit.photo_url }}" 
+                                                 class="img-fluid rounded" 
+                                                 alt="Фото чека" 
+                                                 style="max-height: 400px; border: 2px solid #dee2e6; cursor: pointer;" 
+                                                 data-bs-toggle="modal" 
+                                                 data-bs-target="#photoModal">
+                                        </div>
+                                        <div class="text-muted">
+                                            <small>
+                                                <i class="fas fa-info-circle"></i> 
+                                                Нажмите на фото для увеличения
+                                            </small>
+                                        </div>
+                                    {% else %}
+                                        <div class="text-muted py-5">
+                                            <i class="fas fa-image fa-4x mb-3 text-secondary"></i><br>
+                                            <strong>Фото чека не загружено</strong><br>
+                                            <small>Пользователь не прикрепил фото</small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Уведомления от банка -->
+                    {% if notifications %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-bell"></i> Уведомления от банка
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    {% for notification in notifications %}
+                                    <div class="alert alert-info">
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <strong>{{ notification.bank_name }}</strong><br>
+                                                <small class="text-muted">{{ notification.notification_text }}</small>
+                                            </div>
+                                            <div class="col-md-4 text-end">
+                                                <small class="text-muted">
+                                                    {{ notification.processed_at|date:"d.m.Y H:i:s" }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Баланс игрока -->
+                    {% if player_balance %}
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-wallet"></i> Баланс игрока
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center">
+                                        <h2 class="text-primary">{{ player_balance.balance }} KGS</h2>
+                                        <small class="text-muted">
+                                            Последнее обновление: {{ player_balance.last_updated|date:"d.m.Y H:i:s" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- История операций игрока -->
+                    {% if user_history %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-history"></i> История операций игрока
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Тип</th>
+                                                    <th>Сумма</th>
+                                                    <th>Статус</th>
+                                                    <th>Дата</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for history_item in user_history %}
+                                                <tr>
+                                                    <td>#{{ history_item.id }}</td>
+                                                    <td>
+                                                        {% if history_item.request_type == 'deposit' %}
+                                                            <span class="badge bg-success">Пополнение</span>
+                                                        {% elif history_item.request_type == 'withdraw' %}
+                                                            <span class="badge bg-warning">Вывод</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ history_item.amount }} KGS</td>
+                                                    <td>
+                                                        {% if history_item.status == 'pending' %}
+                                                            <span class="badge bg-warning">Ожидает</span>
+                                                        {% elif history_item.status == 'completed' %}
+                                                            <span class="badge bg-success">Завершена</span>
+                                                        {% elif history_item.status == 'auto_completed' %}
+                                                            <span class="badge bg-info">Автопополнена</span>
+                                                        {% elif history_item.status == 'rejected' %}
+                                                            <span class="badge bg-danger">Отклонена</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ history_item.created_at|date:"d.m.Y H:i" }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Действия -->
+                    {% if deposit.status == 'pending' %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Действия</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-success" onclick="updateStatus('completed')">
+                                            <i class="fas fa-check"></i> Подтвердить заявку
+                                        </button>
+                                        <button class="btn btn-danger" onclick="updateStatus('rejected')">
+                                            <i class="fas fa-times"></i> Отклонить заявку
+                                        </button>
+                                        <button class="btn btn-info" onclick="addComment()">
+                                            <i class="fas fa-comment"></i> Добавить комментарий
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateStatus(newStatus) {
+    const statusText = newStatus === 'completed' ? 'подтвердить' : 'отклонить';
+    if (confirm(`Вы уверены, что хотите ${statusText} заявку #{{ deposit.id }}?`)) {
+        fetch(`/bot/api/deposit-status/{{ deposit.id }}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                status: newStatus,
+                comment: 'Изменено через веб-интерфейс'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Ошибка: ' + error);
+        });
+    }
+}
+
+function addComment() {
+    const comment = prompt('Введите комментарий:');
+    if (comment) {
+        fetch(`/bot/api/deposit-status/{{ deposit.id }}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                status: '{{ deposit.status }}',
+                comment: comment
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Ошибка: ' + error);
+        });
+    }
+}
+</script>
+
+<!-- Модальное окно для увеличения фото -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="photoModalLabel">
+                    <i class="fas fa-qrcode"></i> Фото чека/QR - Заявка #{{ deposit.id }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                {% if deposit.photo_url %}
+                    <img src="{{ deposit.photo_url }}" class="img-fluid" alt="Фото чека" style="max-width: 100%; height: auto;">
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                {% if deposit.photo_url %}
+                <a href="{{ deposit.photo_url }}" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt"></i> Открыть в новой вкладке
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

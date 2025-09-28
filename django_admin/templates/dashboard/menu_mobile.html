@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Меню v3 - Темный дизайн{% endblock %}
+
+{% block header_icon %}bars{% endblock %}
+{% block header_title %}Меню{% endblock %}
+{% block header_subtitle %}{% endblock %}
+
+{% block content %}
+<style>
+  /* Scoped styles for a prettier dark menu page */
+  :root {
+    --bg: #0b0b0b;
+    --card: #141414;
+    --border: #242424;
+    --muted: #9aa0a6;
+    --muted-2: #6b7280;
+    --white: #ffffff;
+    --accent: #00ff88; /* keep brand accent */
+    --accent-2: #ffc107; /* warning accent */
+  }
+
+  .page-header {
+    padding: 12px 16px 4px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .page-header .header-avatar {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: #151515;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25) inset;
+  }
+  .page-header .header-avatar i { color: var(--accent); font-size: 18px; }
+  .page-header .header-content h1 { color: var(--white); font-size: 18px; margin: 0 0 2px; font-weight: 700; }
+  .page-header .header-content p { color: var(--muted); margin: 0; font-size: 12px; opacity: .9; }
+
+  .stats-cards { display: grid; grid-template-columns: repeat(2, 1fr); padding-top: 8px; margin: 0 16px 8px; gap: 10px !important; }
+  @media (min-width: 720px) { .stats-cards { grid-template-columns: repeat(3, 1fr); } }
+  .stat-card {
+    background: #151515 !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    border-radius: 10px !important;
+    transition: background .2s ease, border-color .2s ease;
+  }
+  .stat-card:hover { background: #181818 !important; border-color: #2a2a2a !important; }
+
+  .menu-section { margin: 0 0 16px; padding: 0 16px; }
+  .menu-section h3 { color: var(--white) !important; opacity: .95; margin: 8px 0 12px !important; }
+
+  .menu-item {
+    position: relative;
+    background: var(--card) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.20);
+    overflow: hidden;
+    border-radius: 10px !important;
+    margin: 0 16px 12px !important;
+    padding: 14px !important;
+  }
+  .menu-item::before {
+    content: "";
+    position: absolute; inset: 0; pointer-events: none;
+    background: transparent;
+    opacity: 0;
+  }
+  .menu-item:hover { border-color: #2a2a2a !important; background: #181818 !important; }
+
+  .menu-item .fas { color: var(--muted) !important; transition: color .2s ease; }
+  .menu-item:hover .fas { color: var(--accent) !important; }
+
+  .menu-status .status-dot { box-shadow: 0 0 10px rgba(0,255,136,0.35); }
+  .menu-status span { font-weight: 600; }
+
+  /* Make counters pop */
+  .stat-card div[style*="font-size: 24px"] { text-shadow: 0 1px 12px rgba(0,255,136,0.12); }
+  /* Icon wrappers */
+  .icon-circle {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: #222; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .icon-circle i { color: var(--muted); font-size: 18px; }
+  .menu-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #333; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+</style>
+<div class="menu-container">
+
+<!-- Основные функции -->
+<div class="menu-section">
+    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">📊 Основные функции</h3>
+    
+    <div class="menu-item" onclick="window.location.href='{% url 'dashboard:dashboard' %}'" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div class="menu-icon"><i class="fas fa-list" style="color: #999; font-size: 16px;"></i></div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Заявки</div>
+                <div style="font-size: 12px; color: #999;">Управление транзакциями</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+    
+    <div class="menu-item" onclick="window.location.href='{% url 'dashboard:history' %}'" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div class="menu-icon"><i class="fas fa-history" style="color: #999; font-size: 16px;"></i></div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">История</div>
+                <div style="font-size: 12px; color: #999;">Все транзакции</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+    
+    <div class="menu-item" onclick="window.location.href='{% url 'dashboard:wallet' %}'" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div class="menu-icon"><i class="fas fa-wallet" style="color: #999; font-size: 16px;"></i></div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Кошелек</div>
+                <div style="font-size: 12px; color: #999;">Банки и QR коды</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+    
+</div>
+
+<!-- Настройки бота -->
+<div class="menu-section" style="margin-bottom: 24px;">
+    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">🤖 Настройки бота</h3>
+    
+    <div class="menu-item" onclick="openBotSettings()" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-robot" style="color: #999; font-size: 16px;"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Управление ботом</div>
+                <div style="font-size: 12px; color: #999;">Включить/выключить</div>
+            </div>
+            <div class="menu-status" id="bot-status" style="display: flex; align-items: center; gap: 6px; margin-right: 8px; flex-shrink: 0;">
+                <div class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #00ff88;"></div>
+                <span style="font-size: 12px; color: #00ff88; font-weight: 500;">Активен</span>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+    
+    <div class="menu-item" onclick="openBroadcast()" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-bullhorn" style="color: #999; font-size: 16px;"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Рассылка</div>
+                <div style="font-size: 12px; color: #999;">Отправить сообщение</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+    
+    <div class="menu-item" onclick="openStatistics()" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-chart-bar" style="color: #999; font-size: 16px;"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Статистика</div>
+                <div style="font-size: 12px; color: #999;">Аналитика и отчеты</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Рефералка и лимиты -->
+<div class="menu-section" style="margin-bottom: 24px;">
+    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">👥 Рефералка и лимиты</h3>
+
+    <div class="menu-item" onclick="window.location.href='{% url 'bot_control:referral_history' %}'" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div class="menu-icon"><i class="fas fa-users" style="color: #999; font-size: 16px;"></i></div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Заявки с рефералки</div>
+                <div style="font-size: 12px; color: #999;">Выплаты и история реферальных заявок</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+
+    <div class="menu-item" onclick="window.location.href='{% url 'bot_control:limits_dashboard' %}'" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div class="menu-icon"><i class="fas fa-sliders-h" style="color: #999; font-size: 16px;"></i></div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Лимиты</div>
+                <div style="font-size: 12px; color: #999;">Ограничения и параметры</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Системные настройки -->
+<div class="menu-section" style="margin-bottom: 24px;">
+    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">⚙️ Система</h3>
+    
+    
+    <div class="menu-item" onclick="openBankSettings()" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-university" style="color: #999; font-size: 16px;"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Настройки банков</div>
+                <div style="font-size: 12px; color: #999;">Конфигурация банков</div>
+            </div>
+            <div style="text-align: right; margin-right: 8px; flex-shrink: 0;">
+                <div style="font-size: 12px; color: #10b981;">{{ banks_count }} активных</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+    
+    <div class="menu-item" onclick="openDatabase()" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-database" style="color: #999; font-size: 16px;"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">База данных</div>
+                <div style="font-size: 12px; color: #999;">Управление данными</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Дополнительно -->
+<div class="menu-section">
+    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">ℹ️ Дополнительно</h3>
+    
+    <div class="menu-item" onclick="openAbout()" style="cursor: pointer; transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-info-circle" style="color: #999; font-size: 16px;"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">О приложении</div>
+                <div style="font-size: 12px; color: #999;">Версия 1.0.0 • Luxon Admin</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Загружаем статус бота
+    loadBotStatus();
+});
+
+function loadBotStatus() {
+    // Используем корректный API статуса бота
+    fetch('/bot/api/bot-status/')
+        .then(response => response.json())
+        .then(data => {
+            const statusElement = document.getElementById('bot-status');
+            const dot = statusElement.querySelector('.status-dot');
+            const text = statusElement.querySelector('span');
+            
+            if (data.is_active) {
+                dot.style.background = '#00ff88';
+                text.textContent = 'Активен';
+                text.style.color = '#00ff88';
+            } else {
+                dot.style.background = '#ff4444';
+                text.textContent = 'Неактивен';
+                text.style.color = '#ff4444';
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки статуса бота:', error);
+        });
+}
+
+function openBotSettings() {
+    // Страница настроек бота
+    window.location.href = '{% url "dashboard:settings" %}';
+}
+
+function openBroadcast() {
+    // Страница рассылки
+    window.location.href = '{% url "dashboard:broadcast" %}';
+}
+
+function openStatistics() {
+    // Страница статистики
+    window.location.href = '{% url "dashboard:statistics" %}';
+}
+
+
+function openBankSettings() {
+    // Страница кошелька (банки и QR)
+    window.location.href = '{% url "dashboard:wallet" %}';
+}
+
+function openDatabase() {
+    // Страница управления базой данных (заглушка)
+    window.location.href = '{% url "dashboard:database" %}';
+}
+
+function openHelp() {
+    // Открываем страницу помощи
+    alert('Функция помощи будет добавлена');
+}
+
+function openAbout() {
+    // Открываем страницу о приложении
+    alert('Luxon Admin Panel v1.0.0\nРазработано для управления Telegram ботом');
+}
+</script>
+{% endblock %}

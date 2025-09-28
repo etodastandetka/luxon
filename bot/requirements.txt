@@ -1,0 +1,51 @@
+# Core dependencies
+aiogram==3.4.1
+aiohttp==3.9.1
+asyncio-mqtt==0.16.1
+
+# Database
+aiosqlite==0.19.0
+
+# HTTP client
+httpx==0.26.0
+requests==2.31.0
+
+# Data validation
+pydantic==2.5.2
+pydantic-settings==2.1.0
+
+# Async utilities
+tenacity==8.2.3
+aiofiles==23.2.1
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-mock==3.12.0
+pytest-cov==4.1.0
+
+# Development
+black==23.12.1
+flake8==7.0.0
+mypy==1.8.0
+
+# Monitoring and logging
+structlog==23.2.0
+prometheus-client==0.19.0
+
+# Security
+cryptography==41.0.8
+passlib==1.7.4
+
+# Utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1
+jinja2==3.1.2
+
+# Optional: Redis support
+redis==5.0.1
+aioredis==2.0.1
+
+# Optional: Web server enhancements
+uvloop==0.19.0; sys_platform != "win32"
+

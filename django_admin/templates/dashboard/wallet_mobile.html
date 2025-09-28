@@ -1,0 +1,329 @@
+{% extends 'base.html' %}
+{% load static %}
+<script>
+// Удаление банка по API
+async function deleteBank(bankId) {
+    if (!confirm('Удалить этот банк?')) return;
+    try {
+        const res = await fetch(`/bot/api/banks/${bankId}/delete/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            alert('Банк удален');
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка удаления банка');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Ошибка удаления банка');
+    }
+}
+</script>
+
+{% block title %}Кошелек{% endblock %}
+
+{% block header_title %}Кошелек{% endblock %}
+{% block header_subtitle %}Банки и QR-коды{% endblock %}
+
+{% block content %}
+
+<!-- Список банков -->
+<div class="banks-list" style="margin-bottom: 20px;">
+    
+    {% for bank in banks %}
+    <div class="bank-item" style="background: #1a1a1a; border-radius: 12px; padding: 16px; border: 1px solid #333; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px;">{{ bank.bank_name }}</div>
+                <div style="font-size: 11px; color: #999; font-family: monospace;">{{ bank.bank_code }}</div>
+                <div style="font-size: 10px; color: #666; margin-top: 4px;">
+                    {% if bank.is_enabled_deposit %}✅ Пополнение{% endif %}
+                    {% if bank.is_enabled_withdraw %}✅ Вывод{% endif %}
+                </div>
+            </div>
+            <div style="margin-left: 12px;">
+                <button onclick="deleteBank({{ bank.id }})" style="background: #ef4444; border: none; color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <!-- нет банков -->
+    {% endfor %}
+</div>
+
+<!-- Список QR хешей -->
+<div class="qr-hashes-list" style="margin-bottom: 20px;">
+    
+    {% for qr in qr_codes %}
+    <div class="qr-item" style="background: #1a1a1a; border-radius: 12px; padding: 16px; border: 1px solid #333; margin-bottom: 12px; {% if qr.is_main %}border-left: 4px solid #ffc107;{% endif %}">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                    <div style="font-size: 14px; font-weight: 600; color: #fff;">{{ qr.account_name }}</div>
+                    {% if qr.is_main %}
+                    <span style="background: #ffc107; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px;">ОСНОВНОЙ</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 11px; color: #999; font-family: monospace; word-break: break-all; margin-bottom: 4px;">{{ qr.hash_value|truncatechars:50 }}...</div>
+                <div style="font-size: 10px; color: #666;">
+                    {% if qr.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}
+                    {% if qr.gmail_email %} • 📧 {{ qr.gmail_email }}{% endif %}
+                </div>
+            </div>
+            <div style="margin-left: 12px; display: flex; gap: 8px;">
+                {% if not qr.is_main %}
+                <button onclick="setMainQR({{ qr.id }})" style="background: #ffc107; border: none; color: #000; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
+                    <i class="fas fa-star"></i>
+                </button>
+                {% endif %}
+                <button onclick="toggleQR({{ qr.id }})" style="background: {% if qr.is_active %}#ef4444{% else %}#00ff88{% endif %}; border: none; color: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+                    <i class="fas fa-{% if qr.is_active %}times{% else %}check{% endif %}"></i>
+                </button>
+                <button onclick="deleteQR({{ qr.id }})" style="background: #dc3545; border: none; color: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <!-- нет QR хешей -->
+    {% endfor %}
+</div>
+
+<!-- Статистика скрыта по просьбе: удалён блок с показателями -->
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // init
+});
+
+// Добавление QR хеша
+async function addQRHash() {
+    const accountName = document.getElementById('account_name').value;
+    const qrHash = document.getElementById('qr_hash').value;
+    const gmailEmail = document.getElementById('gmail_email').value;
+    const gmailPassword = document.getElementById('gmail_password').value;
+    const isMain = document.getElementById('is_main').checked;
+    const isActive = document.getElementById('is_active').checked;
+    
+    if (!accountName || !qrHash || !gmailEmail || !gmailPassword) {
+        alert('Заполните все обязательные поля!');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/bot/api/qr-hashes/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                account_name: accountName,
+                hash_value: qrHash,
+                gmail_email: gmailEmail,
+                gmail_password: gmailPassword,
+                is_main: isMain,
+                is_active: isActive
+            })
+        });
+        
+        if (response.ok) {
+            alert('QR хеш успешно добавлен!');
+            location.reload();
+        } else {
+            const error = await response.json();
+            alert('Ошибка: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка добавления QR хеша');
+    }
+}
+
+// Установка основного QR хеша
+async function setMainQR(qrId) {
+    if (confirm('Сделать этот QR хеш основным?')) {
+        try {
+            const response = await fetch(`/bot/api/qr-hashes/${qrId}/set-main/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                alert('QR хеш установлен как основной!');
+                location.reload();
+            } else {
+                alert('Ошибка установки основного хеша');
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('Ошибка установки основного хеша');
+        }
+    }
+}
+
+// Переключение статуса QR хеша
+async function toggleQR(qrId) {
+    if (confirm('Изменить статус QR хеша?')) {
+        try {
+            const response = await fetch(`/bot/api/qr-hashes/${qrId}/toggle/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка изменения статуса');
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('Ошибка изменения статуса');
+        }
+    }
+}
+
+// Удаление QR хеша
+async function deleteQR(qrId) {
+    if (confirm('Удалить этот QR хеш? Это действие нельзя отменить!')) {
+        try {
+            const response = await fetch(`/bot/api/qr-hashes/${qrId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                alert('QR хеш удален!');
+                location.reload();
+            } else {
+                alert('Ошибка удаления QR хеша');
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('Ошибка удаления QR хеша');
+        }
+    }
+}
+</script>
+
+<!-- Реквизиты для QR (Новый блок) -->
+<div class="requisites-section" style="margin-top: 24px;">
+  <div class="stat-card" style="background: #1a1a1a; border-radius: 12px; padding: 20px; border: 1px solid #333; margin-bottom: 16px;">
+    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Добавить реквизит</h3>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div>
+        <label style="color:#fff; font-size:12px;">Название</label>
+        <input id="rq_name" type="text" placeholder="Например: Демирбанк Акк 1" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      </div>
+      <div>
+        <label style="color:#fff; font-size:12px;">Реквизит (16 цифр)</label>
+        <input id="rq_value" type="text" placeholder="1180000353932089" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      </div>
+      <div>
+        <label style="color:#fff; font-size:12px;">Email</label>
+        <input id="rq_email" type="email" placeholder="you@example.com" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      </div>
+      <div>
+        <label style="color:#fff; font-size:12px;">Пароль</label>
+        <input id="rq_password" type="password" placeholder="Пароль" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      </div>
+      <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
+        <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
+          <input id="rq_active" type="checkbox"> Активный
+        </label>
+        <button onclick="addRequisite()" style="margin-left:auto; padding:10px 14px; background:#4CAF50; color:#fff; border:none; border-radius:8px; cursor:pointer;">Добавить реквизит</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="background:#1a1a1a; border-radius:12px; padding: 16px; border:1px solid #333;">
+    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Реквизиты ({{ requisites_count }})</h3>
+    {% if requisites %}
+      {% for r in requisites %}
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #222;">
+        <div style="flex:1;">
+          <div style="color:#fff; font-weight:600; font-size:13px;">
+            {{ r.value }} {% if r.is_active %}<span style="background:#00ff88; color:#000; border-radius:4px; padding:2px 6px; font-size:10px; margin-left:6px;">АКТИВНЫЙ</span>{% endif %}
+          </div>
+          <div style="color:#888; font-size:11px; margin-top:2px;">{{ r.created_at }}</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          {% if not r.is_active %}
+          <button onclick="setActiveRequisite({{ r.id }})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Сделать активным</button>
+          {% endif %}
+          <button onclick="deleteRequisite({{ r.id }})" style="background:#ef4444; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Удалить</button>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="text-align:center; color:#888; padding:20px;">Реквизиты не добавлены</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+async function addRequisite() {
+  const value = document.getElementById('rq_value').value.trim();
+  const name = document.getElementById('rq_name').value.trim();
+  const email = document.getElementById('rq_email').value.trim();
+  const password = document.getElementById('rq_password').value.trim();
+  const is_active = document.getElementById('rq_active').checked;
+  if (!/^\d{16}$/.test(value)) {
+    alert('Реквизит должен быть 16-значным числом');
+    return;
+  }
+  try {
+    const res = await fetch('{% url "dashboard:api_requisites" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value, is_active, name, email, password })
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    location.reload();
+  } catch(err) {
+    alert('Ошибка: ' + err.message);
+  }
+}
+
+async function setActiveRequisite(id) {
+  if (!confirm('Сделать активным этот реквизит?')) return;
+  try {
+    const res = await fetch(`{% url "dashboard:api_requisites_set_active" rid=0 %}`.replace('/0/', `/${id}/`), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    location.reload();
+  } catch(err) {
+    alert('Ошибка: ' + err.message);
+  }
+}
+
+async function deleteRequisite(id) {
+  if (!confirm('Удалить реквизит?')) return;
+  try {
+    const res = await fetch(`{% url "dashboard:api_requisites_delete" rid=0 %}`.replace('/0/', `/${id}/`), {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    location.reload();
+  } catch(err) {
+    alert('Ошибка: ' + err.message);
+  }
+}
+</script>
+{% endblock %}

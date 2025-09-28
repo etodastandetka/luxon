@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>История заявок на вывод (Рефералы)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#0b1220; color:#e8eefc; margin:0; }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    h1 { font-size: 22px; margin: 0 0 16px; }
+    .card { background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+    .row { display: grid; grid-template-columns: 80px 1.2fr 1.2fr 1fr 1fr 1.2fr; gap: 10px; align-items: center; }
+    .head { font-weight: 600; opacity: .9; }
+    .muted { opacity: .8; }
+    .filters { display:flex; gap:8px; margin:12px 0; flex-wrap: wrap; }
+    select, input { background:#0f172a; color:#e8eefc; border:1px solid #2b344a; border-radius:8px; padding:8px 10px; }
+    .btn { background:#2563eb; border:none; color:#fff; padding:8px 12px; border-radius:8px; cursor:pointer; }
+    .btn:hover { background:#1d4ed8; }
+    .tag { padding:4px 8px; border-radius:999px; font-size:12px; }
+    .ok { background:#065f46; }
+    .warn { background:#92400e; }
+    .bad { background:#7f1d1d; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>История заявок на вывод (Рефералы)</h1>
+
+    <form class="filters" method="get">
+      <label>
+        Статус:
+        <select name="status">
+          <option value="">Все</option>
+          {% for val,label in status_choices %}
+            <option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Букмекер:
+        <select name="bookmaker">
+          <option value="">Все</option>
+          {% for val,label in bookmaker_choices %}
+            <option value="{{ val }}" {% if bookmaker == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="btn" type="submit">Фильтровать</button>
+    </form>
+
+    <div class="card row head">
+      <div>ID</div>
+      <div>Пользователь</div>
+      <div>Букмекер / Аккаунт</div>
+      <div>Сумма</div>
+      <div>Статус</div>
+      <div>Создано / Обработано</div>
+    </div>
+
+    {% for it in items %}
+      <div class="card row">
+        <div>#{{ it.id }}</div>
+        <div>
+          <div class="muted">{{ it.user_id }}</div>
+          <div>@{{ it.username }}</div>
+        </div>
+        <div>
+          <div>{{ it.bookmaker|upper }}</div>
+          <div class="muted">{{ it.bookmaker_account_id }}</div>
+        </div>
+        <div>
+          <strong>{{ it.amount }} {{ it.currency }}</strong>
+        </div>
+        <div>
+          {% if it.status == 'completed' %}
+            <span class="tag ok">Выплачено</span>
+          {% elif it.status == 'processing' %}
+            <span class="tag warn">В обработке</span>
+          {% elif it.status == 'rejected' %}
+            <span class="tag bad">Отклонено</span>
+          {% else %}
+            <span class="tag">Ожидает</span>
+          {% endif %}
+        </div>
+        <div>
+          <div>{{ it.created_at|date:"Y-m-d H:i" }}</div>
+          <div class="muted">{{ it.processed_at|date:"Y-m-d H:i" }}</div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="card">Нет заявок</div>
+    {% endfor %}
+  </div>
+</body>
+</html>
