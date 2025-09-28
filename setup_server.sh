@@ -44,7 +44,67 @@ python manage.py collectstatic --noinput
 deactivate
 cd ..
 
-log "Создание конфигурации Nginx..."
+log "Создание временной конфигурации Nginx (без SSL для xendro.pro)..."
+cat > /etc/nginx/sites-available/combined << 'EOF'
+# Редирект с HTTP на HTTPS для luxservice.online
+server {
+    listen 80;
+    server_name luxservice.online www.luxservice.online;
+    return 301 https://$server_name$request_uri;
+}
+
+# Клиентский сайт luxservice.online (Next.js)
+server {
+    listen 443 ssl http2;
+    server_name luxservice.online www.luxservice.online;
+    
+    ssl_certificate /etc/letsencrypt/live/luxservice.online/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/luxservice.online/privkey.pem;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# Временная конфигурация для xendro.pro (HTTP только)
+server {
+    listen 80;
+    server_name xendro.pro www.xendro.pro;
+    
+    location /static/ {
+        alias /var/www/luxservice/django_admin/staticfiles/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+log "Активация конфигурации Nginx..."
+ln -sf /etc/nginx/sites-available/combined /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+nginx -t
+systemctl reload nginx
+
+log "Получение SSL сертификата для xendro.pro..."
+certbot --nginx -d xendro.pro -d www.xendro.pro --non-interactive --agree-tos --email etodastandetka@gmail.com
+
+log "Обновление конфигурации Nginx с SSL для xendro.pro..."
 cat > /etc/nginx/sites-available/combined << 'EOF'
 # Редирект с HTTP на HTTPS для luxservice.online
 server {
@@ -81,7 +141,7 @@ server {
     return 301 https://$server_name$request_uri;
 }
 
-# Админ-панель xendro.pro (Django)
+# Админ-панель xendro.pro (Django) с SSL
 server {
     listen 443 ssl http2;
     server_name xendro.pro www.xendro.pro;
@@ -105,14 +165,9 @@ server {
 }
 EOF
 
-log "Активация конфигурации Nginx..."
-ln -sf /etc/nginx/sites-available/combined /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
+log "Перезагрузка Nginx с обновленной конфигурацией..."
 nginx -t
 systemctl reload nginx
-
-log "Получение SSL сертификата для xendro.pro..."
-certbot --nginx -d xendro.pro -d www.xendro.pro --non-interactive --agree-tos --email etodastandetka@gmail.com
 
 log "Запуск всех сервисов через PM2..."
 pm2 start ecosystem.config.js
