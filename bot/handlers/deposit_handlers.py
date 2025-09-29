@@ -562,8 +562,25 @@ async def start_deposit(message: types.Message, state: FSMContext = None, bookma
     
     # Отправляем фотку с примером ID (если файл существует)
     from pathlib import Path
-    photo_path = Path(f"images/{bookmaker}-id.jpg")
-    if photo_path.exists():
+    try:
+        # Абсолютный путь до каталога images от корня проекта
+        # bot/handlers/deposit_handlers.py -> project root = parents[2]
+        project_root = Path(__file__).resolve().parents[2]
+        images_dir = project_root / 'images'
+        bm = (bookmaker or '').lower().strip()
+        # Кандидаты имён файлов (поддержка jpg/png и разных разделителей)
+        candidates = [
+            images_dir / f"{bm}-id.jpg",
+            images_dir / f"{bm}-id.png",
+            images_dir / f"{bm}_id.jpg",
+            images_dir / f"{bm}_id.png",
+        ]
+        photo_path = next((p for p in candidates if p.exists()), None)
+    except Exception as _e:
+        logger.warning(f"Ошибка определения пути до images: {_e}")
+        photo_path = None
+
+    if photo_path and photo_path.exists():
         try:
             photo = FSInputFile(str(photo_path))
             await message.answer_photo(
