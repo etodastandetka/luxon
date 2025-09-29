@@ -16,9 +16,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="max-w-5xl mx-auto p-4 md:p-6">
           <header className="mb-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* SVG лучше рендерится по высоте, чтобы не искажать пропорции на телефонах */}
-              <img src="/logo.svg" alt="LUX ON" className="h-8 md:h-9 w-auto block" />
-              <span className="hidden md:inline text-xl font-semibold lux-gradient">Реферальный кабинет</span>
+              {/* Убрали логотип по просьбе. Оставляем текстовый бренд */}
+              <span className="text-xl font-semibold lux-gradient">Реферальный кабинет</span>
             </div>
             <nav className="text-sm space-x-3">
               <a className="hover:underline text-slate-300" href="/">Главная</a>
