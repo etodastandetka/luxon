@@ -339,6 +339,16 @@ translations = TRANSLATIONS = {
         # Төлөм жана билдирүү матндар (KY)
         'withdrawal_request_sent_simple': "✅ Акча чыгаруу талабы кабыл алынды\n\n💰 Сумма: {amount:.2f} KGS\n🆔 {xbet_id}\n\n⏳ Боттон билдирүүнү күтүңүз.",
         'withdrawal_processed_message': "✅ Каражаттар ийгиликтүү түшүрүлдү\n\n🆔 ID: {xbet_id}\n💵 Сумма: {amount} сом",
+
+        # --- Дополнительно: депозиты/таймер/предупреждения (KY) ---
+        'user_found': "✅ Колдонуучу табылды!",
+        'enter_deposit_amount': "✅ Колдонуучу табылды!\n\n🆔 аккаунт: {account_id}\n\n📊 Минималдуу: 35 KGS\n📊 Максималдуу: 100,000 KGS\n\n💳 Толтуруунун суммасын киргизиңиз:",
+        'amount_to_pay': "💰 Төлөнө турган сумма:",
+        'payment_timer': "⏰ Төлөм убактысы: {minutes}:{seconds:02d}",
+        'payment_timer_expired': "⏰ Төлөм убактысы өтүп кетти. Өтүнмө токтотулду.",
+        'pay_exact_amount': "Копейкасына чейин так төлөңүз!",
+        'waiting_receipt_photo': "Төлөгөндөн кийин чекти сүрөт катары жибериңиз.",
+        'old_requisites_warning': "❌ Эски реквизиттерге төлөбөңүз. Кайра баштап, 'Толтуруу' баскычын басыңыз.",
         'deposit_processed_message': "✅ Түшүрүү ийгиликтүү аткарылды\n\n{duration_line}🆔  {xbet_id}\n💵  {amount:.2f} KGS\n\nБиздин сервисди тандаганыңыз үчүн рахмат.",
         # Добавленные ключи для оплаты (KY)
         'amount_to_pay': "💰 Төлөнө турган сумма:",
