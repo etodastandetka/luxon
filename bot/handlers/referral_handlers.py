@@ -33,28 +33,25 @@ async def handle_referral(message: types.Message, db):
     try:
         parts = urllib.parse.urlparse(web_url)
         q = dict(urllib.parse.parse_qsl(parts.query))
-        q['uid'] = str(user_id)
         new_query = urllib.parse.urlencode(q)
         web_url_with_uid = urllib.parse.urlunparse((parts.scheme, parts.netloc, parts.path or '/', parts.params, new_query, parts.fragment))
     except Exception:
         web_url_with_uid = f"{web_url.rstrip('/')}?uid={user_id}"
 
-    # Клавиатура: открыть приложение (web_app), поделиться ссылкой, топ/статы, назад
+    # Клавиатура: только открыть приложение и поделиться, плюс назад
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='🚀 Открыть приложение', web_app=WebAppInfo(url=web_url_with_uid))],
         [InlineKeyboardButton(text=translations['referral_share_button'], url=f"https://t.me/share/url?url={referral_link}&text={translations['referral_invite']}")],
-        [InlineKeyboardButton(text=translations['referral_my_stats'], callback_data="referral_stats"), InlineKeyboardButton(text=translations['referral_top'], callback_data="referral_top")],
         [InlineKeyboardButton(text=translations['back_to_main'], callback_data="back_to_menu")]
     ])
     
-    # Короткий текст
+    # Короткий текст без блока статистики
     text = (
         "💎 <b>Реферальная система LUXON</b>\n\n"
-        "🏆 <b>Призы топ‑3 ежемесячно:</b> 10 000 / 5 000 / 2 500 KGS\n"
-        "💰 <b>Комиссия:</b> 5% с депозитов ваших рефералов\n\n"
-        "📊 <b>Ваша статистика</b> — пригл.: {inv}, доход: {earn:.2f} KGS, позиция: #{pos}\n\n"
-        "🔗 <b>Ссылка:</b> <code>{link}</code>\n"
-    ).format(inv=stats['total_referrals'], earn=stats['total_earnings'], pos=stats['position'], link=referral_link)
+        "🏆 Призы топ‑3 ежемесячно: 10 000 / 5 000 / 2 500 KGS\n"
+        "💰 Комиссия: 5% с депозитов ваших рефералов\n\n"
+        "🔗 <b>Ваша ссылка:</b> <code>{link}</code>\n"
+    ).format(link=referral_link)
     
     await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
