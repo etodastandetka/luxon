@@ -19,17 +19,15 @@ function setTgCookieAndReload(val: string) {
 export default function TelegramWebAppAuth() {
   useEffect(() => {
     try {
-      const existing = getCookie('tg_user_id');
-      if (existing && existing.length > 0) return; // already set
-
       const w = window as any;
       const wa = w?.Telegram?.WebApp;
       const user = wa?.initDataUnsafe?.user;
+      const existing = getCookie('tg_user_id');
+      let candidate: string | undefined;
+
       if (user?.id) {
         try { wa?.expand?.(); wa?.ready?.(); } catch {}
-        const newVal = String(user.id);
-        setTgCookieAndReload(newVal);
-        return;
+        candidate = String(user.id);
       }
 
       // Fallback: accept user id from URL (?uid= / ?user_id=) or hash (#uid=)
@@ -40,11 +38,14 @@ export default function TelegramWebAppAuth() {
           const hs = new URLSearchParams(url.hash.replace(/^#/, ''));
           cand = hs.get('uid') || hs.get('user_id') || undefined;
         }
-        if (cand && /^\d+$/.test(cand)) {
-          setTgCookieAndReload(cand);
-          return;
-        }
+        if (!candidate && cand && /^\d+$/.test(cand)) candidate = cand;
       } catch {}
+
+      // Set cookie if we have a new candidate or cookie is empty/different
+      if (candidate && candidate !== existing) {
+        setTgCookieAndReload(candidate);
+        return;
+      }
     } catch {}
   }, []);
   return null;
