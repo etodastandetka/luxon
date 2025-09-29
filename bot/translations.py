@@ -411,7 +411,7 @@ translations = TRANSLATIONS = {
         'withdraw_instruction': "Чыгаруу ыкмасын тандаңыз",
         'withdrawal_not_found': "❌ Чыгаруу өтүнмөсү табылган жок. ID жана коддун тууралыгын текшериңиз.",
         'withdrawal_api_error': "❌ Өтүнмөнү иштетүүдө ката. Кийинчерээк кайра аракет кылыңыз.",
-        'enter_amount_with_limits': "💳 Толтуруунун суммасын киргизиңиз:",
+        'enter_amount_with_limits': "✅ Колдонуучу табылды!\n\n🆔 аккаунт: {account_id}\n\n📊 Минималдуу: 35 KGS\n📊 Максималдуу: 100,000 KGS\n\n💳 Толтуруунун суммасын киргизиңиз:",
         'payment_instruction': "ℹ️ Так сумманы тийин менен төлөңүз!\nТөлөөдөн кийин чекти жөнөтүңүз!",
         'back_to_menu': "🔙 Башкы менюга"
     },
@@ -547,7 +547,7 @@ translations = TRANSLATIONS = {
         'withdraw_instruction': "Yechish usulini tanlang",
         'withdrawal_not_found': "❌ Yechish arizasi topilmadi. ID va kodning to'g'riligini tekshiring.",
         'withdrawal_api_error': "❌ Arizani qayta ishlashda xatolik. Keyinroq qayta urinib ko'ring.",
-        'enter_amount_with_limits': "💳 To'ldirish summasini kiriting:",
+        'enter_amount_with_limits': "✅ Foydalanuvchi topildi!\n\n🆔 akkaunt: {account_id}\n\n📊 Minimal: 35 KGS\n📊 Maksimal: 100,000 KGS\n\n💳 To'ldirish summasini kiriting:",
         'payment_instruction': "ℹ️ Aniq summani tiyin bilan to'lang!\nTo'lovdan keyin chekni yuboring!",
         'back_to_menu': "🔙 Bosh menyuga"
     }
