@@ -1,4 +1,5 @@
 from typing import Optional
+import os
 
 BASE_QR_HASH = (
     "00020101021232990015qr.demirbank.kg0108ib_andro1016118000035393208912021213021211328454d5b3ee5d47c7b61c0a0b07bb939a"
@@ -143,8 +144,22 @@ def build_payment_links(amount: float):
 
 # ===== Хранение реквизитов в bot/universal_bot.db =====
 def _bot_db_path() -> str:
-    """Единый путь к универсальной БД бота (root)."""
-    return r"c:\\Users\\etoda\\Desktop\\bets\\universal_bot.db"
+    """Единый путь к универсальной БД бота (root).
+    1) BOT_DATABASE_PATH из окружения
+    2) <project_root>/universal_bot.db (где project_root — родитель каталога bot)
+    """
+    # 1) ENV override
+    p = os.getenv('BOT_DATABASE_PATH')
+    if p:
+        return p
+    # 2) project-root fallback
+    try:
+        from pathlib import Path
+        project_root = Path(__file__).resolve().parents[1]
+        return str(project_root / 'universal_bot.db')
+    except Exception:
+        # последний шанс: relative рядом с bot/
+        return 'universal_bot.db'
 
 def ensure_requisites_table():
     import sqlite3
