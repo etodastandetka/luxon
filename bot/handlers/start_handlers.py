@@ -10,7 +10,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 
 from translations import get_translation
 import os
-import urИllib.parse
+import urllib.parse
 import re
 import requests
 
@@ -99,13 +99,13 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             referrer_id = None
 
         if referrer_id:
-            # Обработка реферальной ссылки (однократно)
+            # Обработка реферальной ссылки
             try:
                 if referrer_id and referrer_id != user_id:
                     saved = db.save_referral(referrer_id, user_id)
                     if saved:
                         logger.info(f"Новый реферал: {user_id} от {referrer_id}")
-                        # Уведомляем реферера единожды
+                        # Уведомляем реферера при первой привязке
                         try:
                             await bot.send_message(
                                 referrer_id,
@@ -117,8 +117,32 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
                             )
                         except Exception as e:
                             logger.error(f"Ошибка уведомления реферера: {e}")
-            except ValueError:
-                logger.error(f"Неверный формат реферальной ссылки: {start_param}")
+                    else:
+                        # Если уже привязан к ЭТОМУ же рефереру — отправим уведомление о повторном визите (без дублей привязки)
+                        existing_ref = db.get_referrer_id(user_id)
+                        if existing_ref and int(existing_ref) == int(referrer_id):
+                            # Простейший антиспам: не чаще одного раза в сутки
+                            from datetime import datetime
+                            key = f"ref_visit_notified_{referrer_id}"
+                            last = db.get_user_data(user_id, key)
+                            today = datetime.utcnow().strftime('%Y-%m-%d')
+                            if last != today:
+                                try:
+                                    await bot.send_message(
+                                        referrer_id,
+                                        (
+                                            "✅ Ваш реферал снова активен по вашей ссылке.\n\n"
+                                            f"👤 @{message.from_user.username or 'пользователь'} (ID: {user_id})"
+                                        )
+                                    )
+                                except Exception as e:
+                                    logger.error(f"Ошибка уведомления реферера (повторный визит): {e}")
+                                # Запоминаем отметку на сегодня
+                                db.save_user_data(user_id, key, today)
+                        else:
+                            logger.info(f"Пользователь {user_id} уже привязан к другому рефереру ({existing_ref}), уведомление не отправляем")
+            except Exception as e:
+                logger.error(f"Ошибка обработки реферальной ссылки: {e}")
         
         # Получаем язык пользователя
         language = db.get_user_language(user_id)
