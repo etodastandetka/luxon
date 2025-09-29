@@ -4,6 +4,7 @@
 """
 import sqlite3
 import logging
+import os
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from pathlib import Path
@@ -14,7 +15,13 @@ class Database:
     def __init__(self, db_path: str = None):
         # Use single root DB by default to unify all modules
         if not db_path:
-            db_path = r"c:\\Users\\etoda\\Desktop\\bets\\universal_bot.db"
+            # 1) ENV override (recommended for prod)
+            db_path = os.getenv('BOT_DATABASE_PATH')
+            if not db_path:
+                # 2) Project-relative default: <project_root>/universal_bot.db
+                # bot/database.py -> project_root = parents[1]
+                project_root = Path(__file__).resolve().parents[1]
+                db_path = str(project_root / 'universal_bot.db')
         self.db_path = db_path
         self.init_db()
         self.migrate_db()
