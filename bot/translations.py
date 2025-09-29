@@ -411,7 +411,7 @@ translations = TRANSLATIONS = {
         'withdraw_instruction': "Чыгаруу ыкмасын тандаңыз",
         'withdrawal_not_found': "❌ Чыгаруу өтүнмөсү табылган жок. ID жана коддун тууралыгын текшериңиз.",
         'withdrawal_api_error': "❌ Өтүнмөнү иштетүүдө ката. Кийинчерээк кайра аракет кылыңыз.",
-        'enter_amount_with_limits': "💳 Сумма толтурууну киргизиңиз:",
+        'enter_amount_with_limits': "💳 Толтуруунун суммасын киргизиңиз:",
         'payment_instruction': "ℹ️ Так сумманы тийин менен төлөңүз!\nТөлөөдөн кийин чекти жөнөтүңүз!",
         'back_to_menu': "🔙 Башкы менюга"
     },
