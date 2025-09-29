@@ -39,10 +39,23 @@ git pull origin main
 log "Настройка Django..."
 cd django_admin
 source .venv/bin/activate
+
+# Создаем базу данных в корневой директории
 python manage.py migrate
 python manage.py collectstatic --noinput
 deactivate
 cd ..
+
+# Создаем файлы баз данных в корневой директории
+log "Создание файлов баз данных в корневой директории..."
+touch /var/www/luxservice/admin.sqlite3
+touch /var/www/luxservice/universal_bot.db
+
+# Устанавливаем правильные права доступа
+chmod 664 /var/www/luxservice/*.db
+chmod 664 /var/www/luxservice/*.sqlite3
+chown www-data:www-data /var/www/luxservice/*.db
+chown www-data:www-data /var/www/luxservice/*.sqlite3
 
 log "Создание временной конфигурации Nginx (без SSL для xendro.pro)..."
 cat > /etc/nginx/sites-available/combined << 'EOF'

@@ -118,7 +118,7 @@ def request_detail(request, req_id: int):
             LIMIT 1
         ''', (int(req_id),))
         row = cur.fetchone()
-        conn.close()
+        # Не закрываем соединение, ещё будем делать выборки ниже
 
         if not row:
             return render(request, 'dashboard/request_detail_mobile.html', {
@@ -129,6 +129,55 @@ def request_detail(request, req_id: int):
         (rid, user_id, username, first_name, last_name,
          bookmaker, rtype, amount, status, created_at,
          account_id, bank, withdrawal_code, photo_file_id, photo_file_url) = row
+
+        # История пользователя и поиск по сумме
+        search_amount_raw = (request.GET.get('amount') or '').strip()
+        amount_matches = []
+        user_requests = []
+
+        # Все заявки пользователя (последние 100)
+        try:
+            cur.execute('''
+                SELECT id, COALESCE(request_type,''), COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,'')
+                FROM requests
+                WHERE user_id = ?
+                ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
+                LIMIT 100
+            ''', (user_id,))
+            for rid2, rtype2, amount2, status2, created2 in cur.fetchall():
+                user_requests.append({
+                    'id': rid2,
+                    'type': rtype2 or 'deposit',
+                    'amount': float(amount2 or 0),
+                    'status': status2,
+                    'created_at': created2,
+                })
+        except Exception:
+            user_requests = []
+
+        # Поиск по сумме для этого пользователя
+        if search_amount_raw:
+            try:
+                search_amount = float(search_amount_raw.replace(',', '.'))
+                cur.execute('''
+                    SELECT id, COALESCE(request_type,''), COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,'')
+                    FROM requests
+                    WHERE user_id = ? AND ABS(COALESCE(amount,0) - ?) < 1e-6
+                    ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
+                    LIMIT 50
+                ''', (user_id, search_amount))
+                for rid3, rtype3, amount3, status3, created3 in cur.fetchall():
+                    amount_matches.append({
+                        'id': rid3,
+                        'type': rtype3 or 'deposit',
+                        'amount': float(amount3 or 0),
+                        'status': status3,
+                        'created_at': created3,
+                    })
+            except Exception:
+                amount_matches = []
+
+        conn.close()
 
         context = {
             'id': rid,
@@ -144,6 +193,9 @@ def request_detail(request, req_id: int):
             'withdrawal_code': withdrawal_code,
             'photo_file_id': photo_file_id,
             'photo_file_url': photo_file_url,
+            'search_amount': search_amount_raw,
+            'amount_matches': amount_matches,
+            'user_requests': user_requests,
         }
         return render(request, 'dashboard/request_detail_mobile.html', context)
     except Exception as e:

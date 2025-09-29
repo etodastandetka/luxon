@@ -1,7 +1,19 @@
+def _get_site_base() -> str:
+    """Базовый URL сайта (Django), куда бот отправляет callback-уведомления.
+    Источники, по приоритету:
+    - DJANGO_BASE
+    - SITE_BASE
+    - Fallback: http://127.0.0.1:8081
+    Примеры значений: https://xendro.pro, https://api.xendro.pro
+    """
+    base = os.getenv('DJANGO_BASE') or os.getenv('SITE_BASE') or 'http://127.0.0.1:8081'
+    return base.rstrip('/')
+
 """
 Обработчики API операций для бота
 """
 import logging
+import os
 from typing import Dict
 from aiogram import types, Dispatcher, F
 import requests
@@ -104,8 +116,8 @@ def _notify_site_update_status(request_id: int, status: str, request_type: str =
             'status': status,
             'source': 'bot'
         }
-        # Локальный сайт
-        url = 'http://localhost:8081/bot/api/bot/update-status/'
+        # URL сайта берём из окружения, fallback на локальный
+        url = f"{_get_site_base()}/bot/api/bot/update-status/"
         r = requests.post(url, json=payload, timeout=5)
         logger.info(f"update-status -> {r.status_code} {r.text[:200]}")
     except Exception as e:

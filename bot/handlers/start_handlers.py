@@ -114,7 +114,8 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
         translations = get_translation(language)
         
         # Минималистичное стартовое сообщение: кнопка открыть приложение + кнопка поделиться реф. ссылкой
-        web_url = os.getenv('WEB_APP_URL', 'https://luxon.kg')
+        # Адрес мини‑приложения можно задать через WEB_APP_URL (например, https://luxservice.online)
+        web_url = os.getenv('WEB_APP_URL', 'https://luxservice.online')
         try:
             bot_username = (await bot.get_me()).username or 'Lux_on_bot'
         except Exception:
@@ -126,8 +127,20 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             'text': share_text
         })
 
+        # Добавим user_id как query (?uid=...), чтобы фронт мог подхватить его даже если WebApp API недоступен
+        web_url_with_uid = web_url
+        try:
+            from urllib.parse import urlparse, urlencode, parse_qsl, urlunparse
+            parts = urlparse(web_url)
+            q = dict(parse_qsl(parts.query))
+            q['uid'] = str(user_id)
+            new_query = urlencode(q)
+            web_url_with_uid = urlunparse((parts.scheme, parts.netloc, parts.path or '/', parts.params, new_query, parts.fragment))
+        except Exception:
+            web_url_with_uid = f"{web_url.rstrip('/')}?uid={user_id}"
+
         inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text='🚀 Открыть приложение', web_app=WebAppInfo(url=web_url))],
+            [InlineKeyboardButton(text='🚀 Открыть приложение', web_app=WebAppInfo(url=web_url_with_uid))],
             [InlineKeyboardButton(text='🔗 Поделиться реферальной ссылкой', url=share_url)]
         ])
 

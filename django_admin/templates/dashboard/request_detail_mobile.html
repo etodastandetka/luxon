@@ -79,6 +79,64 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="row"><div class="label">Поиск по сумме (для этого пользователя)</div></div>
+    <form method="get" action="" style="display:flex; gap:8px; margin-top:8px;">
+      <input name="amount" value="{{ search_amount|default:'' }}" placeholder="Напр. 1500" style="flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff;" />
+      <button class="btn btn-approve" style="flex:0 0 auto;">Найти</button>
+    </form>
+
+    {% if search_amount %}
+      <div class="row" style="margin-top:10px;"><div class="label">Совпадения по сумме {{ search_amount }} KGS</div></div>
+      {% if amount_matches %}
+        <div style="margin-top:8px;">
+          {% for r in amount_matches %}
+            <div class="row" style="border-top:1px solid #222; padding-top:6px;">
+              <div class="label">
+                #{{ r.id }} · {{ r.created_at }}
+              </div>
+              <div class="value">
+                {% if r.type == 'deposit' %}
+                  <span class="badge badge-deposit">Пополнение</span>
+                {% else %}
+                  <span class="badge badge-withdraw">Вывод</span>
+                {% endif %}
+                &nbsp; {{ r.amount|floatformat:2 }} KGS · {{ r.status|title }}
+                &nbsp; <a href="/request/{{ r.id }}/" style="color:#0fa;">Открыть</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="row"><div class="label">Совпадений не найдено.</div></div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="row"><div class="label">Все заявки пользователя (последние 100)</div></div>
+    {% if user_requests %}
+      <div style="margin-top:8px;">
+        {% for r in user_requests %}
+          <div class="row" style="border-top:1px solid #222; padding-top:6px;">
+            <div class="label">#{{ r.id }} · {{ r.created_at }}</div>
+            <div class="value">
+              {% if r.type == 'deposit' %}
+                <span class="badge badge-deposit">Пополнение</span>
+              {% else %}
+                <span class="badge badge-withdraw">Вывод</span>
+              {% endif %}
+              &nbsp; {{ r.amount|floatformat:2 }} KGS · {{ r.status|title }}
+              &nbsp; <a href="/request/{{ r.id }}/" style="color:#0fa;">Открыть</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="row"><div class="label">Заявок пока нет.</div></div>
+    {% endif %}
+  </div>
+
   <a class="back" href="/">
     <i class="fas fa-arrow-left"></i> На главную
   </a>
