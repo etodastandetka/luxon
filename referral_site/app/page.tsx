@@ -55,26 +55,46 @@ export default async function Page() {
           <h3 className="text-lg font-semibold">Профиль</h3>
         </div>
         {userId && stats.success ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="space-y-1">
-              <div><span className="hint">ID:</span> {stats.user.user_id}</div>
-              <div><span className="hint">Активные рефералы:</span> {stats.stats.active_referrals}</div>
+          <div className="space-y-4">
+            {/* Basic info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
+                <div className="hint">ID</div>
+                <div className="mt-1 font-medium">{stats.user.user_id}</div>
+              </div>
+              <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
+                <div className="hint">Username</div>
+                <div className="mt-1 font-medium">@{stats.user.username}</div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <div><span className="hint">Username:</span> @{stats.user.username}</div>
-              <div><span className="hint">Начислено всего:</span> {stats.stats.balance} KGS</div>
+
+            {/* 4 metric cards, 2 per row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4">
+                <div className="hint">Активные рефералы</div>
+                <div className="mt-1 text-2xl font-semibold text-emerald-300">{stats.stats.active_referrals}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4">
+                <div className="hint">Начислено всего</div>
+                <div className="mt-1 text-2xl font-semibold text-emerald-300">{stats.stats.balance} KGS</div>
+              </div>
+              <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4">
+                <div className="hint">В ожидании</div>
+                <div className="mt-1 text-2xl font-semibold">{stats.stats.pending_withdrawals} KGS</div>
+              </div>
+              <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4">
+                <div className="hint">Доступно к выводу</div>
+                <div className="mt-1 text-2xl font-semibold">{stats.stats.available_balance} KGS</div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <div><span className="hint">В ожидании:</span> {stats.stats.pending_withdrawals} KGS</div>
-            </div>
-            <div className="space-y-1">
-              <div><span className="hint">Доступно к выводу:</span> {stats.stats.available_balance} KGS</div>
-            </div>
-            <div className="md:col-span-2">
+
+            {/* Referral link */}
+            <div>
               <div className="hint mb-1">Реф. ссылка</div>
               <ReferralLink href={stats.referral_link} />
             </div>
-            <div className="md:col-span-2 hint">Ежемесячные призы: 1 место — 10 000 KGS, 2 место — 5 000 KGS, 3 место — 2 500 KGS.</div>
+
+            <div className="hint">Ежемесячные призы: 1 место — 10 000 KGS, 2 место — 5 000 KGS, 3 место — 2 500 KGS.</div>
           </div>
         ) : !userId ? (
           <div className="text-sm text-slate-400">Откройте мини‑приложение внутри Telegram для загрузки данных.</div>
