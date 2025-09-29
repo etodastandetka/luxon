@@ -87,25 +87,25 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             start_param = message.text.split()[1]
         
         if start_param and start_param.startswith('ref_'):
-            # Обработка реферальной ссылки
+            # Обработка реферальной ссылки (однократно)
             try:
                 referrer_id = int(start_param.replace('ref_', ''))
                 if referrer_id and referrer_id != user_id:
-                    # Сохраняем реферала
-                    db.save_referral(referrer_id, user_id)
-                    logger.info(f"Новый реферал: {user_id} от {referrer_id}")
-                    
-                    # Уведомляем реферера
-                    try:
-                        referrer_lang = db.get_user_language(referrer_id)
-                        referrer_translations = get_translation(referrer_lang)
-                        
-                        await bot.send_message(
-                            referrer_id, 
-                            f"🎉 У вас новый реферал!\n\n👤 @{message.from_user.username or 'Пользователь'}\n💰 Зарабатывайте 2% с его депозитов!"
-                        )
-                    except Exception as e:
-                        logger.error(f"Ошибка уведомления реферера: {e}")
+                    saved = db.save_referral(referrer_id, user_id)
+                    if saved:
+                        logger.info(f"Новый реферал: {user_id} от {referrer_id}")
+                        # Уведомляем реферера единожды
+                        try:
+                            await bot.send_message(
+                                referrer_id,
+                                (
+                                    "🎉 По вашей ссылке зарегистрировался новый пользователь!\n\n"
+                                    f"👤 @{message.from_user.username or 'пользователь'} (ID: {user_id})\n"
+                                    "💸 Бонусы начнут начисляться после его депозитов."
+                                )
+                            )
+                        except Exception as e:
+                            logger.error(f"Ошибка уведомления реферера: {e}")
             except ValueError:
                 logger.error(f"Неверный формат реферальной ссылки: {start_param}")
         
@@ -113,47 +113,13 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
         language = db.get_user_language(user_id)
         translations = get_translation(language)
         
-        # Минималистичное стартовое сообщение: кнопка открыть приложение + кнопка поделиться реф. ссылкой
-        # Адрес мини‑приложения можно задать через WEB_APP_URL (например, https://luxservice.online)
-        web_url = os.getenv('WEB_APP_URL', 'https://luxservice.online')
-        try:
-            bot_username = (await bot.get_me()).username or 'Lux_on_bot'
-        except Exception:
-            bot_username = 'Lux_on_bot'
-        referral_link = f"https://t.me/{bot_username}?start=ref_{user_id}"
-        share_text = translations.get('referral_invite', 'Присоединяйся и зарабатывай с LUXON!')
-        share_url = "https://t.me/share/url?" + urllib.parse.urlencode({
-            'url': referral_link,
-            'text': share_text
-        })
-
-        # Добавим user_id и версию v=timestamp, чтобы обходить кеш Telegram WebView на чанках
-        web_url_with_uid = web_url
-        try:
-            from urllib.parse import urlparse, urlencode, parse_qsl, urlunparse
-            import time
-            parts = urlparse(web_url)
-            q = dict(parse_qsl(parts.query))
-            q['uid'] = str(user_id)
-            q['v'] = str(int(time.time()))
-            new_query = urlencode(q)
-            web_url_with_uid = urlunparse((parts.scheme, parts.netloc, parts.path or '/', parts.params, new_query, parts.fragment))
-        except Exception:
-            import time
-            web_url_with_uid = f"{web_url.rstrip('/')}?uid={user_id}&v={int(time.time())}"
-
-        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text='🚀 Открыть приложение', web_app=WebAppInfo(url=web_url_with_uid))],
-            [InlineKeyboardButton(text='🔗 Поделиться реферальной ссылкой', url=share_url)]
-        ])
-
+        # Стартовое сообщение без кнопок мини‑приложения
         text = (
             f"<b>Добро пожаловать, {user_name}!</b>\n\n"
-            f"Открой приложение, смотри статистику, делись ссылкой и зарабатывай.\n"
-            f"<i>Твоя персональная ссылка появится автоматически при нажатии на ‘Поделиться’.</i>"
+            f"Используйте меню бота ниже. Раздел ‘Реферальная система’ доступен в главном меню."
         )
 
-        await message.answer(text, reply_markup=inline_kb, parse_mode="HTML")
+        await message.answer(text, parse_mode="HTML")
         
     except Exception as e:
         logger.error(f"Ошибка в handle_start: {e}")

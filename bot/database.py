@@ -137,6 +137,12 @@ class Database:
             FOREIGN KEY (referred_id) REFERENCES users (user_id) ON DELETE CASCADE
         )
         ''')
+        # Уникальность: один реферер на одного приглашённого, запрет повторов
+        try:
+            cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_referred ON referrals(referred_id)')
+            cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_pair ON referrals(referrer_id, referred_id)')
+        except Exception as e:
+            logger.warning(f"Could not create unique indexes on referrals: {e}")
         
         # Создаем таблицу реферальных заработков
         cursor.execute('''
@@ -386,18 +392,29 @@ class Database:
             return result[0]
         return None
     
-    def save_referral(self, referrer_id: int, referred_id: int):
-        """Сохранение реферала"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        INSERT OR REPLACE INTO referrals (referrer_id, referred_id)
-        VALUES (?, ?)
-        ''', (referrer_id, referred_id))
-        
-        conn.commit()
-        conn.close()
+    def save_referral(self, referrer_id: int, referred_id: int) -> bool:
+        """Сохранение реферала однократно. Не перезаписывает существующего реферера."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            # Не позволяем самореферал
+            if referrer_id == referred_id:
+                return False
+            # Если уже есть реферер — не трогаем
+            cursor.execute('SELECT 1 FROM referrals WHERE referred_id = ? LIMIT 1', (referred_id,))
+            if cursor.fetchone():
+                conn.close()
+                return False
+            cursor.execute('''
+            INSERT OR IGNORE INTO referrals (referrer_id, referred_id)
+            VALUES (?, ?)
+            ''', (referrer_id, referred_id))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger.error(f"Error saving referral (idempotent): {e}")
+            return False
     
     def save_transaction(self, user_id: int, bookmaker: str, trans_type: str, amount: float):
         """Сохранение транзакции"""
