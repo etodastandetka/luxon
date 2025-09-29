@@ -43,8 +43,21 @@ export default function TelegramWebAppAuth() {
 
       // Set cookie if we have a new candidate or cookie is empty/different
       if (candidate && candidate !== existing) {
-        setTgCookieAndReload(candidate);
-        return;
+        // Set secure, long-lived cookie and do a one-time reload without uid params to bust caches
+        try {
+          document.cookie = `tg_user_id=${encodeURIComponent(candidate)}; Path=/; Max-Age=31536000; SameSite=None; Secure`;
+        } catch {}
+        if (!sessionStorage.getItem('tg_cookie_set')) {
+          try {
+            sessionStorage.setItem('tg_cookie_set', '1');
+            const url = new URL(window.location.href);
+            url.searchParams.delete('uid');
+            url.searchParams.delete('user_id');
+            url.searchParams.set('v', Date.now().toString());
+            window.location.replace(url.toString());
+            return;
+          } catch {}
+        }
       }
     } catch {}
   }, []);
