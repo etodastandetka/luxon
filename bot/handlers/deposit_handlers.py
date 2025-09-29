@@ -36,12 +36,13 @@ async def update_payment_timer(message, user_id: int, amount: float, translation
             
             # Обновляем подпись/текст таймера (сообщение может быть как текст, так и фото+caption)
             try:
-                message_text = (
-                    f"<b>💰 Сумма к оплате: {amount:.2f} сом</b>\n\n"
-                    f"⏳ Время на оплату: <b>{mins}:{secs:02d}</b>\n\n"
-                    f"<b>⚠️ Оплатите точно до копеек!</b>\n"
-                    f"📸 Ждём фото чека после оплаты."
-                )
+                # Локализация таймера/подсказок
+                amount_line = f"<b>{translations.get('amount_to_pay', '💰 Сумма к оплате:')} {amount:.2f} KGS</b>"
+                timer_line = translations.get('payment_timer', '⏰ Время на оплату: {minutes}:{seconds:02d}').format(minutes=mins, seconds=secs)
+                exact_line = f"<b>{translations.get('pay_exact_amount', '⚠️ Оплатите точно до копеек!')}</b>"
+                receipt_line = translations.get('waiting_receipt_photo', '📸 Ждём фото чека после оплаты.')
+
+                message_text = f"{amount_line}\n\n{timer_line}\n\n{exact_line}\n{receipt_line}"
                 # Сначала пробуем редактировать caption (актуально для фото)
                 try:
                     await message.edit_caption(
@@ -153,10 +154,10 @@ async def update_payment_timer(message, user_id: int, amount: float, translation
                     conn.close()
 
                 # Сообщаем пользователю об отмене и возвращаем в меню
-                cancel_text = (
-                    "⏳ Пополнение отменено, время оплаты прошло\n\n"
-                    "❌Не переводите по старым реквизитам начинайте заного нажав на пополнить "
-                )
+                # Текст отмены по таймауту (локализованный)
+                cancel_main = translations.get('payment_timer_expired', '⏳ Пополнение отменено, время оплаты прошло')
+                cancel_warn = translations.get('old_requisites_warning', '❌Не переводите по старым реквизитам, создайте новую заявку, нажав «Пополнить».')
+                cancel_text = f"{cancel_main}\n\n{cancel_warn}"
                 try:
                     await message.edit_text(
                         cancel_text,
@@ -647,19 +648,27 @@ async def handle_amount_input(message: types.Message, state: FSMContext, db, boo
         language = db.get_user_language(user_id)
         translations = get_translation(language)
         
-        # Проверяем, не нажал ли пользователь "Назад"
-        if text == "🔙 Назад в меню":
+        # Проверяем, не нажал ли пользователь "Назад" (локализованные варианты)
+        back_labels = {
+            translations.get('back_to_menu', '🔙 Назад'),
+            '🔙 Назад',
+            '🔙 Назад в меню'
+        }
+        if text in back_labels:
             await show_main_menu(message, language)
             db.save_user_data(user_id, 'current_state', '')
             return
         
         try:
             amount = float(text)
-            if amount < 35 or amount > 100000:
-                await message.answer("❌ Сумма должна быть от 35 до 100,000 KGS")
+            if amount < 35:
+                await message.answer(translations.get('amount_too_small', '❌ Минимальная сумма: 35 KGS'))
+                return
+            if amount > 100000:
+                await message.answer(translations.get('amount_too_large', '❌ Максимальная сумма: 100,000 KGS'))
                 return
         except ValueError:
-            await message.answer("❌ Введите корректную сумму")
+            await message.answer(translations.get('please_enter_correct_amount', '❌ Пожалуйста, введите корректную сумму.'))
             return
         
         # Сохраняем сумму
@@ -684,12 +693,12 @@ async def show_bank_selection(message: types.Message, amount: float, db, bookmak
     timer_minutes = 5
     timer_seconds = 0
     
-    message_text = (
-        f"<b>💰 Сумма к оплате: {amount:.2f} сом</b>\n\n"
-        f"⏳ Время на оплату: <b>{timer_minutes}:{timer_seconds:02d}</b>\n\n"
-        f"<b>⚠️ Оплатите точно до копеек!</b>\n"
-        f"📸 Ждём фото чека после оплаты."
-    )
+    # Локализованный текст счёта/таймера
+    amount_line = f"<b>{translations.get('amount_to_pay', '💰 Сумма к оплате:')} {amount:.2f} KGS</b>"
+    timer_line = translations.get('payment_timer', '⏰ Время на оплату: {minutes}:{seconds:02d}').format(minutes=timer_minutes, seconds=timer_seconds)
+    exact_line = f"<b>{translations.get('pay_exact_amount', '⚠️ Оплатите точно до копеек!')}</b>"
+    receipt_line = translations.get('waiting_receipt_photo', '📸 Ждём фото чека после оплаты.')
+    message_text = f"{amount_line}\n\n{timer_line}\n\n{exact_line}\n{receipt_line}"
     
     # Создаем инлайн клавиатуру с кнопками банков
     kb = InlineKeyboardBuilder()
