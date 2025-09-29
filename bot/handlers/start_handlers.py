@@ -127,17 +127,20 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             'text': share_text
         })
 
-        # Добавим user_id как query (?uid=...), чтобы фронт мог подхватить его даже если WebApp API недоступен
+        # Добавим user_id и версию v=timestamp, чтобы обходить кеш Telegram WebView на чанках
         web_url_with_uid = web_url
         try:
             from urllib.parse import urlparse, urlencode, parse_qsl, urlunparse
+            import time
             parts = urlparse(web_url)
             q = dict(parse_qsl(parts.query))
             q['uid'] = str(user_id)
+            q['v'] = str(int(time.time()))
             new_query = urlencode(q)
             web_url_with_uid = urlunparse((parts.scheme, parts.netloc, parts.path or '/', parts.params, new_query, parts.fragment))
         except Exception:
-            web_url_with_uid = f"{web_url.rstrip('/')}?uid={user_id}"
+            import time
+            web_url_with_uid = f"{web_url.rstrip('/')}?uid={user_id}&v={int(time.time())}"
 
         inline_kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text='🚀 Открыть приложение', web_app=WebAppInfo(url=web_url_with_uid))],
