@@ -5,8 +5,10 @@
 import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types
+from aiogram.exceptions import SkipHandler
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+import os
 
 # Импорт обработчиков
 from handlers import (
@@ -22,7 +24,7 @@ from handlers import (
 )
 
 from database import Database
-from config import BOT_TOKEN, BOOKMAKERS
+from config import BOOKMAKERS, BOT_TOKEN as CONFIG_BOT_TOKEN
 from autodeposit.watcher import AutoDepositWatcher
 from translations import get_translation
 from qr_utils import enforce_amount_with_kopecks
@@ -105,26 +107,10 @@ class UniversalBot:
                     return
             except Exception:
                 pass
-            # Safety net: если пришёл /start, принудительно сбрасываем состояние и показываем меню
-            if text == '/start':
-                try:
-                    # Очистка состояний пользователя в БД
-                    self.db.save_user_data(user_id, 'current_state', '')
-                    self.db.save_user_data(user_id, 'current_action', '')
-                    self.db.save_user_data(user_id, 'current_bookmaker', '')
-                    self.db.save_user_data(user_id, 'current_amount', '')
-                    self.db.save_user_data(user_id, 'current_qr_hash', '')
-                    self.db.save_user_data(user_id, 'qr_photo_id', '')
-                    self.db.save_user_data(user_id, 'withdraw_id', '')
-                    self.db.save_user_data(user_id, 'withdraw_code', '')
-                    self.db.save_user_data(user_id, 'selected_bank', '')
-                except Exception:
-                    pass
-                await self._show_main_menu(message, language)
-                return
-            # Не обрабатываем прочие команды здесь — их обрабатывают специализированные хендлеры
+            # Не обрабатываем команды здесь — передаём их в профильные хендлеры
             if text and text.startswith('/'):
-                return
+                # Позволяем /start (в т.ч. с payload) и другие команды пройти дальше
+                raise SkipHandler()
             # language уже определён выше
 
             # Глобальная проверка паузы на всякий случай (дополнительно к middleware)
@@ -435,7 +421,9 @@ class UniversalBot:
 async def main():
     """Main function"""
     try:
-        bot = UniversalBot(BOT_TOKEN)
+        # Allow overriding token via environment variable for secure rotation
+        token = os.getenv('BOT_TOKEN') or CONFIG_BOT_TOKEN
+        bot = UniversalBot(token)
         logger.info("Starting universal bot...")
         await bot.start()
     except KeyboardInterrupt:

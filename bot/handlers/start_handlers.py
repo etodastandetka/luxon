@@ -11,6 +11,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 from translations import get_translation
 import os
 import urllib.parse
+import re
 import requests
 
 logger = logging.getLogger(__name__)
@@ -82,25 +83,24 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             last_name=message.from_user.last_name
         )
         
-        # Проверяем реферальную ссылку (поддержка разных форматов)
-        # Возможные варианты:
-        #   "/start ref_123", "/startref_123", "/start  ref_123" (двойные пробелы)
-        start_param = None
+        # Проверяем реферальную ссылку (робастно):
+        # Поддерживаем: "/start ref_123", "/startref_123", лишние пробелы, любой регистр, также просто "ref_123" в тексте
         raw = (message.text or '').strip()
+        referrer_id = None
         try:
-            parts = raw.split(maxsplit=1)
-            if len(parts) > 1:
-                start_param = parts[1].strip()
-            # Формат "/startref_123"
-            if not start_param and raw.lower().startswith('/startref_'):
-                start_param = raw[len('/start'):].strip()  # => 'ref_123'
+            m = re.search(r"\bref[_=]?(\d{5,})\b", raw, flags=re.IGNORECASE)
+            if m:
+                referrer_id = int(m.group(1))
+            elif raw.lower().startswith('/startref_'):
+                # fallback для редких клиентов
+                digits = re.sub(r"\D", "", raw[len('/start'):])
+                referrer_id = int(digits) if digits else None
         except Exception:
-            start_param = None
-        
-        if start_param and start_param.startswith('ref_'):
+            referrer_id = None
+
+        if referrer_id:
             # Обработка реферальной ссылки (однократно)
             try:
-                referrer_id = int(start_param.replace('ref_', ''))
                 if referrer_id and referrer_id != user_id:
                     saved = db.save_referral(referrer_id, user_id)
                     if saved:
