@@ -57,7 +57,7 @@ export default async function Page() {
         {userId && stats.success ? (
           <div className="space-y-4">
             {/* Basic info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 md:gap-4 text-sm">
               <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
                 <div className="hint">ID</div>
                 <div className="mt-1 font-medium">{stats.user.user_id}</div>
@@ -69,7 +69,7 @@ export default async function Page() {
             </div>
 
             {/* 4 metric cards, 2 per row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4">
                 <div className="hint">Активные рефералы</div>
                 <div className="mt-1 text-2xl font-semibold text-emerald-300">{stats.stats.active_referrals}</div>
