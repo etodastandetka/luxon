@@ -82,10 +82,20 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             last_name=message.from_user.last_name
         )
         
-        # Проверяем реферальную ссылку
+        # Проверяем реферальную ссылку (поддержка разных форматов)
+        # Возможные варианты:
+        #   "/start ref_123", "/startref_123", "/start  ref_123" (двойные пробелы)
         start_param = None
-        if message.text and len(message.text.split()) > 1:
-            start_param = message.text.split()[1]
+        raw = (message.text or '').strip()
+        try:
+            parts = raw.split(maxsplit=1)
+            if len(parts) > 1:
+                start_param = parts[1].strip()
+            # Формат "/startref_123"
+            if not start_param and raw.lower().startswith('/startref_'):
+                start_param = raw[len('/start'):].strip()  # => 'ref_123'
+        except Exception:
+            start_param = None
         
         if start_param and start_param.startswith('ref_'):
             # Обработка реферальной ссылки (однократно)
