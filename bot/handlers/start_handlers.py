@@ -10,7 +10,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 
 from translations import get_translation
 import os
-import urllib.parse
+import urИllib.parse
 import re
 import requests
 
@@ -124,11 +124,17 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
         language = db.get_user_language(user_id)
         translations = get_translation(language)
         
-        # Стартовое сообщение (как в обычном старте)
+        # Стартовое сообщение по ТЗ
         text = (
-            f"<b>Добро пожаловать, {user_name}!</b>\n\n"
-            f"Выберите действие в меню ниже: Пополнить, Вывести, Реферальная система, История или Язык.\n"
-            f"Если перешли по реферальной ссылке — просто пользуйтесь ботом, бонусы будут начисляться автоматически."
+            f"Привет, {user_name}!\n\n"
+            f"Пополнение | Вывод\n"
+            f"из букмекерских контор!\n\n"
+            f"📥 Пополнение — 0%\n"
+            f"📤 Вывод — 0%\n"
+            f"🕒 Работаем 24/7\n\n"
+            f"👨‍💻 Поддержка: @luxon_support\n"
+            f"💬 Чат для всех: @luxkassa_chat\n\n"
+            f"🔒 Финансовый контроль обеспечен личным отделом безопасности"
         )
 
         await message.answer(text, parse_mode="HTML")
