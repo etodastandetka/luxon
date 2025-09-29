@@ -4,8 +4,7 @@
 """
 import logging
 import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.exceptions import SkipHandler
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import os
@@ -79,7 +78,8 @@ class UniversalBot:
             logger.error(f"Failed to register BotStatusMiddleware: {e}")
 
         # Обработка текстовых сообщений
-        @self.dp.message()
+        # Глобальный хендлер только для не-командных сообщений
+        @self.dp.message(~F.text.startswith("/"))
         async def handle_all_messages(message: types.Message):
             """Handle all messages - text and photo"""
             user_id = message.from_user.id
@@ -107,10 +107,9 @@ class UniversalBot:
                     return
             except Exception:
                 pass
-            # Не обрабатываем команды здесь — передаём их в профильные хендлеры
+            # Здесь команд уже быть не должно из-за фильтра, оставляем на всякий случай
             if text and text.startswith('/'):
-                # Позволяем /start (в т.ч. с payload) и другие команды пройти дальше
-                raise SkipHandler()
+                return
             # language уже определён выше
 
             # Глобальная проверка паузы на всякий случай (дополнительно к middleware)
