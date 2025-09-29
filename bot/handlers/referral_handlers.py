@@ -4,9 +4,11 @@
 """
 import logging
 from aiogram import types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from translations import get_translation
+import os
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 
@@ -26,53 +28,33 @@ async def handle_referral(message: types.Message, db):
         bot_username = "Lux_on_bot"  # Fallback username
     referral_link = f"https://t.me/{bot_username}?start=ref_{user_id}"
     
-    # Создаем клавиатуру
+    # URL мини‑приложения + фолбэк с uid
+    web_url = os.getenv('WEB_APP_URL', 'https://luxservice.online')
+    try:
+        parts = urllib.parse.urlparse(web_url)
+        q = dict(urllib.parse.parse_qsl(parts.query))
+        q['uid'] = str(user_id)
+        new_query = urllib.parse.urlencode(q)
+        web_url_with_uid = urllib.parse.urlunparse((parts.scheme, parts.netloc, parts.path or '/', parts.params, new_query, parts.fragment))
+    except Exception:
+        web_url_with_uid = f"{web_url.rstrip('/')}?uid={user_id}"
+
+    # Клавиатура: открыть приложение (web_app), поделиться ссылкой, топ/статы, назад
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=translations['referral_my_stats'], callback_data="referral_stats"),
-            InlineKeyboardButton(text=translations['referral_top'], callback_data="referral_top")
-        ],
-        [
-            InlineKeyboardButton(text=translations['referral_share_button'], url=f"https://t.me/share/url?url={referral_link}&text={translations['referral_invite']}")
-        ],
-        [
-            InlineKeyboardButton(text=translations['back_to_main'], callback_data="back_to_menu")
-        ]
+        [InlineKeyboardButton(text='🚀 Открыть приложение', web_app=WebAppInfo(url=web_url_with_uid))],
+        [InlineKeyboardButton(text=translations['referral_share_button'], url=f"https://t.me/share/url?url={referral_link}&text={translations['referral_invite']}")],
+        [InlineKeyboardButton(text=translations['referral_my_stats'], callback_data="referral_stats"), InlineKeyboardButton(text=translations['referral_top'], callback_data="referral_top")],
+        [InlineKeyboardButton(text=translations['back_to_main'], callback_data="back_to_menu")]
     ])
     
-    # Формируем красивое сообщение
-    text = f"""
-💎 <b>Реферальная система LUXON</b>
-
-┌─────────────────────────────┐
-│  🏆 ТОП-3 с ежемесячными выплатами │
-│  1️⃣ 10,000 сом              │
-│  2️⃣ 5,000 сом               │
-│  3️⃣ 2,500 сом               │
-└─────────────────────────────┘
-
-💰 <b>Ваша комиссия:</b> 5% с каждого депозита реферала
-
-📋 <b>Как это работает:</b>
-• Приглашайте друзей по реферальной ссылке
-• Получайте 5% с каждого их депозита
-• Топ-3 получают ежемесячные выплаты
-• Минимальный депозит реферала: 100 сом
-
-┌─────────────────────────────┐
-│  📊 Ваша статистика:        │
-│  👥 Приглашено: {stats['total_referrals']:>10} │
-│  💰 Заработано: {stats['total_earnings']:>8.2f} сом │
-│  🏆 Позиция: {stats['position']:>13} │
-└─────────────────────────────┘
-
-🔗 <b>Ваша реферальная ссылка:</b>
-<code>{referral_link}</code>
-
-🌐 <b>Статистика онлайн:</b> https://luxon.kg
-
-💡 <i>Поделитесь ссылкой с друзьями и начните зарабатывать!</i>
-"""
+    # Короткий текст
+    text = (
+        "💎 <b>Реферальная система LUXON</b>\n\n"
+        "🏆 <b>Призы топ‑3 ежемесячно:</b> 10 000 / 5 000 / 2 500 KGS\n"
+        "💰 <b>Комиссия:</b> 5% с депозитов ваших рефералов\n\n"
+        "📊 <b>Ваша статистика</b> — пригл.: {inv}, доход: {earn:.2f} KGS, позиция: #{pos}\n\n"
+        "🔗 <b>Ссылка:</b> <code>{link}</code>\n"
+    ).format(inv=stats['total_referrals'], earn=stats['total_earnings'], pos=stats['position'], link=referral_link)
     
     await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
