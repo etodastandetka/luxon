@@ -4,7 +4,7 @@
 """
 import logging
 from aiogram import Dispatcher, types
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
@@ -46,6 +46,7 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
     await state.clear()
     
     try:
+        logger.info(f"/start received text='{message.text}' from user_id={message.from_user.id}")
         user_id = message.from_user.id
         user_name = message.from_user.first_name or message.from_user.username or "Пользователь"
         
@@ -113,10 +114,11 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
         language = db.get_user_language(user_id)
         translations = get_translation(language)
         
-        # Стартовое сообщение без кнопок мини‑приложения
+        # Стартовое сообщение (как в обычном старте)
         text = (
             f"<b>Добро пожаловать, {user_name}!</b>\n\n"
-            f"Используйте меню бота ниже. Раздел ‘Реферальная система’ доступен в главном меню."
+            f"Выберите действие в меню ниже: Пополнить, Вывести, Реферальная система, История или Язык.\n"
+            f"Если перешли по реферальной ссылке — просто пользуйтесь ботом, бонусы будут начисляться автоматически."
         )
 
         await message.answer(text, parse_mode="HTML")
@@ -128,11 +130,47 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
 def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None, bot=None):
     """Регистрация обработчиков"""
     
+    # Явный deep-link хендлер: /start <payload>
+    @dp.message(CommandStart(deep_link=True))
+    async def handle_start_deeplink(message: types.Message, state: FSMContext):
+        await handle_start(message, state, db, bot)
+
     @dp.message(Command('start'))
     async def handle_start_wrapper(message: types.Message, state: FSMContext):
         """Обработка команды /start"""
         await handle_start(message, state, db, bot)
     
+    @dp.message(Command('ref'))
+    async def handle_ref_bind(message: types.Message):
+        """Ручная привязка пригласившего: /ref <telegram_id>.
+        Полезно, если пользователь уже запускал бота и deep-link не передал payload."""
+        try:
+            parts = (message.text or '').split()
+            if len(parts) < 2:
+                await message.reply("Укажите ID пригласившего: /ref 123456789")
+                return
+            referrer_id = int(parts[1])
+            user_id = message.from_user.id
+            if referrer_id == user_id:
+                await message.reply("Нельзя указать самого себя.")
+                return
+            ok = db.save_referral(referrer_id, user_id)
+            if ok:
+                await message.reply("Пригласивший успешно привязан. Спасибо!")
+                # Уведомим реферера
+                try:
+                    await bot.send_message(referrer_id, (
+                        "🎉 По вашей ссылке зарегистрировался новый пользователь!\n\n"
+                        f"👤 @{message.from_user.username or 'пользователь'} (ID: {user_id})\n"
+                        "💸 Бонусы начнут начисляться после его депозитов."
+                    ))
+                except Exception as e:
+                    logger.error(f"Notify referrer error: {e}")
+            else:
+                await message.reply("Привязка не выполнена: возможно, вы уже привязаны к другому пригласившему или указан неверный ID.")
+        except Exception as e:
+            logger.error(f"/ref error: {e}")
+            await message.reply("Ошибка обработки команды /ref")
     @dp.message(Command('help'))
     async def handle_help(message: types.Message):
         """Обработка команды /help"""
