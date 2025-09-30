@@ -163,20 +163,38 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
         logger.error(f"Ошибка в handle_start: {e}")
         await message.answer("Произошла ошибка при запуске бота")
     
-    # Явный deep-link хендлер: /start <payload>
-    @dp.message(CommandStart(deep_link=True))
-    async def handle_start_deeplink(message: types.Message, state: FSMContext):
+
+def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None, bot=None):
+    """Регистрация стартовых обработчиков на уровне модуля"""
+    # /start (обычный)
+    @dp.message(Command('start'))
+    async def _start_cmd(message: types.Message, state: FSMContext):
         await handle_start(message, state, db, bot)
 
-    @dp.message(Command('start'))
-    async def handle_start_wrapper(message: types.Message, state: FSMContext):
-        """Обработка команды /start"""
+    # /start с deep-link payload
+    @dp.message(CommandStart(deep_link=True))
+    async def _start_deeplink(message: types.Message, state: FSMContext):
         await handle_start(message, state, db, bot)
-    
+
+    # /help
+    @dp.message(Command('help'))
+    async def _help_cmd(message: types.Message):
+        try:
+            user_id = message.from_user.id
+            language = db.get_user_language(user_id)
+            translations = get_translation(language)
+            help_text = translations['help_text'].format(
+                bot_name="LUXON",
+                admin_username='@luxon_support'
+            )
+            await message.answer(help_text, parse_mode="HTML")
+        except Exception as e:
+            logger.error(f"Ошибка в handle_help: {e}")
+            await message.answer("Произошла ошибка при показе справки")
+
+    # /ref <telegram_id>
     @dp.message(Command('ref'))
-    async def handle_ref_bind(message: types.Message):
-        """Ручная привязка пригласившего: /ref <telegram_id>.
-        Полезно, если пользователь уже запускал бота и deep-link не передал payload."""
+    async def _ref_bind_cmd(message: types.Message):
         try:
             parts = (message.text or '').split()
             if len(parts) < 2:
@@ -190,7 +208,6 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             ok = db.save_referral(referrer_id, user_id)
             if ok:
                 await message.reply("Пригласивший успешно привязан. Спасибо!")
-                # Уведомим реферера
                 try:
                     await bot.send_message(referrer_id, (
                         "🎉 По вашей ссылке зарегистрировался новый пользователь!\n\n"
@@ -204,32 +221,12 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
         except Exception as e:
             logger.error(f"/ref error: {e}")
             await message.reply("Ошибка обработки команды /ref")
-    @dp.message(Command('help'))
-    async def handle_help(message: types.Message):
-        """Обработка команды /help"""
-        try:
-            user_id = message.from_user.id
-            language = db.get_user_language(user_id)
-            translations = get_translation(language)
-            
-            help_text = translations['help_text'].format(
-                bot_name="LUXON",
-                admin_username='@luxon_support'
-            )
-            
-            await message.answer(help_text, parse_mode="HTML")
-            
-        except Exception as e:
-            logger.error(f"Ошибка в handle_help: {e}")
-            await message.answer("Произошла ошибка при показе справки")
-    
+
+    # /clear — очистка состояний
     @dp.message(Command('clear'))
-    async def handle_clear(message: types.Message):
-        """Очистка состояний пользователя"""
+    async def _clear_cmd(message: types.Message):
         try:
             user_id = message.from_user.id
-            
-            # Очищаем все состояния пользователя
             db.save_user_data(user_id, 'current_state', '')
             db.save_user_data(user_id, 'current_action', '')
             db.save_user_data(user_id, 'current_bookmaker', '')
@@ -239,12 +236,7 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             db.save_user_data(user_id, 'withdraw_id', '')
             db.save_user_data(user_id, 'withdraw_code', '')
             db.save_user_data(user_id, 'selected_bank', '')
-            
             await message.answer("✅ Все состояния очищены! Теперь можете начать заново.")
-            
         except Exception as e:
             logger.error(f"Ошибка при очистке состояний: {e}")
             await message.answer("❌ Ошибка при очистке состояний")
-    
-    
-

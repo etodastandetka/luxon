@@ -253,18 +253,52 @@ class UniversalBot:
                 bookmaker = bookmaker_map.get(text, text.lower())
                 await self._handle_bookmaker_selection(message, bookmaker, self.db.get_user_data(user_id, 'current_action'))
             else:
-                # Проверяем, не является ли это кнопкой FAQ
-                # Если да, то не делаем ничего - пусть faq_handlers сам обработает
-                # Если нет - возвращаем в главное меню
-                is_faq_button = any([
-                    text == "💰 Как пополнить счет?",
-                    text == "💳 Как вывести деньги?",
-                    text == "🔗 Как работает реферальная система?",
-                    text == "❓ Другие вопросы"
-                ])
-                
-                if not is_faq_button:
+                # Локализованная обработка кнопок FAQ (чтобы не зависеть от порядка регистрации хендлеров)
+                try:
+                    supported_langs = ['ru', 'ky', 'uz']
+                    DEPOSIT_BUTTONS = set()
+                    WITHDRAW_BUTTONS = set()
+                    TIME_BUTTONS = set()
+                    IMPORTANT_BUTTONS = set()
+                    for lang in supported_langs:
+                        tr = get_translation(lang)
+                        DEPOSIT_BUTTONS.add(tr.get('faq_deposit_button'))
+                        WITHDRAW_BUTTONS.add(tr.get('faq_withdraw_button'))
+                        TIME_BUTTONS.add(tr.get('faq_time_button'))
+                        IMPORTANT_BUTTONS.add(tr.get('faq_important_button'))
+
+                    # Если нажата любая из FAQ-кнопок — ответим сразу тут, чтобы не полагаться на порядок фильтров
+                    if text in DEPOSIT_BUTTONS or text in WITHDRAW_BUTTONS or text in TIME_BUTTONS or text in IMPORTANT_BUTTONS:
+                        # Сформируем повторную клавиатуру FAQ
+                        kb = ReplyKeyboardMarkup(
+                            keyboard=[
+                                [KeyboardButton(text=translations['faq_deposit_button'])],
+                                [KeyboardButton(text=translations['faq_withdraw_button'])],
+                                [KeyboardButton(text=translations['faq_time_button'])],
+                                [KeyboardButton(text=translations['faq_important_button'])],
+                                [KeyboardButton(text=translations['back_to_menu'])]
+                            ],
+                            resize_keyboard=True
+                        )
+                        if text in DEPOSIT_BUTTONS:
+                            await message.answer(translations['faq_deposit_steps'], reply_markup=kb, parse_mode="HTML")
+                            return
+                        if text in WITHDRAW_BUTTONS:
+                            await message.answer(translations['faq_withdraw_steps'], reply_markup=kb, parse_mode="HTML")
+                            return
+                        if text in TIME_BUTTONS:
+                            await message.answer(translations['faq_time_content'], reply_markup=kb, parse_mode="HTML")
+                            return
+                        if text in IMPORTANT_BUTTONS:
+                            await message.answer(translations['faq_important_content'], reply_markup=kb, parse_mode="HTML")
+                            return
+                except Exception:
+                    # В случае ошибок с переводами — просто вернём главное меню
                     await self._show_main_menu(message, language)
+                    return
+
+                # Неизвестная кнопка — вернём в главное меню
+                await self._show_main_menu(message, language)
         
     
     async def _handle_deposit(self, message):
