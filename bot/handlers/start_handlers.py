@@ -144,8 +144,18 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
             except Exception as e:
                 logger.error(f"Ошибка обработки реферальной ссылки: {e}")
         
-        # Получаем язык пользователя
+        # Получаем язык пользователя; если не выбран ранее — попросим выбрать и выйдем
         language = db.get_user_language(user_id)
+        if not language:
+            try:
+                from handlers.language_handlers import handle_language_selection as _handle_language_selection
+                # Показываем выбор языка (используем RU для текста по умолчанию)
+                await _handle_language_selection(message, 'ru', db)
+                return
+            except Exception as e:
+                logger.error(f"Ошибка показа выбора языка: {e}")
+                # Фолбэк: продолжим с русским, но лучше дать выбор
+                language = 'ru'
         translations = get_translation(language)
         
         # Показываем главное меню с локализованным приветствием
