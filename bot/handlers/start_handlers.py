@@ -148,27 +148,20 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
         language = db.get_user_language(user_id)
         translations = get_translation(language)
         
-        # Стартовое сообщение по ТЗ
-        text = (
-            f"Привет, {user_name}!\n\n"
-            f"Пополнение | Вывод\n"
-            f"из букмекерских контор!\n\n"
-            f"📥 Пополнение — 0%\n"
-            f"📤 Вывод — 0%\n"
-            f"🕒 Работаем 24/7\n\n"
-            f"👨‍💻 Поддержка: @luxon_support\n"
-            f"💬 Чат для всех: @luxkassa_chat\n\n"
-            f"🔒 Финансовый контроль обеспечен личным отделом безопасности"
-        )
-
-        await message.answer(text, parse_mode="HTML")
+        # Показываем главное меню с локализованным приветствием
+        try:
+            from handlers.deposit_handlers import show_main_menu
+            await show_main_menu(message, language)
+        except Exception as e:
+            # Фолбэк: простое приветствие без клавиатуры
+            await message.answer(
+                translations.get('welcome', f"Привет, {user_name}!").format(user_name=user_name, admin_username='@luxon_support'),
+                parse_mode="HTML"
+            )
         
     except Exception as e:
         logger.error(f"Ошибка в handle_start: {e}")
         await message.answer("Произошла ошибка при запуске бота")
-
-def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None, bot=None):
-    """Регистрация обработчиков"""
     
     # Явный deep-link хендлер: /start <payload>
     @dp.message(CommandStart(deep_link=True))
