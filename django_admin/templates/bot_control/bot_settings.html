@@ -7,6 +7,7 @@
 
 {% block content %}
     <div class="content">
+        <div id="save-status" style="display:none;position:fixed;top:12px;right:12px;background:#2b2b2b;color:#fff;padding:10px 14px;border-radius:8px;z-index:1000;border:1px solid #444;font-size:13px;">Сохранение…</div>
         <!-- Основные настройки -->
         <div class="card">
             <div class="card-header">
@@ -256,7 +257,10 @@
 <script>
 // Автоматическое сохранение при изменении настроек
 let __saveTimer = null;
+let __loadingSettings = false;
+let __saving = false;
 async function autoSave(evt) {
+    if (__loadingSettings) return; // не сохраняем во время программной загрузки UI
     const target = evt && evt.target ? evt.target : null;
     const prevState = target ? {
         type: target.type,
@@ -264,7 +268,7 @@ async function autoSave(evt) {
         value: target.type === 'text' ? (target.dataset.prevValue || target.value) : undefined,
     } : null;
 
-    // debounce 300ms
+    // debounce 600ms
     if (__saveTimer) clearTimeout(__saveTimer);
     __saveTimer = setTimeout(async () => {
         const settings = collectSettings();
@@ -275,7 +279,9 @@ async function autoSave(evt) {
                     target.checked = !!prevState.checked;
                 } else if (target.type === 'text' && typeof prevState.value !== 'undefined') {
                     target.value = prevState.value;
-                }
+                } else if (ok) {
+            try { await loadSettings(); } catch (e) {}
+        }
             } catch (e) { console.warn('revert failed', e); }
         }
         // cleanup stored prev
@@ -386,6 +392,7 @@ function getCookie(name) {
 // Загружаем настройки при загрузке страницы
 async function loadSettings() {
     try {
+        __loadingSettings = true;
         const response = await fetch('{% url "bot_control:api_get_bot_settings" %}');
         const settings = await response.json();
         
@@ -431,7 +438,7 @@ async function loadSettings() {
         
     } catch (error) {
         console.error('Ошибка загрузки настроек:', error);
-    }
+    } finally { __loadingSettings = false; }
 }
 
 // Загрузка текущего активного реквизита (из bot/universal_bot.db)

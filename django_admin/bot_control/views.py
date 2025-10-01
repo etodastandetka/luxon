@@ -1676,28 +1676,22 @@ def api_get_bot_settings(request):
                 'name': '@bingokg_news'
             })
         }
-        # Нормализуем список банков выводов к ключам UI
+        # Нормализуем только известные алиасы, не отбрасывая значения
         try:
             w = settings.get('withdrawals') or {}
             banks = w.get('banks') or []
             norm_map = {
-                'companon': 'kompanion',
-                'kompanion': 'kompanion',
-                'компаньон': 'kompanion',
-                'o!': 'odengi', 'odengi': 'odengi', 'o! деньги': 'odengi', 'omoney': 'odengi',
-                'bakai': 'bakai',
-                'balance': 'balance', 'balance.kg': 'balance',
-                'megapay': 'megapay', 'mega': 'megapay',
-                'mbank': 'mbank'
+                'companon': 'kompanion', 'компаньон': 'kompanion',
+                'o!': 'odengi', 'o! деньги': 'odengi', 'omoney': 'odengi',
+                'balance.kg': 'balance',
+                'mega': 'megapay'
             }
             banks_norm = []
             for b in banks:
                 k = str(b).strip().lower()
-                mapped = norm_map.get(k)
-                if mapped and mapped not in banks_norm:
+                mapped = norm_map.get(k, k)
+                if mapped not in banks_norm:
                     banks_norm.append(mapped)
-            if not banks_norm:
-                banks_norm = ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
             settings['withdrawals']['banks'] = banks_norm
         except Exception:
             pass
