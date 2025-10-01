@@ -291,8 +291,8 @@ def transaction_detail(request, trans_id):
                         photo_debug['resolved_via'] = 'telegram_getFile'
                     else:
                         photo_debug['telegram_error'] = (jf.get('description') or f"HTTP {rf.status_code}") if not rf.ok else 'no_file_path'
-            else:
-                photo_debug['resolved_via'] = photo_debug.get('resolved_via') or 'no_source'
+                else:
+                    photo_debug['resolved_via'] = photo_debug.get('resolved_via') or 'no_source'
         except Exception:
             photo_url = tx.get('photo_file_url') or ''
         photo_debug['resolved_photo_url'] = photo_url or ''
