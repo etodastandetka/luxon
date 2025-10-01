@@ -2,31 +2,43 @@
 
 {% block title %}Заявка #{{ id }}{% endblock %}
 
-{% block header_icon %}info{% endblock %}
-{% block header_title %}Заявка #{{ id }}{% endblock %}
-{% block header_subtitle %}Детали операции{% endblock %}
+{% block header_icon %}user{% endblock %}
+{% block header_title %}Профиль пользователя{% endblock %}
+{% block header_subtitle %}Заявка #{{ id }} · Детали и история{% endblock %}
 
 {% block content %}
 <style>
-.card { background:#111; border-radius:12px; padding:16px; margin-bottom:12px; border:1px solid #222; }
+.card { background:#0e0f11; border-radius:14px; padding:16px; margin-bottom:14px; border:1px solid #1d2026; box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
 .row { display:flex; justify-content:space-between; margin:6px 0; font-size:14px; }
-.row .label { color:#999; }
-.row .value { color:#fff; font-weight:600; }
+.row .label { color:#9aa4b2; }
+.row .value { color:#e8f0ff; font-weight:600; }
 .actions { display:flex; gap:10px; margin-top:16px; }
 .btn { flex:1; padding:12px 16px; border-radius:10px; border:none; cursor:pointer; font-weight:600; font-size:14px; }
-.btn-approve { background:#113a2b; color:#00ff88; border:1px solid #1f5; }
-.btn-reject { background:#3a1111; color:#ff4444; border:1px solid #f44; }
+.btn-approve { background:#0e2f24; color:#21f39c; border:1px solid #1bd58a; }
+.btn-reject { background:#2f0e0e; color:#ff6b6b; border:1px solid #ea5455; }
 .badge { display:inline-block; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600; }
-.badge-deposit { background:#113a2b; color:#00ff88; border:1px solid #1f5; }
-.badge-withdraw { background:#3a1111; color:#ff4444; border:1px solid #f44; }
+.badge-deposit { background:#0e2f24; color:#21f39c; border:1px solid #1bd58a; }
+.badge-withdraw { background:#2f0e0e; color:#ff6b6b; border:1px solid #ea5455; }
 .status { display:flex; align-items:center; gap:6px; }
 .status-dot { width:8px; height:8px; border-radius:50%; }
 .status-pending { background:#ffa500; }
-.status-completed { background:#00ff88; }
-.status-rejected { background:#ff4444; }
+.status-completed { background:#21f39c; }
+.status-rejected { background:#ff6b6b; }
 .preview { margin-top:10px; border-radius:10px; border:1px solid #222; overflow:hidden; }
 .preview img { width:100%; max-height:420px; object-fit:contain; background:#000; }
 .back { display:inline-flex; align-items:center; gap:6px; margin-top:10px; color:#aaa; text-decoration:none; }
+
+/* Профиль */
+.profile { display:flex; gap:14px; align-items:center; }
+.avatar { width:64px; height:64px; border-radius:50%; background:#1a1d23; border:1px solid #262b33; overflow:hidden; display:flex; align-items:center; justify-content:center; color:#7e8a9a; font-weight:700; }
+.avatar img { width:100%; height:100%; object-fit:cover; }
+.profile-main { display:flex; flex-direction:column; gap:4px; }
+.profile-name { color:#e8f0ff; font-size:16px; font-weight:700; }
+.profile-sub { color:#9aa4b2; font-size:12px; }
+.stats { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:12px; }
+.stat { background:#0a0c10; border:1px solid #1d2026; border-radius:10px; padding:10px; }
+.stat .label { color:#7e8a9a; font-size:12px; }
+.stat .value { color:#e8f0ff; font-size:14px; font-weight:700; }
 </style>
 
 {% if not_found %}
@@ -45,6 +57,34 @@
     <i class="fas fa-arrow-left"></i> На главную
   </a>
 {% else %}
+  <!-- Профиль пользователя -->
+  <div class="card">
+    <div class="profile">
+      <div class="avatar">
+        {% if profile.photo_url %}
+          <img src="{{ profile.photo_url }}" alt="user" />
+        {% else %}
+          {{ (username|default:'U')|first|upper }}
+        {% endif %}
+      </div>
+      <div class="profile-main">
+        <div class="profile-name">{{ username|default:'Unknown' }}</div>
+        <div class="profile-sub">ID: {{ user_id }}</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Всего пополнено</div>
+        <div class="value">{{ profile.total_deposits|floatformat:2 }} KGS • {{ profile.deposit_count }} операций</div>
+      </div>
+      <div class="stat">
+        <div class="label">Всего выведено</div>
+        <div class="value">{{ profile.total_withdrawals|floatformat:2 }} KGS • {{ profile.withdraw_count }} операций</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Детали заявки -->
   <div class="card">
     <div class="row"><div class="label">Тип</div>
       <div class="value">
@@ -79,6 +119,7 @@
     </div>
   </div>
 
+  <!-- История пользователя: быстрый поиск по сумме -->
   <div class="card">
     <div class="row"><div class="label">Поиск по сумме (для этого пользователя)</div></div>
     <form method="get" action="" style="display:flex; gap:8px; margin-top:8px;">
@@ -113,6 +154,7 @@
     {% endif %}
   </div>
 
+  <!-- Все заявки пользователя -->
   <div class="card">
     <div class="row"><div class="label">Все заявки пользователя (последние 100)</div></div>
     {% if user_requests %}

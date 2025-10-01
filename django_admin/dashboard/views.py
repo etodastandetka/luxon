@@ -179,6 +179,58 @@ def request_detail(request, req_id: int):
 
         conn.close()
 
+        # Доп. агрегаты по пользователю
+        total_dep = 0.0
+        total_wdr = 0.0
+        dep_cnt = 0
+        wdr_cnt = 0
+        try:
+            done_statuses = ("completed","approved","auto_completed")
+            # Итоги пополнений
+            cur.execute(
+                '''SELECT COALESCE(SUM(COALESCE(amount,0)),0), COUNT(1)
+                   FROM requests
+                   WHERE user_id=? AND request_type='deposit' AND status IN ('completed','approved','auto_completed')''',
+                (user_id,)
+            )
+            rowd = cur.fetchone() or (0,0)
+            total_dep = float(rowd[0] or 0)
+            dep_cnt = int(rowd[1] or 0)
+            # Итоги выводов
+            cur.execute(
+                '''SELECT COALESCE(SUM(COALESCE(amount,0)),0), COUNT(1)
+                   FROM requests
+                   WHERE user_id=? AND request_type='withdraw' AND status IN ('completed','approved','auto_completed')''',
+                (user_id,)
+            )
+            roww = cur.fetchone() or (0,0)
+            total_wdr = float(roww[0] or 0)
+            wdr_cnt = int(roww[1] or 0)
+        except Exception:
+            pass
+
+        # Пытаемся получить фото профиля из Telegram
+        user_photo_url = ''
+        try:
+            import requests as _req
+            tg_token = getattr(settings, 'BOT_TOKEN', '')
+            if tg_token:
+                api = f"https://api.telegram.org/bot{tg_token}"
+                r = _req.get(f"{api}/getUserProfilePhotos", params={"user_id": user_id, "limit": 1}, timeout=3)
+                j = r.json() if r.ok else {}
+                photos = (j.get('result', {}) or {}).get('photos') or []
+                if photos:
+                    sizes = photos[0]
+                    file_id = sizes[-1].get('file_id') if sizes else None
+                    if file_id:
+                        rf = _req.get(f"{api}/getFile", params={"file_id": file_id}, timeout=3)
+                        jf = rf.json() if rf.ok else {}
+                        file_path = (jf.get('result') or {}).get('file_path')
+                        if file_path:
+                            user_photo_url = f"https://api.telegram.org/file/bot{tg_token}/{file_path}"
+        except Exception:
+            user_photo_url = ''
+
         context = {
             'id': rid,
             'user_id': user_id,
@@ -196,6 +248,15 @@ def request_detail(request, req_id: int):
             'search_amount': search_amount_raw,
             'amount_matches': amount_matches,
             'user_requests': user_requests,
+            'profile': {
+                'total_deposits': total_dep,
+                'total_withdrawals': total_wdr,
+                'deposit_count': dep_cnt,
+                'withdraw_count': wdr_cnt,
+                'photo_url': user_photo_url,
+                'first_name': first_name,
+                'last_name': last_name,
+            }
         }
         return render(request, 'dashboard/request_detail_mobile.html', context)
     except Exception as e:
