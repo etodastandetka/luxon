@@ -22,14 +22,19 @@
       <div class="header-avatar"><i class="fas fa-user"></i></div>
     {% endif %}
     <div class="header-content">
-      <h1>Профиль {{ user.username|default:user.user_id }}</h1>
-      <p>ID: {{ user.user_id }}</p>
+      <div style="color:#9aa4b2; font-size:12px; letter-spacing:.2px; text-transform:uppercase;">Профиль</div>
+      <div style="color:#fff; font-size:20px; font-weight:600; line-height:1.2;">{{ user.username|default:user.user_id }}</div>
+      <div style="color:#8b8b8b; font-size:12px;">ID: {{ user.user_id }}</div>
     </div>
   </div>
   {% if user.username %}
-    <a class="action-btn action-btn--neutral" href="https://t.me/{{ user.username }}" target="_blank">Открыть в Telegram</a>
+    <a class="action-btn action-btn--neutral" style="padding:8px 12px; display:inline-flex; align-items:center; gap:8px;" href="https://t.me/{{ user.username }}" target="_blank" rel="noopener">
+      <i class="fab fa-telegram-plane"></i><span>Открыть в Telegram</span>
+    </a>
   {% else %}
-    <a class="action-btn action-btn--neutral" href="tg://user?id={{ user.user_id }}">Открыть в Telegram</a>
+    <a class="action-btn action-btn--neutral" style="padding:8px 12px; display:inline-flex; align-items:center; gap:8px;" href="tg://user?id={{ user.user_id }}">
+      <i class="fab fa-telegram-plane"></i><span>Открыть в Telegram</span>
+    </a>
   {% endif %}
 </div>
 
