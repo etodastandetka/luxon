@@ -8,9 +8,9 @@
 
 {% block content %}
 <style>
-  .chat-wrap { display:flex; flex-direction:column; height:calc(100vh - 110px); gap:10px; }
+  .chat-wrap { display:flex; flex-direction:column; height:calc(100vh - 110px); gap:10px; padding: 0 10px 8px; background: transparent; }
   .chat-head { display:flex; align-items:center; justify-content:space-between; padding:6px 2px; }
-  .chat-board { flex:1; overflow:auto; border:1px solid #1f1f1f; border-radius:16px; padding:14px; background:linear-gradient(180deg,#0c0c0c,#0a0a0a); box-shadow: inset 0 1px 0 #1b1b1b; margin-bottom:6px; }
+  .chat-board { flex:1; overflow:auto; border:none; border-radius:0; padding:14px; background:#0a0a0a; box-shadow:none; margin:0; }
   /* Scrollbar (Firefox) */
   .chat-board { scrollbar-width: thin; scrollbar-color: #22c55e #0a0a0a; }
   /* Scrollbar (WebKit) */
@@ -34,7 +34,7 @@
   .typing { color:#9aa4b2; font-size:12px; padding:0 6px; }
 </style>
 
-<div class="chat-wrap card">
+<div class="chat-wrap">
   <div id="board" class="chat-board">
     <div id="empty" style="color:#7a869a; font-size:12px;">История пуста…</div>
   </div>
