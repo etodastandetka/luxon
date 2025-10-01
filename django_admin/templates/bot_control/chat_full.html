@@ -114,6 +114,7 @@
       window.requestAnimationFrame(()=>{ window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' }); });
     }catch(e){}
   }
+  async function load(){
     try{
       const r=await fetch(HISTORY_URL,{credentials:'same-origin'});
       if(!r.ok) return; const d=await r.json(); if(!d.success) return;
