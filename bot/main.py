@@ -66,6 +66,24 @@ class UniversalBot:
         import handlers.api_handlers as api_handlers
         api_handlers.register_handlers(self.dp, self.db, BOOKMAKERS, self.api_manager)
         
+    def _get_enabled_sites(self):
+        """Reads enabled bookmaker site keys from SQLite bot_settings (key='sites').
+        Returns a set like {'melbet','1xbet','1win','mostbet'} or default with all.
+        """
+        try:
+            import sqlite3, json
+            conn = sqlite3.connect(self.db.db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM bot_settings WHERE key='sites'")
+            row = cur.fetchone()
+            conn.close()
+            if not row or not row[0]:
+                return { 'melbet','1xbet','1win','mostbet' }
+            lst = json.loads(row[0]) if isinstance(row[0], str) else []
+            return set([str(x).lower() for x in (lst or [])]) or { 'melbet','1xbet','1win','mostbet' }
+        except Exception:
+            return { 'melbet','1xbet','1win','mostbet' }
+
     def _register_middleware(self):
         """Регистрация middleware"""
         # Включаем middleware статуса бота (пауза/техработы)
@@ -391,6 +409,19 @@ class UniversalBot:
             'mostbet': 'MOSTBET'
         }
         bookmaker_name = bookmaker_names.get(bookmaker.lower(), bookmaker.upper())
+        # Проверка на включенность площадки
+        try:
+            enabled = self._get_enabled_sites()
+            key = bookmaker.lower()
+            if key not in enabled:
+                await message.answer(
+                    f"⛔ Раздел {bookmaker_name} временно недоступен.\nПопробуйте позже или выберите другого букмекера.")
+                # Вернём выбор букмекера для текущего действия
+                await self._show_bookmaker_selection(message, action or self.db.get_user_data(message.from_user.id, 'current_action') or 'deposit')
+                return
+        except Exception:
+            # В случае ошибки проверки — продолжаем как обычно
+            pass
         try:
             await message.answer(f"✅ <b>Выбран букмекер:</b> {bookmaker_name}", parse_mode="HTML")
         except Exception as e:

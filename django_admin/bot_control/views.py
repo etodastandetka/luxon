@@ -1691,13 +1691,49 @@ def api_save_bot_settings(request):
     try:
         data = json.loads(request.body)
         
-        # Сохраняем каждую настройку
+        # Сохраняем каждую настройку (Django БД)
         BotConfiguration.set_setting('pause', data.get('pause', False), 'Пауза бота')
         BotConfiguration.set_setting('sites', data.get('sites', []), 'Активные сайты')
         BotConfiguration.set_setting('deposits', data.get('deposits', {}), 'Настройки пополнений')
         BotConfiguration.set_setting('withdrawals', data.get('withdrawals', {}), 'Настройки выводов')
         BotConfiguration.set_setting('channel', data.get('channel', {}), 'Настройки канала')
-        
+
+        # Дублируем необходимые настройки в общую БД бота (SQLite), чтобы бот мог их читать без Django
+        try:
+            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+            cur = conn.cursor()
+            # ensure table
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS bot_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            # нормализуем список сайтов в нижний регистр ключей бота
+            sites = data.get('sites', []) or []
+            norm = []
+            for s in sites:
+                ls = str(s).strip().lower()
+                if ls in ('melbet','1xbet','1win','mostbet'):
+                    norm.append(ls)
+                elif ls in ('mel','mel-bet'):
+                    norm.append('melbet')
+                elif ls in ('xbet','1x'):
+                    norm.append('1xbet')
+                elif ls in ('win','onewin'):
+                    norm.append('1win')
+            import json as _json
+            cur.execute('''
+                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
+                VALUES ('sites', ?, CURRENT_TIMESTAMP)
+            ''', (_json.dumps(norm, ensure_ascii=False),))
+            conn.commit()
+            conn.close()
+        except Exception:
+            # Не падаем, если зеркалирование не удалось
+            pass
+
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({
