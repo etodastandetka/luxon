@@ -64,7 +64,7 @@
         {% if profile.photo_url %}
           <img src="{{ profile.photo_url }}" alt="user" />
         {% else %}
-          {{ (username|default:'U')|first|upper }}
+          {{ (username|default_if_none:'U'|default:'U')|slice:':1'|upper }}
         {% endif %}
       </div>
       <div class="profile-main">
