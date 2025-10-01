@@ -245,6 +245,11 @@
                     <label class="form-label" for="channel-name">Название канала</label>
                     <input type="text" id="channel-name" name="channel-name" class="form-input" placeholder="@bingokg_news" value="@bingokg_news">
                 </div>
+                <div class="form-group">
+                    <label class="form-label" for="channel-id">ID канала (chat_id)</label>
+                    <input type="text" id="channel-id" name="channel-id" class="form-input" placeholder="-1001234567890" value="">
+                    <small style="color:#888">Публичный канал можно указать по @handle, но для проверки подписки надёжнее chat_id вида -100…</small>
+                </div>
             </div>
         </div>
 
@@ -311,7 +316,8 @@ function collectSettings() {
         },
         channel: {
             enabled: document.getElementById('channel-subscription').checked,
-            name: document.getElementById('channel-name').value
+            name: document.getElementById('channel-name').value,
+            id: document.getElementById('channel-id').value
         }
     };
 }
@@ -395,6 +401,7 @@ function applySettingsFromPayload(payload) {
         if (payload.channel) {
             document.getElementById('channel-subscription').checked = !!payload.channel.enabled;
             document.getElementById('channel-name').value = payload.channel.name || '';
+            document.getElementById('channel-id').value = payload.channel.id || '';
         }
     } catch (e) { console.warn('applySettingsFromPayload failed', e); }
 }
@@ -493,6 +500,7 @@ async function loadSettings() {
         if (settings.channel) {
             document.getElementById('channel-subscription').checked = settings.channel.enabled;
             document.getElementById('channel-name').value = settings.channel.name || '@bingokg_news';
+            document.getElementById('channel-id').value = settings.channel.id || '';
         }
         
     } catch (error) {
