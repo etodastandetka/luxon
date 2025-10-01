@@ -115,6 +115,68 @@ def deposits_list(request):
         logger.error(f"Error in deposits_list: {str(e)}", exc_info=True)
         return render(request, 'bot_control/error.html', {'error': str(e)})
 
+def user_profile(request, user_id: int):
+    """User profile: aggregates and all requests for a given user_id (from bot DB)."""
+    try:
+        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        # User info (if present in users)
+        cur.execute('SELECT user_id, username, first_name, last_name FROM users WHERE user_id=?', (user_id,))
+        urow = cur.fetchone()
+        user = dict(urow) if urow else {'user_id': user_id, 'username': '', 'first_name': '', 'last_name': ''}
+
+        # Aggregates
+        def _agg(req_type):
+            cur.execute('''
+                SELECT COALESCE(SUM(COALESCE(amount,0)),0), COUNT(1)
+                FROM requests
+                WHERE user_id=? AND request_type=? AND status IN ('completed','approved','auto_completed')
+            ''', (user_id, req_type))
+            s, c = cur.fetchone() or (0,0)
+            return float(s or 0), int(c or 0)
+
+        total_dep, dep_cnt = _agg('deposit')
+        total_wdr, wdr_cnt = _agg('withdraw')
+
+        # Requests list (last 300)
+        cur.execute('''
+            SELECT id, COALESCE(request_type,''), COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,''), COALESCE(bookmaker,'')
+            FROM requests
+            WHERE user_id = ?
+            ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
+            LIMIT 300
+        ''', (user_id,))
+        items = []
+        for rid, rtype, amount, status, created_at, bookmaker in cur.fetchall():
+            items.append({
+                'id': rid,
+                'type': rtype or 'deposit',
+                'amount': float(amount or 0),
+                'status': status,
+                'created_at': created_at,
+                'bookmaker': bookmaker,
+            })
+
+        conn.close()
+
+        ctx = {
+            'user': user,
+            'stats': {
+                'total_deposits': total_dep,
+                'deposit_count': dep_cnt,
+                'total_withdrawals': total_wdr,
+                'withdraw_count': wdr_cnt,
+                'net': float((total_dep or 0) - (total_wdr or 0)),
+            },
+            'requests': items,
+        }
+        return render(request, 'bot_control/user_profile.html', ctx)
+    except Exception as e:
+        logger.error(f"Error in user_profile: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})
+
 def transaction_detail(request, trans_id):
     """Transaction details from requests table"""
     try:

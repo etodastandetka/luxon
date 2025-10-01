@@ -12,6 +12,7 @@ urlpatterns = [
     path('deposits/', views_deposits.deposits_list, name='deposits_list'),
     path('deposits/<int:deposit_id>/', views_deposits.deposit_detail, name='deposit_detail'),
     path('transactions/<int:trans_id>/', views_deposits.transaction_detail, name='transaction_detail'),
+    path('user/<int:user_id>/', views_deposits.user_profile, name='user_profile'),
     path('withdrawals/', views_deposits.withdrawals_list, name='withdrawals_list'),
     path('unified-api/', views.unified_api, name='unified_api'),
     path('limits/', views.limits_dashboard, name='limits_dashboard'),
