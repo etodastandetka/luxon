@@ -8,27 +8,34 @@
 
 {% block content %}
 <style>
-  .chat-wrap { display:flex; flex-direction:column; height:calc(100vh - 110px); }
-  .chat-head { display:flex; align-items:center; justify-content:space-between; padding:10px 4px; }
-  .chat-board { flex:1; overflow:auto; border:1px solid #222; border-radius:12px; padding:12px; background:#0f0f0f; }
-  .chat-row { display:flex; margin:8px 0; }
-  .chat-msg { max-width:72%; padding:10px 12px; border-radius:12px; font-size:14px; line-height:1.4; }
-  .chat-msg--in { background:#191919; color:#e8e8e8; border:1px solid #2a2a2a; }
-  .chat-msg--out { background:#0e2f24; color:#c6ffe7; border:1px solid #1bd58a; margin-left:auto; }
-  .chat-input { display:flex; gap:8px; margin-top:10px; }
-  .chat-input input[type="text"] { flex:1; background:#0f0f0f; border:1px solid #2a2a2a; color:#e8f0ff; border-radius:8px; padding:12px; outline:none; }
-  .attach-btn { display:inline-flex; align-items:center; justify-content:center; min-width:44px; border:1px dashed #2a2a2a; border-radius:8px; background:#101010; color:#8fb3ff; }
-  .thumb { max-width:66%; border-radius:10px; border:1px solid #2a2a2a; }
+  .chat-wrap { display:flex; flex-direction:column; height:calc(100vh - 110px); gap:10px; }
+  .chat-head { display:flex; align-items:center; justify-content:space-between; padding:6px 2px; }
+  .chat-board { flex:1; overflow:auto; border:1px solid #1f1f1f; border-radius:16px; padding:14px; background:linear-gradient(180deg,#0c0c0c,#0a0a0a); box-shadow: inset 0 1px 0 #1b1b1b; }
+  .chat-row { display:flex; margin:10px 0; }
+  .chat-msg { max-width:78%; padding:12px 14px; border-radius:18px; font-size:14px; line-height:1.5; box-shadow: 0 2px 8px rgba(0,0,0,.35); word-wrap:break-word; }
+  .chat-msg--in { background:#171a1f; color:#e6e8ee; border:1px solid #242932; border-top-left-radius:6px; }
+  .chat-msg--out { background:linear-gradient(135deg,#0fa36b,#0b7f55); color:#eafff6; border:1px solid #14cf86; border-top-right-radius:6px; margin-left:auto; }
+  .chat-input { display:flex; align-items:center; gap:10px; padding:8px; border:1px solid #1f1f1f; border-radius:14px; background:#0e0f10; position:sticky; bottom:0; }
+  .chat-input input[type="text"] { flex:1; background:#0a0b0c; border:1px solid #23262d; color:#e8f0ff; border-radius:12px; padding:12px 14px; outline:none; box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
+  .chat-input input[type="text"]::placeholder { color:#77809a; }
+  .attach-btn { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border:1px dashed #2a2f3a; border-radius:12px; background:#0f1114; color:#91b9ff; transition:.2s; }
+  .attach-btn:hover { border-color:#3a4252; color:#b6d0ff; transform:translateY(-1px); }
+  .send-btn { min-width:44px; height:42px; padding:0 16px; border:none; border-radius:12px; background:linear-gradient(135deg,#2dd286,#18b06f); color:#04160d; font-weight:700; letter-spacing:.2px; cursor:pointer; box-shadow: 0 6px 18px rgba(24,176,111,.25), inset 0 1px 0 rgba(255,255,255,.12); transition:.15s; display:inline-flex; align-items:center; gap:8px; }
+  .send-btn:hover { filter:brightness(1.05); transform: translateY(-1px); }
+  .send-btn i { color:#042015; }
+  .thumb { max-width:66%; border-radius:12px; border:1px solid #2a2a2a; }
+  .typing { color:#9aa4b2; font-size:12px; padding:0 6px; }
 </style>
 
 <div class="chat-wrap card">
   <div id="board" class="chat-board">
     <div id="empty" style="color:#7a869a; font-size:12px;">История пуста…</div>
   </div>
+  <div id="typing" class="typing" style="display:none">Печатает…</div>
   <div class="chat-input">
     <button id="attach" class="attach-btn" title="Прикрепить"><i class="fas fa-paperclip"></i></button>
     <input id="text" placeholder="Написать сообщение" type="text">
-    <button id="send" class="action-btn action-btn--neutral">Отправить</button>
+    <button id="send" class="send-btn"><i class="fas fa-paper-plane"></i><span>Отправить</span></button>
   </div>
   <input id="file" type="file" accept="image/*,video/*" style="display:none" />
 </div>
@@ -38,7 +45,19 @@
 (function(){
   const HISTORY_URL = '{% url "bot_control:chat_history" user.user_id %}';
   const SEND_URL = '{% url "bot_control:chat_send_from_admin" %}';
+  const TYPING_URL = '{% url "bot_control:chat_typing_from_admin" %}';
   function getCookie(name){ const v = `; ${document.cookie}`; const p = v.split(`; ${name}=`); if(p.length===2) return p.pop().split(';').shift(); }
+  function setTypingVisible(show){ const el=document.getElementById('typing'); if(!el) return; el.style.display = show ? 'block' : 'none'; }
+  let lastTypingSent = 0; let typingHideTimer = null;
+  function pingTyping(action='typing'){
+    const now = Date.now();
+    if(now - lastTypingSent < 1500) return;
+    lastTypingSent = now;
+    setTypingVisible(true);
+    try{ fetch(TYPING_URL,{method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')||''}, body: JSON.stringify({'user_id': {{ user.user_id }}, 'action': action})}); }catch(e){}
+    if(typingHideTimer) clearTimeout(typingHideTimer);
+    typingHideTimer = setTimeout(()=> setTypingVisible(false), 3000);
+  }
   function add(msg){
     const b = document.getElementById('board');
     const e = document.getElementById('empty'); if(e) e.style.display='none';
@@ -98,7 +117,7 @@
       const r = await fetch(SEND_URL,{
         method:'POST',
         headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')||''},
-        body:JSON.stringify({user_id: {{ user.user_id }}, message: v})
+        body:JSON.stringify({'user_id': {{ user.user_id }}, 'message': v})
       });
       const d = await r.json().catch(()=>({success:false,error:'bad response'}));
       if(!r.ok || !d.success){
@@ -109,15 +128,18 @@
     } finally {
       // Обновим историю, чтобы зафиксировать итоговое состояние
       load();
+      setTypingVisible(false);
     }
   }
 
   document.addEventListener('DOMContentLoaded',()=>{
     load();
     document.getElementById('send').addEventListener('click', send);
-    document.getElementById('text').addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); });
+    const inputEl = document.getElementById('text');
+    inputEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); else pingTyping('typing'); });
+    inputEl.addEventListener('input',()=>{ if(inputEl.value.trim()) pingTyping('typing'); });
     document.getElementById('attach').addEventListener('click', ()=> document.getElementById('file').click());
-    document.getElementById('file').addEventListener('change', (e)=>{ const f=e.target.files && e.target.files[0]; sendMedia(f); e.target.value=''; });
+    document.getElementById('file').addEventListener('change', (e)=>{ const f=e.target.files && e.target.files[0]; if(f){ const kind = f.type && f.type.startsWith('video/') ? 'upload_video' : 'upload_photo'; pingTyping(kind); } sendMedia(f); e.target.value=''; });
     setInterval(load, 4000);
   });
 })();

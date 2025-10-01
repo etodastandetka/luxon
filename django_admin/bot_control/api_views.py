@@ -663,3 +663,52 @@ def chat_ingest_from_bot(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_typing_from_admin(request: HttpRequest):
+    """Relay typing indicator to Telegram (sendChatAction). action defaults to 'typing'."""
+    try:
+        data = json.loads(request.body or '{}')
+        user_id = int(data.get('user_id') or 0)
+        action = (data.get('action') or 'typing').strip()  # typing|upload_photo|upload_video|upload_document
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'user_id обязателен'}, status=400)
+
+        # Resolve bot token
+        token_source = 'bot_config'
+        botcfg_token = ''
+        root_token = ''
+        try:
+            import importlib
+            bot_cfg = importlib.import_module('bot.config')
+            botcfg_token = (getattr(bot_cfg, 'BOT_TOKEN', '') or '').strip()
+        except Exception:
+            botcfg_token = ''
+        try:
+            import importlib
+            root_cfg = importlib.import_module('config')
+            root_token = (getattr(root_cfg, 'BOT_TOKEN', '') or '').strip()
+        except Exception:
+            root_token = ''
+        cfg_token = (BotConfiguration.get_setting('bot_token') or '').strip()
+        settings_token = (getattr(settings, 'BOT_TOKEN', None) or '').strip()
+        bot_token = botcfg_token or root_token or cfg_token or settings_token
+        if not bot_token:
+            return JsonResponse({'success': False, 'error': 'BOT token is not configured'}, status=400)
+        if not botcfg_token:
+            token_source = 'root_config' if root_token else ('db_config' if cfg_token else 'settings')
+
+        # Call sendChatAction
+        api = f"https://api.telegram.org/bot{bot_token}/sendChatAction"
+        try:
+            resp = requests.post(api, json={'chat_id': user_id, 'action': action}, timeout=6)
+            if resp.status_code != 200:
+                return JsonResponse({'success': False, 'error': f'Telegram API error {resp.status_code}', 'details': resp.text[:200]}, status=502)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Telegram request failed: {e}'}, status=502)
+
+        return JsonResponse({'success': True, 'token_source': token_source})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
