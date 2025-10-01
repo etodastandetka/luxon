@@ -141,7 +141,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 BOT_TOKEN = '7489617815:AAFt-qZwXCHZYdjWDiihq9slYxg1c8UCzCg'
 # Единый путь к базе бота (универсальная БД): c:\Users\...\bets\universal_bot.db
-BOT_DATABASE_PATH = '/var/www/luxservice/universal_bot.db'
+BOT_DATABASE_PATH = '/var/www/luxservice/bot/universal_bot.db'
 
 # Настройки безопасности для продакшена
 SECURE_BROWSER_XSS_FILTER = True

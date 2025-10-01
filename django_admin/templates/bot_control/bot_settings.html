@@ -255,7 +255,7 @@
     </div>
 
 <script>
-// Автоматическое сохранение при изменении настроек
+// Автоматическое сохранение отключено, оставлены служебные флаги
 let __saveTimer = null;
 let __loadingSettings = false;
 let __saving = false;
@@ -334,8 +334,75 @@ function getSelectedBanks(type) {
     return banks;
 }
 
+function setSaveBanner(text, ok=true) {
+    const el = document.getElementById('save-status');
+    if (!el) return;
+    el.textContent = text;
+    el.style.background = ok ? '#204f2a' : '#5a2020';
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, ok ? 1200 : 2000);
+}
+
+function setSaveButtonBusy(busy) {
+    const btn = document.querySelector('button.save-btn');
+    if (!btn) return;
+    if (busy) {
+        btn.dataset.prevText = btn.textContent;
+        btn.textContent = '⏳ Сохраняю…';
+        btn.disabled = true;
+    } else {
+        btn.textContent = btn.dataset.prevText || '💾 Сохранить настройки';
+        btn.disabled = false;
+    }
+}
+
+function applySettingsFromPayload(payload) {
+    try {
+        if (!payload) return;
+        // pause
+        if (payload.pause !== undefined) {
+            document.getElementById('pause-bot').checked = !!payload.pause;
+        }
+        // sites
+        if (payload.sites) {
+            const enabledSites = new Set((payload.sites || []).map(s => String(s).toLowerCase()));
+            document.querySelectorAll('#sites-grid input[type="checkbox"]').forEach(cb => {
+                const key = (cb.dataset.site || '').toLowerCase();
+                cb.checked = enabledSites.has(key);
+            });
+        }
+        // deposits
+        if (payload.deposits) {
+            document.getElementById('deposits-enabled').checked = !!payload.deposits.enabled;
+            document.querySelectorAll('.deposit-grid [data-bank]').forEach(cb => cb.checked = false);
+            (payload.deposits.banks || []).forEach(b => {
+                const k = String(b).toLowerCase();
+                const el = document.querySelector(`.deposit-grid [data-bank="${k}"]`);
+                if (el) el.checked = true;
+            });
+        }
+        // withdrawals
+        if (payload.withdrawals) {
+            document.getElementById('withdrawals-enabled').checked = !!payload.withdrawals.enabled;
+            document.querySelectorAll('.withdrawal-grid [data-bank]').forEach(cb => cb.checked = false);
+            (payload.withdrawals.banks || []).forEach(b => {
+                const k = String(b).toLowerCase();
+                const el = document.querySelector(`.withdrawal-grid [data-bank="${k}"]`);
+                if (el) el.checked = true;
+            });
+        }
+        // channel
+        if (payload.channel) {
+            document.getElementById('channel-subscription').checked = !!payload.channel.enabled;
+            document.getElementById('channel-name').value = payload.channel.name || '';
+        }
+    } catch (e) { console.warn('applySettingsFromPayload failed', e); }
+}
+
 async function saveToDatabase(settings) {
     try {
+        __saving = true;
+        setSaveButtonBusy(true);
         const response = await fetch('{% url "bot_control:api_save_bot_settings" %}', {
             method: 'POST',
             headers: {
@@ -346,17 +413,24 @@ async function saveToDatabase(settings) {
         });
 
         if (response.ok) {
-            console.log('Настройки сохранены в базу данных');
+            let data = null;
+            try { data = await response.json(); } catch (e) {}
+            if (data && data.settings) {
+                applySettingsFromPayload(data.settings);
+            }
+            setSaveBanner('✅ Настройки сохранены', true);
             return true;
         } else {
             const msg = await response.text().catch(() => '');
             console.error('Ошибка сохранения настроек', msg);
+            setSaveBanner('❌ Ошибка сохранения', false);
             return false;
         }
     } catch (error) {
         console.error('Ошибка:', error);
+        setSaveBanner('❌ Сеть недоступна', false);
         return false;
-    }
+    } finally { __saving = false; setSaveButtonBusy(false); }
 }
 
 function getCookie(name) {
@@ -487,6 +561,7 @@ async function setMainWalletSelected() {
 async function saveSettings() {
     const ok = await saveToDatabase(collectSettings());
     if (ok) {
+        // подстрахуемся: подтянем с сервера
         try { await loadSettings(); } catch (e) {}
     }
 }
