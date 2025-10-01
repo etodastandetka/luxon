@@ -1835,15 +1835,15 @@ def api_save_bot_settings(request):
         except Exception:
             # Не падаем, если зеркалирование не удалось
             pass
-
-        # Вернем нормализованные настройки клиенту, чтобы UI мог сразу применить сохранённое
-        return JsonResponse({
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 @csrf_exempt
 def api_save_qr_hash(request):
     """API для сохранения QR хеша"""
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST method allowed'}, status=405)
-    
     try:
         data = json.loads(request.body)
         QRHash.objects.create(
