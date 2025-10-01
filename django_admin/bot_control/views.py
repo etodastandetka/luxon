@@ -1728,6 +1728,33 @@ def api_save_bot_settings(request):
                 INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
                 VALUES ('sites', ?, CURRENT_TIMESTAMP)
             ''', (_json.dumps(norm, ensure_ascii=False),))
+
+            # deposit settings -> bot_settings
+            dep = data.get('deposits', {}) or {}
+            dep_enabled = bool(dep.get('enabled', True))
+            dep_banks = dep.get('banks', []) or []
+            # normalize bank keys
+            bank_map = {
+                'mbank': 'MBank',
+                'bakai': 'Bakai',
+                'balance': 'Balance.kg',
+                'demir': 'DemirBank',
+                'omoney': 'O! bank',
+                'mega': 'MegaPay',
+                'qr': 'QR'
+            }
+            norm_banks = []
+            for b in dep_banks:
+                k = str(b).strip().lower()
+                norm_banks.append(bank_map.get(k, k))
+            cur.execute('''
+                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
+                VALUES ('deposits_enabled', ?, CURRENT_TIMESTAMP)
+            ''', ('1' if dep_enabled else '0',))
+            cur.execute('''
+                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
+                VALUES ('deposit_banks', ?, CURRENT_TIMESTAMP)
+            ''', (_json.dumps(norm_banks, ensure_ascii=False),))
             conn.commit()
             conn.close()
         except Exception:

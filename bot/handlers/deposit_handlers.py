@@ -732,13 +732,50 @@ async def show_bank_selection(message: types.Message, amount: float, db, bookmak
         await message.answer("❌ Ошибка генерации QR. Попробуйте позже.")
         return
 
-    # Генерируем ссылки для банков. Оставляем все КРОМЕ "Компаньон". Кнопку "Назад в меню" не добавляем.
+    # Генерируем ссылки для банков. Оставляем все КРОМЕ "Компаньон".
     logger.info(f"[DEPOSIT] QR by template built: {fixed_qr_hash[:80]}...")
     bank_links = get_bank_links_by_type(fixed_qr_hash, 'DEMIRBANK')
+
+    # Прочитаем настройки депозитов из bot_settings
+    def _read_deposit_settings():
+        try:
+            import sqlite3, json
+            db_path = getattr(db, 'db_path', '') or ''
+            if not db_path:
+                from pathlib import Path
+                db_path = str(Path(__file__).resolve().parents[1] / 'universal_bot.db')
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM bot_settings WHERE key='deposits_enabled'")
+            row_en = cur.fetchone()
+            cur.execute("SELECT value FROM bot_settings WHERE key='deposit_banks'")
+            row_banks = cur.fetchone()
+            conn.close()
+            enabled = True if not row_en else (str(row_en[0]).strip() in ('1','true','True'))
+            banks = []
+            try:
+                banks = json.loads(row_banks[0]) if row_banks and row_banks[0] else []
+            except Exception:
+                banks = []
+            # banks из админки приходят человекочитаемыми названиями, приведём к сервисным
+            # Сопоставим c get_bank_links_by_type ключами
+            valid = {
+                'DemirBank','O! bank','Balance.kg','Bakai','MegaPay','MBank','QR'
+            }
+            banks = [b for b in banks if b in valid]
+            return enabled, set(banks)
+        except Exception:
+            return True, set()
+
+    dep_enabled, enabled_banks = _read_deposit_settings()
+    # Если депозиты отключены глобально — делаем все кнопки "недоступно"
     for service_name, link in bank_links.items():
         if service_name == "Компаньон":
             continue
-        kb.button(text=service_name, url=link)
+        if dep_enabled and (not enabled_banks or service_name in enabled_banks):
+            kb.button(text=service_name, url=link)
+        else:
+            kb.button(text=f"{service_name} (недоступно)", callback_data=f"bank_unavailable_{service_name}")
     kb.adjust(2)
     
     # Отправляем QR как фото + подпись с таймером и кнопками банков
