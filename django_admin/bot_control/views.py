@@ -1661,7 +1661,7 @@ def api_get_bot_settings(request):
     try:
         settings = {
             'pause': BotConfiguration.get_setting('pause', False),
-            'sites': BotConfiguration.get_setting('sites', ['Melbet', '1xbet', '1win', '888starz', '1xcasino', 'mostbet', 'WinWin', 'BetWinner']),
+            'sites': BotConfiguration.get_setting('sites', ['Melbet', '1xbet', '1win', 'mostbet']),
             'deposits': BotConfiguration.get_setting('deposits', {
                 'enabled': True,
                 'banks': ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'elcart', 'mega']
