@@ -511,15 +511,23 @@ def chat_send_from_admin(request):
         conn.commit()
         conn.close()
 
-        # Relay via Telegram (prefer BotConfiguration bot_token, fallback to settings.BOT_TOKEN)
-        token_source = 'config'
+        # Resolve BOT token: root config.py -> BotConfiguration -> settings.BOT_TOKEN
+        token_source = 'root_config'
+        root_token = ''
+        try:
+            # Try import root-level config.py (not bot/config.py)
+            import importlib
+            root_cfg = importlib.import_module('config')
+            root_token = (getattr(root_cfg, 'BOT_TOKEN', '') or '').strip()
+        except Exception:
+            root_token = ''
         cfg_token = (BotConfiguration.get_setting('bot_token') or '').strip()
         settings_token = (getattr(settings, 'BOT_TOKEN', None) or '').strip()
-        bot_token = cfg_token or settings_token
+        bot_token = root_token or cfg_token or settings_token
         if not bot_token:
             return JsonResponse({'success': False, 'error': 'BOT token is not configured. Set BotConfiguration key "bot_token" or settings.BOT_TOKEN.'}, status=400)
-        if not cfg_token:
-            token_source = 'settings'
+        if not root_token:
+            token_source = 'db_config' if cfg_token else 'settings'
 
         # Call Telegram API
         api = f"https://api.telegram.org/bot{bot_token}/sendMessage"
