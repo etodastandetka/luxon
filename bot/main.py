@@ -347,8 +347,9 @@ class UniversalBot:
                     await self._show_main_menu(message, language)
                     return
 
-                # Неизвестная кнопка — вернём в главное меню
-                await self._show_main_menu(message, language)
+                # Неизвестное сообщение — ничего не делаем, чтобы не возвращать пользователя в главное меню
+                # Это позволяет администратору вести свободный диалог в чате без сброса интерфейса
+                return
         
     
     async def _handle_deposit(self, message):
