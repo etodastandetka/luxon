@@ -145,6 +145,17 @@ def transaction_detail(request, trans_id):
             tx.get('screenshot_url') or
             ''
         )
+        photo_debug = {
+            'photo_file_url': tx.get('photo_file_url') or '',
+            'receipt_photo_url': tx.get('receipt_photo_url') or '',
+            'qr_photo_url': tx.get('qr_photo_url') or '',
+            'photo_url_field': tx.get('photo_url') or '',
+            'screenshot_url': tx.get('screenshot_url') or '',
+            'photo_file_id': tx.get('photo_file_id') or '',
+            'bot_token_present': bool(getattr(settings, 'BOT_TOKEN', '')),
+            'resolved_photo_url': '',
+            'resolved_via': '',
+        }
         try:
             if not photo_url:
                 file_id = (tx.get('photo_file_id') or '').strip()
@@ -157,8 +168,12 @@ def transaction_detail(request, trans_id):
                     fp = (jf.get('result') or {}).get('file_path')
                     if fp:
                         photo_url = f"https://api.telegram.org/file/bot{bot_token}/{fp}"
+                        photo_debug['resolved_via'] = 'telegram_getFile'
+            else:
+                photo_debug['resolved_via'] = 'direct_field'
         except Exception:
             photo_url = tx.get('photo_file_url') or ''
+        photo_debug['resolved_photo_url'] = photo_url or ''
 
         # Другие заявки пользователя (последние 100)
         user_requests = []
@@ -190,6 +205,7 @@ def transaction_detail(request, trans_id):
             'transaction': tx,
             'photo_url': photo_url,
             'user_requests': user_requests,
+            'photo_debug': photo_debug,
             'api_token': getattr(dj_settings, 'DJANGO_ADMIN_API_TOKEN', '')
         })
         

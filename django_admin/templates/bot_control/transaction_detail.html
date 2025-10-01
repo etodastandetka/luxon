@@ -69,14 +69,21 @@
   .btns-row { margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
   .muted-note { color:#8b8b8b; font-size:12px; text-align:center; margin-top:8px; }
 </style>
-<div class="page-header">
-    <div class="header-avatar">
-        <i class="fas fa-receipt"></i>
+<div class="page-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <div class="header-avatar"><i class="fas fa-receipt"></i></div>
+        <div class="header-content">
+            <h1>Заявка #{{ transaction.id }}</h1>
+            <p>Управление заявкой из базы бота</p>
+        </div>
     </div>
-    <div class="header-content">
-        <h1>Заявка #{{ transaction.id }}</h1>
-        <p>Управление заявкой из базы бота</p>
-    </div>
+    {% with uname=transaction.username|default:'' uid=transaction.user_id %}
+    {% if uname %}
+      <a class="action-btn action-btn--neutral" href="https://t.me/{{ uname }}" target="_blank" rel="noopener">👤 Профиль</a>
+    {% else %}
+      <a class="action-btn action-btn--neutral" href="tg://user?id={{ uid }}">👤 Профиль</a>
+    {% endif %}
+    {% endwith %}
 </div>
 
 {% with rt=transaction.request_type|default:'deposit' %}
@@ -150,24 +157,49 @@
 
 <!-- Все заявки пользователя (последние 100) -->
 {% if user_requests %}
-<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px;">
-  <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:12px; margin-top:12px;">
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
       <i class="fas fa-list"></i>
       <div style="font-weight:600;">Все заявки пользователя</div>
   </div>
-  <div>
+  <div style="margin-top:8px;">
+    <div style="border-top:1px solid #222"></div>
     {% for r in user_requests %}
-      <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:1px solid #222;">
-        <div style="color:#9aa4b2;">#{{ r.id }} · {{ r.created_at }}</div>
-        <div style="color:#e8f0ff; font-weight:600;">
-          {% if r.type == 'deposit' %}<span style="background:#0e2f24;color:#21f39c;border:1px solid #1bd58a;padding:2px 6px;border-radius:6px;">Пополнение</span>{% else %}<span style="background:#2f0e0e;color:#ff6b6b;border:1px solid #ea5455;padding:2px 6px;border-radius:6px;">Вывод</span>{% endif %}
-          &nbsp; {{ r.amount|floatformat:2 }} сом · {{ r.status|title }}
-          &nbsp; <a href="/bot/transactions/{{ r.id }}/" style="color:#0fa;">Открыть</a>
+      <a href="/bot/transactions/{{ r.id }}/" style="display:flex; align-items:center; gap:10px; justify-content:space-between; padding:10px 2px; color:#cdd6f4; text-decoration:none; border-bottom:1px solid #1a1a1a;">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+          <div style="color:#8b8b8b; font-size:12px; flex:0 0 auto;">#{{ r.id }}</div>
+          <div style="color:#9aa4b2; font-size:12px; white-space:nowrap;">{{ r.created_at }}</div>
+          <div style="font-size:11px; padding:2px 6px; border-radius:6px; {% if r.type == 'deposit' %}border:1px solid #1bd58a; color:#21f39c; background:#0e2f24;{% else %}border:1px solid #ea5455; color:#ff6b6b; background:#2f0e0e;{% endif %}">
+            {% if r.type == 'deposit' %}Пополнение{% else %}Вывод{% endif %}
+          </div>
         </div>
-      </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-weight:700; {% if r.type == 'deposit' %}color:#21f39c;{% else %}color:#ff6b6b;{% endif %}">{{ r.amount|floatformat:2 }} сом</div>
+          <div style="font-size:11px; color:#8b8b8b;">{{ r.status|title }}</div>
+          <i class="fas fa-chevron-right" style="color:#555;"></i>
+        </div>
+      </a>
     {% endfor %}
   </div>
 </div>
+{% endif %}
+
+<!-- Debug photo info (only rendered when no photo and debug available) -->
+{% if not photo_url and photo_debug %}
+<details class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px;">
+  <summary style="cursor:pointer; color:#aaa;">Отладка фото (почему не отображается)</summary>
+  <div style="margin-top:10px; font-family:monospace; font-size:12px; color:#bbb;">
+    <div>photo_file_url: {{ photo_debug.photo_file_url|default:"" }}</div>
+    <div>receipt_photo_url: {{ photo_debug.receipt_photo_url|default:"" }}</div>
+    <div>qr_photo_url: {{ photo_debug.qr_photo_url|default:"" }}</div>
+    <div>photo_url_field: {{ photo_debug.photo_url_field|default:"" }}</div>
+    <div>screenshot_url: {{ photo_debug.screenshot_url|default:"" }}</div>
+    <div>photo_file_id: {{ photo_debug.photo_file_id|default:"" }}</div>
+    <div>BOT_TOKEN задан: {{ photo_debug.bot_token_present }}</div>
+    <div>resolved_via: {{ photo_debug.resolved_via|default:"" }}</div>
+    <div>resolved_photo_url: {{ photo_debug.resolved_photo_url|default:"" }}</div>
+  </div>
+</details>
 {% endif %}
 
 {% endblock %}
