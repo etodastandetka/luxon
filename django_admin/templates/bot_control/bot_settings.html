@@ -369,7 +369,9 @@ async function loadSettings() {
         
         if (settings.deposits) {
             document.getElementById('deposits-enabled').checked = settings.deposits.enabled;
-            settings.deposits.banks.forEach(bank => {
+            // Сбросим все чекбоксы депозитов и проставим из настроек
+            document.querySelectorAll('.deposit-grid [data-bank]').forEach(cb => cb.checked = false);
+            (settings.deposits.banks || []).forEach(bank => {
                 const checkbox = document.querySelector(`[data-bank="${bank}"]`);
                 if (checkbox) checkbox.checked = true;
             });

@@ -778,21 +778,31 @@ async def show_bank_selection(message: types.Message, amount: float, db, bookmak
             kb.button(text=f"{service_name} (недоступно)", callback_data=f"bank_unavailable_{service_name}")
     kb.adjust(2)
     
-    # Отправляем QR как фото + подпись с таймером и кнопками банков
-    try:
-        # Строим URL для генерации QR без локальных зависимостей (fallback, если нет локальной библиотеки qrcode)
-        from urllib.parse import quote
-        # По просьбе: кодируем в QR ссылку формата O! bank с нашим hash
-        qr_payload = f"https://api.dengi.o.kg/ru/qr/#{fixed_qr_hash}"
-        qr_url = f"https://quickchart.io/qr?text={quote(qr_payload)}&size=512&margin=2"
-        sent_message = await message.answer_photo(
-            qr_url,
-            caption=message_text,
-            reply_markup=kb.as_markup(),
-            parse_mode="HTML"
-        )
-    except Exception:
-        # Фолбэк: текстом, как раньше
+    # Разрешён ли показ QR-картинки: включены депозиты и включён 'QR' в списке банков (если список задан)
+    allow_qr_image = dep_enabled and (not enabled_banks or ('QR' in enabled_banks))
+
+    if allow_qr_image:
+        try:
+            # Строим URL для генерации QR без локальных зависимостей (fallback, если нет локальной библиотеки qrcode)
+            from urllib.parse import quote
+            # По просьбе: кодируем в QR ссылку формата O! bank с нашим hash
+            qr_payload = f"https://api.dengi.o.kg/ru/qr/#{fixed_qr_hash}"
+            qr_url = f"https://quickchart.io/qr?text={quote(qr_payload)}&size=512&margin=2"
+            sent_message = await message.answer_photo(
+                qr_url,
+                caption=message_text,
+                reply_markup=kb.as_markup(),
+                parse_mode="HTML"
+            )
+        except Exception:
+            # Фолбэк: текстом, как раньше
+            sent_message = await message.answer(
+                message_text,
+                reply_markup=kb.as_markup(),
+                parse_mode="HTML"
+            )
+    else:
+        # Не показываем QR изображение — только текст и кнопки
         sent_message = await message.answer(
             message_text,
             reply_markup=kb.as_markup(),
