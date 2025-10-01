@@ -32,6 +32,12 @@ def wallet(request):
             ensure_requisites_table()
         except Exception:
             pass
+
+        # Закрываем соединение после всех выборок
+        try:
+            conn.close()
+        except Exception:
+            pass
         conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
         cur = conn.cursor()
         # Локальный DDL на случай, если импорт не сработал
@@ -177,9 +183,7 @@ def request_detail(request, req_id: int):
             except Exception:
                 amount_matches = []
 
-        conn.close()
-
-        # Доп. агрегаты по пользователю
+        # Доп. агрегаты по пользователю (используем тот же открытый cursor)
         total_dep = 0.0
         total_wdr = 0.0
         dep_cnt = 0
