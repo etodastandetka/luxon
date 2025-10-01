@@ -76,6 +76,11 @@ urlpatterns = [
     path('api/bot/update-status/', api_views.update_request_status, name='update_request_status'),
     path('api/bot/requests/', api_views.get_requests, name='get_requests'),
 
+    # Chat API (admin <-> user via Telegram relay)
+    path('api/chat/history/<int:user_id>/', api_views.chat_history, name='chat_history'),
+    path('api/chat/send/', api_views.chat_send_from_admin, name='chat_send_from_admin'),
+    path('api/chat/ingest/', api_views.chat_ingest_from_bot, name='chat_ingest_from_bot'),
+
     # Referral withdrawal API
     path('api/referral/withdraw/create/', api_views.create_referral_withdraw_request, name='referral_withdraw_create'),
     path('api/referral/withdraw/list/', api_views.list_referral_withdraw_requests, name='referral_withdraw_list'),

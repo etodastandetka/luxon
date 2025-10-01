@@ -10,6 +10,7 @@ from django.conf import settings
 import json
 import logging
 import requests
+import sqlite3
 
 from .referral_models import ReferralWithdrawalRequest
 from .models import BotDepositRequest, BotWithdrawRequest
@@ -434,3 +435,116 @@ def get_requests(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+# ============================
+# Simple Admin <-> User Chat
+# ============================
+
+def _ensure_chat_table(conn):
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            direction TEXT NOT NULL, -- 'in' (from user) | 'out' (from admin)
+            message TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+
+@require_http_methods(["GET"])
+def chat_history(request, user_id: int):
+    """Return last N chat messages for user from bot DB."""
+    try:
+        limit = int(request.GET.get('limit', 100))
+        bot_db = getattr(settings, 'BOT_DATABASE_PATH', None)
+        if not bot_db:
+            return JsonResponse({'success': False, 'error': 'BOT_DATABASE_PATH не задан'}, status=500)
+        conn = sqlite3.connect(str(bot_db))
+        cur = conn.cursor()
+        _ensure_chat_table(conn)
+        cur.execute('''
+            SELECT id, user_id, direction, message, created_at
+            FROM chat_messages
+            WHERE user_id=?
+            ORDER BY id DESC
+            LIMIT ?
+        ''', (user_id, limit))
+        rows = cur.fetchall()
+        conn.close()
+        items = [
+            {
+                'id': rid,
+                'user_id': uid,
+                'direction': direction,
+                'message': message,
+                'created_at': created_at,
+            }
+            for (rid, uid, direction, message, created_at) in reversed(rows)
+        ]
+        return JsonResponse({'success': True, 'items': items})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_send_from_admin(request):
+    """Admin sends a message to user: store in DB and relay via Telegram sendMessage."""
+    try:
+        data = json.loads(request.body or '{}')
+        user_id = int(data.get('user_id') or 0)
+        message = str(data.get('message') or '').strip()
+        if not user_id or not message:
+            return JsonResponse({'success': False, 'error': 'user_id и message обязательны'}, status=400)
+
+        bot_db = getattr(settings, 'BOT_DATABASE_PATH', None)
+        if not bot_db:
+            return JsonResponse({'success': False, 'error': 'BOT_DATABASE_PATH не задан'}, status=500)
+        conn = sqlite3.connect(str(bot_db))
+        cur = conn.cursor()
+        _ensure_chat_table(conn)
+        cur.execute('INSERT INTO chat_messages (user_id, direction, message) VALUES (?, ?, ?)', (user_id, 'out', message))
+        conn.commit()
+        conn.close()
+
+        # Relay via Telegram
+        try:
+            bot_token = getattr(settings, 'BOT_TOKEN', '')
+            if bot_token:
+                api = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                requests.post(api, json={'chat_id': user_id, 'text': message, 'disable_web_page_preview': True}, timeout=6)
+        except Exception:
+            pass
+
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_ingest_from_bot(request):
+    """Webhook-like endpoint for the bot to push user's messages into admin chat storage."""
+    try:
+        data = json.loads(request.body or '{}')
+        user_id = int(data.get('user_id') or 0)
+        message = str(data.get('message') or '').strip()
+        if not user_id or not message:
+            return JsonResponse({'success': False, 'error': 'user_id и message обязательны'}, status=400)
+
+        bot_db = getattr(settings, 'BOT_DATABASE_PATH', None)
+        if not bot_db:
+            return JsonResponse({'success': False, 'error': 'BOT_DATABASE_PATH не задан'}, status=500)
+        conn = sqlite3.connect(str(bot_db))
+        cur = conn.cursor()
+        _ensure_chat_table(conn)
+        cur.execute('INSERT INTO chat_messages (user_id, direction, message) VALUES (?, ?, ?)', (user_id, 'in', message))
+        conn.commit()
+        conn.close()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

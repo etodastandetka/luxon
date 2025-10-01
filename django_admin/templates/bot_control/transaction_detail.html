@@ -97,6 +97,10 @@
             <div style="color:#fff; font-size:14px; font-weight:600;">{{ transaction.bookmaker|upper }}</div>
         </div>
         <div>
+            <div style="color:#999; font-size:12px;">Банк</div>
+            <div style="color:#fff; font-size:14px; font-weight:600;">{{ transaction.bank|default:'—' }}</div>
+        </div>
+        <div>
             <div style="color:#999; font-size:12px;">Сумма</div>
             <div style="color:#fff; font-size:18px; font-weight:700;">{{ transaction.amount }} сом</div>
         </div>

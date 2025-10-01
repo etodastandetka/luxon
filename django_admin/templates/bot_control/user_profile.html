@@ -27,15 +27,9 @@
       <div style="color:#8b8b8b; font-size:12px;">ID: {{ user.user_id }}</div>
     </div>
   </div>
-  {% if user.username %}
-    <a class="action-btn action-btn--neutral" style="padding:8px 12px; display:inline-flex; align-items:center; gap:8px;" href="https://t.me/{{ user.username }}" target="_blank" rel="noopener">
-      <i class="fab fa-telegram-plane"></i><span>Открыть в Telegram</span>
-    </a>
-  {% else %}
-    <a class="action-btn action-btn--neutral" style="padding:8px 12px; display:inline-flex; align-items:center; gap:8px;" href="tg://user?id={{ user.user_id }}">
-      <i class="fab fa-telegram-plane"></i><span>Открыть в Telegram</span>
-    </a>
-  {% endif %}
+  <a class="action-btn action-btn--neutral" style="padding:8px 12px; display:inline-flex; align-items:center; gap:8px;" href="#chat">
+    <i class="fas fa-comments"></i><span>Открыть чат</span>
+  </a>
 </div>
 
 <div class="card" style="padding:16px;">
@@ -73,5 +67,84 @@
   {% endfor %}
 </div>
 {% endif %}
+
+<!-- Chat widget -->
+<div id="chat" class="card" style="padding:12px; margin-top:12px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <i class="fas fa-comments"></i>
+      <div style="font-weight:600;">Чат с пользователем</div>
+    </div>
+    <div style="color:#8b8b8b; font-size:12px;">ID: {{ user.user_id }}</div>
+  </div>
+  <div id="chat-history" style="height:260px; overflow:auto; border:1px solid #222; border-radius:10px; padding:10px; background:#0f0f0f;">
+    <div id="chat-empty" style="color:#7a869a; font-size:12px;">Здесь будет история сообщений…</div>
+  </div>
+  <div style="display:flex; gap:8px; margin-top:10px;">
+    <input id="chat-input" type="text" placeholder="Написать сообщение" style="flex:1; background:#0f0f0f; border:1px solid #2a2a2a; color:#e8f0ff; border-radius:8px; padding:10px; outline:none;">
+    <button id="chat-send" class="action-btn action-btn--neutral" style="padding:10px 14px;">Отправить</button>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const CHAT_HISTORY_URL = '{% url "bot_control:chat_history" user.user_id %}';
+const CHAT_SEND_URL = '{% url "bot_control:chat_send_from_admin" %}';
+function getCookie(name) { const v = `; ${document.cookie}`; const p = v.split(`; ${name}=`); if (p.length === 2) return p.pop().split(';').shift(); }
+
+function appendMsg(item){
+  const box = document.getElementById('chat-history');
+  const empty = document.getElementById('chat-empty');
+  if (empty) empty.style.display = 'none';
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.justifyContent = item.direction === 'out' ? 'flex-end' : 'flex-start';
+  wrap.style.margin = '6px 0';
+  const bubble = document.createElement('div');
+  bubble.textContent = item.message;
+  bubble.style.maxWidth = '80%';
+  bubble.style.padding = '8px 10px';
+  bubble.style.borderRadius = '10px';
+  bubble.style.fontSize = '13px';
+  bubble.style.lineHeight = '1.35';
+  if (item.direction === 'out') { bubble.style.background = '#0e2f24'; bubble.style.color = '#c6ffe7'; bubble.style.border = '1px solid #1bd58a'; }
+  else { bubble.style.background = '#191919'; bubble.style.color = '#e8e8e8'; bubble.style.border = '1px solid #2a2a2a'; }
+  wrap.appendChild(bubble);
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function loadHistory(){
+  try{
+    const res = await fetch(CHAT_HISTORY_URL, {credentials:'same-origin'});
+    if(!res.ok) return; const data = await res.json(); if(!data.success) return;
+    const box = document.getElementById('chat-history'); box.innerHTML='';
+    if(!data.items || !data.items.length){ document.getElementById('chat-empty').style.display='block'; return; }
+    data.items.forEach(appendMsg);
+  }catch(e){ /* silent */ }
+}
+
+async function sendMessage(){
+  const input = document.getElementById('chat-input');
+  const text = (input.value||'').trim(); if(!text) return;
+  input.value='';
+  appendMsg({direction:'out', message:text});
+  try{
+    await fetch(CHAT_SEND_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')||''},
+      body: JSON.stringify({user_id: {{ user.user_id }}, message: text})
+    });
+  }catch(e){ /* silent */ }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadHistory();
+  document.getElementById('chat-send').addEventListener('click', sendMessage);
+  document.getElementById('chat-input').addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMessage(); });
+  setInterval(loadHistory, 5000);
+});
+</script>
+{% endblock %}
 
 {% endblock %}
