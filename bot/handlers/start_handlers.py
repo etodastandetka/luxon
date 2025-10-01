@@ -35,7 +35,8 @@ async def check_channel_subscription(bot, user_id, channel_name):
     """Проверяет подписку пользователя на канал"""
     try:
         # Получаем информацию о канале
-        chat_member = await bot.get_chat_member(channel_name, user_id)
+        chat_id = channel_name if channel_name.startswith('@') else f"@{channel_name}"
+        chat_member = await bot.get_chat_member(chat_id, user_id)
         return chat_member.status in ['member', 'administrator', 'creator']
     except Exception as e:
         logger.error(f"Ошибка проверки подписки на канал {channel_name}: {e}")
@@ -63,15 +64,22 @@ async def handle_start(message: types.Message, state: FSMContext, db, bot):
         if bot_settings.get('channel', {}).get('enabled', False):
             channel_name = bot_settings.get('channel', {}).get('name', '@bingokg_news')
             is_subscribed = await check_channel_subscription(bot, user_id, channel_name)
-            
+
             if not is_subscribed:
-                # Показываем сообщение о необходимости подписки
+                # Инлайн-клавиатура: Подписаться (URL) + Проверить подписку (callback)
+                url = f"https://t.me/{channel_name.lstrip('@')}"
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔗 Открыть канал", url=url)],
+                    [InlineKeyboardButton(text="✅ Проверить подписку", callback_data=f"verify_sub:{channel_name}")]
+                ])
                 await message.answer(
-                    f"📢 <b>Подписка на канал обязательна!</b>\n\n"
-                    f"Для использования бота необходимо подписаться на канал:\n"
-                    f"🔗 {channel_name}\n\n"
-                    f"После подписки нажмите /start снова.",
-                    parse_mode="HTML"
+                    (
+                        "📢 <b>Подписка на канал обязательна!</b>\n\n"
+                        "Для использования бота необходимо подписаться на канал и затем нажать кнопку ниже.\n\n"
+                        f"Канал: {channel_name}"
+                    ),
+                    parse_mode="HTML",
+                    reply_markup=kb
                 )
                 return
         
@@ -185,6 +193,54 @@ def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None, bot=None
     @dp.message(CommandStart(deep_link=True))
     async def _start_deeplink(message: types.Message, state: FSMContext):
         await handle_start(message, state, db, bot)
+
+    # Проверка подписки по кнопке
+    @dp.callback_query(lambda c: c.data and c.data.startswith('verify_sub:'))
+    async def _verify_sub_cb(callback: types.CallbackQuery, state: FSMContext):
+        try:
+            user_id = callback.from_user.id
+            channel_name = callback.data.split(':', 1)[1] if ':' in callback.data else '@bingokg_news'
+            ok = await check_channel_subscription(bot, user_id, channel_name)
+            if not ok:
+                url = f"https://t.me/{channel_name.lstrip('@')}"
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔗 Открыть канал", url=url)],
+                    [InlineKeyboardButton(text="🔄 Проверить ещё раз", callback_data=f"verify_sub:{channel_name}")]
+                ])
+                await callback.message.edit_text(
+                    (
+                        "❌ Подписка пока не найдена.\n\n"
+                        f"Убедитесь, что подписаны на {channel_name}, затем нажмите кнопку ниже."
+                    ),
+                    reply_markup=kb
+                )
+                await callback.answer("Подписка не найдена")
+                return
+
+            # Подписка подтверждена — продолжаем обычный /start-поток
+            await callback.answer("Подписка подтверждена")
+            # Если язык не выбран — предложить выбрать
+            language = db.get_user_language(user_id)
+            if not language:
+                try:
+                    from handlers.language_handlers import handle_language_selection as _handle_language_selection
+                    await _handle_language_selection(callback.message, 'ru', db)
+                    return
+                except Exception as e:
+                    logger.error(f"Ошибка показа выбора языка (после проверки подписки): {e}")
+            # Иначе — показать главное меню
+            try:
+                from handlers.deposit_handlers import show_main_menu
+                language = language or 'ru'
+                await show_main_menu(callback.message, language)
+            except Exception as e:
+                await callback.message.answer("Подписка подтверждена. Введите /start")
+        except Exception as e:
+            logger.error(f"verify_sub error: {e}")
+            try:
+                await callback.answer("Ошибка проверки", show_alert=False)
+            except Exception:
+                pass
 
     # /help
     @dp.message(Command('help'))
