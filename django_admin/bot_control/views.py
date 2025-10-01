@@ -1755,6 +1755,32 @@ def api_save_bot_settings(request):
                 INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
                 VALUES ('deposit_banks', ?, CURRENT_TIMESTAMP)
             ''', (_json.dumps(norm_banks, ensure_ascii=False),))
+
+            # withdrawal settings -> bot_settings
+            w = data.get('withdrawals', {}) or {}
+            w_enabled = bool(w.get('enabled', True))
+            w_banks = w.get('banks', []) or []
+            # map admin keys -> bot button names
+            w_map = {
+                'kompanion': 'Компаньон',
+                'odengi': 'О! Деньги',
+                'bakai': 'Бакай',
+                'balance': 'Balance.kg',
+                'megapay': 'MegaPay',
+                'mbank': 'MBank'
+            }
+            w_norm = []
+            for b in w_banks:
+                k = str(b).strip().lower()
+                w_norm.append(w_map.get(k, k))
+            cur.execute('''
+                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
+                VALUES ('withdrawals_enabled', ?, CURRENT_TIMESTAMP)
+            ''', ('1' if w_enabled else '0',))
+            cur.execute('''
+                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
+                VALUES ('withdraw_banks', ?, CURRENT_TIMESTAMP)
+            ''', (_json.dumps(w_norm, ensure_ascii=False),))
             conn.commit()
             conn.close()
         except Exception:

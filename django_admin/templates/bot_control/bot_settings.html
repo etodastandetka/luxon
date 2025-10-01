@@ -151,34 +151,14 @@
                 
                 <div class="withdrawal-grid">
                     <label class="checkbox-item">
-                        <input type="checkbox" data-bank="mbank" checked>
+                        <input type="checkbox" data-bank="kompanion" checked>
                         <span class="checkmark"></span>
-                        mbank
+                        kompanion
                     </label>
                     <label class="checkbox-item">
-                        <input type="checkbox" data-bank="optima" checked>
+                        <input type="checkbox" data-bank="odengi" checked>
                         <span class="checkmark"></span>
-                        optima
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" data-bank="elsom" checked>
-                        <span class="checkmark"></span>
-                        elsom
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" data-bank="mobile" checked>
-                        <span class="checkmark"></span>
-                        mobile
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" data-bank="balance">
-                        <span class="checkmark"></span>
-                        balance
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" data-bank="omoney" checked>
-                        <span class="checkmark"></span>
-                        omoney
+                        odengi
                     </label>
                     <label class="checkbox-item">
                         <input type="checkbox" data-bank="bakai" checked>
@@ -186,14 +166,19 @@
                         bakai
                     </label>
                     <label class="checkbox-item">
-                        <input type="checkbox" data-bank="elcart" checked>
+                        <input type="checkbox" data-bank="balance" checked>
                         <span class="checkmark"></span>
-                        elcart
+                        balance
                     </label>
                     <label class="checkbox-item">
-                        <input type="checkbox" data-bank="companon" checked>
+                        <input type="checkbox" data-bank="megapay" checked>
                         <span class="checkmark"></span>
-                        companon
+                        megapay
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" data-bank="mbank" checked>
+                        <span class="checkmark"></span>
+                        mbank
                     </label>
                 </div>
             </div>
@@ -392,7 +377,9 @@ async function loadSettings() {
         
         if (settings.withdrawals) {
             document.getElementById('withdrawals-enabled').checked = settings.withdrawals.enabled;
-            settings.withdrawals.banks.forEach(bank => {
+            // Сбросим все чекбоксы и проставим из настроек
+            document.querySelectorAll('.withdrawal-grid [data-bank]').forEach(cb => cb.checked = false);
+            (settings.withdrawals.banks || []).forEach(bank => {
                 const checkbox = document.querySelector(`[data-bank="${bank}"]`);
                 if (checkbox) checkbox.checked = true;
             });

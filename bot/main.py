@@ -84,6 +84,21 @@ class UniversalBot:
         except Exception:
             return { 'melbet','1xbet','1win','mostbet' }
 
+    def _withdrawals_enabled(self) -> bool:
+        """Reads withdrawals_enabled flag from SQLite bot_settings."""
+        try:
+            import sqlite3
+            conn = sqlite3.connect(self.db.db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM bot_settings WHERE key='withdrawals_enabled'")
+            row = cur.fetchone()
+            conn.close()
+            if not row:
+                return True
+            return str(row[0]).strip() in ('1','true','True')
+        except Exception:
+            return True
+
     def _register_middleware(self):
         """Регистрация middleware"""
         # Включаем middleware статуса бота (пауза/техработы)
@@ -331,6 +346,13 @@ class UniversalBot:
         logger.info(f"Withdraw button pressed by user {message.from_user.id}")
         user_id = message.from_user.id
         self.db.save_user_data(user_id, 'current_action', 'withdraw')
+        # Глобальная блокировка выводов
+        try:
+            if not self._withdrawals_enabled():
+                await message.answer("⛔ Выводы временно не работают. Попробуйте позже.")
+                return
+        except Exception:
+            pass
         await self._show_bookmaker_selection(message, 'withdraw')
     
     async def _handle_referral(self, message):

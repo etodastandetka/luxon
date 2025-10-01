@@ -148,6 +148,40 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
     
     # Создаем инлайн клавиатуру с банками для вывода
     kb = InlineKeyboardBuilder()
+
+    # Прочитаем глобальную настройку вывода и разрешённые банки из bot_settings
+    def _read_withdraw_settings():
+        try:
+            import sqlite3, json
+            db_path = getattr(db, 'db_path', '') or ''
+            if not db_path:
+                from pathlib import Path
+                db_path = str(Path(__file__).resolve().parents[1] / 'universal_bot.db')
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM bot_settings WHERE key='withdrawals_enabled'")
+            row_en = cur.fetchone()
+            cur.execute("SELECT value FROM bot_settings WHERE key='withdraw_banks'")
+            row_banks = cur.fetchone()
+            conn.close()
+            enabled = True if not row_en else (str(row_en[0]).strip() in ('1','true','True'))
+            banks = []
+            try:
+                banks = json.loads(row_banks[0]) if row_banks and row_banks[0] else []
+            except Exception:
+                banks = []
+            valid = {'Компаньон','О! Деньги','Бакай','Balance.kg','MegaPay','MBank'}
+            banks = [b for b in banks if b in valid]
+            return enabled, set(banks)
+        except Exception:
+            return True, set()
+
+    w_enabled, allowed_banks = _read_withdraw_settings()
+    if not w_enabled:
+        await message.answer("⛔ Выводы временно не работают. Попробуйте позже.")
+        # Возвращаем главное меню
+        await show_main_menu(message, language)
+        return
     
     # Список банков для вывода
     banks = [
@@ -158,10 +192,13 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
         ("MegaPay", "megapay"),
         ("MBank", "mbank")
     ]
-    
-    # Показываем все банки как доступные
+
+    # Рендерим: разрешённые банки — обычные кнопки, запрещённые — alert
     for bank_name, bank_code in banks:
-        kb.button(text=bank_name, callback_data=f"withdraw_bank_{bank_code}")
+        if not allowed_banks or bank_name in allowed_banks:
+            kb.button(text=bank_name, callback_data=f"withdraw_bank_{bank_code}")
+        else:
+            kb.button(text=f"{bank_name} (недоступно)", callback_data=f"withdraw_bank_unavailable_{bank_code}")
     
     kb.button(text="🔙 Назад в меню", callback_data="back_to_menu")
     kb.adjust(2)
@@ -178,6 +215,17 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
     # Сохраняем состояние
     db.save_user_data(user_id, 'current_state', 'waiting_for_bank_selection')
     logger.info(f"Bank selection shown, state set to waiting_for_bank_selection for user {user_id}")
+
+    # Обработчик для недоступных банков
+    @message.bot.callback_query(F.data.startswith('withdraw_bank_unavailable_'))
+    async def handle_unavailable(cb: types.CallbackQuery):
+        try:
+            await cb.answer("На данный момент вывод на этот банк недоступен", show_alert=True)
+        except Exception:
+            try:
+                await cb.answer("Недоступно", show_alert=True)
+            except Exception:
+                pass
 
 async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookmakers, bot, callback_message=None):
     """Обработка выбора банка - переход к Шагу 2: Запрос QR-кода"""
