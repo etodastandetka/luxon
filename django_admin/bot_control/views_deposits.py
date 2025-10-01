@@ -136,8 +136,15 @@ def transaction_detail(request, trans_id):
 
         tx = dict(row)
 
-        # Пытаемся восстановить URL фото: приоритет готового URL, иначе через file_id -> getFile
-        photo_url = tx.get('photo_file_url') or ''
+        # Пытаемся восстановить URL фото (разные пайплайны пишут в разные поля)
+        photo_url = (
+            tx.get('photo_file_url') or
+            tx.get('receipt_photo_url') or
+            tx.get('qr_photo_url') or
+            tx.get('photo_url') or
+            tx.get('screenshot_url') or
+            ''
+        )
         try:
             if not photo_url:
                 file_id = (tx.get('photo_file_id') or '').strip()
