@@ -13,7 +13,7 @@ import requests
 import sqlite3
 
 from .referral_models import ReferralWithdrawalRequest
-from .models import BotDepositRequest, BotWithdrawRequest
+from .models import BotDepositRequest, BotWithdrawRequest, BotConfiguration
 from .views_referral import (
     _get_user_ctx,
     _get_referral_stats,
@@ -511,9 +511,11 @@ def chat_send_from_admin(request):
         conn.commit()
         conn.close()
 
-        # Relay via Telegram
+        # Relay via Telegram (prefer BotConfiguration bot_token, fallback to settings.BOT_TOKEN)
         try:
-            bot_token = getattr(settings, 'BOT_TOKEN', '')
+            cfg_token = (BotConfiguration.get_setting('bot_token') or '').strip()
+            settings_token = (getattr(settings, 'BOT_TOKEN', None) or '').strip()
+            bot_token = cfg_token or settings_token
             if bot_token:
                 api = f"https://api.telegram.org/bot{bot_token}/sendMessage"
                 requests.post(api, json={'chat_id': user_id, 'text': message, 'disable_web_page_preview': True}, timeout=6)

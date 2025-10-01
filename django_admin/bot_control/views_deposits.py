@@ -115,6 +115,21 @@ def deposits_list(request):
         logger.error(f"Error in deposits_list: {str(e)}", exc_info=True)
         return render(request, 'bot_control/error.html', {'error': str(e)})
 
+def user_chat(request, user_id: int):
+    """Full-page chat for a given user_id."""
+    try:
+        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute('SELECT user_id, username, first_name, last_name FROM users WHERE user_id=?', (user_id,))
+        row = cur.fetchone()
+        conn.close()
+        user = dict(row) if row else {'user_id': user_id, 'username': '', 'first_name': '', 'last_name': ''}
+        return render(request, 'bot_control/chat_full.html', {'user': user})
+    except Exception as e:
+        logger.error(f"Error in user_chat: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})
+
 def user_profile(request, user_id: int):
     """User profile: aggregates and all requests for a given user_id (from bot DB)."""
     try:

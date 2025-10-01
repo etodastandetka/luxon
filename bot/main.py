@@ -8,6 +8,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import os
+import requests
 
 # Импорт обработчиков
 from handlers import (
@@ -172,6 +173,22 @@ class UniversalBot:
                 first_name=message.from_user.first_name,
                 last_name=message.from_user.last_name
             )
+
+            # Ingest plain text into admin chat storage so it appears on the site
+            try:
+                if text and not text.startswith('/'):
+                    admin_base = os.getenv('ADMIN_BASE_URL') or os.getenv('SITE_BASE_URL') or 'http://localhost:8081'
+                    ingest_url = f"{admin_base.rstrip('/')}/bot/api/chat/ingest/"
+                    # fire-and-forget in thread to not block handler
+                    loop = asyncio.get_running_loop()
+                    def _post():
+                        try:
+                            requests.post(ingest_url, json={'user_id': user_id, 'message': text}, timeout=3)
+                        except Exception:
+                            pass
+                    await loop.run_in_executor(None, _post)
+            except Exception:
+                pass
             
             # Обработка фото
             if message.photo:

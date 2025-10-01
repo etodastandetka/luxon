@@ -27,7 +27,7 @@
       <div style="color:#8b8b8b; font-size:12px;">ID: {{ user.user_id }}</div>
     </div>
   </div>
-  <a class="action-btn action-btn--neutral" style="padding:8px 12px; display:inline-flex; align-items:center; gap:8px;" href="#chat">
+  <a class="action-btn action-btn--neutral" style="padding:8px 12px; display:inline-flex; align-items:center; gap:8px;" href="{% url 'bot_control:user_chat' user.user_id %}">
     <i class="fas fa-comments"></i><span>Открыть чат</span>
   </a>
 </div>

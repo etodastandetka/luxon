@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Чат с {{ user.username|default:user.user_id }}{% endblock %}
+
+{% block content %}
+<style>
+  .chat-wrap { display:flex; flex-direction:column; height:calc(100vh - 110px); }
+  .chat-head { display:flex; align-items:center; justify-content:space-between; padding:10px 4px; }
+  .chat-board { flex:1; overflow:auto; border:1px solid #222; border-radius:12px; padding:12px; background:#0f0f0f; }
+  .chat-row { display:flex; margin:8px 0; }
+  .chat-msg { max-width:72%; padding:10px 12px; border-radius:12px; font-size:14px; line-height:1.4; }
+  .chat-msg--in { background:#191919; color:#e8e8e8; border:1px solid #2a2a2a; }
+  .chat-msg--out { background:#0e2f24; color:#c6ffe7; border:1px solid #1bd58a; margin-left:auto; }
+  .chat-input { display:flex; gap:8px; margin-top:10px; }
+  .chat-input input { flex:1; background:#0f0f0f; border:1px solid #2a2a2a; color:#e8f0ff; border-radius:8px; padding:12px; outline:none; }
+</style>
+
+<div class="page-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <div class="header-avatar"><i class="fas fa-comments"></i></div>
+    <div class="header-content">
+      <h1>Чат</h1>
+      <p>Пользователь: {{ user.username|default:user.user_id }}</p>
+    </div>
+  </div>
+  <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' user.user_id %}">← Профиль</a>
+</div>
+
+<div class="chat-wrap card">
+  <div id="board" class="chat-board">
+    <div id="empty" style="color:#7a869a; font-size:12px;">История пуста…</div>
+  </div>
+  <div class="chat-input">
+    <input id="text" placeholder="Написать сообщение">
+    <button id="send" class="action-btn action-btn--neutral">Отправить</button>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const HISTORY_URL = '{% url "bot_control:chat_history" user.user_id %}';
+const SEND_URL = '{% url "bot_control:chat_send_from_admin" %}';
+function getCookie(name){ const v = `; ${document.cookie}`; const p = v.split(`; ${name}=`); if(p.length===2) return p.pop().split(';').shift(); }
+function add(msg){
+  const b = document.getElementById('board');
+  const e = document.getElementById('empty'); if(e) e.style.display='none';
+  const row = document.createElement('div'); row.className='chat-row';
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (msg.direction==='out' ? 'chat-msg--out':'chat-msg--in');
+  div.textContent = msg.message; row.appendChild(div); b.appendChild(row); b.scrollTop = b.scrollHeight;
+}
+async function load(){ try{ const r=await fetch(HISTORY_URL,{credentials:'same-origin'}); if(!r.ok) return; const d=await r.json(); if(!d.success) return; const b=document.getElementById('board'); b.innerHTML=''; if(!d.items||!d.items.length){ document.getElementById('empty').style.display='block'; return;} d.items.forEach(add);}catch(e){} }
+async function send(){ const t=document.getElementById('text'); const v=(t.value||'').trim(); if(!v) return; t.value=''; add({direction:'out', message:v}); try{ await fetch(SEND_URL,{method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')||''}, body:JSON.stringify({user_id: {{ user.user_id }}, message: v})}); }catch(e){} }
+
+document.addEventListener('DOMContentLoaded',()=>{ load(); document.getElementById('send').addEventListener('click', send); document.getElementById('text').addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); }); setInterval(load, 4000); });
+</script>
+{% endblock %}
+
+{% endblock %}
