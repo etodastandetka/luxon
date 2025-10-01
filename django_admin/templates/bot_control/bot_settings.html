@@ -23,7 +23,7 @@
                         <span class="setting-label">Пауза</span>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" id="pause-bot">
+                        <input type="checkbox" id="pause-bot" name="pause-bot">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -80,7 +80,7 @@
                         <span class="setting-label">Включить пополнения</span>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" id="deposits-enabled" checked>
+                        <input type="checkbox" id="deposits-enabled" name="deposits-enabled" checked>
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -145,7 +145,7 @@
                         <span class="setting-label">Включить выводы</span>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" id="withdrawals-enabled" checked>
+                        <input type="checkbox" id="withdrawals-enabled" name="withdrawals-enabled" checked>
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -205,8 +205,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Выберите кошелек</label>
-                    <select id="wallet-select" class="form-input" style="appearance: none;">
+                    <label class="form-label" for="wallet-select">Выберите кошелек</label>
+                    <select id="wallet-select" name="wallet-select" class="form-input" style="appearance: none;">
                         <option value="">Выберите реквизит…</option>
                     </select>
                 </div>
@@ -242,8 +242,8 @@
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Название канала</label>
-                    <input type="text" id="channel-name" class="form-input" placeholder="@bingokg_news" value="@bingokg_news">
+                    <label class="form-label" for="channel-name">Название канала</label>
+                    <input type="text" id="channel-name" name="channel-name" class="form-input" placeholder="@bingokg_news" value="@bingokg_news">
                 </div>
             </div>
         </div>
