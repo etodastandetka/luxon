@@ -1,20 +1,20 @@
 {% extends 'base.html' %}
 
-{% block title %}Настройки бота - Luxon{% endblock %}
+{% block title %}⚙️ Настройки бота - Luxon{% endblock %}
+{% block header_icon %}cog{% endblock %}
+{% block header_title %}⚙️ Настройки{% endblock %}
+{% block header_subtitle %}Управление системой{% endblock %}
 
 {% block content %}
-<div class="mobile-container">
-    <div class="header">
-        <h1>⚙️ Настройки</h1>
-        <p>Управление системой</p>
-    </div>
-
     <div class="content">
         <!-- Основные настройки -->
-        <div class="settings-card">
+        <div class="card">
             <div class="card-header">
                 <div class="card-icon">⏸️</div>
-                <h3>Основные настройки</h3>
+                <div>
+                    <div class="card-title">Основные настройки</div>
+                    <div class="card-subtitle"></div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="setting-item">
@@ -30,10 +30,13 @@
         </div>
 
         <!-- Настройки сайтов -->
-        <div class="settings-card">
+        <div class="card">
             <div class="card-header">
                 <div class="card-icon">🌐</div>
-                <h3>Настройки сайтов</h3>
+                <div>
+                    <div class="card-title">Настройки сайтов</div>
+                    <div class="card-subtitle"></div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="checkbox-grid">
@@ -82,10 +85,13 @@
         </div>
 
         <!-- Настройки пополнений -->
-        <div class="settings-card">
+        <div class="card">
             <div class="card-header">
                 <div class="card-icon">💰</div>
-                <h3>Настройки пополнений</h3>
+                <div>
+                    <div class="card-title">Настройки пополнений</div>
+                    <div class="card-subtitle"></div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="setting-item">
@@ -144,10 +150,13 @@
         </div>
 
         <!-- Настройки выводов -->
-        <div class="settings-card">
+        <div class="card">
             <div class="card-header">
                 <div class="card-icon">⏰</div>
-                <h3>Настройки выводов</h3>
+                <div>
+                    <div class="card-title">Настройки выводов</div>
+                    <div class="card-subtitle"></div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="setting-item">
@@ -246,10 +255,13 @@
         </div>
 
         <!-- Подписка на канал -->
-        <div class="settings-card">
+        <div class="card">
             <div class="card-header">
                 <div class="card-icon">📢</div>
-                <h3>Подписка на канал</h3>
+                <div>
+                    <div class="card-title">Подписка на канал</div>
+                    <div class="card-subtitle"></div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="setting-item">
@@ -274,8 +286,6 @@
             💾 Сохранить настройки
         </button>
     </div>
-
-</div>
 
 <script>
 // Автоматическое сохранение при изменении настроек
@@ -494,45 +504,7 @@ function saveSettings() {
 </script>
 
 <style>
-/* Темная тема для настроек */
-.settings-card {
-    background: #2d2d2d;
-    border: 1px solid #404040;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    overflow: hidden;
-}
-
-.card-header {
-    background: #3a3a3a;
-    padding: 16px 20px;
-    border-bottom: 1px solid #404040;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.card-icon {
-    font-size: 20px;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #4a4a4a;
-    border-radius: 8px;
-}
-
-.card-header h3 {
-    color: #ffffff;
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.card-body {
-    padding: 20px;
-}
+/* Доп. элементы управления для страницы настроек */
 
 .setting-item {
     display: flex;
