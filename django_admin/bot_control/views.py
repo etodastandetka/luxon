@@ -272,6 +272,27 @@ def api_bot_status(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
+def api_list_qr_hashes(request):
+    """API для получения списка всех кошельков (QRHash) со статусами.
+    Ответ: { wallets: [ {id, account_name, is_main, is_active} ], total:int }
+    """
+    try:
+        from .models import QRHash
+        qs = QRHash.objects.all().order_by('-is_main', '-is_active', 'account_name')
+        wallets = [
+            {
+                'id': item.id,
+                'account_name': item.account_name,
+                'is_main': bool(item.is_main),
+                'is_active': bool(item.is_active),
+            }
+            for item in qs
+        ]
+        return JsonResponse({ 'wallets': wallets, 'total': len(wallets) })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
 def api_set_bot_status(request):
     """API для установки статуса бота"""
     if request.method == 'POST':

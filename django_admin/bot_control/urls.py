@@ -42,6 +42,7 @@ urlpatterns = [
     path('api/save-qr-hash/', views.api_save_qr_hash, name='api_save_qr_hash'),
     path('api/delete-qr-hash/<int:hash_id>/', views.api_delete_qr_hash, name='api_delete_qr_hash'),
     path('api/qr-hashes/', views.api_qr_hashes, name='api_qr_hashes'),
+    path('api/qr-hashes/list/', views.api_list_qr_hashes, name='api_list_qr_hashes'),
     path('api/qr-hashes/', views.api_add_qr_hash, name='api_add_qr_hash'),
     path('api/qr-hashes/<int:qr_id>/set-main/', views.api_set_main_qr_hash, name='api_set_main_qr_hash'),
     path('api/qr-hashes/<int:qr_id>/toggle/', views.api_toggle_qr_hash, name='api_toggle_qr_hash'),
