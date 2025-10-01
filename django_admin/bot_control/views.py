@@ -298,6 +298,47 @@ def api_set_bot_status(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+        # Нормализация списков банков к ключам UI перед сохранением
+        try:
+            # deposits
+            dep = data.get('deposits') or {}
+            dep_banks = dep.get('banks') or []
+            dep_allowed = {'mbank','bakai','balance','demir','omoney','elcart','megapay','mega','qr'}
+            dep_norm = []
+            for b in dep_banks:
+                k = str(b).strip().lower()
+                if k == 'mega':
+                    k = 'megapay'
+                if k in dep_allowed and k not in dep_norm:
+                    dep_norm.append(k)
+            dep['banks'] = dep_norm
+            data['deposits'] = {
+                'enabled': bool(dep.get('enabled', True)),
+                'banks': dep_norm
+            }
+            # withdrawals
+            w = data.get('withdrawals') or {}
+            w_banks = w.get('banks') or []
+            w_map = {
+                'companon': 'kompanion', 'kompanion': 'kompanion', 'компаньон': 'kompanion',
+                'odengi': 'odengi', 'omoney': 'odengi', 'o!': 'odengi', 'o! деньги': 'odengi',
+                'bakai': 'bakai', 'balance': 'balance', 'balance.kg': 'balance',
+                'megapay': 'megapay', 'mega': 'megapay',
+                'mbank': 'mbank'
+            }
+            w_allowed = {'kompanion','odengi','bakai','balance','megapay','mbank'}
+            w_norm = []
+            for b in w_banks:
+                k = w_map.get(str(b).strip().lower())
+                if k and k in w_allowed and k not in w_norm:
+                    w_norm.append(k)
+            w['banks'] = w_norm
+            data['withdrawals'] = {
+                'enabled': bool(w.get('enabled', True)),
+                'banks': w_norm
+            }
+        except Exception:
+            pass
             is_active = data.get('is_active', True)
             maintenance_message = data.get('maintenance_message', '')
             
@@ -1716,13 +1757,52 @@ def api_save_bot_settings(request):
     
     try:
         data = json.loads(request.body)
-        
-        # Сохраняем каждую настройку (Django БД)
+
+        # ===== Нормализация входящих данных =====
+        # Sites as-is (UI уже отдаёт корректно)
+        sites = data.get('sites', []) or []
+
+        # Deposits
+        dep_in = data.get('deposits') or {}
+        dep_enabled = bool(dep_in.get('enabled', True))
+        dep_banks_in = dep_in.get('banks') or []
+        dep_allowed = {'mbank','bakai','balance','demir','omoney','elcart','megapay','mega','qr'}
+        dep_banks_norm = []
+        for b in dep_banks_in:
+            k = str(b).strip().lower()
+            if k == 'mega':
+                k = 'megapay'
+            if k in dep_allowed and k not in dep_banks_norm:
+                dep_banks_norm.append(k)
+        deposits = {'enabled': dep_enabled, 'banks': dep_banks_norm}
+
+        # Withdrawals
+        w_in = data.get('withdrawals') or {}
+        w_enabled = bool(w_in.get('enabled', True))
+        w_banks_in = w_in.get('banks') or []
+        w_map = {
+            'companon': 'kompanion', 'kompanion': 'kompanion', 'компаньон': 'kompanion',
+            'odengi': 'odengi', 'omoney': 'odengi', 'o!': 'odengi', 'o! деньги': 'odengi',
+            'bakai': 'bakai', 'balance': 'balance', 'balance.kg': 'balance',
+            'megapay': 'megapay', 'mega': 'megapay',
+            'mbank': 'mbank'
+        }
+        w_allowed = {'kompanion','odengi','bakai','balance','megapay','mbank'}
+        w_banks_norm = []
+        for b in w_banks_in:
+            k = w_map.get(str(b).strip().lower())
+            if k and k in w_allowed and k not in w_banks_norm:
+                w_banks_norm.append(k)
+        withdrawals = {'enabled': w_enabled, 'banks': w_banks_norm}
+
+        channel = data.get('channel', {}) or {}
+
+        # ===== Сохраняем в Django БД =====
         BotConfiguration.set_setting('pause', data.get('pause', False), 'Пауза бота')
-        BotConfiguration.set_setting('sites', data.get('sites', []), 'Активные сайты')
-        BotConfiguration.set_setting('deposits', data.get('deposits', {}), 'Настройки пополнений')
-        BotConfiguration.set_setting('withdrawals', data.get('withdrawals', {}), 'Настройки выводов')
-        BotConfiguration.set_setting('channel', data.get('channel', {}), 'Настройки канала')
+        BotConfiguration.set_setting('sites', sites, 'Активные сайты')
+        BotConfiguration.set_setting('deposits', deposits, 'Настройки пополнений')
+        BotConfiguration.set_setting('withdrawals', withdrawals, 'Настройки выводов')
+        BotConfiguration.set_setting('channel', channel, 'Настройки канала')
 
         # Дублируем необходимые настройки в общую БД бота (SQLite), чтобы бот мог их читать без Django
         try:
@@ -1737,7 +1817,6 @@ def api_save_bot_settings(request):
                 )
             ''')
             # нормализуем список сайтов в нижний регистр ключей бота
-            sites = data.get('sites', []) or []
             norm = []
             for s in sites:
                 ls = str(s).strip().lower()
@@ -1756,23 +1835,18 @@ def api_save_bot_settings(request):
             ''', (_json.dumps(norm, ensure_ascii=False),))
 
             # deposit settings -> bot_settings
-            dep = data.get('deposits', {}) or {}
-            dep_enabled = bool(dep.get('enabled', True))
-            dep_banks = dep.get('banks', []) or []
-            # normalize bank keys
+            dep_enabled = deposits['enabled']
+            dep_banks = deposits['banks']
             bank_map = {
                 'mbank': 'MBank',
                 'bakai': 'Bakai',
                 'balance': 'Balance.kg',
                 'demir': 'DemirBank',
                 'omoney': 'O! bank',
-                'mega': 'MegaPay',
+                'megapay': 'MegaPay',
                 'qr': 'QR'
             }
-            norm_banks = []
-            for b in dep_banks:
-                k = str(b).strip().lower()
-                norm_banks.append(bank_map.get(k, k))
+            norm_banks = [bank_map.get(k, k) for k in dep_banks]
             cur.execute('''
                 INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
                 VALUES ('deposits_enabled', ?, CURRENT_TIMESTAMP)
@@ -1783,11 +1857,9 @@ def api_save_bot_settings(request):
             ''', (_json.dumps(norm_banks, ensure_ascii=False),))
 
             # withdrawal settings -> bot_settings
-            w = data.get('withdrawals', {}) or {}
-            w_enabled = bool(w.get('enabled', True))
-            w_banks = w.get('banks', []) or []
-            # map admin keys -> bot button names
-            w_map = {
+            w_enabled = withdrawals['enabled']
+            w_banks = withdrawals['banks']
+            w_map_out = {
                 'kompanion': 'Компаньон',
                 'odengi': 'О! Деньги',
                 'bakai': 'Бакай',
@@ -1795,10 +1867,7 @@ def api_save_bot_settings(request):
                 'megapay': 'MegaPay',
                 'mbank': 'MBank'
             }
-            w_norm = []
-            for b in w_banks:
-                k = str(b).strip().lower()
-                w_norm.append(w_map.get(k, k))
+            w_norm = [w_map_out.get(k, k) for k in w_banks]
             cur.execute('''
                 INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
                 VALUES ('withdrawals_enabled', ?, CURRENT_TIMESTAMP)
