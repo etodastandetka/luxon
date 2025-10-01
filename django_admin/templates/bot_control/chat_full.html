@@ -104,10 +104,25 @@
     }catch(e){
       alert('Ошибка сети при отправке медиа');
     } finally {
+      scrollToBottom();
       load();
     }
   }
-  async function load(){ try{ const r=await fetch(HISTORY_URL,{credentials:'same-origin'}); if(!r.ok) return; const d=await r.json(); if(!d.success) return; const b=document.getElementById('board'); b.innerHTML=''; if(!d.items||!d.items.length){ document.getElementById('empty').style.display='block'; return;} d.items.forEach(add);}catch(e){} }
+  function scrollToBottom(){
+    try{
+      const b=document.getElementById('board'); if(b){ b.scrollTop = b.scrollHeight; }
+      window.requestAnimationFrame(()=>{ window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' }); });
+    }catch(e){}
+  }
+    try{
+      const r=await fetch(HISTORY_URL,{credentials:'same-origin'});
+      if(!r.ok) return; const d=await r.json(); if(!d.success) return;
+      const b=document.getElementById('board'); b.innerHTML='';
+      if(!d.items||!d.items.length){ document.getElementById('empty').style.display='block'; scrollToBottom(); return; }
+      d.items.forEach(add);
+      scrollToBottom();
+    }catch(e){}
+  }
   async function send(){
     const t=document.getElementById('text');
     const v=(t.value||'').trim(); if(!v) return;
@@ -136,11 +151,14 @@
     load();
     document.getElementById('send').addEventListener('click', send);
     const inputEl = document.getElementById('text');
+    try{ inputEl.focus(); }catch(e){}
     inputEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); else pingTyping('typing'); });
     inputEl.addEventListener('input',()=>{ if(inputEl.value.trim()) pingTyping('typing'); });
     document.getElementById('attach').addEventListener('click', ()=> document.getElementById('file').click());
     document.getElementById('file').addEventListener('change', (e)=>{ const f=e.target.files && e.target.files[0]; if(f){ const kind = f.type && f.type.startsWith('video/') ? 'upload_video' : 'upload_photo'; pingTyping(kind); } sendMedia(f); e.target.value=''; });
     setInterval(load, 4000);
+    // Дополнительно прокрутим страницу к низу, чтобы панель ввода была видна сразу
+    scrollToBottom();
   });
 })();
 </script>
