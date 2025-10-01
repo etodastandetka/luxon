@@ -162,10 +162,8 @@
       <a href="/bot/transactions/{{ r.id }}/" style="display:flex; align-items:center; gap:10px; justify-content:space-between; padding:10px 2px; color:#cdd6f4; text-decoration:none; border-bottom:1px solid #1a1a1a;">
         <div style="display:flex; align-items:center; gap:10px; min-width:0;">
           <div style="color:#8b8b8b; font-size:12px; flex:0 0 auto;">#{{ r.id }}</div>
-          <div style="color:#9aa4b2; font-size:12px; white-space:nowrap;">{{ r.created_at }}</div>
-          <div style="font-size:11px; padding:2px 6px; border-radius:6px; {% if r.type == 'deposit' %}border:1px solid #1bd58a; color:#21f39c; background:#0e2f24;{% else %}border:1px solid #ea5455; color:#ff6b6b; background:#2f0e0e;{% endif %}">
-            {% if r.type == 'deposit' %}Пополнение{% else %}Вывод{% endif %}
-          </div>
+          <div style="color:#9aa4b2; font-size:11px; white-space:nowrap;">{{ r.created_at|slice:":16" }}</div>
+          <div style="font-size:12px; color:#7a869a;">{{ r.bookmaker|upper }}</div>
         </div>
         <div style="display:flex; align-items:center; gap:12px;">
           <div style="font-weight:600; font-size:13px; {% if r.type == 'deposit' %}color:#21f39c;{% else %}color:#ff6b6b;{% endif %}">{{ r.amount|floatformat:2 }} сом</div>
