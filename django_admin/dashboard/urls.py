@@ -9,6 +9,8 @@ urlpatterns = [
     # Главная теперь — общий дашборд, который показывает и депозиты, и выводы
     path('', views.dashboard, name='dashboard'),
     path('request/<int:req_id>/', views.request_detail, name='request_detail'),
+    # Детали транзакции (совместимость со старыми ссылками из истории)
+    path('transactions/<int:req_id>/', views.request_detail, name='transaction_detail'),
     path('api/update-amount/', views.api_update_amount, name='api_update_amount'),
     path('deposits/', deposits_list, name='deposits_list'),
     path('deposits/<int:deposit_id>/', deposit_detail, name='deposit_detail'),
