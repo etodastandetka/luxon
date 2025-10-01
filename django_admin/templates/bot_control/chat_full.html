@@ -44,7 +44,28 @@
     div.textContent = msg.message; row.appendChild(div); b.appendChild(row); b.scrollTop = b.scrollHeight;
   }
   async function load(){ try{ const r=await fetch(HISTORY_URL,{credentials:'same-origin'}); if(!r.ok) return; const d=await r.json(); if(!d.success) return; const b=document.getElementById('board'); b.innerHTML=''; if(!d.items||!d.items.length){ document.getElementById('empty').style.display='block'; return;} d.items.forEach(add);}catch(e){} }
-  async function send(){ const t=document.getElementById('text'); const v=(t.value||'').trim(); if(!v) return; t.value=''; add({direction:'out', message:v}); try{ await fetch(SEND_URL,{method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')||''}, body:JSON.stringify({user_id: {{ user.user_id }}, message: v})}); }catch(e){} }
+  async function send(){
+    const t=document.getElementById('text');
+    const v=(t.value||'').trim(); if(!v) return;
+    t.value='';
+    add({direction:'out', message:v});
+    try{
+      const r = await fetch(SEND_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')||''},
+        body:JSON.stringify({user_id: {{ user.user_id }}, message: v})
+      });
+      const d = await r.json().catch(()=>({success:false,error:'bad response'}));
+      if(!r.ok || !d.success){
+        alert((d && (d.error||d.message)) || 'Ошибка отправки');
+      }
+    }catch(e){
+      alert('Ошибка сети при отправке');
+    } finally {
+      // Обновим историю, чтобы зафиксировать итоговое состояние
+      load();
+    }
+  }
 
   document.addEventListener('DOMContentLoaded',()=>{ load(); document.getElementById('send').addEventListener('click', send); document.getElementById('text').addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); }); setInterval(load, 4000); });
 })();

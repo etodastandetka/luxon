@@ -512,17 +512,29 @@ def chat_send_from_admin(request):
         conn.close()
 
         # Relay via Telegram (prefer BotConfiguration bot_token, fallback to settings.BOT_TOKEN)
-        try:
-            cfg_token = (BotConfiguration.get_setting('bot_token') or '').strip()
-            settings_token = (getattr(settings, 'BOT_TOKEN', None) or '').strip()
-            bot_token = cfg_token or settings_token
-            if bot_token:
-                api = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-                requests.post(api, json={'chat_id': user_id, 'text': message, 'disable_web_page_preview': True}, timeout=6)
-        except Exception:
-            pass
+        token_source = 'config'
+        cfg_token = (BotConfiguration.get_setting('bot_token') or '').strip()
+        settings_token = (getattr(settings, 'BOT_TOKEN', None) or '').strip()
+        bot_token = cfg_token or settings_token
+        if not bot_token:
+            return JsonResponse({'success': False, 'error': 'BOT token is not configured. Set BotConfiguration key "bot_token" or settings.BOT_TOKEN.'}, status=400)
+        if not cfg_token:
+            token_source = 'settings'
 
-        return JsonResponse({'success': True})
+        # Call Telegram API
+        api = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        try:
+            resp = requests.post(api, json={'chat_id': user_id, 'text': message, 'disable_web_page_preview': True}, timeout=8)
+            if resp.status_code != 200:
+                try:
+                    payload = resp.json()
+                except Exception:
+                    payload = {'raw': resp.text[:300]}
+                return JsonResponse({'success': False, 'error': f'Telegram API error {resp.status_code}', 'details': payload, 'token_source': token_source}, status=502)
+        except requests.RequestException as e:
+            return JsonResponse({'success': False, 'error': f'Telegram request failed: {e}', 'token_source': token_source}, status=502)
+
+        return JsonResponse({'success': True, 'token_source': token_source})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
