@@ -159,6 +159,31 @@ def user_profile(request, user_id: int):
                 'bookmaker': bookmaker,
             })
 
+        # Try to resolve Telegram avatar URL (optional)
+        avatar_url = ''
+        try:
+            bot_token = getattr(settings, 'BOT_TOKEN', '')
+            if bot_token and user_id:
+                import requests as _req
+                api = f"https://api.telegram.org/bot{bot_token}"
+                # Get first profile photo
+                r = _req.get(f"{api}/getUserProfilePhotos", params={"user_id": user_id, "limit": 1}, timeout=4)
+                jr = r.json() if r.ok else {}
+                photos = (jr.get('result') or {}).get('photos') or []
+                if photos:
+                    sizes = photos[0] or []
+                    # take the largest size (last)
+                    if sizes:
+                        file_id = (sizes[-1] or {}).get('file_id')
+                        if file_id:
+                            rf = _req.get(f"{api}/getFile", params={"file_id": file_id}, timeout=4)
+                            jf = rf.json() if rf.ok else {}
+                            fp = (jf.get('result') or {}).get('file_path')
+                            if fp:
+                                avatar_url = f"https://api.telegram.org/file/bot{bot_token}/{fp}"
+        except Exception:
+            avatar_url = ''
+
         conn.close()
 
         ctx = {
@@ -171,6 +196,7 @@ def user_profile(request, user_id: int):
                 'net': float((total_dep or 0) - (total_wdr or 0)),
             },
             'requests': items,
+            'avatar_url': avatar_url,
         }
         return render(request, 'bot_control/user_profile.html', ctx)
     except Exception as e:

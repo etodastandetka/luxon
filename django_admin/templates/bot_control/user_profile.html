@@ -16,7 +16,11 @@
 
 <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
   <div style="display:flex; align-items:center; gap:12px;">
-    <div class="header-avatar"><i class="fas fa-user"></i></div>
+    {% if avatar_url %}
+      <img src="{{ avatar_url }}" alt="avatar" style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:1px solid #2a2a2a;" />
+    {% else %}
+      <div class="header-avatar"><i class="fas fa-user"></i></div>
+    {% endif %}
     <div class="header-content">
       <h1>Профиль {{ user.username|default:user.user_id }}</h1>
       <p>ID: {{ user.user_id }}</p>
