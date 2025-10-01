@@ -16,7 +16,9 @@
   .chat-msg--in { background:#191919; color:#e8e8e8; border:1px solid #2a2a2a; }
   .chat-msg--out { background:#0e2f24; color:#c6ffe7; border:1px solid #1bd58a; margin-left:auto; }
   .chat-input { display:flex; gap:8px; margin-top:10px; }
-  .chat-input input { flex:1; background:#0f0f0f; border:1px solid #2a2a2a; color:#e8f0ff; border-radius:8px; padding:12px; outline:none; }
+  .chat-input input[type="text"] { flex:1; background:#0f0f0f; border:1px solid #2a2a2a; color:#e8f0ff; border-radius:8px; padding:12px; outline:none; }
+  .attach-btn { display:inline-flex; align-items:center; justify-content:center; min-width:44px; border:1px dashed #2a2a2a; border-radius:8px; background:#101010; color:#8fb3ff; }
+  .thumb { max-width:66%; border-radius:10px; border:1px solid #2a2a2a; }
 </style>
 
 <div class="chat-wrap card">
@@ -24,9 +26,11 @@
     <div id="empty" style="color:#7a869a; font-size:12px;">История пуста…</div>
   </div>
   <div class="chat-input">
-    <input id="text" placeholder="Написать сообщение">
+    <button id="attach" class="attach-btn" title="Прикрепить"><i class="fas fa-paperclip"></i></button>
+    <input id="text" placeholder="Написать сообщение" type="text">
     <button id="send" class="action-btn action-btn--neutral">Отправить</button>
   </div>
+  <input id="file" type="file" accept="image/*,video/*" style="display:none" />
 </div>
 
 {% block extra_js %}
@@ -40,8 +44,49 @@
     const e = document.getElementById('empty'); if(e) e.style.display='none';
     const row = document.createElement('div'); row.className='chat-row';
     const div = document.createElement('div');
-    div.className = 'chat-msg ' + (msg.direction==='out' ? 'chat-msg--out':'chat-msg--in');
-    div.textContent = msg.message; row.appendChild(div); b.appendChild(row); b.scrollTop = b.scrollHeight;
+    const sideClass = (msg.direction==='out' ? 'chat-msg--out':'chat-msg--in');
+    div.className = 'chat-msg ' + sideClass;
+    const kind = msg.kind || 'text';
+    if(kind === 'photo' && msg.media_url){
+      const img = document.createElement('img');
+      img.src = msg.media_url; img.alt = msg.message||''; img.className='thumb';
+      div.innerHTML = '';
+      div.appendChild(img);
+      if(msg.message){ const cap=document.createElement('div'); cap.style.marginTop='6px'; cap.textContent=msg.message; div.appendChild(cap); }
+    } else if(kind === 'video' && msg.media_url){
+      const vid = document.createElement('video'); vid.src = msg.media_url; vid.controls = true; vid.className='thumb';
+      div.innerHTML = '';
+      div.appendChild(vid);
+      if(msg.message){ const cap=document.createElement('div'); cap.style.marginTop='6px'; cap.textContent=msg.message; div.appendChild(cap); }
+    } else {
+      div.textContent = msg.message;
+    }
+    row.appendChild(div); b.appendChild(row); b.scrollTop = b.scrollHeight;
+  }
+
+  async function sendMedia(file){
+    if(!file) return;
+    const t=document.getElementById('text');
+    const caption=(t.value||'').trim();
+    const isPhoto = file.type && file.type.startsWith('image/');
+    const isVideo = file.type && file.type.startsWith('video/');
+    if(!isPhoto && !isVideo){ alert('Поддерживаются только фото и видео'); return; }
+    // optimistic preview
+    add({direction:'out', message: caption, kind: isPhoto ? 'photo' : 'video', media_url: URL.createObjectURL(file)});
+    const form = new FormData();
+    form.append('user_id', String({{ user.user_id }}));
+    form.append('media_type', isPhoto ? 'photo' : 'video');
+    form.append('caption', caption);
+    form.append('file', file, file.name || (isPhoto ? 'photo.jpg' : 'video.mp4'));
+    try{
+      const r = await fetch('{% url "bot_control:chat_send_media_from_admin" %}', { method:'POST', body: form, credentials:'same-origin' });
+      const d = await r.json().catch(()=>({success:false,error:'bad response'}));
+      if(!r.ok || !d.success){ alert((d && d.error) || 'Ошибка отправки медиа'); }
+    }catch(e){
+      alert('Ошибка сети при отправке медиа');
+    } finally {
+      load();
+    }
   }
   async function load(){ try{ const r=await fetch(HISTORY_URL,{credentials:'same-origin'}); if(!r.ok) return; const d=await r.json(); if(!d.success) return; const b=document.getElementById('board'); b.innerHTML=''; if(!d.items||!d.items.length){ document.getElementById('empty').style.display='block'; return;} d.items.forEach(add);}catch(e){} }
   async function send(){
@@ -67,7 +112,14 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded',()=>{ load(); document.getElementById('send').addEventListener('click', send); document.getElementById('text').addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); }); setInterval(load, 4000); });
+  document.addEventListener('DOMContentLoaded',()=>{
+    load();
+    document.getElementById('send').addEventListener('click', send);
+    document.getElementById('text').addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); });
+    document.getElementById('attach').addEventListener('click', ()=> document.getElementById('file').click());
+    document.getElementById('file').addEventListener('change', (e)=>{ const f=e.target.files && e.target.files[0]; sendMedia(f); e.target.value=''; });
+    setInterval(load, 4000);
+  });
 })();
 </script>
 {% endblock %}

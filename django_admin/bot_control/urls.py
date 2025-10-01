@@ -80,6 +80,7 @@ urlpatterns = [
     # Chat API (admin <-> user via Telegram relay)
     path('api/chat/history/<int:user_id>/', api_views.chat_history, name='chat_history'),
     path('api/chat/send/', api_views.chat_send_from_admin, name='chat_send_from_admin'),
+    path('api/chat/send-media/', api_views.chat_send_media_from_admin, name='chat_send_media_from_admin'),
     path('api/chat/ingest/', api_views.chat_ingest_from_bot, name='chat_ingest_from_bot'),
 
     # Referral withdrawal API

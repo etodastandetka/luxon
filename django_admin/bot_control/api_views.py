@@ -449,9 +449,18 @@ def _ensure_chat_table(conn):
             user_id INTEGER NOT NULL,
             direction TEXT NOT NULL, -- 'in' (from user) | 'out' (from admin)
             message TEXT NOT NULL,
+            kind TEXT DEFAULT 'text', -- 'text' | 'photo' | 'video'
+            media_url TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    # Add missing columns if DB was created earlier
+    cur.execute("PRAGMA table_info(chat_messages)")
+    cols = {row[1] for row in cur.fetchall()}
+    if 'kind' not in cols:
+        cur.execute("ALTER TABLE chat_messages ADD COLUMN kind TEXT DEFAULT 'text'")
+    if 'media_url' not in cols:
+        cur.execute("ALTER TABLE chat_messages ADD COLUMN media_url TEXT DEFAULT ''")
     conn.commit()
 
 
@@ -467,7 +476,7 @@ def chat_history(request, user_id: int):
         cur = conn.cursor()
         _ensure_chat_table(conn)
         cur.execute('''
-            SELECT id, user_id, direction, message, created_at
+            SELECT id, user_id, direction, message, kind, media_url, created_at
             FROM chat_messages
             WHERE user_id=?
             ORDER BY id DESC
@@ -481,9 +490,11 @@ def chat_history(request, user_id: int):
                 'user_id': uid,
                 'direction': direction,
                 'message': message,
+                'kind': kind or 'text',
+                'media_url': media_url or '',
                 'created_at': created_at,
             }
-            for (rid, uid, direction, message, created_at) in reversed(rows)
+            for (rid, uid, direction, message, kind, media_url, created_at) in reversed(rows)
         ]
         return JsonResponse({'success': True, 'items': items})
     except Exception as e:
@@ -507,7 +518,7 @@ def chat_send_from_admin(request):
         conn = sqlite3.connect(str(bot_db))
         cur = conn.cursor()
         _ensure_chat_table(conn)
-        cur.execute('INSERT INTO chat_messages (user_id, direction, message) VALUES (?, ?, ?)', (user_id, 'out', message))
+        cur.execute('INSERT INTO chat_messages (user_id, direction, message, kind) VALUES (?, ?, ?, ?) ', (user_id, 'out', message, 'text'))
         conn.commit()
         conn.close()
 
@@ -551,6 +562,80 @@ def chat_send_from_admin(request):
             return JsonResponse({'success': False, 'error': f'Telegram request failed: {e}', 'token_source': token_source}, status=502)
 
         return JsonResponse({'success': True, 'token_source': token_source})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_send_media_from_admin(request: HttpRequest):
+    """Admin uploads photo/video and relays to Telegram. Saves media to MEDIA_ROOT to render in history."""
+    try:
+        user_id = int(request.POST.get('user_id') or 0)
+        media_type = (request.POST.get('media_type') or '').strip()  # 'photo' | 'video'
+        caption = (request.POST.get('caption') or '').strip()
+        file = request.FILES.get('file')
+        if not user_id or media_type not in ('photo','video') or not file:
+            return JsonResponse({'success': False, 'error': 'user_id, media_type (photo|video) и file обязательны'}, status=400)
+
+        # Save file to MEDIA_ROOT/chat_uploads/<user_id>/
+        import os
+        from django.core.files.storage import default_storage
+        from django.core.files.base import ContentFile
+        media_root = getattr(settings, 'MEDIA_ROOT', None)
+        media_url_root = getattr(settings, 'MEDIA_URL', '/media/')
+        subdir = f"chat_uploads/{user_id}/"
+        filename = file.name
+        path = default_storage.save(os.path.join(subdir, filename), ContentFile(file.read()))
+        media_url = media_url_root.rstrip('/') + '/' + path.replace('\\','/')
+
+        # Store in bot DB
+        bot_db = getattr(settings, 'BOT_DATABASE_PATH', None)
+        if not bot_db:
+            return JsonResponse({'success': False, 'error': 'BOT_DATABASE_PATH не задан'}, status=500)
+        conn = sqlite3.connect(str(bot_db))
+        cur = conn.cursor()
+        _ensure_chat_table(conn)
+        cur.execute('INSERT INTO chat_messages (user_id, direction, message, kind, media_url) VALUES (?, ?, ?, ?, ?)', (user_id, 'out', caption, media_type, media_url))
+        conn.commit()
+        conn.close()
+
+        # Resolve bot token (bot.config -> root config -> db -> settings)
+        token_source = 'bot_config'
+        botcfg_token = ''
+        root_token = ''
+        try:
+            import importlib
+            bot_cfg = importlib.import_module('bot.config')
+            botcfg_token = (getattr(bot_cfg, 'BOT_TOKEN', '') or '').strip()
+        except Exception:
+            botcfg_token = ''
+        try:
+            import importlib
+            root_cfg = importlib.import_module('config')
+            root_token = (getattr(root_cfg, 'BOT_TOKEN', '') or '').strip()
+        except Exception:
+            root_token = ''
+        cfg_token = (BotConfiguration.get_setting('bot_token') or '').strip()
+        settings_token = (getattr(settings, 'BOT_TOKEN', None) or '').strip()
+        bot_token = botcfg_token or root_token or cfg_token or settings_token
+        if not bot_token:
+            return JsonResponse({'success': False, 'error': 'BOT token is not configured'}, status=400)
+        if not botcfg_token:
+            token_source = 'root_config' if root_token else ('db_config' if cfg_token else 'settings')
+
+        # Relay to Telegram
+        api = f"https://api.telegram.org/bot{bot_token}/sendPhoto" if media_type=='photo' else f"https://api.telegram.org/bot{bot_token}/sendVideo"
+        try:
+            files = {'photo' if media_type=='photo' else 'video': (filename, open(default_storage.path(path), 'rb'))}
+            data = {'chat_id': user_id, 'caption': caption, 'disable_notification': False}
+            resp = requests.post(api, data=data, files=files, timeout=20)
+            if resp.status_code != 200:
+                return JsonResponse({'success': False, 'error': f'Telegram API error {resp.status_code}', 'details': resp.text[:300], 'token_source': token_source}, status=502)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Telegram request failed: {e}', 'token_source': token_source}, status=502)
+
+        return JsonResponse({'success': True, 'media_url': media_url, 'token_source': token_source})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
