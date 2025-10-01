@@ -255,17 +255,48 @@
 
 <script>
 // Автоматическое сохранение при изменении настроек
-function autoSave() {
-    const settings = collectSettings();
-    saveToDatabase(settings);
+let __saveTimer = null;
+async function autoSave(evt) {
+    const target = evt && evt.target ? evt.target : null;
+    const prevState = target ? {
+        type: target.type,
+        checked: target.type === 'checkbox' ? (target.dataset.prevChecked === '1') : undefined,
+        value: target.type === 'text' ? (target.dataset.prevValue || target.value) : undefined,
+    } : null;
+
+    // debounce 300ms
+    if (__saveTimer) clearTimeout(__saveTimer);
+    __saveTimer = setTimeout(async () => {
+        const settings = collectSettings();
+        const ok = await saveToDatabase(settings);
+        if (!ok && target) {
+            try {
+                if (target.type === 'checkbox' && typeof prevState.checked !== 'undefined') {
+                    target.checked = !!prevState.checked;
+                } else if (target.type === 'text' && typeof prevState.value !== 'undefined') {
+                    target.value = prevState.value;
+                }
+            } catch (e) { console.warn('revert failed', e); }
+        }
+        // cleanup stored prev
+        if (target) { delete target.dataset.prevChecked; delete target.dataset.prevValue; }
+    }, 300);
 }
 
 // Добавляем обработчики событий для всех элементов
 document.addEventListener('DOMContentLoaded', function() {
     // Обработчики для всех чекбоксов и переключателей
     document.querySelectorAll('input[type="checkbox"], input[type="text"]').forEach(element => {
+        // запомним предыдущее состояние перед изменением
+        if (element.type === 'checkbox') {
+            const remember = () => { element.dataset.prevChecked = element.checked ? '1' : '0'; };
+            element.addEventListener('mousedown', remember, { passive: true });
+            element.addEventListener('keydown', remember);
+        } else if (element.type === 'text') {
+            element.addEventListener('focus', () => { element.dataset.prevValue = element.value; }, { passive: true });
+        }
         element.addEventListener('change', autoSave);
-        element.addEventListener('input', autoSave);
+        if (element.type === 'text') element.addEventListener('input', autoSave);
     });
     
     // Загружаем настройки при загрузке страницы
@@ -325,11 +356,15 @@ async function saveToDatabase(settings) {
 
         if (response.ok) {
             console.log('Настройки сохранены в базу данных');
+            return true;
         } else {
-            console.error('Ошибка сохранения настроек');
+            const msg = await response.text().catch(() => '');
+            console.error('Ошибка сохранения настроек', msg);
+            return false;
         }
     } catch (error) {
         console.error('Ошибка:', error);
+        return false;
     }
 }
 
