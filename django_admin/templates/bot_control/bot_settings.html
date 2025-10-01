@@ -419,48 +419,48 @@ async function loadSettings() {
     }
 }
 
-// Загрузка текущего основного кошелька (реквизита)
+// Загрузка текущего активного реквизита (из bot/universal_bot.db)
 async function loadMainWallet() {
     try {
-        const resp = await fetch('{% url "bot_control:api_qr_hashes" %}');
-        if (!resp.ok) throw new Error('Failed to load wallets');
+        const resp = await fetch('{% url "dashboard:api_requisites_list" %}');
+        if (!resp.ok) throw new Error('Failed to load requisites');
         const data = await resp.json();
-        const main = (data && data.qr_hashes) ? data.qr_hashes.main_account : null;
-        document.getElementById('current-main-wallet').textContent = main ? main : '—';
+        const active = (data && data.requisites) ? (data.requisites.find(r => r.is_active) || null) : null;
+        document.getElementById('current-main-wallet').textContent = active ? active.value : '—';
     } catch (e) {
-        console.error('Ошибка загрузки кошельков:', e);
+        console.error('Ошибка загрузки реквизитов:', e);
         document.getElementById('current-main-wallet').textContent = '—';
     }
 }
 
-// Загрузить все кошельки и заполнить селект
+// Загрузить все реквизиты и заполнить селект
 async function loadWallets() {
     try {
-        const resp = await fetch('{% url "bot_control:api_list_qr_hashes" %}');
-        if (!resp.ok) throw new Error('Failed to load wallets list');
+        const resp = await fetch('{% url "dashboard:api_requisites_list" %}');
+        if (!resp.ok) throw new Error('Failed to load requisites list');
         const data = await resp.json();
         const select = document.getElementById('wallet-select');
         // Очистим и добавим placeholder
         select.innerHTML = '<option value="">Выберите реквизит…</option>';
-        (data.wallets || []).forEach(w => {
+        (data.requisites || []).forEach(r => {
             const opt = document.createElement('option');
-            opt.value = String(w.id);
-            opt.textContent = `${w.account_name} ${w.is_main ? '• основной' : ''} ${w.is_active ? '' : '• выключен'}`.trim();
-            if (w.is_main) opt.selected = true;
+            opt.value = String(r.id);
+            opt.textContent = `${r.value} ${r.is_active ? '• активный' : ''}`.trim();
+            if (r.is_active) opt.selected = true;
             select.appendChild(opt);
         });
     } catch (e) {
-        console.error('Ошибка загрузки списка кошельков:', e);
+        console.error('Ошибка загрузки списка реквизитов:', e);
     }
 }
 
-// Установить основной кошелек по выбранному значению
+// Установить активный реквизит по выбранному значению
 async function setMainWalletSelected() {
     const select = document.getElementById('wallet-select');
     const id = (select.value || '').trim();
-    if (!id) { alert('Выберите кошелек'); return; }
+    if (!id) { alert('Выберите реквизит'); return; }
     try {
-        const urlTemplate = '{% url "bot_control:api_set_main_qr_hash" 0 %}';
+        const urlTemplate = '{% url "dashboard:api_requisites_set_active" 0 %}';
         const url = urlTemplate.replace('/0/', `/${id}/`);
         const resp = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
         const data = await resp.json();
@@ -468,7 +468,7 @@ async function setMainWalletSelected() {
             await loadMainWallet();
             await loadWallets();
         } else {
-            alert('Ошибка: ' + (data.error || 'не удалось установить основной кошелек'));
+            alert('Ошибка: ' + (data.error || 'не удалось установить активный реквизит'));
         }
     } catch (e) {
         console.error(e);

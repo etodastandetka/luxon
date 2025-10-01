@@ -429,6 +429,54 @@ def api_update_amount(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+def api_requisites_list(request):
+    """GET: вернуть список реквизитов из bot/universal_bot.db
+    Ответ: {success: True, requisites: [{id, value, is_active, created_at}], active_id}
+    """
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        # ensure table
+        try:
+            from bot.qr_utils import ensure_requisites_table
+            ensure_requisites_table()
+        except Exception:
+            pass
+
+        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS requisites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                value TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 0,
+                name TEXT,
+                email TEXT,
+                password TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cur.execute('''
+            SELECT id, value, COALESCE(is_active,0), COALESCE(created_at,'')
+            FROM requisites
+            ORDER BY is_active DESC, id DESC
+        ''')
+        items = []
+        active_id = None
+        for rid, value, is_active, created_at in cur.fetchall():
+            if is_active and active_id is None:
+                active_id = rid
+            items.append({
+                'id': rid,
+                'value': value,
+                'is_active': bool(is_active),
+                'created_at': created_at,
+            })
+        conn.close()
+        return JsonResponse({'success': True, 'requisites': items, 'active_id': active_id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 # ===== Requisites API (bot/universal_bot.db) =====
 @csrf_exempt

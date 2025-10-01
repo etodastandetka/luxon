@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/transaction-history/', views.api_transaction_history, name='api_transaction_history'),
     # Requisites API
     path('api/requisites/', views.api_requisites, name='api_requisites'),
+    path('api/requisites/list/', views.api_requisites_list, name='api_requisites_list'),
     path('api/requisites/<int:rid>/set-active/', views.api_requisites_set_active, name='api_requisites_set_active'),
     path('api/requisites/<int:rid>/delete/', views.api_requisites_delete, name='api_requisites_delete'),
     
