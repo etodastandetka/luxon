@@ -289,25 +289,10 @@ async function autoSave(evt) {
     }, 300);
 }
 
-// Добавляем обработчики событий для всех элементов
+// Ручной режим сохранения: без автосохранения
 document.addEventListener('DOMContentLoaded', function() {
-    // Обработчики для всех чекбоксов и переключателей
-    document.querySelectorAll('input[type="checkbox"], input[type="text"]').forEach(element => {
-        // запомним предыдущее состояние перед изменением
-        if (element.type === 'checkbox') {
-            const remember = () => { element.dataset.prevChecked = element.checked ? '1' : '0'; };
-            element.addEventListener('mousedown', remember, { passive: true });
-            element.addEventListener('keydown', remember);
-        } else if (element.type === 'text') {
-            element.addEventListener('focus', () => { element.dataset.prevValue = element.value; }, { passive: true });
-        }
-        element.addEventListener('change', autoSave);
-        if (element.type === 'text') element.addEventListener('input', autoSave);
-    });
-    
-    // Загружаем настройки при загрузке страницы
+    // Только загрузка состояния при старте
     loadSettings();
-    // Загружаем кошельки/реквизиты
     loadMainWallet();
     loadWallets();
 });
@@ -498,26 +483,15 @@ async function setMainWalletSelected() {
     }
 }
 
-// Добавляем обработчики событий для автоматического сохранения
-document.addEventListener('DOMContentLoaded', function() {
-    loadSettings();
-    loadMainWallet();
-    loadWallets();
-    
-    // Автосохранение при изменении toggle switches
-    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', autoSave);
-    });
-    
-    // Автосохранение при изменении текстового поля
-    document.getElementById('channel-name').addEventListener('input', autoSave);
-});
-
-// Функция для ручного сохранения (если нужно)
-function saveSettings() {
-    autoSave();
-    alert('Настройки сохранены!');
+// Ручное сохранение по кнопке
+async function saveSettings() {
+    const ok = await saveToDatabase(collectSettings());
+    if (ok) {
+        try { await loadSettings(); } catch (e) {}
+    }
 }
+
+// (дублирующаяся версия saveSettings удалена)
 </script>
 
 <style>
