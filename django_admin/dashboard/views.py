@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import sqlite3
@@ -106,168 +106,12 @@ def about(request):
     return render(request, 'dashboard/about_mobile.html')
 
 def request_detail(request, req_id: int):
-    """Детальная страница заявки из единой таблицы requests"""
+    """Редирект на каноническую страницу деталей (Lux): /bot/transactions/<id>/"""
     try:
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        cur.execute('''
-            SELECT 
-                r.id, r.user_id,
-                COALESCE(u.username,''), COALESCE(u.first_name,''), COALESCE(u.last_name,''),
-                COALESCE(r.bookmaker,''), COALESCE(r.request_type,''),
-                COALESCE(r.amount,0), COALESCE(r.status,'pending'), COALESCE(r.created_at,''),
-                COALESCE(r.account_id,''), COALESCE(r.bank,''), COALESCE(r.withdrawal_code,''),
-                COALESCE(r.photo_file_id,''), COALESCE(r.photo_file_url,'')
-            FROM requests r
-            LEFT JOIN users u ON r.user_id = u.user_id
-            WHERE r.id = ?
-            LIMIT 1
-        ''', (int(req_id),))
-        row = cur.fetchone()
-        # Не закрываем соединение, ещё будем делать выборки ниже
-
-        if not row:
-            return render(request, 'dashboard/request_detail_mobile.html', {
-                'not_found': True,
-                'req_id': req_id,
-            })
-
-        (rid, user_id, username, first_name, last_name,
-         bookmaker, rtype, amount, status, created_at,
-         account_id, bank, withdrawal_code, photo_file_id, photo_file_url) = row
-
-        # История пользователя и поиск по сумме
-        search_amount_raw = (request.GET.get('amount') or '').strip()
-        amount_matches = []
-        user_requests = []
-
-        # Все заявки пользователя (последние 100)
-        try:
-            cur.execute('''
-                SELECT id, COALESCE(request_type,''), COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,'')
-                FROM requests
-                WHERE user_id = ?
-                ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
-                LIMIT 100
-            ''', (user_id,))
-            for rid2, rtype2, amount2, status2, created2 in cur.fetchall():
-                user_requests.append({
-                    'id': rid2,
-                    'type': rtype2 or 'deposit',
-                    'amount': float(amount2 or 0),
-                    'status': status2,
-                    'created_at': created2,
-                })
-        except Exception:
-            user_requests = []
-
-        # Поиск по сумме для этого пользователя
-        if search_amount_raw:
-            try:
-                search_amount = float(search_amount_raw.replace(',', '.'))
-                cur.execute('''
-                    SELECT id, COALESCE(request_type,''), COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,'')
-                    FROM requests
-                    WHERE user_id = ? AND ABS(COALESCE(amount,0) - ?) < 1e-6
-                    ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
-                    LIMIT 50
-                ''', (user_id, search_amount))
-                for rid3, rtype3, amount3, status3, created3 in cur.fetchall():
-                    amount_matches.append({
-                        'id': rid3,
-                        'type': rtype3 or 'deposit',
-                        'amount': float(amount3 or 0),
-                        'status': status3,
-                        'created_at': created3,
-                    })
-            except Exception:
-                amount_matches = []
-
-        # Доп. агрегаты по пользователю (используем тот же открытый cursor)
-        total_dep = 0.0
-        total_wdr = 0.0
-        dep_cnt = 0
-        wdr_cnt = 0
-        try:
-            done_statuses = ("completed","approved","auto_completed")
-            # Итоги пополнений
-            cur.execute(
-                '''SELECT COALESCE(SUM(COALESCE(amount,0)),0), COUNT(1)
-                   FROM requests
-                   WHERE user_id=? AND request_type='deposit' AND status IN ('completed','approved','auto_completed')''',
-                (user_id,)
-            )
-            rowd = cur.fetchone() or (0,0)
-            total_dep = float(rowd[0] or 0)
-            dep_cnt = int(rowd[1] or 0)
-            # Итоги выводов
-            cur.execute(
-                '''SELECT COALESCE(SUM(COALESCE(amount,0)),0), COUNT(1)
-                   FROM requests
-                   WHERE user_id=? AND request_type='withdraw' AND status IN ('completed','approved','auto_completed')''',
-                (user_id,)
-            )
-            roww = cur.fetchone() or (0,0)
-            total_wdr = float(roww[0] or 0)
-            wdr_cnt = int(roww[1] or 0)
-        except Exception:
-            pass
-
-        # Пытаемся получить фото профиля из Telegram
-        user_photo_url = ''
-        try:
-            import requests as _req
-            tg_token = getattr(settings, 'BOT_TOKEN', '')
-            if tg_token:
-                api = f"https://api.telegram.org/bot{tg_token}"
-                r = _req.get(f"{api}/getUserProfilePhotos", params={"user_id": user_id, "limit": 1}, timeout=3)
-                j = r.json() if r.ok else {}
-                photos = (j.get('result', {}) or {}).get('photos') or []
-                if photos:
-                    sizes = photos[0]
-                    file_id = sizes[-1].get('file_id') if sizes else None
-                    if file_id:
-                        rf = _req.get(f"{api}/getFile", params={"file_id": file_id}, timeout=3)
-                        jf = rf.json() if rf.ok else {}
-                        file_path = (jf.get('result') or {}).get('file_path')
-                        if file_path:
-                            user_photo_url = f"https://api.telegram.org/file/bot{tg_token}/{file_path}"
-        except Exception:
-            user_photo_url = ''
-
-        context = {
-            'id': rid,
-            'user_id': user_id,
-            'username': username or f"{first_name or ''} {last_name or ''}".strip(),
-            'bookmaker': bookmaker,
-            'type': rtype or 'deposit',
-            'amount': float(amount or 0),
-            'status': status,
-            'created_at': created_at,
-            'account_id': account_id,
-            'bank': bank,
-            'withdrawal_code': withdrawal_code,
-            'photo_file_id': photo_file_id,
-            'photo_file_url': photo_file_url,
-            'search_amount': search_amount_raw,
-            'amount_matches': amount_matches,
-            'user_requests': user_requests,
-            'profile': {
-                'total_deposits': total_dep,
-                'total_withdrawals': total_wdr,
-                'deposit_count': dep_cnt,
-                'withdraw_count': wdr_cnt,
-                'photo_url': user_photo_url,
-                'first_name': first_name,
-                'last_name': last_name,
-            }
-        }
-        return render(request, 'dashboard/request_detail_mobile.html', context)
-    except Exception as e:
-        return render(request, 'dashboard/request_detail_mobile.html', {
-            'error': str(e),
-            'req_id': req_id,
-        })
+        return redirect('bot_control:transaction_detail', trans_id=req_id)
+    except Exception:
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(f'/bot/transactions/{req_id}/')
 
 def api_stats(request):
     """API для получения статистики"""
