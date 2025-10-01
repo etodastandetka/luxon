@@ -372,7 +372,8 @@ async function loadSettings() {
             // Сбросим все чекбоксы депозитов и проставим из настроек
             document.querySelectorAll('.deposit-grid [data-bank]').forEach(cb => cb.checked = false);
             (settings.deposits.banks || []).forEach(bank => {
-                const checkbox = document.querySelector(`[data-bank="${bank}"]`);
+                const key = String(bank).toLowerCase();
+                const checkbox = document.querySelector(`[data-bank="${key}"]`);
                 if (checkbox) checkbox.checked = true;
             });
         }
@@ -382,7 +383,8 @@ async function loadSettings() {
             // Сбросим все чекбоксы и проставим из настроек
             document.querySelectorAll('.withdrawal-grid [data-bank]').forEach(cb => cb.checked = false);
             (settings.withdrawals.banks || []).forEach(bank => {
-                const checkbox = document.querySelector(`[data-bank="${bank}"]`);
+                const key = String(bank).toLowerCase();
+                const checkbox = document.querySelector(`[data-bank="${key}"]`);
                 if (checkbox) checkbox.checked = true;
             });
         }
