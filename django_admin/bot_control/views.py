@@ -272,6 +272,30 @@ def api_bot_status(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
+def api_debug_bot_settings(request):
+    """Отладка: показать путь к SQLite бота и актуальные значения ключей."""
+    try:
+        import sqlite3, json as _json
+        db_path = str(settings.BOT_DATABASE_PATH)
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        def _get(key):
+            cur.execute("SELECT value FROM bot_settings WHERE key=?", (key,))
+            row = cur.fetchone()
+            return None if not row else row[0]
+        data = {
+            'bot_db_path': db_path,
+            'withdrawals_enabled': _get('withdrawals_enabled'),
+            'withdraw_banks': _get('withdraw_banks'),
+            'deposits_enabled': _get('deposits_enabled'),
+            'deposit_banks': _get('deposit_banks'),
+        }
+        conn.close()
+        return JsonResponse({'success': True, 'data': data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
 def api_list_qr_hashes(request):
     """API для получения списка всех кошельков (QRHash) со статусами.
     Ответ: { wallets: [ {id, account_name, is_main, is_active} ], total:int }
