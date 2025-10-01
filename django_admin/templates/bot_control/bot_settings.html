@@ -210,6 +210,41 @@
             </div>
         </div>
 
+        <!-- Кошельки/реквизиты -->
+        <div class="settings-card">
+            <div class="card-header">
+                <div class="card-icon">👛</div>
+                <h3>Кошельки/реквизиты</h3>
+            </div>
+            <div class="card-body" id="wallets-section">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Текущий основной кошелек</span>
+                    </div>
+                    <div>
+                        <span id="current-main-wallet" style="color:#fff">—</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Сделать активным по ID</label>
+                    <div style="display:flex; gap:8px">
+                        <input type="number" id="wallet-id-input" class="form-input" placeholder="Введите ID QR кошелька">
+                        <button class="save-btn" style="width:auto" onclick="setMainWalletById()">Сделать активным</button>
+                    </div>
+                    <small style="color:#888">Подсказка: список и ID кошельков находятся в разделе управления QR (аккаунты Демирбанка).</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Включить/выключить по ID</label>
+                    <div style="display:flex; gap:8px">
+                        <input type="number" id="wallet-toggle-id-input" class="form-input" placeholder="Введите ID QR кошелька">
+                        <button class="save-btn" style="width:auto; background:#555" onclick="toggleWalletById()">Переключить статус</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Подписка на канал -->
         <div class="settings-card">
             <div class="card-header">
@@ -259,6 +294,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Загружаем настройки при загрузке страницы
     loadSettings();
+    // Загружаем кошельки/реквизиты
+    loadMainWallet();
 });
 
 function collectSettings() {
@@ -370,9 +407,75 @@ async function loadSettings() {
     }
 }
 
+// Загрузка текущего основного кошелька (реквизита)
+async function loadMainWallet() {
+    try {
+        const resp = await fetch('{% url "bot_control:api_qr_hashes" %}');
+        if (!resp.ok) throw new Error('Failed to load wallets');
+        const data = await resp.json();
+        const main = (data && data.qr_hashes) ? data.qr_hashes.main_account : null;
+        document.getElementById('current-main-wallet').textContent = main ? main : '—';
+    } catch (e) {
+        console.error('Ошибка загрузки кошельков:', e);
+        document.getElementById('current-main-wallet').textContent = '—';
+    }
+}
+
+// Установить основной кошелек по ID
+async function setMainWalletById() {
+    const idEl = document.getElementById('wallet-id-input');
+    const id = (idEl.value || '').trim();
+    if (!id) { alert('Введите ID кошелька'); return; }
+    try {
+        // Шаблон URL c фиктивным ID, который заменим на реальный
+        const urlTemplate = '{% url "bot_control:api_set_main_qr_hash" 0 %}';
+        const url = urlTemplate.replace('/0/', `/${id}/`);
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            alert('Основной кошелек установлен');
+            await loadMainWallet();
+        } else {
+            alert('Ошибка: ' + (data.error || 'не удалось установить основной кошелек'));
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Ошибка запроса');
+    }
+}
+
+// Переключить статус кошелька по ID
+async function toggleWalletById() {
+    const idEl = document.getElementById('wallet-toggle-id-input');
+    const id = (idEl.value || '').trim();
+    if (!id) { alert('Введите ID кошелька'); return; }
+    try {
+        const urlTemplate = '{% url "bot_control:api_toggle_qr_hash" 0 %}';
+        const url = urlTemplate.replace('/0/', `/${id}/`);
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            alert('Статус кошелька переключен');
+            await loadMainWallet();
+        } else {
+            alert('Ошибка: ' + (data.error || 'не удалось переключить статус'));
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Ошибка запроса');
+    }
+}
+
 // Добавляем обработчики событий для автоматического сохранения
 document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
+    loadMainWallet();
     
     // Автосохранение при изменении toggle switches
     document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
