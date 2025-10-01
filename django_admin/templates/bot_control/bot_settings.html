@@ -41,22 +41,22 @@
             <div class="card-body">
                 <div class="checkbox-grid" id="sites-grid">
                     <label class="checkbox-item">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" data-site="melbet" checked>
                         <span class="checkmark"></span>
                         Melbet
                     </label>
                     <label class="checkbox-item">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" data-site="1xbet" checked>
                         <span class="checkmark"></span>
                         1xbet
                     </label>
                     <label class="checkbox-item">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" data-site="1win" checked>
                         <span class="checkmark"></span>
                         1win
                     </label>
                     <label class="checkbox-item">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" data-site="mostbet" checked>
                         <span class="checkmark"></span>
                         mostbet
                     </label>
@@ -312,7 +312,8 @@ function collectSettings() {
 function getSelectedSites() {
     const sites = [];
     document.querySelectorAll('#sites-grid .checkbox-item input:checked').forEach(checkbox => {
-        sites.push(checkbox.parentElement.textContent.trim());
+        const key = checkbox.dataset.site || checkbox.parentElement.textContent.trim();
+        sites.push(key);
     });
     return sites;
 }
@@ -372,6 +373,14 @@ async function loadSettings() {
         if (settings.pause !== undefined) {
             document.getElementById('pause-bot').checked = settings.pause;
         }
+        // Сайты: сбросить все, затем отметить из settings.sites
+        try {
+            const enabledSites = new Set((settings.sites || []).map(s => String(s).toLowerCase()));
+            document.querySelectorAll('#sites-grid input[type="checkbox"]').forEach(cb => {
+                const key = (cb.dataset.site || '').toLowerCase();
+                cb.checked = enabledSites.size ? enabledSites.has(key) : cb.checked;
+            });
+        } catch (e) { console.warn('Sites apply failed', e); }
         
         if (settings.deposits) {
             document.getElementById('deposits-enabled').checked = settings.deposits.enabled;
