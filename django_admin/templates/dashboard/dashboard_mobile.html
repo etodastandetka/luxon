@@ -117,7 +117,7 @@ async function loadRequests() {
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 item.style.cursor = 'pointer';
-                item.onclick = () => { window.location.href = `/request/${request.id}/`; };
+                item.onclick = () => { window.location.href = `/bot/transactions/${request.id}/`; };
                 item.innerHTML = `
                     <div class="list-icon">
                         <div style="width:40px;height:40px;background:${iconColor};border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid #333;position:relative;">

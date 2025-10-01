@@ -143,7 +143,7 @@
                   <span class="badge badge-withdraw">Вывод</span>
                 {% endif %}
                 &nbsp; {{ r.amount|floatformat:2 }} KGS · {{ r.status|title }}
-                &nbsp; <a href="/request/{{ r.id }}/" style="color:#0fa;">Открыть</a>
+                &nbsp; <a href="/bot/transactions/{{ r.id }}/" style="color:#0fa;">Открыть</a>
               </div>
             </div>
           {% endfor %}
