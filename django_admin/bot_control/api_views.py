@@ -511,9 +511,17 @@ def chat_send_from_admin(request):
         conn.commit()
         conn.close()
 
-        # Resolve BOT token: root config.py -> BotConfiguration -> settings.BOT_TOKEN
-        token_source = 'root_config'
+        # Resolve BOT token: bot.config -> root config.py -> BotConfiguration -> settings.BOT_TOKEN
+        token_source = 'bot_config'
+        botcfg_token = ''
         root_token = ''
+        try:
+            # Try import bot/config.py
+            import importlib
+            bot_cfg = importlib.import_module('bot.config')
+            botcfg_token = (getattr(bot_cfg, 'BOT_TOKEN', '') or '').strip()
+        except Exception:
+            botcfg_token = ''
         try:
             # Try import root-level config.py (not bot/config.py)
             import importlib
@@ -523,11 +531,11 @@ def chat_send_from_admin(request):
             root_token = ''
         cfg_token = (BotConfiguration.get_setting('bot_token') or '').strip()
         settings_token = (getattr(settings, 'BOT_TOKEN', None) or '').strip()
-        bot_token = root_token or cfg_token or settings_token
+        bot_token = botcfg_token or root_token or cfg_token or settings_token
         if not bot_token:
             return JsonResponse({'success': False, 'error': 'BOT token is not configured. Set BotConfiguration key "bot_token" or settings.BOT_TOKEN.'}, status=400)
-        if not root_token:
-            token_source = 'db_config' if cfg_token else 'settings'
+        if not botcfg_token:
+            token_source = 'root_config' if root_token else ('db_config' if cfg_token else 'settings')
 
         # Call Telegram API
         api = f"https://api.telegram.org/bot{bot_token}/sendMessage"
