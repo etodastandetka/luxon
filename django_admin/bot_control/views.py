@@ -1853,6 +1853,12 @@ def api_save_bot_settings(request):
                 INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
                 VALUES ('withdraw_banks', ?, CURRENT_TIMESTAMP)
             ''', (_json.dumps(w_norm, ensure_ascii=False),))
+            # Флаг паузы бота -> is_active ('0' если pause=True)
+            is_active = '0' if bool(data.get('pause', False)) else '1'
+            cur.execute('''
+                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
+                VALUES ('is_active', ?, CURRENT_TIMESTAMP)
+            ''', (is_active,))
             conn.commit()
             conn.close()
 
