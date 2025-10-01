@@ -32,10 +32,16 @@
 </div>
 
 <div class="block">
-  <div class="section-title">Период</div>
+  <div class="section-title">Период (от — до)</div>
   <form id="period-form" class="actions" method="get">
-    <input type="date" name="start" value="{{ start }}" />
-    <input type="date" name="end" value="{{ end }}" />
+    <input type="hidden" name="start" id="start-hidden" value="{{ start }}" />
+    <input type="hidden" name="end" id="end-hidden" value="{{ end }}" />
+    <input
+      type="text"
+      id="date-range"
+      placeholder="ГГГГ-ММ-ДД — ГГГГ-ММ-ДД"
+      style="flex:1; background:#0f0f0f; color:#e5e7eb; border:1px solid #2a2a2a; border-radius:8px; padding:8px 10px;"
+    />
     <button class="apply" type="submit">Применить</button>
   </form>
   <div class="small" style="margin-top:6px;">Оставьте пустым, чтобы показать все время</div>
@@ -110,4 +116,39 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const form = document.getElementById('period-form');
+  const rangeInput = document.getElementById('date-range');
+  const startH = document.getElementById('start-hidden');
+  const endH = document.getElementById('end-hidden');
+
+  // Инициализация из контекста
+  const s = (startH && startH.value) ? startH.value : '';
+  const e = (endH && endH.value) ? endH.value : '';
+  if (rangeInput) {
+    rangeInput.value = (s || e) ? `${s || ''} — ${e || ''}` : '';
+  }
+
+  function parseRange(val) {
+    // Допускаем разделители: "—", "-", "to", "до"
+    if (!val) return {start:'', end:''};
+    const parts = String(val).split(/\s*[—\-–toдо]+\s*/i).filter(Boolean);
+    const start = (parts[0] || '').trim();
+    const end = (parts[1] || '').trim();
+    return { start, end };
+  }
+
+  if (form) {
+    form.addEventListener('submit', function() {
+      const { start, end } = parseRange(rangeInput.value);
+      if (startH) startH.value = start;
+      if (endH) endH.value = end;
+    });
+  }
+})();
+</script>
 {% endblock %}
