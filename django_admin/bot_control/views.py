@@ -298,47 +298,6 @@ def api_set_bot_status(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-        # Нормализация списков банков к ключам UI перед сохранением
-        try:
-            # deposits
-            dep = data.get('deposits') or {}
-            dep_banks = dep.get('banks') or []
-            dep_allowed = {'mbank','bakai','balance','demir','omoney','elcart','megapay','mega','qr'}
-            dep_norm = []
-            for b in dep_banks:
-                k = str(b).strip().lower()
-                if k == 'mega':
-                    k = 'megapay'
-                if k in dep_allowed and k not in dep_norm:
-                    dep_norm.append(k)
-            dep['banks'] = dep_norm
-            data['deposits'] = {
-                'enabled': bool(dep.get('enabled', True)),
-                'banks': dep_norm
-            }
-            # withdrawals
-            w = data.get('withdrawals') or {}
-            w_banks = w.get('banks') or []
-            w_map = {
-                'companon': 'kompanion', 'kompanion': 'kompanion', 'компаньон': 'kompanion',
-                'odengi': 'odengi', 'omoney': 'odengi', 'o!': 'odengi', 'o! деньги': 'odengi',
-                'bakai': 'bakai', 'balance': 'balance', 'balance.kg': 'balance',
-                'megapay': 'megapay', 'mega': 'megapay',
-                'mbank': 'mbank'
-            }
-            w_allowed = {'kompanion','odengi','bakai','balance','megapay','mbank'}
-            w_norm = []
-            for b in w_banks:
-                k = w_map.get(str(b).strip().lower())
-                if k and k in w_allowed and k not in w_norm:
-                    w_norm.append(k)
-            w['banks'] = w_norm
-            data['withdrawals'] = {
-                'enabled': bool(w.get('enabled', True)),
-                'banks': w_norm
-            }
-        except Exception:
-            pass
             is_active = data.get('is_active', True)
             maintenance_message = data.get('maintenance_message', '')
             
