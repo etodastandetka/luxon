@@ -77,13 +77,7 @@
             <p>Управление заявкой из базы бота</p>
         </div>
     </div>
-    {% with uname=transaction.username|default:'' uid=transaction.user_id %}
-    {% if uname %}
-      <a class="action-btn action-btn--neutral" href="https://t.me/{{ uname }}" target="_blank" rel="noopener">👤 Профиль</a>
-    {% else %}
-      <a class="action-btn action-btn--neutral" href="tg://user?id={{ uid }}">👤 Профиль</a>
-    {% endif %}
-    {% endwith %}
+    <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}">👤 Профиль</a>
 </div>
 
 {% with rt=transaction.request_type|default:'deposit' %}
