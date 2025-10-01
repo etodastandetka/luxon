@@ -121,23 +121,68 @@ def transaction_detail(request, trans_id):
         conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
+
+        # Основная транзакция
         cursor.execute('''
             SELECT r.*, u.username, u.first_name
             FROM requests r
             LEFT JOIN users u ON r.user_id = u.user_id
             WHERE r.id = ?
         ''', (trans_id,))
-        
-        transaction = cursor.fetchone()
-        
-        if not transaction:
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
             return render(request, 'bot_control/404.html')
-        
+
+        tx = dict(row)
+
+        # Пытаемся восстановить URL фото: приоритет готового URL, иначе через file_id -> getFile
+        photo_url = tx.get('photo_file_url') or ''
+        try:
+            if not photo_url:
+                file_id = (tx.get('photo_file_id') or '').strip()
+                bot_token = getattr(settings, 'BOT_TOKEN', '')
+                if file_id and bot_token:
+                    import requests as _req
+                    api = f"https://api.telegram.org/bot{bot_token}"
+                    rf = _req.get(f"{api}/getFile", params={"file_id": file_id}, timeout=3)
+                    jf = rf.json() if rf.ok else {}
+                    fp = (jf.get('result') or {}).get('file_path')
+                    if fp:
+                        photo_url = f"https://api.telegram.org/file/bot{bot_token}/{fp}"
+        except Exception:
+            photo_url = tx.get('photo_file_url') or ''
+
+        # Другие заявки пользователя (последние 100)
+        user_requests = []
+        try:
+            uid = tx.get('user_id')
+            if uid is not None:
+                cursor.execute('''
+                    SELECT id, request_type, amount, status, created_at
+                    FROM requests
+                    WHERE user_id = ?
+                    ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
+                    LIMIT 100
+                ''', (uid,))
+                for rid, rtype, amount, status, created in cursor.fetchall():
+                    user_requests.append({
+                        'id': rid,
+                        'type': (rtype or 'deposit'),
+                        'amount': float(amount or 0),
+                        'status': status or 'pending',
+                        'created_at': created,
+                    })
+        except Exception:
+            user_requests = []
+
         conn.close()
+
         from django.conf import settings as dj_settings
         return render(request, 'bot_control/transaction_detail.html', {
-            'transaction': dict(transaction),
+            'transaction': tx,
+            'photo_url': photo_url,
+            'user_requests': user_requests,
             'api_token': getattr(dj_settings, 'DJANGO_ADMIN_API_TOKEN', '')
         })
         

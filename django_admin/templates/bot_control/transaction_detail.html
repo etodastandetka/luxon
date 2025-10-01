@@ -131,22 +131,44 @@
 </div>
 
 <!-- Фото чека -->
-{% if transaction.photo_file_url %}
+{% if photo_url %}
 <div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px;">
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
         <i class="fas fa-qrcode"></i>
         <div style="font-weight:600;">Фото чека</div>
     </div>
     <div style="text-align:center;">
-        <img src="{{ transaction.photo_file_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:8px; border:1px solid #2d2d2d;" />
+        <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:8px; border:1px solid #2d2d2d;" />
     </div>
     <div style="text-align:center; margin-top:10px;">
-        <a class="photo-link-btn" href="{{ transaction.photo_file_url }}" target="_blank">Открыть в новой вкладке</a>
+        <a class="photo-link-btn" href="{{ photo_url }}" target="_blank">Открыть в новой вкладке</a>
     </div>
     <div class="muted-note">Источник: Telegram File API</div>
  </div>
  {% endif %}
  {% endwith %}
+
+<!-- Все заявки пользователя (последние 100) -->
+{% if user_requests %}
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px;">
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+      <i class="fas fa-list"></i>
+      <div style="font-weight:600;">Все заявки пользователя</div>
+  </div>
+  <div>
+    {% for r in user_requests %}
+      <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:1px solid #222;">
+        <div style="color:#9aa4b2;">#{{ r.id }} · {{ r.created_at }}</div>
+        <div style="color:#e8f0ff; font-weight:600;">
+          {% if r.type == 'deposit' %}<span style="background:#0e2f24;color:#21f39c;border:1px solid #1bd58a;padding:2px 6px;border-radius:6px;">Пополнение</span>{% else %}<span style="background:#2f0e0e;color:#ff6b6b;border:1px solid #ea5455;padding:2px 6px;border-radius:6px;">Вывод</span>{% endif %}
+          &nbsp; {{ r.amount|floatformat:2 }} сом · {{ r.status|title }}
+          &nbsp; <a href="/bot/transactions/{{ r.id }}/" style="color:#0fa;">Открыть</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}
 
