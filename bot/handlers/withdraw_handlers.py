@@ -216,16 +216,7 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
     db.save_user_data(user_id, 'current_state', 'waiting_for_bank_selection')
     logger.info(f"Bank selection shown, state set to waiting_for_bank_selection for user {user_id}")
 
-    # Обработчик для недоступных банков
-    @message.bot.callback_query(F.data.startswith('withdraw_bank_unavailable_'))
-    async def handle_unavailable(cb: types.CallbackQuery):
-        try:
-            await cb.answer("На данный момент вывод на этот банк недоступен", show_alert=True)
-        except Exception:
-            try:
-                await cb.answer("Недоступно", show_alert=True)
-            except Exception:
-                pass
+    # Обработчик для недоступных банков — регистрируется в register_handlers
 
 async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookmakers, bot, callback_message=None):
     """Обработка выбора банка - переход к Шагу 2: Запрос QR-кода"""
@@ -735,32 +726,51 @@ def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None):
     """Регистрация обработчиков"""
     
     # Обработчики текстовых сообщений для состояний вывода
-    @dp.message(lambda message: message.text and db.get_user_data(message.from_user.id, 'current_state') == 'waiting_for_withdraw_id')
-    async def handle_withdraw_id_input_handler(message: types.Message):
-        """Обработка ввода ID для вывода"""
-        await handle_withdraw_id_input(message, db, bookmakers)
-    
-    
-    @dp.message(lambda message: message.text and db.get_user_data(message.from_user.id, 'current_state') == 'waiting_for_withdraw_code')
-    async def handle_withdraw_code_input_handler(message: types.Message):
-        """Обработка ввода кода вывода"""
-        await handle_withdraw_code_input(message, db, bookmakers)
+    @dp.message(lambda message: message.photo and db.get_user_data(message.from_user.id, 'current_state') == 'waiting_for_receipt')
+    async def handle_receipt_photo_handler(message: types.Message):
+        """Обработка фото чека для пополнения"""
+        await process_receipt_photo(message, db, bookmakers)
 
-    # Обработка нажатия на инлайн-кнопку выбора банка для вывода
+    # Глобальный обработчик: недоступные банки вывода
+    @dp.callback_query(F.data.startswith('withdraw_bank_unavailable_'))
+    async def handle_unavailable(cb: types.CallbackQuery):
+        try:
+            await cb.answer("На данный момент вывод на этот банк недоступен", show_alert=True)
+        except Exception:
+            try:
+                await cb.answer("Недоступно", show_alert=True)
+            except Exception:
+                pass
+
+    # Обработка нажатия на инлайн-кнопку выбора банка для вывода (доступные)
     @dp.callback_query(F.data.startswith("withdraw_bank_"))
     async def handle_withdraw_bank_callback(callback: types.CallbackQuery):
-        user_id = callback.from_user.id
-        bank_code = callback.data.split("_")[-1]
+        data = callback.data or ''
+        # Если это недоступный банк — просто алерт (перехватывается выше), выходим
+        if data.startswith('withdraw_bank_unavailable_'):
+            try:
+                await callback.answer("Недоступно", show_alert=True)
+            except Exception:
+                pass
+            return
+        # Формат: withdraw_bank_<code>
+        try:
+            bank_code = data.split('_', 2)[-1]
+        except Exception:
+            bank_code = data.replace('withdraw_bank_', '')
         try:
             await handle_withdraw_bank_selection(
-                user_id=user_id,
+                user_id=callback.from_user.id,
                 bank_code=bank_code,
                 db=db,
                 bookmakers=bookmakers,
                 bot=callback.bot,
                 callback_message=callback.message
             )
-            await callback.answer("Банк выбран")
+            await callback.answer()
         except Exception as e:
             logger.error(f"withdraw bank callback error: {e}")
-            await callback.answer("Ошибка обработки", show_alert=True)
+            try:
+                await callback.answer("Ошибка обработки", show_alert=True)
+            except Exception:
+                pass

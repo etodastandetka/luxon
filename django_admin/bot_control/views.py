@@ -1659,6 +1659,7 @@ def api_toggle_bank_setting(request, bank_id):
 def api_get_bot_settings(request):
     """API для получения настроек бота"""
     try:
+        # Собираем настройки с дефолтами
         settings = {
             'pause': BotConfiguration.get_setting('pause', False),
             'sites': BotConfiguration.get_setting('sites', ['Melbet', '1xbet', '1win', 'mostbet']),
@@ -1668,13 +1669,38 @@ def api_get_bot_settings(request):
             }),
             'withdrawals': BotConfiguration.get_setting('withdrawals', {
                 'enabled': True,
-                'banks': ['mbank', 'optima', 'elsom', 'mobile', 'omoney', 'bakai', 'elcart', 'companon']
+                'banks': ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
             }),
             'channel': BotConfiguration.get_setting('channel', {
                 'enabled': False,
                 'name': '@bingokg_news'
             })
         }
+        # Нормализуем список банков выводов к ключам UI
+        try:
+            w = settings.get('withdrawals') or {}
+            banks = w.get('banks') or []
+            norm_map = {
+                'companon': 'kompanion',
+                'kompanion': 'kompanion',
+                'компаньон': 'kompanion',
+                'o!': 'odengi', 'odengi': 'odengi', 'o! деньги': 'odengi', 'omoney': 'odengi',
+                'bakai': 'bakai',
+                'balance': 'balance', 'balance.kg': 'balance',
+                'megapay': 'megapay', 'mega': 'megapay',
+                'mbank': 'mbank'
+            }
+            banks_norm = []
+            for b in banks:
+                k = str(b).strip().lower()
+                mapped = norm_map.get(k)
+                if mapped and mapped not in banks_norm:
+                    banks_norm.append(mapped)
+            if not banks_norm:
+                banks_norm = ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
+            settings['withdrawals']['banks'] = banks_norm
+        except Exception:
+            pass
         
         return JsonResponse(settings)
     except Exception as e:
