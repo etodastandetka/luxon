@@ -285,15 +285,17 @@ async function loadTransactions() {
                   else if (bankRaw.includes('megapay')) bankIcon = '{% static "megapay.jpg" %}';
                 }
                 // ELQR для пополнений (используем загруженный elqr.svg), иначе дефолт
-                const overlayIcon = isDeposit ? '{% static "elqr.svg" %}' : (bankIcon || '{% static "companion.png" %}');
+                // Добавляем cache-busting параметр, чтобы обойти CDN/браузерный кэш
+                const overlayIcon = isDeposit ? '{% static "elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
 
                 // Вместо буквенного аватара используем сами иконки (ELQR для пополнений, банк для выводов)
-                const mainIcon = isDeposit ? '{% static "elqr.svg" %}' : (bankIcon || '{% static "companion.png" %}');
+                // Добавляем cache-busting параметр
+                const mainIcon = isDeposit ? '{% static "elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">
                         <div style="width: 40px; height: 40px; border-radius: 10px; background:#0f0f0f; border:2px solid #333; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: cover;"/>
+                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;"/>
                         </div>
                     </div>
                     <div class="list-content">
