@@ -145,7 +145,7 @@
 
 <!-- Детали -->
 <div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px;">
-  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+  <div style="display:grid; grid-template-columns: 1fr; gap:12px;">
     <div>
       <div style="color:#9aa4b2; font-size:12px;">Сайт</div>
       <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ transaction.bookmaker|upper }}</div>
@@ -161,10 +161,16 @@
       <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ vcode }}</div>
     </div>
     <div>
-      <div style="color:#9aa4b2; font-size:12px;">Дата создания</div>
+      <div style="color:#9aa4b2; font-size:12px;">Дата создания заявки</div>
       <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ transaction.created_at|date:'d.m.Y • H:i' }}</div>
     </div>
+    <div>
+      <div style="color:#9aa4b2; font-size:12px;">Дата закрытия заявки</div>
+      {% firstof transaction.closed_at transaction.processed_at transaction.completed_at transaction.updated_at '' as dclosed %}
+      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{% if dclosed %}{{ dclosed|date:'d.m.Y • H:i' }}{% else %}—{% endif %}</div>
+    </div>
   </div>
+  
 </div>
 
 <!-- Все заявки пользователя (последние 100) -->
