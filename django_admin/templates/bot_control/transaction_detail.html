@@ -96,9 +96,11 @@
               {% endif %}
             {% endwith %}
             {# Перенесено в карточку Детали ниже #}
-            <span id="status-chip" style="padding:2px 8px; border-radius:999px; border:1px solid #2a2a2a; background:#151515; color:#cfd6e6;">
-                {% if transaction.status == 'pending' %}Ожидает{% elif transaction.status == 'processing' %}В обработке{% elif transaction.status == 'completed' %}Завершена{% elif transaction.status == 'auto_completed' %}Автопополнение{% elif transaction.status == 'rejected' %}Отклонена{% else %}{{ transaction.status }}{% endif %}
-            </span>
+            {% if transaction.status != 'awaiting_manual' %}
+              <span id="status-chip" style="padding:2px 8px; border-radius:999px; border:1px solid #2a2a2a; background:#151515; color:#cfd6e6;">
+                  {% if transaction.status == 'pending' %}Ожидает{% elif transaction.status == 'processing' %}В обработке{% elif transaction.status == 'completed' %}Завершена{% elif transaction.status == 'auto_completed' %}Автопополнение{% elif transaction.status == 'rejected' %}Отклонена{% else %}{{ transaction.status }}{% endif %}
+              </span>
+            {% endif %}
         </div>
     </div>
     <div style="display:flex; gap:8px;">
@@ -143,10 +145,12 @@
       </div>
     </div>
     <div style="display:flex; align-items:flex-end; gap:10px; flex-direction:column;">
-      <div style="display:flex; align-items:center; gap:6px;">
-        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{% if transaction.status == 'completed' or transaction.status == 'auto_completed' %}#22c55e{% elif transaction.status == 'pending' or transaction.status == 'processing' %}#f59e0b{% elif transaction.status == 'awaiting_manual' %}#ef4444{% else %}#6b7280{% endif %};"></span>
-        <span style="font-size:12px; color:#aab1c2;">{% if transaction.status == 'completed' %}Успешно{% elif transaction.status == 'auto_completed' %}Автопополнена{% elif transaction.status == 'pending' %}Ожидает{% elif transaction.status == 'processing' %}В обработке{% elif transaction.status == 'awaiting_manual' %}Оставлена{% elif transaction.status == 'rejected' %}Отклонена{% else %}{{ transaction.status }}{% endif %}</span>
-      </div>
+      {% if transaction.status != 'awaiting_manual' %}
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{% if transaction.status == 'completed' or transaction.status == 'auto_completed' %}#22c55e{% elif transaction.status == 'pending' or transaction.status == 'processing' %}#f59e0b{% else %}#6b7280{% endif %};"></span>
+          <span style="font-size:12px; color:#aab1c2;">{% if transaction.status == 'completed' %}Успешно{% elif transaction.status == 'auto_completed' %}Автопополнена{% elif transaction.status == 'pending' %}Ожидает{% elif transaction.status == 'processing' %}В обработке{% elif transaction.status == 'rejected' %}Отклонена{% else %}{{ transaction.status }}{% endif %}</span>
+        </div>
+      {% endif %}
       <div style="font-weight:800; font-size:18px; {% if rt == 'deposit' %}color:#21f39c;{% else %}color:#ff6b6b;{% endif %}">{% if rt == 'deposit' %}+{% else %}-{% endif %}{{ transaction.amount|floatformat:2 }} сом</div>
     </div>
   </div>
@@ -232,10 +236,12 @@
         <div style="display:flex; align-items:flex-end; gap:12px; flex-direction:column; min-width:140px;">
           <div style="color:#9aa4b2; font-size:12px; white-space:nowrap;">{{ r.created_at|date:'d.m.Y • H:i' }}</div>
           <div style="font-weight:800; font-size:16px; {% if r.type == 'deposit' %}color:#21f39c;{% else %}color:#ff6b6b;{% endif %}">{% if r.type == 'deposit' %}+{% else %}-{% endif %}{{ r.amount|floatformat:2 }} сом</div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{% if r.status == 'completed' or r.status == 'auto_completed' %}#22c55e{% elif r.status == 'pending' or r.status == 'processing' %}#f59e0b{% elif r.status == 'awaiting_manual' %}#ef4444{% else %}#6b7280{% endif %};"></span>
-            <span style="font-size:12px; color:#aab1c2;">{% if r.status == 'auto_completed' %}Авто пополнение{% elif r.status == 'completed' %}Успешно{% elif r.status == 'pending' %}Ожидает{% elif r.status == 'processing' %}В работе{% elif r.status == 'awaiting_manual' %}Оставлена{% elif r.status == 'rejected' %}Отклонена{% else %}{{ r.status }}{% endif %}</span>
-          </div>
+          {% if r.status != 'awaiting_manual' %}
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{% if r.status == 'completed' or r.status == 'auto_completed' %}#22c55e{% elif r.status == 'pending' or r.status == 'processing' %}#f59e0b{% else %}#6b7280{% endif %};"></span>
+              <span style="font-size:12px; color:#aab1c2;">{% if r.status == 'auto_completed' %}Авто пополнение{% elif r.status == 'completed' %}Успешно{% elif r.status == 'pending' %}Ожидает{% elif r.status == 'processing' %}В работе{% elif r.status == 'rejected' %}Отклонена{% else %}{{ r.status }}{% endif %}</span>
+            </div>
+          {% endif %}
         </div>
       </a>
     {% endfor %}
