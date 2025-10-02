@@ -81,7 +81,25 @@
 </div>
 
 {% with rt=transaction.request_type|default:'deposit' %}
-<div class="card" style="background: #111; border: 1px solid #333; border-radius: 12px; padding: 16px;">
+<!-- Фото чека (вверху) -->
+{% if photo_url %}
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:0;">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <i class="fas fa-qrcode"></i>
+        <div style="font-weight:600;">Фото чека</div>
+    </div>
+    <div style="text-align:center;">
+        <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:8px; border:1px solid #2d2d2d;" />
+    </div>
+    <div style="text-align:center; margin-top:10px;">
+        <a class="photo-link-btn" href="{{ photo_url }}" target="_blank">Открыть в новой вкладке</a>
+    </div>
+    <div class="muted-note">Источник: Telegram File API</div>
+ </div>
+{% endif %}
+
+<!-- Детали (ниже фото) -->
+<div class="card" style="background: #111; border: 1px solid #333; border-radius: 12px; padding: 16px; margin-top:12px;">
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
         <div>
             <div style="color:#999; font-size:12px;">Пользователь</div>
@@ -123,8 +141,7 @@
 
     {% if transaction.status != 'completed' and transaction.status != 'rejected' %}
     <div class="btns-row" id="actions-row">
-        <button class="action-btn" id="btn-api">🔗 Обработать API</button>
-        <button class="action-btn action-btn--approve" id="btn-approve" onclick="handleAction('approve')">✅ Подтвердить</button>
+        <button class="action-btn action-btn--approve" id="btn-approve" onclick="handleAction('approve')">✅ Обработать</button>
         <button class="action-btn action-btn--reject" id="btn-reject" onclick="handleAction('reject')">❌ Отклонить</button>
         <a class="action-btn action-btn--neutral" href="{% url 'dashboard:deposits_list' %}">← Назад к заявкам</a>
     </div>
@@ -135,22 +152,6 @@
     {% endif %}
 </div>
 
-<!-- Фото чека -->
-{% if photo_url %}
-<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px;">
-    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-        <i class="fas fa-qrcode"></i>
-        <div style="font-weight:600;">Фото чека</div>
-    </div>
-    <div style="text-align:center;">
-        <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:8px; border:1px solid #2d2d2d;" />
-    </div>
-    <div style="text-align:center; margin-top:10px;">
-        <a class="photo-link-btn" href="{{ photo_url }}" target="_blank">Открыть в новой вкладке</a>
-    </div>
-    <div class="muted-note">Источник: Telegram File API</div>
- </div>
- {% endif %}
  {% endwith %}
 
 <!-- Все заявки пользователя (последние 100) -->
@@ -259,65 +260,8 @@ async function handleAction(action) {
   }
 }
 
-async function handleApiProcess() {
-  try {
-    const bookmaker = '{{ transaction.bookmaker }}'.toLowerCase();
-    const accountId = String('{{ transaction.account_id }}');
-    const amount = parseFloat(String('{{ transaction.amount }}').replace(',', '.'));
-    // Для API букмекера нужен ИМЕННО ID аккаунта у букмекера, а не Telegram user_id
-    const userId = String('{{ transaction.account_id }}');
-    const rt = '{{ transaction.request_type|default:"deposit" }}'.toLowerCase();
-    if (rt === 'withdraw') {
-      alert('API доступно только для пополнений');
-      return;
-    }
-    let endpoint = '';
-    if (bookmaker.includes('1xbet') || bookmaker.includes('xbet')) endpoint = '{% url "bot_control:api_1xbet_deposit" %}';
-    else if (bookmaker.includes('1win')) endpoint = '{% url "bot_control:api_1win_deposit" %}';
-    else if (bookmaker.includes('melbet')) endpoint = '{% url "bot_control:api_melbet_deposit" %}';
-    else if (bookmaker.includes('mostbet')) endpoint = '{% url "bot_control:api_mostbet_deposit" %}';
-    if (!endpoint) {
-      alert('Для этого букмекера API-кнопка ещё не настроена');
-      return;
-    }
-    const payload = {
-      bookmaker: bookmaker,
-      account_id: accountId,
-      amount: amount,
-      currency: 'KGS',
-      user_id: userId,
-    };
-    const headers = { 
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCookie('csrftoken') || ''
-    };
-    const apiToken = '{{ api_token|default:"" }}';
-    if (apiToken) headers['Authorization'] = `Token ${apiToken}`;
-    const res = await fetch(endpoint, { 
-      method: 'POST', 
-      credentials: 'same-origin',
-      headers,
-      body: JSON.stringify(payload) 
-    });
-    const data = await res.json().catch(()=>({ raw: 'non-json response' }));
-    if (!res.ok) {
-      const msg = (data && (data.error || data.message)) || 'Ошибка запроса к API букмекера';
-      alert(`API error (${res.status}): ${msg}\n\nDetails: ${JSON.stringify(data)}`);
-      return;
-    }
-    // После удачного API-депозита обновляем статус заявки -> completed
-    await handleAction('approve');
-  } catch (e) {
-    console.error(e);
-    alert('Ошибка обработки API');
-  }
-}
 
 document.addEventListener('DOMContentLoaded', function() {
-  try {
-    const apiBtn = document.getElementById('btn-api');
-    if (apiBtn) apiBtn.addEventListener('click', handleApiProcess);
-  } catch (e) { /* noop */ }
   try { startStatusPolling(); } catch(e) {}
 });
 
