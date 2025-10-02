@@ -78,6 +78,26 @@
             {# Убрали маленькую иконку под заголовком #}
         </div>
 
+<!-- Блок суммы (отдельная карточка) -->
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:14px; margin-top:12px; box-shadow:0 6px 16px rgba(0,0,0,.35); display:flex; align-items:center; justify-content:space-between;">
+  <div style="color:#9aa4b2; font-size:12px;">Сумма</div>
+  <div style="font-weight:900; font-size:20px; {% if transaction.request_type|default:'deposit' == 'deposit' %}color:#21f39c;{% else %}color:#ff6b6b;{% endif %}">{% if transaction.request_type|default:'deposit' == 'deposit' %}+{% else %}-{% endif %}{{ transaction.amount|floatformat:2 }} сом</div>
+</div>
+
+<!-- Группа кнопок: одинаковая ширина -->
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:12px; margin-top:12px; box-shadow:0 6px 16px rgba(0,0,0,.35);">
+  <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+    <button type="button" class="action-btn action-btn--neutral" style="width:100%; justify-content:center;" onclick="location.reload()">Проверить</button>
+    {% if photo_url %}
+      <a class="action-btn action-btn--neutral" style="width:100%; justify-content:center; text-align:center;" href="{{ photo_url }}" target="_blank">Чек</a>
+      <a class="action-btn action-btn--approve" style="width:100%; justify-content:center; text-align:center;" href="{{ photo_url }}" download>Загрузить</a>
+    {% else %}
+      <button class="action-btn action-btn--neutral" style="width:100%; justify-content:center; opacity:.6;" disabled>Чек</button>
+      <button class="action-btn action-btn--approve" style="width:100%; justify-content:center; opacity:.6;" disabled>Загрузить</button>
+    {% endif %}
+  </div>
+</div>
+
 <!-- QR / Фото чека: отдельная карточка -->
 {% if photo_url %}
 <div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:14px; margin-top:12px; box-shadow:0 6px 16px rgba(0,0,0,.35);">
