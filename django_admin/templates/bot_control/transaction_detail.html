@@ -107,65 +107,54 @@
 </div>
 
 {% with rt=transaction.request_type|default:'deposit' %}
-<!-- Фото чека (вверху) -->
-{% if photo_url %}
+<!-- Верхний блок: информация и фото в одной карточке -->
 <div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:12px; margin-top:0;">
-    <div style="color:#9aa7bd; font-size:12px; margin:4px 6px 8px;">Фото чека</div>
+  <!-- Шапка карточки (иконка банка/ELQR, ID, дата; справа статус и сумма) -->
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      {% if rt == 'deposit' %}
+        <img src="{% static 'elqr.svg' %}?v=20251002" alt="ELQR" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;background:#0f0f0f;object-fit:contain;">
+      {% else %}
+        {% with b=transaction.bank|default:'' %}
+          {% if b|lower == 'mbank' %}
+            <img src="{% static 'images/mbank.png' %}" alt="mbank" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+          {% elif b|lower == 'optima' %}
+            <img src="{% static 'images/optima.jpg' %}" alt="optima" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+          {% elif b|lower == 'omoney' %}
+            <img src="{% static 'images/omoney.jpg' %}" alt="omoney" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+          {% elif b|lower == 'demirbank' or b|lower == 'demir' %}
+            <img src="{% static 'images/demirbank.jpg' %}" alt="demirbank" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+          {% elif b|lower == 'megapay' %}
+            <img src="{% static 'images/megapay.jpg' %}" alt="megapay" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+          {% endif %}
+        {% endwith %}
+      {% endif %}
+      <div>
+        <div style="font-weight:700; color:#e5e7eb;">{% firstof transaction.account_id transaction.user_id transaction.telegram_id '-' %}</div>
+        <div style="color:#9aa4b2; font-size:12px;">{{ transaction.created_at|date:'d.m.Y • H:i' }}</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:flex-end; gap:10px; flex-direction:column;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{% if transaction.status == 'completed' or transaction.status == 'auto_completed' %}#22c55e{% elif transaction.status == 'pending' or transaction.status == 'processing' %}#f59e0b{% elif transaction.status == 'awaiting_manual' %}#ef4444{% else %}#6b7280{% endif %};"></span>
+        <span style="font-size:12px; color:#aab1c2;">{% if transaction.status == 'completed' %}Успешно{% elif transaction.status == 'auto_completed' %}Автопополнена{% elif transaction.status == 'pending' %}Ожидает{% elif transaction.status == 'processing' %}В обработке{% elif transaction.status == 'awaiting_manual' %}Оставлена{% elif transaction.status == 'rejected' %}Отклонена{% else %}{{ transaction.status }}{% endif %}</span>
+      </div>
+      <div style="font-weight:800; font-size:18px; {% if rt == 'deposit' %}color:#21f39c;{% else %}color:#ff6b6b;{% endif %}">{% if rt == 'deposit' %}+{% else %}-{% endif %}{{ transaction.amount|floatformat:2 }} сом</div>
+    </div>
+  </div>
+
+  {% if photo_url %}
     <div style="text-align:center;">
-        <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:8px; border:1px solid #2d2d2d;" />
+        <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #2d2d2d;" />
     </div>
     <div style="text-align:center; margin-top:10px;">
         <a class="photo-link-btn" href="{{ photo_url }}" target="_blank">Открыть в новой вкладке</a>
     </div>
     <div class="muted-note" style="margin-top:6px;">Источник: Telegram</div>
- </div>
-{% endif %}
-
-<!-- Детали (ниже фото) -->
-<div class="card" style="background: #111; border: 1px solid #333; border-radius: 12px; padding: 16px; margin-top:12px;">
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div>
-            <div style="color:#999; font-size:12px;">Пользователь</div>
-            <div style="color:#fff; font-size:14px; font-weight:600;">{{ transaction.username }}</div>
-            <div style="color:#666; font-size:11px;">ID: {{ transaction.user_id }}</div>
-        </div>
-        <div>
-            <div style="color:#999; font-size:12px;">Тип операции</div>
-            <div style="color:#fff; font-size:14px; font-weight:600;">{% if rt == 'deposit' %}Пополнение{% else %}Вывод{% endif %}</div>
-        </div>
-        <div>
-            <div style="color:#999; font-size:12px;">Букмекер</div>
-            <div style="color:#fff; font-size:14px; font-weight:600;">{{ transaction.bookmaker|upper }}</div>
-        </div>
-        <div>
-            <div style="color:#999; font-size:12px;">Банк</div>
-            <div style="color:#fff; font-size:14px; font-weight:600;">{{ transaction.bank|default:'—' }}</div>
-        </div>
-        <div>
-            <div style="color:#999; font-size:12px;">Сумма</div>
-            <div style="color:#fff; font-size:18px; font-weight:700;">{{ transaction.amount }} сом</div>
-        </div>
-        <div>
-            <div style="color:#999; font-size:12px;">Статус</div>
-            <div id="status-text" style="color:#fff; font-size:14px; font-weight:600;">
-                {% if transaction.status == 'pending' %}Ожидает
-                {% elif transaction.status == 'processing' %}В обработке
-                {% elif transaction.status == 'completed' %}Завершена
-                {% elif transaction.status == 'auto_completed' %}Автопополнена
-                {% elif transaction.status == 'rejected' %}Отклонена
-                {% else %}{{ transaction.status }}{% endif %}
-            </div>
-        </div>
-        <div>
-            <div style="color:#999; font-size:12px;">Создано</div>
-            <div style="color:#fff; font-size:14px; font-weight:600;">{{ transaction.created_at }}</div>
-        </div>
-    </div>
-
-    <!-- Кнопки перенесены в нижнюю панель -->
+  {% endif %}
 </div>
 
- {% endwith %}
+{% endwith %}
 
 <!-- Все заявки пользователя (последние 100) -->
 {% if user_requests %}
