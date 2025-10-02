@@ -73,7 +73,7 @@
 </style>
 <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
     <div class="header-content">
-        <h1 style="margin:0; line-height:1.2;">Заявка #{{ transaction.id }}</h1>
+        <h1 style="margin:0; line-height:1.15; font-size:22px; font-weight:800;">Заявка #{{ transaction.id }}</h1>
         <div style="margin-top:6px; color:#9aa7bd; font-size:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
             {# Убрали маленькую иконку под заголовком #}
         </div>
@@ -153,13 +153,19 @@
     <div>
       <div style="color:#9aa4b2; font-size:12px;">ID</div>
       {% firstof transaction.account_id transaction.user_id transaction.telegram_id '-' as did %}
-      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ did }}</div>
+      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">
+        <button type="button" onclick="copyText('{{ did }}')" title="Скопировать ID" style="padding:4px 8px; border-radius:8px; border:1px solid #2a2a2a; background:#151515; color:#e5e7eb; cursor:pointer;">
+          {{ did }}
+        </button>
+      </div>
     </div>
-    <div>
-      <div style="color:#9aa4b2; font-size:12px;">Код</div>
-      {% firstof transaction.withdraw_code transaction.code '-' as vcode %}
-      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ vcode }}</div>
-    </div>
+    {% firstof transaction.withdraw_code transaction.code '' as vcode %}
+    {% if transaction.request_type == 'withdraw' and vcode %}
+      <div>
+        <div style="color:#9aa4b2; font-size:12px;">Код</div>
+        <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ vcode }}</div>
+      </div>
+    {% endif %}
     <div>
       <div style="color:#9aa4b2; font-size:12px;">Дата создания заявки</div>
       <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ transaction.created_at|date:'d.m.Y • H:i' }}</div>
