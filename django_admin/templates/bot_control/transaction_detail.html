@@ -163,9 +163,31 @@
     </div>
   </div>
 
-</div>
+  </div>
 
 {% endwith %}
+
+<!-- QR / Фото чека: отдельная карточка (ниже сводки) -->
+{% if photo_url %}
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:14px; margin-top:12px; box-shadow:0 6px 16px rgba(0,0,0,.35);">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+    <div style="font-weight:700; color:#e5e7eb;">QR / Чек</div>
+    <div style="color:#9aa4b2; font-size:12px;">Источник: Telegram</div>
+  </div>
+  <div style="text-align:center;">
+    <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #2d2d2d;" />
+  </div>
+</div>
+{% endif %}
+
+{# Карточка кода активации (для выводов только при наличии кода) #}
+{% firstof transaction.withdraw_code transaction.code '' as vcode %}
+{% if transaction.request_type == 'withdraw' and vcode %}
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px; box-shadow:0 6px 16px rgba(0,0,0,.35);">
+  <div style="color:#9aa4b2; font-size:12px;">Код активации</div>
+  <div style="margin-top:6px; font-weight:800; font-size:18px; letter-spacing:1px;">{{ vcode }}</div>
+</div>
+{% endif %}
 
 <!-- Детали -->
 <div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:18px; margin-top:12px;">
