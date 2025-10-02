@@ -202,7 +202,8 @@
               <div style="color:#8b8b8b; font-size:12px;">#{{ r.id }}</div>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
-              <div style="color:#9aa4b2; font-size:12px;">ID: {{ r.user_id }}</div>
+              {% firstof r.account_id r.user_id r.telegram_id '-' as rid %}
+              <div style="color:#9aa4b2; font-size:12px;">ID: {{ rid }}</div>
               <div style="font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid #2a2a2a; color:#9ec5fe; background:#0f172a;">{% if r.type == 'deposit' %}{% if r.status == 'auto_completed' %}Авто пополнение{% else %}Пополнение{% endif %}{% else %}Вывод{% endif %}</div>
             </div>
           </div>
