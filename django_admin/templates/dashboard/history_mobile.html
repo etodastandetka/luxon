@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}История - Управление транзакциями{% endblock %}
 
@@ -277,17 +278,17 @@ async function loadTransactions() {
                 const bankRaw = (transaction.bank || transaction.wallet_details || '').toString().toLowerCase();
                 let bankIcon = '';
                 if (!isDeposit) {
-                  if (bankRaw.includes('mbank')) bankIcon = '/images/mbank.png';
-                  else if (bankRaw.includes('optima')) bankIcon = '/images/optima.jpg';
-                  else if (bankRaw.includes('omoney')) bankIcon = '/images/omoney.jpg';
-                  else if (bankRaw.includes('demir')) bankIcon = '/images/demirbank.jpg';
-                  else if (bankRaw.includes('megapay')) bankIcon = '/images/megapay.jpg';
+                  if (bankRaw.includes('mbank')) bankIcon = '{% static "images/mbank.png" %}';
+                  else if (bankRaw.includes('optima')) bankIcon = '{% static "images/optima.jpg" %}';
+                  else if (bankRaw.includes('omoney')) bankIcon = '{% static "images/omoney.jpg" %}';
+                  else if (bankRaw.includes('demir')) bankIcon = '{% static "images/demirbank.jpg" %}';
+                  else if (bankRaw.includes('megapay')) bankIcon = '{% static "images/megapay.jpg" %}';
                 }
                 // ELQR для пополнений (или дефолт)
-                const overlayIcon = isDeposit ? '/images/elqr.png' : (bankIcon || '/images/companion.png');
+                const overlayIcon = isDeposit ? '{% static "images/companion.png" %}' : (bankIcon || '{% static "images/companion.png" %}');
 
                 // Вместо буквенного аватара используем сами иконки (ELQR для пополнений, банк для выводов)
-                const mainIcon = isDeposit ? '/images/companion.png' : (bankIcon || '/images/companion.png');
+                const mainIcon = isDeposit ? '{% static "images/companion.png" %}' : (bankIcon || '{% static "images/companion.png" %}');
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">

@@ -135,7 +135,11 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = '/var/www/luxservice/django_admin/staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+# Serve both app static and repo-level images/ as static
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+    PROJECT_ROOT / 'images',
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
