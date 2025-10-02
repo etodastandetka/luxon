@@ -680,15 +680,15 @@ body { background-color: var(--dark); color: #e5e7eb; font-family: 'Inter', -app
                 <div class="w-top" style="display:flex; align-items:center; gap:8px;">
                   {% with wd=req.wallet_details|default:''|lower %}
                     {% if 'mbank' in wd %}
-                      <img src="{% static 'images/mbank.png' %}" alt="mbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                      <img src="{% static 'mbank.png' %}" alt="mbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
                     {% elif 'optima' in wd %}
-                      <img src="{% static 'images/optima.jpg' %}" alt="optima" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                      <img src="{% static 'optima.jpg' %}" alt="optima" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
                     {% elif 'omoney' in wd %}
-                      <img src="{% static 'images/omoney.jpg' %}" alt="omoney" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                      <img src="{% static 'omoney.jpg' %}" alt="omoney" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
                     {% elif 'demir' in wd %}
-                      <img src="{% static 'images/demirbank.jpg' %}" alt="demirbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                      <img src="{% static 'demirbank.jpg' %}" alt="demirbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
                     {% elif 'megapay' in wd %}
-                      <img src="{% static 'images/megapay.jpg' %}" alt="megapay" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                      <img src="{% static 'megapay.jpg' %}" alt="megapay" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
                     {% endif %}
                   {% endwith %}
                   <span>Пользователь ID {{ req.user_id }}</span>
