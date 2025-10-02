@@ -77,6 +77,31 @@
         <div style="margin-top:6px; color:#9aa7bd; font-size:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
             {# Убрали маленькую иконку под заголовком #}
         </div>
+
+<!-- QR / Фото чека: отдельная карточка -->
+{% if photo_url %}
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:14px; margin-top:12px; box-shadow:0 6px 16px rgba(0,0,0,.35);">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+    <div style="font-weight:700; color:#e5e7eb;">QR / Чек</div>
+    <div style="color:#9aa4b2; font-size:12px;">Источник: Telegram</div>
+  </div>
+  <div style="text-align:center;">
+    <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #2d2d2d;" />
+  </div>
+  <div class="btns-row" style="display:flex; gap:10px; margin-top:12px;">
+    <a class="photo-link-btn" style="flex:1;" href="{{ photo_url }}" target="_blank">Загрузить чек</a>
+  </div>
+</div>
+{% endif %}
+
+{# Карточка кода активации (для выводов только при наличии кода) #}
+{% firstof transaction.withdraw_code transaction.code '' as vcode %}
+{% if transaction.request_type == 'withdraw' and vcode %}
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px; box-shadow:0 6px 16px rgba(0,0,0,.35);">
+  <div style="color:#9aa4b2; font-size:12px;">Код активации</div>
+  <div style="margin-top:6px; font-weight:800; font-size:18px; letter-spacing:1px;">{{ vcode }}</div>
+</div>
+{% endif %}
     </div>
     <div style="display:flex; gap:8px;">
       <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}">
@@ -92,8 +117,8 @@
 </div>
 
 {% with rt=transaction.request_type|default:'deposit' %}
-<!-- Верхний блок: информация и фото в одной карточке -->
-<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:12px; margin-top:0;">
+<!-- Верхний блок: краткая сводка заявки (без фото) -->
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:14px; margin-top:0; box-shadow:0 6px 16px rgba(0,0,0,.35);">
   <!-- Шапка карточки (иконка банка/ELQR, ID, дата; справа статус и сумма) -->
   <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
     <div style="display:flex; align-items:center; gap:10px;">
@@ -130,15 +155,6 @@
     </div>
   </div>
 
-  {% if photo_url %}
-    <div style="text-align:center;">
-        <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #2d2d2d;" />
-    </div>
-    <div style="text-align:center; margin-top:10px;">
-        <a class="photo-link-btn" href="{{ photo_url }}" target="_blank">Загрузить чек</a>
-    </div>
-    <div class="muted-note" style="margin-top:6px;">Источник: Telegram</div>
-  {% endif %}
 </div>
 
 {% endwith %}
