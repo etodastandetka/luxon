@@ -278,17 +278,17 @@ async function loadTransactions() {
                 const bankRaw = (transaction.bank || transaction.wallet_details || '').toString().toLowerCase();
                 let bankIcon = '';
                 if (!isDeposit) {
-                  if (bankRaw.includes('mbank')) bankIcon = '{% static "images/mbank.png" %}';
-                  else if (bankRaw.includes('optima')) bankIcon = '{% static "images/optima.jpg" %}';
-                  else if (bankRaw.includes('omoney')) bankIcon = '{% static "images/omoney.jpg" %}';
-                  else if (bankRaw.includes('demir')) bankIcon = '{% static "images/demirbank.jpg" %}';
-                  else if (bankRaw.includes('megapay')) bankIcon = '{% static "images/megapay.jpg" %}';
+                  if (bankRaw.includes('mbank')) bankIcon = '{% static "mbank.png" %}';
+                  else if (bankRaw.includes('optima')) bankIcon = '{% static "optima.jpg" %}';
+                  else if (bankRaw.includes('omoney')) bankIcon = '{% static "omoney.jpg" %}';
+                  else if (bankRaw.includes('demir')) bankIcon = '{% static "demirbank.jpg" %}';
+                  else if (bankRaw.includes('megapay')) bankIcon = '{% static "megapay.jpg" %}';
                 }
                 // ELQR для пополнений (или дефолт)
-                const overlayIcon = isDeposit ? '{% static "images/companion.png" %}' : (bankIcon || '{% static "images/companion.png" %}');
+                const overlayIcon = isDeposit ? '{% static "companion.png" %}' : (bankIcon || '{% static "companion.png" %}');
 
                 // Вместо буквенного аватара используем сами иконки (ELQR для пополнений, банк для выводов)
-                const mainIcon = isDeposit ? '{% static "images/companion.png" %}' : (bankIcon || '{% static "images/companion.png" %}');
+                const mainIcon = isDeposit ? '{% static "companion.png" %}' : (bankIcon || '{% static "companion.png" %}');
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">
