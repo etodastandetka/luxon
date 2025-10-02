@@ -255,6 +255,11 @@ class UniversalBot:
             elif current_state == 'waiting_for_qr_photo':
                 await message.answer("📱 Пожалуйста, отправьте фото QR-кода вашего кошелька")
                 return
+            elif current_state == 'waiting_for_withdraw_phone':
+                # Обрабатываем ввод номера телефона для вывода через withdraw_handlers
+                from handlers.withdraw_handlers import handle_withdraw_phone_input
+                await handle_withdraw_phone_input(message, self.db, BOOKMAKERS)
+                return
             elif current_state == 'waiting_for_withdraw_id':
                 # Обрабатываем ввод ID для вывода через withdraw_handlers
                 from handlers.withdraw_handlers import handle_withdraw_id_input

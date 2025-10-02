@@ -164,13 +164,11 @@
       <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ transaction.bookmaker|upper }}</div>
     </div>
     <div>
-      <div style="color:#9aa4b2; font-size:12px;">ID</div>
+      <div style="color:#9aa4b2; font-size:12px; margin-bottom:6px;">ID</div>
       {% firstof transaction.account_id transaction.user_id transaction.telegram_id '-' as did %}
-      <div style="color:#e5e7eb; font-size:14px; font-weight:700; margin-top:4px;">
-        <button type="button" onclick="copyText('{{ did }}')" title="Скопировать ID" style="padding:4px 8px; border-radius:8px; border:1px solid #2a2a2a; background:#151515; color:#e5e7eb; cursor:pointer;">
-          {{ did }}
-        </button>
-      </div>
+      <button type="button" onclick="copyText('{{ did }}')" title="Скопировать ID" style="padding:6px 10px; border-radius:8px; border:1px solid #2a2a2a; background:#151515; color:#e5e7eb; cursor:pointer; font-size:14px; font-weight:700; transition:all .2s;">
+        {{ did }}
+      </button>
     </div>
     {% firstof transaction.withdraw_code transaction.code '' as vcode %}
     {% if transaction.request_type == 'withdraw' and vcode %}
@@ -370,6 +368,26 @@ function startStatusPolling(){
       }
     }catch(e){ /* silent */ }
   }, 7000);
+}
+
+// Копирование текста в буфер обмена (для ID)
+function copyText(t) {
+  try {
+    const s = String(t || '').trim();
+    if (!s) return;
+    navigator.clipboard.writeText(s).then(() => {
+      alert('Скопировано: ' + s);
+    }).catch(() => {
+      // Фолбэк через скрытый input
+      const i = document.createElement('input');
+      i.value = s;
+      document.body.appendChild(i);
+      i.select();
+      document.execCommand('copy');
+      document.body.removeChild(i);
+      alert('Скопировано: ' + s);
+    });
+  } catch (e) { alert('Ошибка копирования'); }
 }
 </script>
 {% endblock %}

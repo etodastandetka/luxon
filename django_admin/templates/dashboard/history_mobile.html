@@ -164,6 +164,13 @@
 .status-pending { background: #ffa500; }
 .status-completed { background: #999; }
 .status-rejected { background: #ff4444; }
+/* New unified statuses */
+.status-approved { background: #22c55e; }    /* green */
+.status-auto_completed { background: #06b6d4; } /* cyan */
+.status-awaiting_manual { background: #f59e0b; } /* amber */
+.status-processing { background: #a855f7; }   /* purple */
+.status-failed { background: #ef4444; }       /* red */
+.status-cancelled { background: #6b7280; }    /* gray */
 </style>
 
 <!-- Фильтры транзакций -->
@@ -261,13 +268,40 @@ async function loadTransactions() {
                 // Определяем статус
                 let statusText = 'Ожидает';
                 let statusClass = 'status-pending';
-                
-                if (transaction.status === 'completed') {
-                    statusText = 'Успешно';
-                    statusClass = 'status-completed';
-                } else if (transaction.status === 'rejected') {
-                    statusText = 'Отклонено';
-                    statusClass = 'status-rejected';
+                const st = (transaction.status || 'pending').toString();
+                switch (st) {
+                    case 'completed':
+                        statusText = 'Успешно';
+                        statusClass = 'status-completed';
+                        break;
+                    case 'rejected':
+                        statusText = 'Отклонено';
+                        statusClass = 'status-rejected';
+                        break;
+                    case 'approved':
+                        statusText = 'Подтверждено';
+                        statusClass = 'status-approved';
+                        break;
+                    case 'auto_completed':
+                        statusText = 'Автопополнение';
+                        statusClass = 'status-auto_completed';
+                        break;
+                    case 'awaiting_manual':
+                        statusText = 'Ожидает ручного пополнения';
+                        statusClass = 'status-awaiting_manual';
+                        break;
+                    case 'processing':
+                        statusText = 'Обрабатывается';
+                        statusClass = 'status-processing';
+                        break;
+                    case 'failed':
+                        statusText = 'Ошибка';
+                        statusClass = 'status-failed';
+                        break;
+                    case 'cancelled':
+                        statusText = 'Отменено';
+                        statusClass = 'status-cancelled';
+                        break;
                 }
                 
                 // Аватар: первая буква имени, цвет по типу; оверлей: ELQR (deposit) или иконка банка (withdraw)

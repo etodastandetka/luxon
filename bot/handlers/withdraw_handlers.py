@@ -318,7 +318,7 @@ async def handle_withdraw_id_input(message: types.Message, db, bookmakers):
         await message.answer("Произошла ошибка")
     
 async def process_qr_photo(message: types.Message, db, bookmakers):
-    """Обработка QR-фото - переход к Шагу 3: Ввод ID"""
+    """Обработка QR-фото - переход к Шагу 3: Ввод номера телефона"""
     try:
         user_id = message.from_user.id
         language = db.get_user_language(user_id)
@@ -330,6 +330,58 @@ async def process_qr_photo(message: types.Message, db, bookmakers):
         qr_file_id = message.photo[-1].file_id
         db.save_user_data(user_id, 'qr_photo_id', qr_file_id)
         logger.info(f"QR photo saved for user {user_id}")
+        
+        # Переходим к вводу номера телефона
+        db.save_user_data(user_id, 'current_state', 'waiting_for_withdraw_phone')
+        logger.info(f"State set to waiting_for_withdraw_phone for user {user_id}")
+        
+        # Получаем сохраненный номер телефона (если есть)
+        bookmaker = db.get_user_data(user_id, 'current_bookmaker')
+        saved_phone = db.get_user_data(user_id, 'phone', bookmaker)
+        
+        # Создаем клавиатуру с сохраненным номером
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=str(saved_phone))] if saved_phone else [],
+                [KeyboardButton(text=translations.get('back_to_menu', '🔙 Назад'))]
+            ],
+            resize_keyboard=True
+        )
+                
+        # Отправляем сообщение с инструкцией
+        text = translations['enter_withdraw_phone']
+        
+        await message.answer(text, reply_markup=keyboard)
+            
+    except Exception as e:
+        logger.error(f"Ошибка при обработке QR-фото: {e}")
+        await message.answer("Произошла ошибка")
+
+async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
+    """Обработка ввода номера телефона - переход к Шагу 4: Ввод ID"""
+    try:
+        user_id = message.from_user.id
+        text = message.text
+        language = db.get_user_language(user_id)
+        translations = get_translation(language)
+            
+        # Проверяем, не нажал ли пользователь "Назад"
+        if text == translations.get('back_to_menu', '🔙 Назад'):
+            await show_main_menu(message, language)
+            db.save_user_data(user_id, 'current_state', '')
+            return
+        
+        # Проверяем формат номера телефона (должен начинаться с 996 и содержать 12 цифр)
+        phone_clean = text.strip().replace('+', '').replace(' ', '').replace('-', '')
+        if not phone_clean.isdigit() or len(phone_clean) != 12 or not phone_clean.startswith('996'):
+            await message.answer("❌ Неверный формат номера. Введите номер в формате: 996505000000")
+            return
+            
+        # Сохраняем номер телефона
+        db.save_user_data(user_id, 'withdraw_phone', phone_clean)
+        bookmaker_for_save = db.get_user_data(user_id, 'current_bookmaker')
+        if bookmaker_for_save:
+            db.save_user_data(user_id, 'phone', phone_clean, bookmaker_for_save)
         
         # Переходим к вводу ID
         db.save_user_data(user_id, 'current_state', 'waiting_for_withdraw_id')
@@ -371,7 +423,7 @@ async def process_qr_photo(message: types.Message, db, bookmakers):
             await message.answer(text, reply_markup=keyboard)
             
     except Exception as e:
-        logger.error(f"Ошибка при обработке QR-фото: {e}")
+        logger.error(f"Ошибка при обработке номера телефона для вывода: {e}")
         await message.answer("Произошла ошибка")
     
 async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
@@ -395,6 +447,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
         bookmaker = db.get_user_data(user_id, 'current_bookmaker')
         bank_code = db.get_user_data(user_id, 'selected_bank')
         withdraw_id = db.get_user_data(user_id, 'withdraw_id')
+        withdraw_phone = db.get_user_data(user_id, 'withdraw_phone')
         qr_photo_id = db.get_user_data(user_id, 'qr_photo_id')
         
         # Получаем сумму через API для конкретного букмекера
@@ -548,11 +601,18 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                     photo_file_id TEXT,
                     photo_file_url TEXT,
                     bank TEXT,
+                    phone TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP,
                     processed_at TIMESTAMP
                 )
             ''')
+            
+            # Добавляем колонку phone если её нет
+            try:
+                cur.execute("ALTER TABLE requests ADD COLUMN phone TEXT")
+            except Exception:
+                pass  # Колонка уже существует
 
             # Получим прямой URL к файлу от Telegram API (если есть)
             photo_file_url = None
@@ -569,8 +629,8 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
             cur.execute('''
                 INSERT INTO requests
                 (user_id, username, first_name, bookmaker, account_id, amount, request_type, status,
-                 withdrawal_code, photo_file_id, photo_file_url, bank)
-                VALUES (?, ?, ?, ?, ?, ?, 'withdraw', 'pending', ?, ?, ?, ?)
+                 withdrawal_code, photo_file_id, photo_file_url, bank, phone)
+                VALUES (?, ?, ?, ?, ?, ?, 'withdraw', 'pending', ?, ?, ?, ?, ?)
             ''', (
                 user_id,
                 message.from_user.username or '',
@@ -581,7 +641,8 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                 text,
                 qr_photo_id,
                 photo_file_url,
-                bank_code
+                bank_code,
+                withdraw_phone or ''
             ))
             conn.commit()
             conn.close()
@@ -597,6 +658,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                     withdraw_id=withdraw_id,
                     bank_code=bank_code,
                     withdraw_code=text,
+                    withdraw_phone=withdraw_phone,
                     photo_file_id=qr_photo_id,
                     photo_file_url=photo_file_url,
                     status='pending'
@@ -628,6 +690,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
 
 👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'}
 🆔 <b>ID:</b> <code>{withdraw_id}</code>
+📱 <b>Телефон:</b> +{withdraw_phone or 'не указан'}
 🏢 <b>Букмекер:</b> {bookmakers[bookmaker]['name']}
 🏦 <b>Банк:</b> {bank_code.title()}
 💰 <b>Сумма:</b> {amount} сом
@@ -693,7 +756,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
         logger.error(f"Ошибка при обработке кода вывода: {e}")
         await message.answer("Произошла ошибка")
 
-def sync_withdraw_to_django_admin(*, user_id, username, first_name, bookmaker, amount, withdraw_id, bank_code, withdraw_code, photo_file_id, photo_file_url, status):
+def sync_withdraw_to_django_admin(*, user_id, username, first_name, bookmaker, amount, withdraw_id, bank_code, withdraw_code, withdraw_phone, photo_file_id, photo_file_url, status):
     """Отправка заявки на вывод на сайт (Django) с URL чека."""
     try:
         import requests
@@ -708,6 +771,7 @@ def sync_withdraw_to_django_admin(*, user_id, username, first_name, bookmaker, a
             'account_id': withdraw_id,
             'bank': bank_code,
             'withdrawal_code': withdraw_code,
+            'phone': withdraw_phone or '',
             'receipt_photo': photo_file_id or '',
             'receipt_photo_url': photo_file_url or '',
             'status': status,

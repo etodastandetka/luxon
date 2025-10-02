@@ -65,13 +65,19 @@ def deposits_list(request):
         cursor.execute(query, params)
         all_deposits = cursor.fetchall()
         
-        # Get statistics
+        # Get statistics (расширенные статусы)
         cursor.execute('''
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN status = 'awaiting_manual' THEN 1 ELSE 0 END) as awaiting_manual,
+                SUM(CASE WHEN status = 'auto_completed' THEN 1 ELSE 0 END) as auto_completed,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
             FROM requests
             WHERE request_type = 'deposit'
         ''')
@@ -80,8 +86,14 @@ def deposits_list(request):
         stats = {
             'total': stats_row['total'] or 0,
             'pending': stats_row['pending'] or 0,
+            'processing': stats_row['processing'] or 0,
+            'approved': stats_row['approved'] or 0,
+            'awaiting_manual': stats_row['awaiting_manual'] or 0,
+            'auto_completed': stats_row['auto_completed'] or 0,
             'completed': stats_row['completed'] or 0,
             'rejected': stats_row['rejected'] or 0,
+            'failed': stats_row['failed'] or 0,
+            'cancelled': stats_row['cancelled'] or 0,
         }
         
         # Pagination

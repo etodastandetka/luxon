@@ -99,7 +99,7 @@ def _set_request_status(db_path: str, request_id: int, status: str) -> None:
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
         cur.execute(
-            "UPDATE requests SET status=?, updated_at=CURRENT_TIMESTAMP, processed_at=(CASE WHEN ? IN ('completed','rejected','auto_completed') THEN CURRENT_TIMESTAMP ELSE processed_at END) WHERE id=?",
+            "UPDATE requests SET status=?, updated_at=CURRENT_TIMESTAMP, processed_at=(CASE WHEN ? IN ('completed','rejected','auto_completed','failed','cancelled') THEN CURRENT_TIMESTAMP ELSE processed_at END) WHERE id=?",
             (status, status, int(request_id))
         )
         conn.commit()
@@ -596,6 +596,12 @@ def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None):
                 )
                 await callback.answer(f"❌ Ошибка API: {error_msg}", show_alert=True)
                 logger.error(f"Ошибка API пополнения: {error_msg}")
+                # Отметим заявку как ошибочную и уведомим сайт
+                try:
+                    _set_request_status(db.db_path, request_id, 'failed')
+                    _notify_site_update_status(request_id, 'failed', 'deposit')
+                except Exception as _e:
+                    logger.warning(f"Failed to mark request failed: {_e}")
         
         except Exception as e:
             logger.error(f"Ошибка подтверждения API: {e}")
