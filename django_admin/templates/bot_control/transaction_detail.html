@@ -70,31 +70,32 @@
   .muted-note { color:#8b8b8b; font-size:12px; text-align:center; margin-top:8px; }
 </style>
 <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-    <div style="display:flex; align-items:center; gap:12px;">
-        <div class="header-avatar"><i class="fas fa-receipt"></i></div>
-        <div class="header-content">
-            <h1>Заявка #{{ transaction.id }}</h1>
-            <p>Управление заявкой из базы бота</p>
+    <div class="header-content">
+        <h1 style="margin:0; line-height:1.2;">Заявка #{{ transaction.id }}</h1>
+        <div style="margin-top:4px; color:#9aa7bd; font-size:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <span>Сайт: {{ transaction.bookmaker|upper }}</span>
+            <span>Создано: {{ transaction.created_at }}</span>
+            <span id="status-chip" style="padding:2px 8px; border-radius:999px; border:1px solid #2a2a2a; background:#151515; color:#cfd6e6;">
+                {% if transaction.status == 'pending' %}Ожидает{% elif transaction.status == 'processing' %}В обработке{% elif transaction.status == 'completed' %}Завершена{% elif transaction.status == 'auto_completed' %}Автопополнение{% elif transaction.status == 'rejected' %}Отклонена{% else %}{{ transaction.status }}{% endif %}
+            </span>
         </div>
     </div>
-    <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}">👤 Профиль</a>
+    <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}">Профиль</a>
+    
 </div>
 
 {% with rt=transaction.request_type|default:'deposit' %}
 <!-- Фото чека (вверху) -->
 {% if photo_url %}
-<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:0;">
-    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-        <i class="fas fa-qrcode"></i>
-        <div style="font-weight:600;">Фото чека</div>
-    </div>
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:12px; margin-top:0;">
+    <div style="color:#9aa7bd; font-size:12px; margin:4px 6px 8px;">Фото чека</div>
     <div style="text-align:center;">
         <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:8px; border:1px solid #2d2d2d;" />
     </div>
     <div style="text-align:center; margin-top:10px;">
         <a class="photo-link-btn" href="{{ photo_url }}" target="_blank">Открыть в новой вкладке</a>
     </div>
-    <div class="muted-note">Источник: Telegram File API</div>
+    <div class="muted-note" style="margin-top:6px;">Источник: Telegram</div>
  </div>
 {% endif %}
 
@@ -139,17 +140,7 @@
         </div>
     </div>
 
-    {% if transaction.status != 'completed' and transaction.status != 'rejected' %}
-    <div class="btns-row" id="actions-row">
-        <button class="action-btn action-btn--approve" id="btn-approve" onclick="handleAction('approve')">✅ Обработать</button>
-        <button class="action-btn action-btn--reject" id="btn-reject" onclick="handleAction('reject')">❌ Отклонить</button>
-        <a class="action-btn action-btn--neutral" href="{% url 'dashboard:deposits_list' %}">← Назад к заявкам</a>
-    </div>
-    {% else %}
-    <div class="btns-row">
-        <a class="action-btn action-btn--neutral" href="{% url 'dashboard:deposits_list' %}">← Назад к заявкам</a>
-    </div>
-    {% endif %}
+    <!-- Кнопки перенесены в нижнюю панель -->
 </div>
 
  {% endwith %}
@@ -157,8 +148,7 @@
 <!-- Все заявки пользователя (последние 100) -->
 {% if user_requests %}
 <div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:12px; margin-top:12px;">
-  <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-      <i class="fas fa-list"></i>
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
       <div style="font-weight:600;">Все заявки пользователя</div>
   </div>
   <div style="margin-top:8px;">
@@ -241,14 +231,12 @@ async function handleAction(action) {
     if (res.ok && data.success) {
       const el = document.getElementById('status-text');
       if (el) el.textContent = ruStatus(status);
+      const chip = document.getElementById('status-chip');
+      if (chip) chip.textContent = ruStatus(status);
       // Блокируем/скрываем кнопки действий после финального статуса
       try {
-        const row = document.getElementById('actions-row');
-        if (row) {
-          const btnA = document.getElementById('btn-approve');
-          const btnR = document.getElementById('btn-reject');
-          [btnA, btnR].forEach(b => { if (b) { b.disabled = true; b.style.opacity = .5; b.style.pointerEvents = 'none'; }});
-        }
+        const bar = document.getElementById('sticky-actions');
+        if (bar) bar.style.display = 'none';
       } catch (e) { /* no-op */ }
       alert(data.message || 'Готово');
     } else {
@@ -295,12 +283,26 @@ function startStatusPolling(){
         currentStatus = st;
         const el = document.getElementById('status-text');
         if (el) el.textContent = ruStatus(st);
+        const chip = document.getElementById('status-chip');
+        if (chip) chip.textContent = ruStatus(st);
         if (st === 'completed' || st === 'rejected' || st === 'auto_completed') {
-          disableActionsUI();
+          const bar = document.getElementById('sticky-actions');
+          if (bar) bar.style.display = 'none';
         }
       }
     }catch(e){ /* silent */ }
   }, 7000);
 }
 </script>
+{% endblock %}
+
+{% block extra_body %}
+{% if transaction.status != 'completed' and transaction.status != 'rejected' %}
+<div id="sticky-actions" style="position:sticky; bottom:0; left:0; right:0; background:rgba(10,10,10,.96); border-top:1px solid #222; padding:10px; display:flex; gap:10px; z-index:20;">
+  <button class="action-btn action-btn--approve" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('approve')">Принять</button>
+  <button class="action-btn action-btn--reject" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('reject')">Отказать</button>
+  <a class="action-btn action-btn--neutral" style="flex:0 0 auto;" href="{% url 'dashboard:deposits_list' %}">Назад</a>
+  
+</div>
+{% endif %}
 {% endblock %}
