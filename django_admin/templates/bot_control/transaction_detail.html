@@ -95,14 +95,22 @@
                 {% endwith %}
               {% endif %}
             {% endwith %}
-            <span>Сайт: {{ transaction.bookmaker|upper }}</span>
-            <span>Создано: {{ transaction.created_at }}</span>
+            {# Перенесено в карточку Детали ниже #}
             <span id="status-chip" style="padding:2px 8px; border-radius:999px; border:1px solid #2a2a2a; background:#151515; color:#cfd6e6;">
                 {% if transaction.status == 'pending' %}Ожидает{% elif transaction.status == 'processing' %}В обработке{% elif transaction.status == 'completed' %}Завершена{% elif transaction.status == 'auto_completed' %}Автопополнение{% elif transaction.status == 'rejected' %}Отклонена{% else %}{{ transaction.status }}{% endif %}
             </span>
         </div>
     </div>
-    <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}">Профиль</a>
+    <div style="display:flex; gap:8px;">
+      <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}">
+        <i class="fas fa-user"></i>
+        <span>Профиль</span>
+      </a>
+      <a class="action-btn action-btn--approve" href="{% url 'bot_control:user_chat' transaction.user_id %}">
+        <i class="fas fa-comments"></i>
+        <span>Чат</span>
+      </a>
+    </div>
     
 </div>
 
@@ -148,13 +156,37 @@
         <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #2d2d2d;" />
     </div>
     <div style="text-align:center; margin-top:10px;">
-        <a class="photo-link-btn" href="{{ photo_url }}" target="_blank">Открыть в новой вкладке</a>
+        <a class="photo-link-btn" href="{{ photo_url }}" target="_blank">Загрузить чек</a>
     </div>
     <div class="muted-note" style="margin-top:6px;">Источник: Telegram</div>
   {% endif %}
 </div>
 
 {% endwith %}
+
+<!-- Детали -->
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px;">
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+    <div>
+      <div style="color:#9aa4b2; font-size:12px;">Сайт</div>
+      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ transaction.bookmaker|upper }}</div>
+    </div>
+    <div>
+      <div style="color:#9aa4b2; font-size:12px;">ID</div>
+      {% firstof transaction.account_id transaction.user_id transaction.telegram_id '-' as did %}
+      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ did }}</div>
+    </div>
+    <div>
+      <div style="color:#9aa4b2; font-size:12px;">Код</div>
+      {% firstof transaction.withdraw_code transaction.code '-' as vcode %}
+      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ vcode }}</div>
+    </div>
+    <div>
+      <div style="color:#9aa4b2; font-size:12px;">Дата создания</div>
+      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ transaction.created_at|date:'d.m.Y • H:i' }}</div>
+    </div>
+  </div>
+</div>
 
 <!-- Все заявки пользователя (последние 100) -->
 {% if user_requests %}
@@ -169,19 +201,19 @@
         <div style="display:flex; align-items:center; gap:12px; min-width:0;">
           {# Иконка для каждой заявки в списке #}
           {% if r.type == 'deposit' %}
-            <img src="{% static 'elqr.svg' %}?v=20251002" alt="ELQR" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;object-fit:contain;background:#0f0f0f;">
+            <img src="{% static 'elqr.svg' %}?v=20251002" alt="ELQR" style="width:32px;height:32px;border-radius:8px;border:1px solid #2a2a2a;object-fit:contain;background:#0f0f0f;">
           {% else %}
             {% with wd=r.wallet_details|default:''|lower %}
               {% if 'mbank' in wd %}
-                <img src="{% static 'images/mbank.png' %}" alt="mbank" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+                <img src="{% static 'images/mbank.png' %}" alt="mbank" style="width:32px;height:32px;border-radius:8px;border:1px solid #2a2a2a;">
               {% elif 'optima' in wd %}
-                <img src="{% static 'images/optima.jpg' %}" alt="optima" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+                <img src="{% static 'images/optima.jpg' %}" alt="optima" style="width:32px;height:32px;border-radius:8px;border:1px solid #2a2a2a;">
               {% elif 'omoney' in wd %}
-                <img src="{% static 'images/omoney.jpg' %}" alt="omoney" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+                <img src="{% static 'images/omoney.jpg' %}" alt="omoney" style="width:32px;height:32px;border-radius:8px;border:1px solid #2a2a2a;">
               {% elif 'demir' in wd %}
-                <img src="{% static 'images/demirbank.jpg' %}" alt="demirbank" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+                <img src="{% static 'images/demirbank.jpg' %}" alt="demirbank" style="width:32px;height:32px;border-radius:8px;border:1px solid #2a2a2a;">
               {% elif 'megapay' in wd %}
-                <img src="{% static 'images/megapay.jpg' %}" alt="megapay" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;">
+                <img src="{% static 'images/megapay.jpg' %}" alt="megapay" style="width:32px;height:32px;border-radius:8px;border:1px solid #2a2a2a;">
               {% endif %}
             {% endwith %}
           {% endif %}
@@ -202,7 +234,7 @@
           <div style="font-weight:800; font-size:16px; {% if r.type == 'deposit' %}color:#21f39c;{% else %}color:#ff6b6b;{% endif %}">{% if r.type == 'deposit' %}+{% else %}-{% endif %}{{ r.amount|floatformat:2 }} сом</div>
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{% if r.status == 'completed' or r.status == 'auto_completed' %}#22c55e{% elif r.status == 'pending' or r.status == 'processing' %}#f59e0b{% elif r.status == 'awaiting_manual' %}#ef4444{% else %}#6b7280{% endif %};"></span>
-            <span style="font-size:12px; color:#aab1c2;">{% if r.status == 'completed' %}Успешно{% elif r.status == 'auto_completed' %}Авто пополнение{% elif r.status == 'pending' %}Ожидает{% elif r.status == 'processing' %}В работе{% elif r.status == 'awaiting_manual' %}Оставлена{% elif r.status == 'rejected' %}Отклонена{% else %}{{ r.status }}{% endif %}</span>
+            <span style="font-size:12px; color:#aab1c2;">{% if r.status == 'auto_completed' %}Авто пополнение{% elif r.status == 'completed' %}Успешно{% elif r.status == 'pending' %}Ожидает{% elif r.status == 'processing' %}В работе{% elif r.status == 'awaiting_manual' %}Оставлена{% elif r.status == 'rejected' %}Отклонена{% else %}{{ r.status }}{% endif %}</span>
           </div>
         </div>
       </a>
