@@ -2,6 +2,8 @@
 {% load static %}
 
 {% block title %}Заявка #{{ transaction.id }}{% endblock %}
+{% block header_icon %}{% endblock %}
+{% block header_title %}{% endblock %}
 
 {% block content %}
 <style>
@@ -72,7 +74,20 @@
 <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
     <div class="header-content">
         <h1 style="margin:0; line-height:1.2;">Заявка #{{ transaction.id }}</h1>
-        <div style="margin-top:4px; color:#9aa7bd; font-size:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <div style="margin-top:6px; color:#9aa7bd; font-size:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+            {% with b=transaction.bank|default:'' %}
+              {% if b|lower == 'mbank' %}
+                <img src="/images/mbank.png" alt="mbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% elif b|lower == 'optima' %}
+                <img src="/images/optima.jpg" alt="optima" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% elif b|lower == 'omoney' %}
+                <img src="/images/omoney.jpg" alt="omoney" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% elif b|lower == 'demirbank' or b|lower == 'demir' %}
+                <img src="/images/demirbank.jpg" alt="demirbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% elif b|lower == 'megapay' %}
+                <img src="/images/megapay.jpg" alt="megapay" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% endif %}
+            {% endwith %}
             <span>Сайт: {{ transaction.bookmaker|upper }}</span>
             <span>Создано: {{ transaction.created_at }}</span>
             <span id="status-chip" style="padding:2px 8px; border-radius:999px; border:1px solid #2a2a2a; background:#151515; color:#cfd6e6;">

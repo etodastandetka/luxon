@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
-{% block title %}Управление выводами{% endblock %}
+{% block title %}Выводы{% endblock %}
 
-{% block header_icon %}money-bill-wave{% endblock %}
-{% block header_title %}Управление выводами{% endblock %}
+{% block header_icon %}{% endblock %}
+{% block header_title %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -676,7 +676,22 @@ body { background-color: var(--dark); color: #e5e7eb; font-family: 'Inter', -app
         {% for req in withdrawals %}
         <div class="withdrawals-row" data-id="{{ req.id }}">
             <div class="withdrawals-left">
-                <div class="w-top">Пользователь ID {{ req.user_id }}</div>
+                <div class="w-top" style="display:flex; align-items:center; gap:8px;">
+                  {% with wd=req.wallet_details|default:''|lower %}
+                    {% if 'mbank' in wd %}
+                      <img src="/images/mbank.png" alt="mbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                    {% elif 'optima' in wd %}
+                      <img src="/images/optima.jpg" alt="optima" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                    {% elif 'omoney' in wd %}
+                      <img src="/images/omoney.jpg" alt="omoney" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                    {% elif 'demir' in wd %}
+                      <img src="/images/demirbank.jpg" alt="demirbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                    {% elif 'megapay' in wd %}
+                      <img src="/images/megapay.jpg" alt="megapay" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                    {% endif %}
+                  {% endwith %}
+                  <span>Пользователь ID {{ req.user_id }}</span>
+                </div>
                 <div class="w-date">{% if req.created_at %}{{ req.created_at|date:'d.m.Y • H:i' }}{% endif %}</div>
             </div>
             <div class="withdrawals-right">
