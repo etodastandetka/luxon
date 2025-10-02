@@ -284,11 +284,11 @@ async function loadTransactions() {
                   else if (bankRaw.includes('demir')) bankIcon = '{% static "demirbank.jpg" %}';
                   else if (bankRaw.includes('megapay')) bankIcon = '{% static "megapay.jpg" %}';
                 }
-                // ELQR для пополнений (или дефолт)
-                const overlayIcon = isDeposit ? '{% static "companion.png" %}' : (bankIcon || '{% static "companion.png" %}');
+                // ELQR для пополнений (используем загруженный elqr.svg), иначе дефолт
+                const overlayIcon = isDeposit ? '{% static "elqr.svg" %}' : (bankIcon || '{% static "companion.png" %}');
 
                 // Вместо буквенного аватара используем сами иконки (ELQR для пополнений, банк для выводов)
-                const mainIcon = isDeposit ? '{% static "companion.png" %}' : (bankIcon || '{% static "companion.png" %}');
+                const mainIcon = isDeposit ? '{% static "elqr.svg" %}' : (bankIcon || '{% static "companion.png" %}');
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">
