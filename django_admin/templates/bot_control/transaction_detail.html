@@ -75,17 +75,24 @@
     <div class="header-content">
         <h1 style="margin:0; line-height:1.2;">Заявка #{{ transaction.id }}</h1>
         <div style="margin-top:6px; color:#9aa7bd; font-size:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-            {% with b=transaction.bank|default:'' %}
-              {% if b|lower == 'mbank' %}
-                <img src="{% static 'images/mbank.png' %}" alt="mbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
-              {% elif b|lower == 'optima' %}
-                <img src="{% static 'images/optima.jpg' %}" alt="optima" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
-              {% elif b|lower == 'omoney' %}
-                <img src="{% static 'images/omoney.jpg' %}" alt="omoney" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
-              {% elif b|lower == 'demirbank' or b|lower == 'demir' %}
-                <img src="{% static 'images/demirbank.jpg' %}" alt="demirbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
-              {% elif b|lower == 'megapay' %}
-                <img src="{% static 'images/megapay.jpg' %}" alt="megapay" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+            {# Иконка операции: ELQR для пополнений, банк для выводов #}
+            {% with rt=transaction.request_type|default:'deposit' %}
+              {% if rt == 'deposit' %}
+                <img src="{% static 'elqr.svg' %}?v=20251002" alt="ELQR" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;object-fit:contain;padding:1px;background:#0f0f0f;">
+              {% else %}
+                {% with b=transaction.bank|default:'' %}
+                  {% if b|lower == 'mbank' %}
+                    <img src="{% static 'images/mbank.png' %}" alt="mbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                  {% elif b|lower == 'optima' %}
+                    <img src="{% static 'images/optima.jpg' %}" alt="optima" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                  {% elif b|lower == 'omoney' %}
+                    <img src="{% static 'images/omoney.jpg' %}" alt="omoney" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                  {% elif b|lower == 'demirbank' or b|lower == 'demir' %}
+                    <img src="{% static 'images/demirbank.jpg' %}" alt="demirbank" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                  {% elif b|lower == 'megapay' %}
+                    <img src="{% static 'images/megapay.jpg' %}" alt="megapay" style="width:18px;height:18px;border-radius:4px;border:1px solid #2a2a2a;">
+                  {% endif %}
+                {% endwith %}
               {% endif %}
             {% endwith %}
             <span>Сайт: {{ transaction.bookmaker|upper }}</span>
@@ -171,6 +178,24 @@
     {% for r in user_requests %}
       <a href="/bot/transactions/{{ r.id }}/" style="display:flex; align-items:center; gap:10px; justify-content:space-between; padding:10px 2px; color:#cdd6f4; text-decoration:none; border-bottom:1px solid #1a1a1a;">
         <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+          {# Иконка для каждой заявки в списке #}
+          {% if r.type == 'deposit' %}
+            <img src="{% static 'elqr.svg' %}?v=20251002" alt="ELQR" style="width:16px;height:16px;border-radius:4px;border:1px solid #2a2a2a;object-fit:contain;background:#0f0f0f;">
+          {% else %}
+            {% with wd=r.wallet_details|default:''|lower %}
+              {% if 'mbank' in wd %}
+                <img src="{% static 'images/mbank.png' %}" alt="mbank" style="width:16px;height:16px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% elif 'optima' in wd %}
+                <img src="{% static 'images/optima.jpg' %}" alt="optima" style="width:16px;height:16px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% elif 'omoney' in wd %}
+                <img src="{% static 'images/omoney.jpg' %}" alt="omoney" style="width:16px;height:16px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% elif 'demir' in wd %}
+                <img src="{% static 'images/demirbank.jpg' %}" alt="demirbank" style="width:16px;height:16px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% elif 'megapay' in wd %}
+                <img src="{% static 'images/megapay.jpg' %}" alt="megapay" style="width:16px;height:16px;border-radius:4px;border:1px solid #2a2a2a;">
+              {% endif %}
+            {% endwith %}
+          {% endif %}
           <div style="color:#8b8b8b; font-size:12px; flex:0 0 auto;">#{{ r.id }}</div>
           <div style="color:#9aa4b2; font-size:11px; white-space:nowrap;">{{ r.created_at|slice:":16" }}</div>
           <div style="font-size:12px; color:#7a869a;">{{ r.bookmaker|upper }}</div>
