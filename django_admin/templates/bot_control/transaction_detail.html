@@ -144,7 +144,7 @@
   <div style="text-align:center;">
     <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #2d2d2d;" />
   </div>
-  {% if transaction.status not in ('completed','rejected','auto_completed','failed','cancelled') %}
+  {% if transaction.status != 'completed' and transaction.status != 'rejected' and transaction.status != 'auto_completed' and transaction.status != 'failed' and transaction.status != 'cancelled' %}
   <div id="actions-row" class="btns-row" style="margin-top:12px;">
     <button class="action-btn action-btn--approve" onclick="handleAction('approve')" title="Принять">✅ Принять</button>
     <button class="action-btn action-btn--reject" onclick="handleAction('reject')" title="Отклонить">❌ Отклонить</button>
@@ -464,7 +464,7 @@ function copyText(t) {
 {% endblock %}
 
 {% block extra_body %}
-{% if transaction.status not in ('completed','rejected','auto_completed','failed','cancelled') %}
+{% if transaction.status != 'completed' and transaction.status != 'rejected' and transaction.status != 'auto_completed' and transaction.status != 'failed' and transaction.status != 'cancelled' %}
 <div id="sticky-actions" style="position:sticky; bottom:0; left:0; right:0; background:rgba(10,10,10,.96); border-top:1px solid #222; padding:10px; display:flex; gap:10px; z-index:20;">
   <button class="action-btn action-btn--approve" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('approve')">Принять</button>
   <button class="action-btn action-btn--reject" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('reject')">Отказать</button>
