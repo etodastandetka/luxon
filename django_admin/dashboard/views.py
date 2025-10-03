@@ -555,8 +555,8 @@ def api_transaction_history(request):
                 conn.close()
                 return JsonResponse({'success': True, 'transactions': []})
 
-            # История = завершённые/отклонённые. Учитываем также 'approved' и 'auto_completed'.
-            where = ["status IN ('completed','rejected','approved','auto_completed')"]
+            # История: показываем все статусы, чтобы список не пустел
+            where = []
             params = []
             if tx_type == 'deposits':
                 where.append("request_type='deposit'")
