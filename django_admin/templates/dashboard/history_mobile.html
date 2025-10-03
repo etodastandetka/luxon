@@ -322,14 +322,15 @@ async function loadTransactions() {
                 // Добавляем cache-busting параметр, чтобы обойти CDN/браузерный кэш
                 const overlayIcon = isDeposit ? '{% static "elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
 
-                // Вместо буквенного аватара используем сами иконки (ELQR для пополнений, банк для выводов)
-                // Добавляем cache-busting параметр
+                // Превью фото, если есть (например, чек или QR). Иначе показываем иконки.
+                const thumbUrl = (transaction.photo_url || '').toString();
                 const mainIcon = isDeposit ? '{% static "elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">
-                        <div style="width: 40px; height: 40px; border-radius: 10px; background:#0f0f0f; border:2px solid #333; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;"/>
+                        <div style="width: 48px; height: 48px; border-radius: 10px; background:#0f0f0f; border:2px solid #333; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                            ${thumbUrl ? `<img src="${thumbUrl}" alt="thumb" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='${mainIcon}'; this.style.objectFit='contain'; this.style.padding='4px';"/>`
+                                       : `<img src="${mainIcon}" alt="icon" loading="lazy" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;"/>`}
                         </div>
                     </div>
                     <div class="list-content">

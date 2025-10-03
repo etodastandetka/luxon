@@ -567,7 +567,9 @@ def api_transaction_history(request):
             sql = f'''
                 SELECT id, user_id, COALESCE(bookmaker,''), COALESCE(request_type,''),
                        COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,''),
-                       COALESCE(username,''), COALESCE(first_name,''), COALESCE(last_name,'')
+                       COALESCE(username,''), COALESCE(first_name,''), COALESCE(last_name,''),
+                       COALESCE(photo_file_url,''), COALESCE(receipt_photo_url,''), COALESCE(qr_photo_url,''),
+                       COALESCE(screenshot_url,''), COALESCE(photo_url,'')
                 FROM requests
                 {where_sql}
                 ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
@@ -575,8 +577,18 @@ def api_transaction_history(request):
             '''
             cursor.execute(sql, params)
             transactions = []
-            for rid, user_id, bookmaker, rtype, amount, status, created_at, username, first_name, last_name in cursor.fetchall():
+            for rid, user_id, bookmaker, rtype, amount, status, created_at, username, first_name, last_name, p_file, p_receipt, p_qr, p_screen, p_generic in cursor.fetchall():
                 user_name = username or f"{first_name or ''} {last_name or ''}".strip() or f"Пользователь {user_id}"
+                # Resolve photo url similar to transaction_detail
+                photo_url = p_file or p_receipt or p_qr or p_generic or p_screen or ''
+                try:
+                    if photo_url and not (str(photo_url).startswith('http://') or str(photo_url).startswith('https://')):
+                        media_url = getattr(settings, 'MEDIA_URL', '/media/')
+                        # strip leading slash to avoid //
+                        photo_url = str(photo_url).lstrip('/')
+                        photo_url = request.build_absolute_uri(f"{media_url}{photo_url}")
+                except Exception:
+                    pass
                 transactions.append({
                     'id': rid,
                     'user_id': user_id,
@@ -586,7 +598,8 @@ def api_transaction_history(request):
                     'amount': float(amount) if amount is not None else 0.0,
                     'status': status,
                     'created_at': created_at,
-                    'description': bookmaker
+                    'description': bookmaker,
+                    'photo_url': photo_url
                 })
 
             conn.close()
