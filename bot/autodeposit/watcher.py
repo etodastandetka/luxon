@@ -18,7 +18,6 @@ import email
 import os
 import sqlite3
 import logging
-import requests
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
@@ -66,27 +65,6 @@ class AutoDepositWatcher:
         except Exception as e:
             logger.error(f"AutoDepositWatcher: cannot read setting {key}: {e}")
         return default
-
-    def _get_site_base(self) -> str:
-        """Базовый URL сайта (совместимо с api_handlers.py)."""
-        base = os.getenv('DJANGO_BASE') or os.getenv('SITE_BASE') or 'http://127.0.0.1:8081'
-        return base.rstrip('/')
-
-    def _post_bank_event(self, *, bank_code: str, amount: float, matched: bool, created_at_iso: Optional[str], note: str = '') -> None:
-        """Отправляет уведомление о поступлении на сайт для отображения в деталях заявки."""
-        try:
-            payload = {
-                'bank': bank_code,
-                'amount': float(amount),
-                'matched': 1 if matched else 0,
-                'note': note or ('matched' if matched else 'no_match')
-            }
-            if created_at_iso:
-                payload['created_at'] = str(created_at_iso)
-            url = f"{self._get_site_base()}/bot/api/bank-notification/"
-            requests.post(url, json=payload, timeout=5)
-        except Exception as e:
-            logger.debug(f"_post_bank_event failed: {e}")
 
     def _get_requisite_credentials(self) -> Tuple[Optional[str], Optional[str]]:
         """Return (email, password) from active requisite in bot DB, if available."""
@@ -326,20 +304,10 @@ class AutoDepositWatcher:
                         mail.store(num, '+FLAGS', '\\Seen')
                         # Log success
                         self._log_event(bank='DEMIRBANK', amount=amount, matched=1, note='matched')
-                        # Notify site for UI enrichment
-                        try:
-                            self._post_bank_event(bank_code='demirbank', amount=amount, matched=True, created_at_iso=iso_dt, note='matched')
-                        except Exception:
-                            pass
                     else:
                         # leave unseen for manual check
                         # Log miss
                         self._log_event(bank='DEMIRBANK', amount=amount, matched=0, note='no_match')
-                        # Notify site for UI enrichment
-                        try:
-                            self._post_bank_event(bank_code='demirbank', amount=amount, matched=False, created_at_iso=iso_dt, note='no_match')
-                        except Exception:
-                            pass
                 except Exception as e:
                     logger.error(f"AutoDepositWatcher message error: {e}")
                     try:

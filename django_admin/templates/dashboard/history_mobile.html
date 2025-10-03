@@ -164,13 +164,6 @@
 .status-pending { background: #ffa500; }
 .status-completed { background: #999; }
 .status-rejected { background: #ff4444; }
-/* New unified statuses */
-.status-approved { background: #22c55e; }    /* green */
-.status-auto_completed { background: #06b6d4; } /* cyan */
-.status-awaiting_manual { background: #f59e0b; } /* amber */
-.status-processing { background: #a855f7; }   /* purple */
-.status-failed { background: #ef4444; }       /* red */
-.status-cancelled { background: #6b7280; }    /* gray */
 </style>
 
 <!-- Фильтры транзакций -->
@@ -268,40 +261,13 @@ async function loadTransactions() {
                 // Определяем статус
                 let statusText = 'Ожидает';
                 let statusClass = 'status-pending';
-                const st = (transaction.status || 'pending').toString();
-                switch (st) {
-                    case 'completed':
-                        statusText = 'Успешно';
-                        statusClass = 'status-completed';
-                        break;
-                    case 'rejected':
-                        statusText = 'Отклонено';
-                        statusClass = 'status-rejected';
-                        break;
-                    case 'approved':
-                        statusText = 'Подтверждено';
-                        statusClass = 'status-approved';
-                        break;
-                    case 'auto_completed':
-                        statusText = 'Автопополнение';
-                        statusClass = 'status-auto_completed';
-                        break;
-                    case 'awaiting_manual':
-                        statusText = 'Ожидает ручного пополнения';
-                        statusClass = 'status-awaiting_manual';
-                        break;
-                    case 'processing':
-                        statusText = 'Обрабатывается';
-                        statusClass = 'status-processing';
-                        break;
-                    case 'failed':
-                        statusText = 'Ошибка';
-                        statusClass = 'status-failed';
-                        break;
-                    case 'cancelled':
-                        statusText = 'Отменено';
-                        statusClass = 'status-cancelled';
-                        break;
+                
+                if (transaction.status === 'completed') {
+                    statusText = 'Успешно';
+                    statusClass = 'status-completed';
+                } else if (transaction.status === 'rejected') {
+                    statusText = 'Отклонено';
+                    statusClass = 'status-rejected';
                 }
                 
                 // Аватар: первая буква имени, цвет по типу; оверлей: ELQR (deposit) или иконка банка (withdraw)
@@ -322,15 +288,14 @@ async function loadTransactions() {
                 // Добавляем cache-busting параметр, чтобы обойти CDN/браузерный кэш
                 const overlayIcon = isDeposit ? '{% static "elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
 
-                // Превью фото, если есть (например, чек или QR). Иначе показываем иконки.
-                const thumbUrl = (transaction.photo_url || '').toString();
+                // Вместо буквенного аватара используем сами иконки (ELQR для пополнений, банк для выводов)
+                // Добавляем cache-busting параметр
                 const mainIcon = isDeposit ? '{% static "elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">
-                        <div style="width: 48px; height: 48px; border-radius: 10px; background:#0f0f0f; border:2px solid #333; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                            ${thumbUrl ? `<img src="${thumbUrl}" alt="thumb" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='${mainIcon}'; this.style.objectFit='contain'; this.style.padding='4px';"/>`
-                                       : `<img src="${mainIcon}" alt="icon" loading="lazy" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;"/>`}
+                        <div style="width: 40px; height: 40px; border-radius: 10px; background:#0f0f0f; border:2px solid #333; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;"/>
                         </div>
                     </div>
                     <div class="list-content">

@@ -156,13 +156,8 @@ class BotDepositRequest(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Ожидает'),
         ('processing', 'Обрабатывается'),
-        ('approved', 'Подтверждено'),
         ('completed', 'Завершено'),
-        ('auto_completed', 'Автопополнение'),
-        ('awaiting_manual', 'Ожидает ручного пополнения'),
         ('rejected', 'Отклонено'),
-        ('failed', 'Ошибка'),
-        ('cancelled', 'Отменено'),
     ]
     
     BOOKMAKER_CHOICES = [
@@ -259,11 +254,8 @@ class BotWithdrawRequest(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Ожидает'),
         ('processing', 'Обрабатывается'),
-        ('approved', 'Подтверждено'),
         ('completed', 'Завершено'),
         ('rejected', 'Отклонено'),
-        ('failed', 'Ошибка'),
-        ('cancelled', 'Отменено'),
     ]
     
     BOOKMAKER_CHOICES = [

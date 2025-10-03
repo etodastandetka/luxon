@@ -555,21 +555,19 @@ def api_transaction_history(request):
                 conn.close()
                 return JsonResponse({'success': True, 'transactions': []})
 
-            # История: показываем только завершённые заявки (подтверждено/отклонено/автопополнено)
-            where = ["TRIM(COALESCE(status,'')) IN ('completed','rejected','auto_completed','approved')"]
+            # История = завершённые/отклонённые. Учитываем также 'approved' и 'auto_completed'.
+            where = ["status IN ('completed','rejected','approved','auto_completed')"]
             params = []
             if tx_type == 'deposits':
-                where.append("TRIM(COALESCE(request_type,''))='deposit'")
+                where.append("request_type='deposit'")
             elif tx_type == 'withdrawals':
-                where.append("TRIM(COALESCE(request_type,''))='withdraw'")
+                where.append("request_type='withdraw'")
 
             where_sql = ' WHERE ' + ' AND '.join(where)
             sql = f'''
                 SELECT id, user_id, COALESCE(bookmaker,''), COALESCE(request_type,''),
                        COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,''),
-                       COALESCE(username,''), COALESCE(first_name,''), COALESCE(last_name,''),
-                       COALESCE(photo_file_url,''), COALESCE(receipt_photo_url,''), COALESCE(qr_photo_url,''),
-                       COALESCE(screenshot_url,''), COALESCE(photo_url,'')
+                       COALESCE(username,''), COALESCE(first_name,''), COALESCE(last_name,'')
                 FROM requests
                 {where_sql}
                 ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
@@ -577,79 +575,8 @@ def api_transaction_history(request):
             '''
             cursor.execute(sql, params)
             transactions = []
-            rows = cursor.fetchall()
-            # Fallbacks if unified requests has no finalized rows in this DB
-            if not rows:
-                try:
-                    # Legacy single table: transactions
-                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'")
-                    if cursor.fetchone() is not None:
-                        tx_where = ["TRIM(COALESCE(status,'')) IN ('completed','rejected')"]
-                        if tx_type == 'deposits':
-                            tx_where.append("TRIM(COALESCE(trans_type,''))='deposit'")
-                        elif tx_type == 'withdrawals':
-                            tx_where.append("TRIM(COALESCE(trans_type,''))='withdrawal'")
-                        tx_where_sql = ' WHERE ' + ' AND '.join(tx_where)
-                        cursor.execute(f'''
-                            SELECT id, user_id, COALESCE(bookmaker,''), COALESCE(trans_type,''),
-                                   COALESCE(amount,0), COALESCE(status,''), COALESCE(created_at,''),
-                                   '' AS username, '' AS first_name, '' AS last_name,
-                                   '' AS photo_file_url, '' AS receipt_photo_url, '' AS qr_photo_url,
-                                   '' AS screenshot_url, '' AS photo_url
-                            FROM transactions
-                            {tx_where_sql}
-                            ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
-                            LIMIT 200
-                        ''')
-                        rows = cursor.fetchall()
-                except Exception:
-                    rows = rows or []
-                if not rows:
-                    # Legacy split tables: deposit_requests + withdrawals
-                    try:
-                        merged = []
-                        # deposits
-                        cursor.execute('''
-                            SELECT id, user_id, COALESCE(bookmaker,''), 'deposit' AS rtype,
-                                   COALESCE(amount,0), COALESCE(status,''), COALESCE(created_at,''),
-                                   '' AS username, '' AS first_name, '' AS last_name,
-                                   COALESCE(receipt_photo_url,''), '' AS receipt2, '' AS qr,
-                                   '' AS screenshot, '' AS photo_generic
-                            FROM deposit_requests
-                            WHERE TRIM(COALESCE(status,'')) IN ('completed','rejected')
-                            ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
-                            LIMIT 200
-                        ''')
-                        merged.extend(cursor.fetchall())
-                        # withdrawals
-                        cursor.execute('''
-                            SELECT id, user_id, COALESCE(bookmaker,''), 'withdraw' AS rtype,
-                                   COALESCE(amount,0), COALESCE(status,''), COALESCE(created_at,''),
-                                   '' AS username, '' AS first_name, '' AS last_name,
-                                   COALESCE(qr_photo_url,''), '' AS receipt2, '' AS qr,
-                                   '' AS screenshot, '' AS photo_generic
-                            FROM withdrawals
-                            WHERE TRIM(COALESCE(status,'')) IN ('completed','rejected')
-                            ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
-                            LIMIT 200
-                        ''')
-                        merged.extend(cursor.fetchall())
-                        rows = merged
-                    except Exception:
-                        rows = rows or []
-
-            for rid, user_id, bookmaker, rtype, amount, status, created_at, username, first_name, last_name, p_file, p_receipt, p_qr, p_screen, p_generic in rows:
+            for rid, user_id, bookmaker, rtype, amount, status, created_at, username, first_name, last_name in cursor.fetchall():
                 user_name = username or f"{first_name or ''} {last_name or ''}".strip() or f"Пользователь {user_id}"
-                # Resolve photo url similar to transaction_detail
-                photo_url = p_file or p_receipt or p_qr or p_generic or p_screen or ''
-                try:
-                    if photo_url and not (str(photo_url).startswith('http://') or str(photo_url).startswith('https://')):
-                        media_url = getattr(settings, 'MEDIA_URL', '/media/')
-                        # strip leading slash to avoid //
-                        photo_url = str(photo_url).lstrip('/')
-                        photo_url = request.build_absolute_uri(f"{media_url}{photo_url}")
-                except Exception:
-                    pass
                 transactions.append({
                     'id': rid,
                     'user_id': user_id,
@@ -659,8 +586,7 @@ def api_transaction_history(request):
                     'amount': float(amount) if amount is not None else 0.0,
                     'status': status,
                     'created_at': created_at,
-                    'description': bookmaker,
-                    'photo_url': photo_url
+                    'description': bookmaker
                 })
 
             conn.close()

@@ -315,14 +315,14 @@ def update_request_status(request):
         conn = sqlite3.connect(str(bot_db))
         cur = conn.cursor()
 
-        # Получаем запись (+ account_id для текста)
-        cur.execute("SELECT id, user_id, COALESCE(bookmaker,''), COALESCE(amount,0), COALESCE(request_type,''), COALESCE(status,'pending'), COALESCE(account_id,'') FROM requests WHERE id=?", (rid,))
+        # Получаем запись
+        cur.execute("SELECT id, user_id, COALESCE(bookmaker,''), COALESCE(amount,0), COALESCE(request_type,''), COALESCE(status,'pending') FROM requests WHERE id=?", (rid,))
         row = cur.fetchone()
         if not row:
             conn.close()
             return JsonResponse({'success': False, 'error': 'Заявка не найдена'}, status=404)
 
-        _, user_id, bookmaker, amount, db_req_type, db_status, account_id = row
+        _, user_id, bookmaker, amount, db_req_type, db_status = row
 
         # Если тип отличается — всё равно обновляем, но сообщим в ответе
         # Если статус не меняется — успех без действий
@@ -337,50 +337,20 @@ def update_request_status(request):
             cur.execute("UPDATE requests SET status=?, updated_at=datetime('now') WHERE id=?", (status, rid))
         conn.commit()
 
-        # Отправляем уведомление в Telegram (тексты как у бота)
+        # Отправляем уведомление в Telegram
         try:
             bot_token = getattr(settings, 'BOT_TOKEN', None)
             if bot_token and user_id:
-                # Формат суммы как в боте
-                try:
-                    amt = float(amount or 0)
-                    amount_str = f"{amt:.0f} KGS" if abs(amt - round(amt)) < 1e-6 else f"{amt:.2f} KGS"
-                except Exception:
-                    amount_str = f"{amount} KGS"
-
-                text = ''
-                if status == 'completed' and req_type == 'deposit':
-                    # Бот: send_deposit_processed()
-                    text = (
-                        "✅ Зачисление выполнено\n\n"
-                        f"🆔  {account_id or user_id}\n"
-                        f"💵  {amount_str}\n\n"
-                        "Спасибо, что выбираете наш сервис."
-                    )
-                elif status == 'completed' and req_type == 'withdraw':
-                    # Бот: send_withdrawal_processed()
-                    text = (
-                        "✅ Средства зачислены успешно\n\n"
-                        f"🆔 ID: {account_id or user_id}\n"
-                        f"💵 Сумма: {amount_str.replace(' KGS',' сом')}"
-                    )
-                elif status == 'rejected' and req_type == 'deposit':
-                    text = (
-                        "❌ Пополнение отклонено\n\n"
-                        f"🆔  {account_id or user_id}\n"
-                        f"💵  {amount_str}\n\n"
-                        "Если это ошибка — свяжитесь с оператором: @operator_luxon"
-                    )
-                elif status == 'rejected' and req_type == 'withdraw':
-                    text = (
-                        "❌ Вывод отклонен\n\n"
-                        f"🆔 ID: {account_id or user_id}\n"
-                        f"💵 Сумма: {amount_str.replace(' KGS',' сом')}\n\n"
-                        "Если это ошибка — свяжитесь с оператором: @operator_luxon"
-                    )
-                else:
-                    text = ''
-
+                status_ru = (
+                    'Пополнено' if (status == 'completed' and req_type == 'deposit') else
+                    'Выведено' if (status == 'completed' and req_type == 'withdraw') else
+                    'Отклонено' if status == 'rejected' else
+                    'В обработке' if status == 'processing' else
+                    'Ожидает'
+                )
+                prefix = '✅' if status == 'completed' else ('❌' if status == 'rejected' else 'ℹ️')
+                op_ru = 'пополнение' if req_type == 'deposit' else 'вывод'
+                text = f"{prefix} Ваша заявка на {op_ru} #{rid} обновлена.\nСтатус: {status_ru}.\nСумма: {amount} KGS\nБукмекер: {bookmaker.upper()}"
                 site_base = getattr(settings, 'SITE_BASE_URL', 'http://localhost:8081')
                 tx_url = f"{site_base}/bot/transactions/{rid}/"
                 reply_markup = {
@@ -389,8 +359,7 @@ def update_request_status(request):
                     ]
                 }
                 api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-                if text:
-                    requests.post(api_url, json={'chat_id': user_id, 'text': text, 'reply_markup': reply_markup, 'parse_mode': 'HTML', 'disable_web_page_preview': True}, timeout=5)
+                requests.post(api_url, json={'chat_id': user_id, 'text': text, 'reply_markup': reply_markup, 'parse_mode': 'HTML', 'disable_web_page_preview': True}, timeout=5)
         except Exception:
             pass
 
@@ -695,34 +664,6 @@ def chat_ingest_from_bot(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def chat_ingest_media_from_bot(request):
-    """Bot pushes user's media (photo/video) into admin chat storage.
-    Expects JSON: { user_id:int, media_type:'photo'|'video', media_url:str, caption?:str }
-    """
-    try:
-        data = json.loads(request.body or '{}')
-        user_id = int(data.get('user_id') or 0)
-        media_type = (data.get('media_type') or '').strip()
-        media_url = (data.get('media_url') or '').strip()
-        caption = (data.get('caption') or '').strip()
-        if not user_id or media_type not in ('photo','video') or not media_url:
-            return JsonResponse({'success': False, 'error': 'user_id, media_type (photo|video), media_url обязательны'}, status=400)
-
-        bot_db = getattr(settings, 'BOT_DATABASE_PATH', None)
-        if not bot_db:
-            return JsonResponse({'success': False, 'error': 'BOT_DATABASE_PATH не задан'}, status=500)
-        conn = sqlite3.connect(str(bot_db))
-        cur = conn.cursor()
-        _ensure_chat_table(conn)
-        cur.execute('INSERT INTO chat_messages (user_id, direction, message, kind, media_url) VALUES (?, ?, ?, ?, ?)', (user_id, 'in', caption, media_type, media_url))
-        conn.commit()
-        conn.close()
-        return JsonResponse({'success': True})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
 @require_http_methods(["POST"])

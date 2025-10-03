@@ -235,12 +235,7 @@ async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookm
     # Если есть сообщение с кнопками, редактируем его, убирая кнопки
     if callback_message:
         try:
-            # Сначала уберём инлайн-кнопки явно
-            try:
-                await callback_message.edit_reply_markup(reply_markup=None)
-            except Exception:
-                pass
-            # Затем допишем выбранный банк и окончательно перезапишем текст
+            # Убираем инлайн-кнопки и дописываем выбранный банк
             await callback_message.edit_text(
                 (callback_message.text or "") + f"\n\n✅ <b>Выбран банк:</b> {bank_code.upper()}",
                 parse_mode="HTML"
@@ -248,15 +243,11 @@ async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookm
         except Exception as e:
             logger.error(f"Error editing message: {e}")
     
-    # Отправляем инструкцию по получению QR-кода (с фолбэком на RU)
-    try:
-        ru_tr = get_translation('ru')
-    except Exception:
-        ru_tr = {}
+    # Отправляем инструкцию по получению QR-кода
     qr_instruction = f"""
-{translations.get('qr_instruction', ru_tr.get('qr_instruction', 'Отправьте QR-код для перевода.'))}
+{translations['qr_instruction']}
 
-{translations.get('send_qr_wallet', ru_tr.get('send_qr_wallet', 'Отправьте QR код вашего кошелька:'))}
+{translations['send_qr_wallet']}
     """
     
     # Убираем клавиатуру
@@ -840,11 +831,6 @@ def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None):
                 bot=callback.bot,
                 callback_message=callback.message
             )
-            # Удалим исходное сообщение с инлайн-кнопками, чтобы точно скрыть клавиатуру
-            try:
-                await callback.message.delete()
-            except Exception:
-                pass
             await callback.answer()
         except Exception as e:
             logger.error(f"withdraw bank callback error: {e}")

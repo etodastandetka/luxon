@@ -65,19 +65,13 @@ def deposits_list(request):
         cursor.execute(query, params)
         all_deposits = cursor.fetchall()
         
-        # Get statistics (расширенные статусы)
+        # Get statistics
         cursor.execute('''
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
-                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
-                SUM(CASE WHEN status = 'awaiting_manual' THEN 1 ELSE 0 END) as awaiting_manual,
-                SUM(CASE WHEN status = 'auto_completed' THEN 1 ELSE 0 END) as auto_completed,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
-                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
             FROM requests
             WHERE request_type = 'deposit'
         ''')
@@ -86,14 +80,8 @@ def deposits_list(request):
         stats = {
             'total': stats_row['total'] or 0,
             'pending': stats_row['pending'] or 0,
-            'processing': stats_row['processing'] or 0,
-            'approved': stats_row['approved'] or 0,
-            'awaiting_manual': stats_row['awaiting_manual'] or 0,
-            'auto_completed': stats_row['auto_completed'] or 0,
             'completed': stats_row['completed'] or 0,
             'rejected': stats_row['rejected'] or 0,
-            'failed': stats_row['failed'] or 0,
-            'cancelled': stats_row['cancelled'] or 0,
         }
         
         # Pagination
@@ -309,72 +297,30 @@ def transaction_detail(request, trans_id):
             photo_url = tx.get('photo_file_url') or ''
         photo_debug['resolved_photo_url'] = photo_url or ''
 
-        # Другие заявки пользователя (последние 100) + имена из таблицы users
+        # Другие заявки пользователя (последние 100)
         user_requests = []
         try:
             uid = tx.get('user_id')
             if uid is not None:
                 cursor.execute('''
-                    SELECT r.id, r.request_type, r.amount, r.status, r.created_at,
-                           COALESCE(u.username,''), COALESCE(u.first_name,''), COALESCE(u.last_name,'')
-                    FROM requests r
-                    LEFT JOIN users u ON r.user_id = u.user_id
-                    WHERE r.user_id = ?
-                    ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
+                    SELECT id, request_type, amount, status, created_at
+                    FROM requests
+                    WHERE user_id = ?
+                    ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
                     LIMIT 100
                 ''', (uid,))
-                for rid, rtype, amount, status, created, uname, fname, lname in cursor.fetchall():
+                for rid, rtype, amount, status, created in cursor.fetchall():
                     user_requests.append({
                         'id': rid,
                         'type': (rtype or 'deposit'),
                         'amount': float(amount or 0),
                         'status': status or 'pending',
                         'created_at': created,
-                        'username': uname,
-                        'first_name': fname,
-                        'last_name': lname,
                     })
         except Exception:
             user_requests = []
 
-        # Fallback: если фото для заявки не получилось, попробуем взять последнее медиа из чат-хранилища
-        try:
-            if not photo_url:
-                # Ищем недавнее входящее фото от пользователя в chat_messages
-                cur2 = conn.cursor()
-                cur2.execute('''
-                    SELECT media_url, created_at
-                    FROM chat_messages
-                    WHERE user_id=? AND direction='in' AND kind='photo'
-                    ORDER BY id DESC
-                    LIMIT 1
-                ''', (tx.get('user_id'),))
-                row_photo = cur2.fetchone()
-                if row_photo and row_photo[0]:
-                    photo_url = row_photo[0]
-                    photo_debug['resolved_via'] = 'chat_messages_photo'
-        except Exception:
-            pass
-
         conn.close()
-
-        # Подбор банковских уведомлений с той же суммой за последние 3 дня
-        same_amount_notifications = []
-        try:
-            from django.utils import timezone as _tz
-            since = _tz.now() - timedelta(days=3)
-            tx_amount = float(tx.get('amount') or 0)
-            if tx_amount > 0:
-                qs = BankNotificationModel.objects.filter(amount=tx_amount, created_at__gte=since).order_by('-created_at')[:15]
-                same_amount_notifications = [{
-                    'bank': n.get_bank_display(),
-                    'bank_code': n.bank,
-                    'amount': float(n.amount),
-                    'created_at': n.created_at,
-                    'is_processed': bool(n.is_processed),
-                } for n in qs]
-        except Exception as _e:
-            logger.warning(f"same_amount_notifications error: {_e}")
 
         from django.conf import settings as dj_settings
         return render(request, 'bot_control/transaction_detail.html', {
@@ -382,7 +328,6 @@ def transaction_detail(request, trans_id):
             'photo_url': photo_url,
             'user_requests': user_requests,
             'photo_debug': photo_debug,
-            'same_amount_notifications': same_amount_notifications,
             'api_token': getattr(dj_settings, 'DJANGO_ADMIN_API_TOKEN', '')
         })
         

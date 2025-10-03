@@ -93,11 +93,7 @@ class AutoDepositRequest(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Ожидает'),
         ('processing', 'Обрабатывается'),
-        ('approved', 'Подтверждено'),
         ('completed', 'Завершено'),
-        ('auto_completed', 'Автопополнение'),
-        ('awaiting_manual', 'Ожидает ручного пополнения'),
-        ('rejected', 'Отклонено'),
         ('failed', 'Ошибка'),
         ('cancelled', 'Отменено'),
     ]
@@ -184,14 +180,9 @@ class AutoUnifiedRequest(models.Model):
     
     STATUS_CHOICES = [
         ('pending', 'Ожидает'),
-        ('processing', 'Обрабатывается'),
-        ('approved', 'Подтверждено'),
         ('completed', 'Завершена'),
         ('auto_completed', 'Автопополнена'),
-        ('awaiting_manual', 'Ожидает ручного пополнения'),
         ('rejected', 'Отклонена'),
-        ('failed', 'Ошибка'),
-        ('cancelled', 'Отменена'),
     ]
     
     user_id = models.BigIntegerField(verbose_name="ID пользователя")
