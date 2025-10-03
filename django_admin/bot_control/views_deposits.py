@@ -309,28 +309,52 @@ def transaction_detail(request, trans_id):
             photo_url = tx.get('photo_file_url') or ''
         photo_debug['resolved_photo_url'] = photo_url or ''
 
-        # Другие заявки пользователя (последние 100)
+        # Другие заявки пользователя (последние 100) + имена из таблицы users
         user_requests = []
         try:
             uid = tx.get('user_id')
             if uid is not None:
                 cursor.execute('''
-                    SELECT id, request_type, amount, status, created_at
-                    FROM requests
-                    WHERE user_id = ?
-                    ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
+                    SELECT r.id, r.request_type, r.amount, r.status, r.created_at,
+                           COALESCE(u.username,''), COALESCE(u.first_name,''), COALESCE(u.last_name,'')
+                    FROM requests r
+                    LEFT JOIN users u ON r.user_id = u.user_id
+                    WHERE r.user_id = ?
+                    ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
                     LIMIT 100
                 ''', (uid,))
-                for rid, rtype, amount, status, created in cursor.fetchall():
+                for rid, rtype, amount, status, created, uname, fname, lname in cursor.fetchall():
                     user_requests.append({
                         'id': rid,
                         'type': (rtype or 'deposit'),
                         'amount': float(amount or 0),
                         'status': status or 'pending',
                         'created_at': created,
+                        'username': uname,
+                        'first_name': fname,
+                        'last_name': lname,
                     })
         except Exception:
             user_requests = []
+
+        # Fallback: если фото для заявки не получилось, попробуем взять последнее медиа из чат-хранилища
+        try:
+            if not photo_url:
+                # Ищем недавнее входящее фото от пользователя в chat_messages
+                cur2 = conn.cursor()
+                cur2.execute('''
+                    SELECT media_url, created_at
+                    FROM chat_messages
+                    WHERE user_id=? AND direction='in' AND kind='photo'
+                    ORDER BY id DESC
+                    LIMIT 1
+                ''', (tx.get('user_id'),))
+                row_photo = cur2.fetchone()
+                if row_photo and row_photo[0]:
+                    photo_url = row_photo[0]
+                    photo_debug['resolved_via'] = 'chat_messages_photo'
+        except Exception:
+            pass
 
         conn.close()
 

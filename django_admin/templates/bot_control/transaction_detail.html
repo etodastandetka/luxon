@@ -251,7 +251,7 @@
   <div style="margin-top:8px;">
     <div style="border-top:1px solid #222"></div>
     {% for r in user_requests %}
-      <a href="/bot/transactions/{{ r.id }}/" style="display:flex; align-items:center; gap:16px; justify-content:space-between; padding:16px 14px; color:#cdd6f4; text-decoration:none; background:#141414; border:1px solid #222; border-radius:12px; margin:12px 0;">
+      <a href="/bot/transactions/{{ r.id }}/" style="display:flex; align-items:center; gap:16px; justify-content:space-between; padding:16px 14px; color:#cdd6f4; text-decoration:none; background:#141414; border:1px solid #222; border-radius:12px; margin:12px 0; min-height:72px;">
         <div style="display:flex; align-items:center; gap:14px; min-width:0;">
           {# Иконка для каждой заявки в списке #}
           {% if r.type == 'deposit' %}
@@ -273,8 +273,17 @@
           {% endif %}
           <div style="display:flex; flex-direction:column; gap:8px; min-width:0;">
             <div style="display:flex; align-items:center; gap:10px; min-width:0;">
-              {% firstof r.full_name r.name r.username transaction.username 'N B' as rname %}
-              <div style="font-weight:700; color:#e5e7eb; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px;">{{ rname }}</div>
+              {% with fn=r.first_name|default:'' ln=r.last_name|default:'' uname=r.username|default:transaction.username %}
+                {% if fn or ln %}
+                  {% with full=(fn|stringformat:"s")|add:" "|add:(ln|stringformat:"s") %}
+                    <div style="font-weight:700; color:#e5e7eb; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px;">{{ full|trim }}</div>
+                  {% endwith %}
+                {% elif uname %}
+                  <div style="font-weight:700; color:#e5e7eb; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px;">{{ uname }}</div>
+                {% else %}
+                  <div style="font-weight:700; color:#e5e7eb; font-size:14px;">—</div>
+                {% endif %}
+              {% endwith %}
               <div style="color:#8b8b8b; font-size:12px;">#{{ r.id }}</div>
             </div>
             <div style="display:flex; align-items:center; gap:12px;">
@@ -284,7 +293,7 @@
             </div>
           </div>
         </div>
-        <div style="display:flex; align-items:flex-end; gap:12px; flex-direction:column; min-width:140px;">
+        <div style="display:flex; align-items:flex-end; gap:12px; flex-direction:column; min-width:140px; justify-content:center;">
           <div style="color:#9aa4b2; font-size:12px; white-space:nowrap;">{{ r.created_at|date:'d.m.Y • H:i' }}</div>
           <div style="font-weight:800; font-size:16px; {% if r.type == 'deposit' %}color:#21f39c;{% else %}color:#ff6b6b;{% endif %}">{% if r.type == 'deposit' %}+{% else %}-{% endif %}{{ r.amount|floatformat:2 }} сом</div>
           {% if r.status != 'awaiting_manual' %}
