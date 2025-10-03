@@ -235,7 +235,12 @@ async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookm
     # Если есть сообщение с кнопками, редактируем его, убирая кнопки
     if callback_message:
         try:
-            # Убираем инлайн-кнопки и дописываем выбранный банк
+            # Сначала уберём инлайн-кнопки явно
+            try:
+                await callback_message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+            # Затем допишем выбранный банк и окончательно перезапишем текст
             await callback_message.edit_text(
                 (callback_message.text or "") + f"\n\n✅ <b>Выбран банк:</b> {bank_code.upper()}",
                 parse_mode="HTML"
