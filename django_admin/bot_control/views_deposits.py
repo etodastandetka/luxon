@@ -334,12 +334,31 @@ def transaction_detail(request, trans_id):
 
         conn.close()
 
+        # Подбор банковских уведомлений с той же суммой за последние 3 дня
+        same_amount_notifications = []
+        try:
+            from django.utils import timezone as _tz
+            since = _tz.now() - timedelta(days=3)
+            tx_amount = float(tx.get('amount') or 0)
+            if tx_amount > 0:
+                qs = BankNotificationModel.objects.filter(amount=tx_amount, created_at__gte=since).order_by('-created_at')[:15]
+                same_amount_notifications = [{
+                    'bank': n.get_bank_display(),
+                    'bank_code': n.bank,
+                    'amount': float(n.amount),
+                    'created_at': n.created_at,
+                    'is_processed': bool(n.is_processed),
+                } for n in qs]
+        except Exception as _e:
+            logger.warning(f"same_amount_notifications error: {_e}")
+
         from django.conf import settings as dj_settings
         return render(request, 'bot_control/transaction_detail.html', {
             'transaction': tx,
             'photo_url': photo_url,
             'user_requests': user_requests,
             'photo_debug': photo_debug,
+            'same_amount_notifications': same_amount_notifications,
             'api_token': getattr(dj_settings, 'DJANGO_ADMIN_API_TOKEN', '')
         })
         

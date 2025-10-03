@@ -191,6 +191,34 @@
   
 </div>
 
+{% if same_amount_notifications %}
+<div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:14px; margin-top:12px;">
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+    <div style="font-weight:600;">Поступления с такой же суммой</div>
+    <div style="color:#8b8b8b; font-size:12px;">за 3 дня</div>
+  </div>
+  <div style="margin-top:8px; display:flex; flex-direction:column; gap:10px;">
+    {% for n in same_amount_notifications %}
+      {% with processed=n.is_processed %}
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border:1px solid #222; border-radius:10px; background:#141414;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span title="{% if processed %}Обработано{% else %}Новое{% endif %}"
+                style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{% if processed %}#6b7280{% else %}#22c55e{% endif %};"></span>
+          <div style="display:flex; flex-direction:column;">
+            <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ n.bank }}</div>
+            <div style="color:#9aa4b2; font-size:12px;">{{ n.created_at|date:'d.m.Y • H:i' }}</div>
+          </div>
+        </div>
+        <div style="font-weight:800; font-size:16px; color:{% if processed %}#9ca3af{% else %}#21f39c{% endif %};">{{ n.amount|floatformat:2 }} сом</div>
+      </div>
+      {% endwith %}
+    {% endfor %}
+  </div>
+  <div class="muted-note">Зелёные — новые/необработанные, серые — уже обработанные банком</div>
+  
+</div>
+{% endif %}
+
 <!-- Все заявки пользователя (последние 100) -->
 {% if user_requests %}
 <div class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:14px; margin-top:12px;">
