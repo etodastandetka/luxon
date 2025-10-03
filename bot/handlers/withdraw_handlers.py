@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Хендлеры для вывода средств - упрощенный процесс
+РҐРµРЅРґР»РµСЂС‹ РґР»СЏ РІС‹РІРѕРґР° СЃСЂРµРґСЃС‚РІ - СѓРїСЂРѕС‰РµРЅРЅС‹Р№ РїСЂРѕС†РµСЃСЃ
 """
 import logging
 import random
@@ -15,48 +15,48 @@ from config import BOOKMAKERS, BOT_TOKEN
 logger = logging.getLogger(__name__)
 
 async def send_withdraw_request_to_group(bot, user_id: int, amount: float, bookmaker: str, bank_code: str, withdraw_id: str, code: str, photo_file_id: str = None):
-    """Отправляет заявку на вывод в группу админу"""
+    """РћС‚РїСЂР°РІР»СЏРµС‚ Р·Р°СЏРІРєСѓ РЅР° РІС‹РІРѕРґ РІ РіСЂСѓРїРїСѓ Р°РґРјРёРЅСѓ"""
     try:
-        # Получаем информацию о пользователе
+        # РџРѕР»СѓС‡Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РїРѕР»СЊР·РѕРІР°С‚РµР»Рµ
         user_info = await bot.get_chat(user_id)
-        username = user_info.username or "Нет username"
-        first_name = user_info.first_name or "Нет имени"
+        username = user_info.username or "РќРµС‚ username"
+        first_name = user_info.first_name or "РќРµС‚ РёРјРµРЅРё"
         
-        # Получаем настройки букмекера
+        # РџРѕР»СѓС‡Р°РµРј РЅР°СЃС‚СЂРѕР№РєРё Р±СѓРєРјРµРєРµСЂР°
         bookmaker_config = BOOKMAKERS.get(bookmaker, {})
         group_id = bookmaker_config.get('withdraw_group_id')
         
         if not group_id:
-            logger.error(f"Не найден group_id для букмекера {bookmaker}")
+            logger.error(f"РќРµ РЅР°Р№РґРµРЅ group_id РґР»СЏ Р±СѓРєРјРµРєРµСЂР° {bookmaker}")
             return False
             
-        # Создаем текст заявки
+        # РЎРѕР·РґР°РµРј С‚РµРєСЃС‚ Р·Р°СЏРІРєРё
         request_text = f"""
-🔔 <b>Новая заявка на вывод</b>
+рџ”” <b>РќРѕРІР°СЏ Р·Р°СЏРІРєР° РЅР° РІС‹РІРѕРґ</b>
 
-👤 <b>Пользователь:</b> @{username}
-🆔 <b>ID:</b> {user_id}
-🏢 <b>Букмекер:</b> {bookmaker_config.get('name', bookmaker.upper())}
-💰 <b>Сумма:</b> {amount:.2f} сом
-🏦 <b>Банк:</b> {bank_code.upper()}
-🆔 <b>ID счета:</b> {withdraw_id}
-🔐 <b>Код вывода:</b> скрыт (только для API)
+рџ‘¤ <b>РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ:</b> @{username}
+рџ†” <b>ID:</b> {user_id}
+рџЏў <b>Р‘СѓРєРјРµРєРµСЂ:</b> {bookmaker_config.get('name', bookmaker.upper())}
+рџ’° <b>РЎСѓРјРјР°:</b> {amount:.2f} СЃРѕРј
+рџЏ¦ <b>Р‘Р°РЅРє:</b> {bank_code.upper()}
+рџ†” <b>ID СЃС‡РµС‚Р°:</b> {withdraw_id}
+рџ”ђ <b>РљРѕРґ РІС‹РІРѕРґР°:</b> СЃРєСЂС‹С‚ (С‚РѕР»СЊРєРѕ РґР»СЏ API)
 
-⏰ <b>Время:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}
+вЏ° <b>Р’СЂРµРјСЏ:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}
         """
         
-        # Создаем клавиатуру для обработки заявки
+        # РЎРѕР·РґР°РµРј РєР»Р°РІРёР°С‚СѓСЂСѓ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё Р·Р°СЏРІРєРё
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [
-                InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_withdraw_{user_id}_{amount}"),
-                InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_withdraw_{user_id}_{amount}")
+                InlineKeyboardButton(text="вњ… РџРѕРґС‚РІРµСЂРґРёС‚СЊ", callback_data=f"confirm_withdraw_{user_id}_{amount}"),
+                InlineKeyboardButton(text="вќЊ РћС‚РєР»РѕРЅРёС‚СЊ", callback_data=f"reject_withdraw_{user_id}_{amount}")
             ],
             [
-                InlineKeyboardButton(text="🔍 Проверить API", callback_data=f"check_withdraw_api_{user_id}_{amount}")
+                InlineKeyboardButton(text="рџ”Ќ РџСЂРѕРІРµСЂРёС‚СЊ API", callback_data=f"check_withdraw_api_{user_id}_{amount}")
             ]
         ])
         
-        # Отправляем заявку в группу
+        # РћС‚РїСЂР°РІР»СЏРµРј Р·Р°СЏРІРєСѓ РІ РіСЂСѓРїРїСѓ
         if photo_file_id:
             await bot.send_photo(
                 chat_id=group_id,
@@ -73,22 +73,22 @@ async def send_withdraw_request_to_group(bot, user_id: int, amount: float, bookm
                 reply_markup=keyboard
             )
             
-        logger.info(f"✅ Заявка на вывод отправлена в группу {group_id}")
+        logger.info(f"вњ… Р—Р°СЏРІРєР° РЅР° РІС‹РІРѕРґ РѕС‚РїСЂР°РІР»РµРЅР° РІ РіСЂСѓРїРїСѓ {group_id}")
         return True
         
     except Exception as e:
-        logger.error(f"❌ Ошибка отправки заявки в группу: {e}")
+        logger.error(f"вќЊ РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё Р·Р°СЏРІРєРё РІ РіСЂСѓРїРїСѓ: {e}")
         return False
 
 def get_bot_settings():
-    """Получает настройки бота из Django админки"""
+    """РџРѕР»СѓС‡Р°РµС‚ РЅР°СЃС‚СЂРѕР№РєРё Р±РѕС‚Р° РёР· Django Р°РґРјРёРЅРєРё"""
     try:
         import requests
         response = requests.get('http://localhost:8081/bot/api/bot-settings/', timeout=5)
         if response.status_code == 200:
             return response.json()
     except Exception as e:
-        logger.error(f"Ошибка получения настроек бота: {e}")
+        logger.error(f"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РЅР°СЃС‚СЂРѕРµРє Р±РѕС‚Р°: {e}")
     return {
         'pause': False,
         'deposits': {'enabled': True, 'banks': []},
@@ -97,7 +97,7 @@ def get_bot_settings():
     }
 
 def get_bank_settings():
-    """Получает настройки банков"""
+    """РџРѕР»СѓС‡Р°РµС‚ РЅР°СЃС‚СЂРѕР№РєРё Р±Р°РЅРєРѕРІ"""
     return {
         'demirbank': {'deposit_enabled': True, 'withdraw_enabled': True},
         'odengi': {'deposit_enabled': True, 'withdraw_enabled': True},
@@ -108,7 +108,7 @@ def get_bank_settings():
     }
 
 async def show_main_menu(message: types.Message, language: str):
-    """Показать главное меню"""
+    """РџРѕРєР°Р·Р°С‚СЊ РіР»Р°РІРЅРѕРµ РјРµРЅСЋ"""
     translations = get_translation(language)
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
@@ -119,10 +119,10 @@ async def show_main_menu(message: types.Message, language: str):
         ],
         resize_keyboard=True
     )
-    await message.answer(translations['welcome'].format(user_name=message.from_user.first_name or 'Пользователь', admin_username='@luxon_support'), reply_markup=keyboard)
+    await message.answer(translations['welcome'].format(user_name=message.from_user.first_name or 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ', admin_username='@luxon_support'), reply_markup=keyboard)
 
 async def start_withdrawal(message: types.Message, state: FSMContext = None, bookmaker: str = None, language: str = None, db = None, bookmakers = None):
-    """Начало процесса вывода - Шаг 1: Выбор банка"""
+    """РќР°С‡Р°Р»Рѕ РїСЂРѕС†РµСЃСЃР° РІС‹РІРѕРґР° - РЁР°Рі 1: Р’С‹Р±РѕСЂ Р±Р°РЅРєР°"""
     if not all([bookmaker, language, db, bookmakers]):
         logger.error("Missing required parameters for start_withdrawal")
         return
@@ -132,24 +132,24 @@ async def start_withdrawal(message: types.Message, state: FSMContext = None, boo
     
     logger.info(f"Starting withdrawal process for user {user_id}, bookmaker: {bookmaker}")
     
-    # Сохраняем выбранный букмекер в базе данных
+    # РЎРѕС…СЂР°РЅСЏРµРј РІС‹Р±СЂР°РЅРЅС‹Р№ Р±СѓРєРјРµРєРµСЂ РІ Р±Р°Р·Рµ РґР°РЅРЅС‹С…
     db.save_user_data(user_id, 'current_bookmaker', bookmaker)
     
-    # Показываем выбор банка для вывода
+    # РџРѕРєР°Р·С‹РІР°РµРј РІС‹Р±РѕСЂ Р±Р°РЅРєР° РґР»СЏ РІС‹РІРѕРґР°
     await show_bank_selection_for_withdrawal(message, db, bookmakers)
 
 async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmakers):
-    """Показать выбор банка для вывода - Шаг 1 (одно сообщение с инлайн-кнопками)"""
+    """РџРѕРєР°Р·Р°С‚СЊ РІС‹Р±РѕСЂ Р±Р°РЅРєР° РґР»СЏ РІС‹РІРѕРґР° - РЁР°Рі 1 (РѕРґРЅРѕ СЃРѕРѕР±С‰РµРЅРёРµ СЃ РёРЅР»Р°Р№РЅ-РєРЅРѕРїРєР°РјРё)"""
     user_id = message.from_user.id
     language = db.get_user_language(user_id)
     translations = get_translation(language)
     
     logger.info(f"Showing bank selection for withdrawal to user {user_id}")
     
-    # Создаем инлайн клавиатуру с банками для вывода
+    # РЎРѕР·РґР°РµРј РёРЅР»Р°Р№РЅ РєР»Р°РІРёР°С‚СѓСЂСѓ СЃ Р±Р°РЅРєР°РјРё РґР»СЏ РІС‹РІРѕРґР°
     kb = InlineKeyboardBuilder()
 
-    # Прочитаем глобальную настройку вывода и разрешённые банки из bot_settings
+    # РџСЂРѕС‡РёС‚Р°РµРј РіР»РѕР±Р°Р»СЊРЅСѓСЋ РЅР°СЃС‚СЂРѕР№РєСѓ РІС‹РІРѕРґР° Рё СЂР°Р·СЂРµС€С‘РЅРЅС‹Рµ Р±Р°РЅРєРё РёР· bot_settings
     def _read_withdraw_settings():
         try:
             import sqlite3, json
@@ -170,7 +170,7 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
                 banks = json.loads(row_banks[0]) if row_banks and row_banks[0] else []
             except Exception:
                 banks = []
-            valid = {'Компаньон','О! Деньги','Бакай','Balance.kg','MegaPay','MBank'}
+            valid = {'РљРѕРјРїР°РЅСЊРѕРЅ','Рћ! Р”РµРЅСЊРіРё','Р‘Р°РєР°Р№','Balance.kg','MegaPay','MBank'}
             banks = [b for b in banks if b in valid]
             return enabled, set(banks)
         except Exception:
@@ -178,29 +178,29 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
 
     w_enabled, allowed_banks = _read_withdraw_settings()
     if not w_enabled:
-        await message.answer("⛔ Выводы временно не работают. Попробуйте позже.")
-        # Возвращаем главное меню
+        await message.answer("в›” Р’С‹РІРѕРґС‹ РІСЂРµРјРµРЅРЅРѕ РЅРµ СЂР°Р±РѕС‚Р°СЋС‚. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.")
+        # Р’РѕР·РІСЂР°С‰Р°РµРј РіР»Р°РІРЅРѕРµ РјРµРЅСЋ
         await show_main_menu(message, language)
         return
     
-    # Список банков для вывода
+    # РЎРїРёСЃРѕРє Р±Р°РЅРєРѕРІ РґР»СЏ РІС‹РІРѕРґР°
     banks = [
-        ("Компаньон", "kompanion"),
-        ("О! Деньги", "odengi"),
-        ("Бакай", "bakai"),
+        ("РљРѕРјРїР°РЅСЊРѕРЅ", "kompanion"),
+        ("Рћ! Р”РµРЅСЊРіРё", "odengi"),
+        ("Р‘Р°РєР°Р№", "bakai"),
         ("Balance.kg", "balance"),
         ("MegaPay", "megapay"),
         ("MBank", "mbank")
     ]
 
-    # Рендерим: разрешённые банки — обычные кнопки, запрещённые — alert
+    # Р РµРЅРґРµСЂРёРј: СЂР°Р·СЂРµС€С‘РЅРЅС‹Рµ Р±Р°РЅРєРё вЂ” РѕР±С‹С‡РЅС‹Рµ РєРЅРѕРїРєРё, Р·Р°РїСЂРµС‰С‘РЅРЅС‹Рµ вЂ” alert
     for bank_name, bank_code in banks:
         if not allowed_banks or bank_name in allowed_banks:
             kb.button(text=bank_name, callback_data=f"withdraw_bank_{bank_code}")
         else:
-            kb.button(text=f"{bank_name} (недоступно)", callback_data=f"withdraw_bank_unavailable_{bank_code}")
+            kb.button(text=f"{bank_name} (РЅРµРґРѕСЃС‚СѓРїРЅРѕ)", callback_data=f"withdraw_bank_unavailable_{bank_code}")
     
-    kb.button(text="🔙 Назад в меню", callback_data="back_to_menu")
+    kb.button(text="рџ”™ РќР°Р·Р°Рґ РІ РјРµРЅСЋ", callback_data="back_to_menu")
     kb.adjust(2)
     
     bank_selection_text = f"""
@@ -209,50 +209,50 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
 {translations['select_bank_for_withdraw']}
     """
 
-    # Отправляем ОДНО сообщение с текстом и инлайн-кнопками банков
+    # РћС‚РїСЂР°РІР»СЏРµРј РћР”РќРћ СЃРѕРѕР±С‰РµРЅРёРµ СЃ С‚РµРєСЃС‚РѕРј Рё РёРЅР»Р°Р№РЅ-РєРЅРѕРїРєР°РјРё Р±Р°РЅРєРѕРІ
     await message.answer(bank_selection_text, reply_markup=kb.as_markup(), parse_mode="HTML")
     
-    # Сохраняем состояние
+    # РЎРѕС…СЂР°РЅСЏРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ
     db.save_user_data(user_id, 'current_state', 'waiting_for_bank_selection')
     logger.info(f"Bank selection shown, state set to waiting_for_bank_selection for user {user_id}")
 
-    # Обработчик для недоступных банков — регистрируется в register_handlers
+    # РћР±СЂР°Р±РѕС‚С‡РёРє РґР»СЏ РЅРµРґРѕСЃС‚СѓРїРЅС‹С… Р±Р°РЅРєРѕРІ вЂ” СЂРµРіРёСЃС‚СЂРёСЂСѓРµС‚СЃСЏ РІ register_handlers
 
 async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookmakers, bot, callback_message=None):
-    """Обработка выбора банка - переход к Шагу 2: Запрос QR-кода"""
+    """РћР±СЂР°Р±РѕС‚РєР° РІС‹Р±РѕСЂР° Р±Р°РЅРєР° - РїРµСЂРµС…РѕРґ Рє РЁР°РіСѓ 2: Р—Р°РїСЂРѕСЃ QR-РєРѕРґР°"""
     language = db.get_user_language(user_id)
     translations = get_translation(language)
     
     logger.info(f"Processing bank selection: {bank_code} for user {user_id}")
     
-    # Сохраняем выбранный банк
+    # РЎРѕС…СЂР°РЅСЏРµРј РІС‹Р±СЂР°РЅРЅС‹Р№ Р±Р°РЅРє
     db.save_user_data(user_id, 'selected_bank', bank_code)
     
-    # Переходим к запросу QR-кода
+    # РџРµСЂРµС…РѕРґРёРј Рє Р·Р°РїСЂРѕСЃСѓ QR-РєРѕРґР°
     db.save_user_data(user_id, 'current_state', 'waiting_for_qr_photo')
     logger.info(f"State set to waiting_for_qr_photo for user {user_id}")
     
-    # Если есть сообщение с кнопками, редактируем его, убирая кнопки
+    # Р•СЃР»Рё РµСЃС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ СЃ РєРЅРѕРїРєР°РјРё, СЂРµРґР°РєС‚РёСЂСѓРµРј РµРіРѕ, СѓР±РёСЂР°СЏ РєРЅРѕРїРєРё
     if callback_message:
         try:
-            # Убираем инлайн-кнопки и дописываем выбранный банк
+            # РЈР±РёСЂР°РµРј РёРЅР»Р°Р№РЅ-РєРЅРѕРїРєРё Рё РґРѕРїРёСЃС‹РІР°РµРј РІС‹Р±СЂР°РЅРЅС‹Р№ Р±Р°РЅРє
             await callback_message.edit_text(
-                (callback_message.text or "") + f"\n\n✅ <b>Выбран банк:</b> {bank_code.upper()}",
+                (callback_message.text or "") + f"\n\nвњ… <b>Р’С‹Р±СЂР°РЅ Р±Р°РЅРє:</b> {bank_code.upper()}",
                 parse_mode="HTML"
             )
         except Exception as e:
             logger.error(f"Error editing message: {e}")
     
-    # Отправляем инструкцию по получению QR-кода
+    # РћС‚РїСЂР°РІР»СЏРµРј РёРЅСЃС‚СЂСѓРєС†РёСЋ РїРѕ РїРѕР»СѓС‡РµРЅРёСЋ QR-РєРѕРґР°
     qr_instruction = f"""
-{translations['qr_instruction']}
+{translations.get('qr_instruction', ru_tr.get('qr_instruction', 'Отправьте QR-код для перевода.'))}
 
-{translations['send_qr_wallet']}
+{translations.get('send_qr_wallet', ru_tr.get('send_qr_wallet', 'Отправьте QR код вашего кошелька:'))}
     """
     
-    # Убираем клавиатуру
+    # РЈР±РёСЂР°РµРј РєР»Р°РІРёР°С‚СѓСЂСѓ
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="🔙 Назад в меню")]],
+        keyboard=[[KeyboardButton(text="рџ”™ РќР°Р·Р°Рґ РІ РјРµРЅСЋ")]],
         resize_keyboard=True
     )
     
@@ -260,43 +260,43 @@ async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookm
     await bot.send_message(user_id, qr_instruction, reply_markup=keyboard, parse_mode="HTML")
 
 async def handle_withdraw_id_input(message: types.Message, db, bookmakers):
-    """Обработка ввода ID - переход к Шагу 4: Ввод кода"""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° ID - РїРµСЂРµС…РѕРґ Рє РЁР°РіСѓ 4: Р’РІРѕРґ РєРѕРґР°"""
     try:
         user_id = message.from_user.id
         text = message.text
         language = db.get_user_language(user_id)
         translations = get_translation(language)
             
-        # Проверяем, не нажал ли пользователь "Назад"
-        if text == translations.get('back_to_menu', '🔙 Назад'):
+        # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РЅР°Р¶Р°Р» Р»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ "РќР°Р·Р°Рґ"
+        if text == translations.get('back_to_menu', 'рџ”™ РќР°Р·Р°Рґ'):
             await show_main_menu(message, language)
             db.save_user_data(user_id, 'current_state', '')
             return
         
-        # Проверяем, что ID состоит только из цифр
+        # РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ ID СЃРѕСЃС‚РѕРёС‚ С‚РѕР»СЊРєРѕ РёР· С†РёС„СЂ
         if not text.isdigit():
             await message.answer(translations['id_digits_only'])
             return
             
-        # Сохраняем ID как текущий и как общий сохранённый для выбранного букмекера
+        # РЎРѕС…СЂР°РЅСЏРµРј ID РєР°Рє С‚РµРєСѓС‰РёР№ Рё РєР°Рє РѕР±С‰РёР№ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Р№ РґР»СЏ РІС‹Р±СЂР°РЅРЅРѕРіРѕ Р±СѓРєРјРµРєРµСЂР°
         db.save_user_data(user_id, 'withdraw_id', text)
         bookmaker_for_save = db.get_user_data(user_id, 'current_bookmaker')
         if bookmaker_for_save:
             db.save_user_data(user_id, 'id', text, bookmaker_for_save)
         
-        # Переходим к вводу кода вывода
+        # РџРµСЂРµС…РѕРґРёРј Рє РІРІРѕРґСѓ РєРѕРґР° РІС‹РІРѕРґР°
         db.save_user_data(user_id, 'current_state', 'waiting_for_withdraw_code')
         
-        # Получаем букмекера для отправки фотки
+        # РџРѕР»СѓС‡Р°РµРј Р±СѓРєРјРµРєРµСЂР° РґР»СЏ РѕС‚РїСЂР°РІРєРё С„РѕС‚РєРё
         bookmaker = db.get_user_data(user_id, 'current_bookmaker')
         
-        # Убираем кнопки и оставляем только "Назад в меню"
+        # РЈР±РёСЂР°РµРј РєРЅРѕРїРєРё Рё РѕСЃС‚Р°РІР»СЏРµРј С‚РѕР»СЊРєРѕ "РќР°Р·Р°Рґ РІ РјРµРЅСЋ"
         keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="🔙 Назад в меню")]],
+            keyboard=[[KeyboardButton(text="рџ”™ РќР°Р·Р°Рґ РІ РјРµРЅСЋ")]],
             resize_keyboard=True
         )
         
-        # Отправляем фотку с примером кода вывода
+        # РћС‚РїСЂР°РІР»СЏРµРј С„РѕС‚РєСѓ СЃ РїСЂРёРјРµСЂРѕРј РєРѕРґР° РІС‹РІРѕРґР°
         from pathlib import Path
         photo_path = Path(f"images/{bookmaker}-code.jpg")
         if photo_path.exists():
@@ -308,17 +308,17 @@ async def handle_withdraw_id_input(message: types.Message, db, bookmakers):
                     reply_markup=keyboard
                 )
             except Exception as e:
-                logger.warning(f"Не удалось отправить фото примера кода: {e}")
+                logger.warning(f"РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ С„РѕС‚Рѕ РїСЂРёРјРµСЂР° РєРѕРґР°: {e}")
                 await message.answer(translations['enter_withdraw_code_final'], reply_markup=keyboard)
         else:
             await message.answer(translations['enter_withdraw_code_final'], reply_markup=keyboard)
             
     except Exception as e:
-        logger.error(f"Ошибка при обработке ID для вывода: {e}")
-        await message.answer("Произошла ошибка")
+        logger.error(f"РћС€РёР±РєР° РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ ID РґР»СЏ РІС‹РІРѕРґР°: {e}")
+        await message.answer("РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР°")
     
 async def process_qr_photo(message: types.Message, db, bookmakers):
-    """Обработка QR-фото - переход к Шагу 3: Ввод номера телефона"""
+    """РћР±СЂР°Р±РѕС‚РєР° QR-С„РѕС‚Рѕ - РїРµСЂРµС…РѕРґ Рє РЁР°РіСѓ 3: Р’РІРѕРґ РЅРѕРјРµСЂР° С‚РµР»РµС„РѕРЅР°"""
     try:
         user_id = message.from_user.id
         language = db.get_user_language(user_id)
@@ -326,86 +326,86 @@ async def process_qr_photo(message: types.Message, db, bookmakers):
         
         logger.info(f"Processing QR photo for user {user_id}")
         
-        # Сохраняем фото QR-кода
+        # РЎРѕС…СЂР°РЅСЏРµРј С„РѕС‚Рѕ QR-РєРѕРґР°
         qr_file_id = message.photo[-1].file_id
         db.save_user_data(user_id, 'qr_photo_id', qr_file_id)
         logger.info(f"QR photo saved for user {user_id}")
         
-        # Переходим к вводу номера телефона
+        # РџРµСЂРµС…РѕРґРёРј Рє РІРІРѕРґСѓ РЅРѕРјРµСЂР° С‚РµР»РµС„РѕРЅР°
         db.save_user_data(user_id, 'current_state', 'waiting_for_withdraw_phone')
         logger.info(f"State set to waiting_for_withdraw_phone for user {user_id}")
         
-        # Получаем сохраненный номер телефона (если есть)
+        # РџРѕР»СѓС‡Р°РµРј СЃРѕС…СЂР°РЅРµРЅРЅС‹Р№ РЅРѕРјРµСЂ С‚РµР»РµС„РѕРЅР° (РµСЃР»Рё РµСЃС‚СЊ)
         bookmaker = db.get_user_data(user_id, 'current_bookmaker')
         saved_phone = db.get_user_data(user_id, 'phone', bookmaker)
         
-        # Создаем клавиатуру с сохраненным номером
+        # РЎРѕР·РґР°РµРј РєР»Р°РІРёР°С‚СѓСЂСѓ СЃ СЃРѕС…СЂР°РЅРµРЅРЅС‹Рј РЅРѕРјРµСЂРѕРј
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text=str(saved_phone))] if saved_phone else [],
-                [KeyboardButton(text=translations.get('back_to_menu', '🔙 Назад'))]
+                [KeyboardButton(text=translations.get('back_to_menu', 'рџ”™ РќР°Р·Р°Рґ'))]
             ],
             resize_keyboard=True
         )
                 
-        # Отправляем сообщение с инструкцией
+        # РћС‚РїСЂР°РІР»СЏРµРј СЃРѕРѕР±С‰РµРЅРёРµ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№
         text = translations['enter_withdraw_phone']
         
         await message.answer(text, reply_markup=keyboard)
             
     except Exception as e:
-        logger.error(f"Ошибка при обработке QR-фото: {e}")
-        await message.answer("Произошла ошибка")
+        logger.error(f"РћС€РёР±РєР° РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ QR-С„РѕС‚Рѕ: {e}")
+        await message.answer("РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР°")
 
 async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
-    """Обработка ввода номера телефона - переход к Шагу 4: Ввод ID"""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РЅРѕРјРµСЂР° С‚РµР»РµС„РѕРЅР° - РїРµСЂРµС…РѕРґ Рє РЁР°РіСѓ 4: Р’РІРѕРґ ID"""
     try:
         user_id = message.from_user.id
         text = message.text
         language = db.get_user_language(user_id)
         translations = get_translation(language)
             
-        # Проверяем, не нажал ли пользователь "Назад"
-        if text == translations.get('back_to_menu', '🔙 Назад'):
+        # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РЅР°Р¶Р°Р» Р»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ "РќР°Р·Р°Рґ"
+        if text == translations.get('back_to_menu', 'рџ”™ РќР°Р·Р°Рґ'):
             await show_main_menu(message, language)
             db.save_user_data(user_id, 'current_state', '')
             return
         
-        # Проверяем формат номера телефона (должен начинаться с 996 и содержать 12 цифр)
+        # РџСЂРѕРІРµСЂСЏРµРј С„РѕСЂРјР°С‚ РЅРѕРјРµСЂР° С‚РµР»РµС„РѕРЅР° (РґРѕР»Р¶РµРЅ РЅР°С‡РёРЅР°С‚СЊСЃСЏ СЃ 996 Рё СЃРѕРґРµСЂР¶Р°С‚СЊ 12 С†РёС„СЂ)
         phone_clean = text.strip().replace('+', '').replace(' ', '').replace('-', '')
         if not phone_clean.isdigit() or len(phone_clean) != 12 or not phone_clean.startswith('996'):
-            await message.answer("❌ Неверный формат номера. Введите номер в формате: 996505000000")
+            await message.answer("вќЊ РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РЅРѕРјРµСЂР°. Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РІ С„РѕСЂРјР°С‚Рµ: 996505000000")
             return
             
-        # Сохраняем номер телефона
+        # РЎРѕС…СЂР°РЅСЏРµРј РЅРѕРјРµСЂ С‚РµР»РµС„РѕРЅР°
         db.save_user_data(user_id, 'withdraw_phone', phone_clean)
         bookmaker_for_save = db.get_user_data(user_id, 'current_bookmaker')
         if bookmaker_for_save:
             db.save_user_data(user_id, 'phone', phone_clean, bookmaker_for_save)
         
-        # Переходим к вводу ID
+        # РџРµСЂРµС…РѕРґРёРј Рє РІРІРѕРґСѓ ID
         db.save_user_data(user_id, 'current_state', 'waiting_for_withdraw_id')
         logger.info(f"State set to waiting_for_withdraw_id for user {user_id}")
         
-        # Получаем букмекера и сохраненный ID
+        # РџРѕР»СѓС‡Р°РµРј Р±СѓРєРјРµРєРµСЂР° Рё СЃРѕС…СЂР°РЅРµРЅРЅС‹Р№ ID
         bookmaker = db.get_user_data(user_id, 'current_bookmaker')
         saved_id = db.get_user_data(user_id, 'id', bookmaker)
         
-        # Создаем клавиатуру с сохраненным ID
+        # РЎРѕР·РґР°РµРј РєР»Р°РІРёР°С‚СѓСЂСѓ СЃ СЃРѕС…СЂР°РЅРµРЅРЅС‹Рј ID
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text=str(saved_id))] if saved_id else [],
-                [KeyboardButton(text=translations.get('back_to_menu', '🔙 Назад'))]
+                [KeyboardButton(text=translations.get('back_to_menu', 'рџ”™ РќР°Р·Р°Рґ'))]
             ],
             resize_keyboard=True
         )
                 
-        # Отправляем сообщение с инструкцией
+        # РћС‚РїСЂР°РІР»СЏРµРј СЃРѕРѕР±С‰РµРЅРёРµ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№
         text = f"""
 {translations['enter_withdraw_id']}
         """
         
-        # Отправляем фотку с примером ID
+        # РћС‚РїСЂР°РІР»СЏРµРј С„РѕС‚РєСѓ СЃ РїСЂРёРјРµСЂРѕРј ID
         from pathlib import Path
         photo_path = Path(f"images/{bookmaker}-id.jpg")
         if photo_path.exists():
@@ -417,65 +417,65 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
                     reply_markup=keyboard
                 )
             except Exception as e:
-                logger.warning(f"Не удалось отправить фото примера ID: {e}")
+                logger.warning(f"РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ С„РѕС‚Рѕ РїСЂРёРјРµСЂР° ID: {e}")
                 await message.answer(text, reply_markup=keyboard)
         else:
             await message.answer(text, reply_markup=keyboard)
             
     except Exception as e:
-        logger.error(f"Ошибка при обработке номера телефона для вывода: {e}")
-        await message.answer("Произошла ошибка")
+        logger.error(f"РћС€РёР±РєР° РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ РЅРѕРјРµСЂР° С‚РµР»РµС„РѕРЅР° РґР»СЏ РІС‹РІРѕРґР°: {e}")
+        await message.answer("РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР°")
     
 async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
-    """Обработка ввода кода вывода - финальный шаг"""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РєРѕРґР° РІС‹РІРѕРґР° - С„РёРЅР°Р»СЊРЅС‹Р№ С€Р°Рі"""
     try:
         user_id = message.from_user.id
         text = message.text
         language = db.get_user_language(user_id)
         translations = get_translation(language)
             
-        # Проверяем, не нажал ли пользователь "Назад"
-        if text == translations.get('back_to_menu', '🔙 Назад'):
+        # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РЅР°Р¶Р°Р» Р»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ "РќР°Р·Р°Рґ"
+        if text == translations.get('back_to_menu', 'рџ”™ РќР°Р·Р°Рґ'):
             await show_main_menu(message, language)
             db.save_user_data(user_id, 'current_state', '')
             return
             
-        # Сохраняем код вывода
+        # РЎРѕС…СЂР°РЅСЏРµРј РєРѕРґ РІС‹РІРѕРґР°
         db.save_user_data(user_id, 'withdraw_code', text)
         
-        # Получаем данные заявки
+        # РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ Р·Р°СЏРІРєРё
         bookmaker = db.get_user_data(user_id, 'current_bookmaker')
         bank_code = db.get_user_data(user_id, 'selected_bank')
         withdraw_id = db.get_user_data(user_id, 'withdraw_id')
         withdraw_phone = db.get_user_data(user_id, 'withdraw_phone')
         qr_photo_id = db.get_user_data(user_id, 'qr_photo_id')
         
-        # Получаем сумму через API для конкретного букмекера
+        # РџРѕР»СѓС‡Р°РµРј СЃСѓРјРјСѓ С‡РµСЂРµР· API РґР»СЏ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ Р±СѓРєРјРµРєРµСЂР°
         try:
-            # Получаем конфигурацию для букмекера из BOOKMAKERS (избегаем импорта BOOKMAKER_CONFIGS)
+            # РџРѕР»СѓС‡Р°РµРј РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ РґР»СЏ Р±СѓРєРјРµРєРµСЂР° РёР· BOOKMAKERS (РёР·Р±РµРіР°РµРј РёРјРїРѕСЂС‚Р° BOOKMAKER_CONFIGS)
             bookmaker_config = BOOKMAKERS.get(bookmaker, {})
             if not bookmaker_config:
                 logger.error(f"No config found for bookmaker: {bookmaker}")
                 amount = 0
             else:
-                # Выбираем правильный API клиент для букмекера
+                # Р’С‹Р±РёСЂР°РµРј РїСЂР°РІРёР»СЊРЅС‹Р№ API РєР»РёРµРЅС‚ РґР»СЏ Р±СѓРєРјРµРєРµСЂР°
                 if bookmaker == "1xbet":
                     from api_clients.onexbet_client import OneXBetAPIClient
-                    # В 1XBET конфиг лежит в секции api_config (как и для депозитов)
+                    # Р’ 1XBET РєРѕРЅС„РёРі Р»РµР¶РёС‚ РІ СЃРµРєС†РёРё api_config (РєР°Рє Рё РґР»СЏ РґРµРїРѕР·РёС‚РѕРІ)
                     api_client = OneXBetAPIClient(bookmaker_config.get('api_config', {}) or bookmaker_config)
                     payout_result = api_client.payout(withdraw_id, text)
                 elif bookmaker == "1win":
-                    # Используем официальный клиент 1WIN, чтобы получать структурированные ошибки
+                    # РСЃРїРѕР»СЊР·СѓРµРј РѕС„РёС†РёР°Р»СЊРЅС‹Р№ РєР»РёРµРЅС‚ 1WIN, С‡С‚РѕР±С‹ РїРѕР»СѓС‡Р°С‚СЊ СЃС‚СЂСѓРєС‚СѓСЂРёСЂРѕРІР°РЅРЅС‹Рµ РѕС€РёР±РєРё
                     from api_clients.onewin_client import OneWinAPIClient
                     api_client = OneWinAPIClient(bookmaker_config.get('api_config', {}) or bookmaker_config)
                     payout_result = api_client.withdrawal(int(withdraw_id), text)
                 elif bookmaker == "melbet":
-                    # Используем специализированный клиент с корректным base_url
+                    # РСЃРїРѕР»СЊР·СѓРµРј СЃРїРµС†РёР°Р»РёР·РёСЂРѕРІР°РЅРЅС‹Р№ РєР»РёРµРЅС‚ СЃ РєРѕСЂСЂРµРєС‚РЅС‹Рј base_url
                     from api_clients.melbet_client import MelbetAPIClient
                     api_client = MelbetAPIClient(bookmaker_config.get('api_config', {}) or bookmaker_config)
                     payout_result = api_client.payout(withdraw_id, text)
                 elif bookmaker == "mostbet":
-                    # Используем официальный клиент Mostbet и подтверждение вывода по transactionId+code
+                    # РСЃРїРѕР»СЊР·СѓРµРј РѕС„РёС†РёР°Р»СЊРЅС‹Р№ РєР»РёРµРЅС‚ Mostbet Рё РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РІС‹РІРѕРґР° РїРѕ transactionId+code
                     from api_clients.mostbet_client import MostbetAPI
                     api_client = MostbetAPI(bookmaker_config.get('api_config', {}) or bookmaker_config)
                     try:
@@ -483,7 +483,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                     except Exception as e:
                         logger.error(f"Mostbet confirm_cashout call error: {e}")
                         resp = None
-                    # Приводим к унифицированному виду
+                    # РџСЂРёРІРѕРґРёРј Рє СѓРЅРёС„РёС†РёСЂРѕРІР°РЅРЅРѕРјСѓ РІРёРґСѓ
                     if resp and isinstance(resp, dict):
                         if resp.get('success') is True:
                             payout_result = {"success": True, "data": resp.get('data') or {}}
@@ -501,7 +501,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                     payout_result = None
                 
                 if payout_result and payout_result.get("success"):
-                    # Получаем сумму из ответа API (учитываем разные ключи: amount/summa)
+                    # РџРѕР»СѓС‡Р°РµРј СЃСѓРјРјСѓ РёР· РѕС‚РІРµС‚Р° API (СѓС‡РёС‚С‹РІР°РµРј СЂР°Р·РЅС‹Рµ РєР»СЋС‡Рё: amount/summa)
                     data_obj = payout_result.get("data", {}) or {}
                     amount = (
                         data_obj.get("amount")
@@ -515,7 +515,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                         amount = float(amount or 0)
                     logger.info(f"API payout successful: {amount} for ID: {withdraw_id}, code: {text}, bookmaker: {bookmaker}")
                 else:
-                    # Проверяем, есть ли заявка на вывод
+                    # РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё Р·Р°СЏРІРєР° РЅР° РІС‹РІРѕРґ
                     raw_msg = ""
                     if payout_result:
                         raw_msg = (
@@ -526,7 +526,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                             or ""
                         )
                     error_message = (raw_msg or "").lower()
-                    # Fallback: пробуем вытащить сумму из текста ответа (например, "100.39" или "100,39")
+                    # Fallback: РїСЂРѕР±СѓРµРј РІС‹С‚Р°С‰РёС‚СЊ СЃСѓРјРјСѓ РёР· С‚РµРєСЃС‚Р° РѕС‚РІРµС‚Р° (РЅР°РїСЂРёРјРµСЂ, "100.39" РёР»Рё "100,39")
                     if not (payout_result and payout_result.get("success")):
                         try:
                             import re
@@ -537,8 +537,8 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                         except Exception:
                             pass
                     status_code = (payout_result or {}).get('status_code')
-                    # Некоторые провайдеры присылают текст "операция выполнена успешно" даже если success=false — считаем это успехом
-                    if any(x in error_message for x in ["успешн", "operation completed successfully", "successfully"]):
+                    # РќРµРєРѕС‚РѕСЂС‹Рµ РїСЂРѕРІР°Р№РґРµСЂС‹ РїСЂРёСЃС‹Р»Р°СЋС‚ С‚РµРєСЃС‚ "РѕРїРµСЂР°С†РёСЏ РІС‹РїРѕР»РЅРµРЅР° СѓСЃРїРµС€РЅРѕ" РґР°Р¶Рµ РµСЃР»Рё success=false вЂ” СЃС‡РёС‚Р°РµРј СЌС‚Рѕ СѓСЃРїРµС…РѕРј
+                    if any(x in error_message for x in ["СѓСЃРїРµС€РЅ", "operation completed successfully", "successfully"]):
                         data_obj = (payout_result or {}).get("data", {}) or {}
                         amount = (
                             data_obj.get("amount")
@@ -551,40 +551,40 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                         except Exception:
                             amount = float(amount or 0)
                         logger.warning("Provider returned success-like message but success flag is false. Proceeding as success.")
-                        # Не возвращаемся — продолжаем как обычный успех (сохранение заявки/уведомления ниже)
+                        # РќРµ РІРѕР·РІСЂР°С‰Р°РµРјСЃСЏ вЂ” РїСЂРѕРґРѕР»Р¶Р°РµРј РєР°Рє РѕР±С‹С‡РЅС‹Р№ СѓСЃРїРµС… (СЃРѕС…СЂР°РЅРµРЅРёРµ Р·Р°СЏРІРєРё/СѓРІРµРґРѕРјР»РµРЅРёСЏ РЅРёР¶Рµ)
                     elif (
-                        "не найдена" in error_message or "not found" in error_message or "нет такой" in error_message
+                        "РЅРµ РЅР°Р№РґРµРЅР°" in error_message or "not found" in error_message or "РЅРµС‚ С‚Р°РєРѕР№" in error_message
                         or status_code == 404
                     ):
-                        # Заявка на вывод не найдена у провайдера — продолжаем как ручную (оставим pending на сайте)
-                        await message.answer(translations.get('withdrawal_not_found', "❌ Такой заявки у провайдера не найдено. Мы обработаем её вручную."))
-                        # продолжим вниз: сохраним как pending
+                        # Р—Р°СЏРІРєР° РЅР° РІС‹РІРѕРґ РЅРµ РЅР°Р№РґРµРЅР° Сѓ РїСЂРѕРІР°Р№РґРµСЂР° вЂ” РїСЂРѕРґРѕР»Р¶Р°РµРј РєР°Рє СЂСѓС‡РЅСѓСЋ (РѕСЃС‚Р°РІРёРј pending РЅР° СЃР°Р№С‚Рµ)
+                        await message.answer(translations.get('withdrawal_not_found', "вќЊ РўР°РєРѕР№ Р·Р°СЏРІРєРё Сѓ РїСЂРѕРІР°Р№РґРµСЂР° РЅРµ РЅР°Р№РґРµРЅРѕ. РњС‹ РѕР±СЂР°Р±РѕС‚Р°РµРј РµС‘ РІСЂСѓС‡РЅСѓСЋ."))
+                        # РїСЂРѕРґРѕР»Р¶РёРј РІРЅРёР·: СЃРѕС…СЂР°РЅРёРј РєР°Рє pending
                     else:
                         logger.error(f"API payout failed: {raw_msg or (payout_result or {}).get('error', 'No response')}")
-                        # Покажем пользователю текст ошибки от провайдера, если он есть
+                        # РџРѕРєР°Р¶РµРј РїРѕР»СЊР·РѕРІР°С‚РµР»СЋ С‚РµРєСЃС‚ РѕС€РёР±РєРё РѕС‚ РїСЂРѕРІР°Р№РґРµСЂР°, РµСЃР»Рё РѕРЅ РµСЃС‚СЊ
                         if raw_msg:
-                            await message.answer(f"❌ Ошибка вывода: {raw_msg}. Заявка отправлена на ручную обработку.")
+                            await message.answer(f"вќЊ РћС€РёР±РєР° РІС‹РІРѕРґР°: {raw_msg}. Р—Р°СЏРІРєР° РѕС‚РїСЂР°РІР»РµРЅР° РЅР° СЂСѓС‡РЅСѓСЋ РѕР±СЂР°Р±РѕС‚РєСѓ.")
                         else:
                             await message.answer(translations['withdrawal_api_error'])
-                        # не выходим — сохраним как pending
+                        # РЅРµ РІС‹С…РѕРґРёРј вЂ” СЃРѕС…СЂР°РЅРёРј РєР°Рє pending
             
         except Exception as e:
             logger.error(f"Error calling API for payout: {e}")
-            amount = 0  # Если API не работает, используем 0
+            amount = 0  # Р•СЃР»Рё API РЅРµ СЂР°Р±РѕС‚Р°РµС‚, РёСЃРїРѕР»СЊР·СѓРµРј 0
         
         try:
-            # Сохраняем заявку в единую таблицу requests (для сайта)
+            # РЎРѕС…СЂР°РЅСЏРµРј Р·Р°СЏРІРєСѓ РІ РµРґРёРЅСѓСЋ С‚Р°Р±Р»РёС†Сѓ requests (РґР»СЏ СЃР°Р№С‚Р°)
             import sqlite3
             from pathlib import Path
-            # ВАЖНО: использовать тот же путь, что и у Django (settings.BOT_DATABASE_PATH)
-            # Сначала пробуем взять путь из переданного объекта db
+            # Р’РђР–РќРћ: РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ С‚РѕС‚ Р¶Рµ РїСѓС‚СЊ, С‡С‚Рѕ Рё Сѓ Django (settings.BOT_DATABASE_PATH)
+            # РЎРЅР°С‡Р°Р»Р° РїСЂРѕР±СѓРµРј РІР·СЏС‚СЊ РїСѓС‚СЊ РёР· РїРµСЂРµРґР°РЅРЅРѕРіРѕ РѕР±СЉРµРєС‚Р° db
             db_path = getattr(db, 'db_path', None)
             if not db_path:
-                # Fallback: корень репо (bets/universal_bot.db), а не bot/universal_bot.db
+                # Fallback: РєРѕСЂРµРЅСЊ СЂРµРїРѕ (bets/universal_bot.db), Р° РЅРµ bot/universal_bot.db
                 db_path = str(Path(__file__).resolve().parents[2] / 'universal_bot.db')
             conn = sqlite3.connect(db_path)
             cur = conn.cursor()
-            # Гарантируем наличие таблицы requests с нужными колонками
+            # Р“Р°СЂР°РЅС‚РёСЂСѓРµРј РЅР°Р»РёС‡РёРµ С‚Р°Р±Р»РёС†С‹ requests СЃ РЅСѓР¶РЅС‹РјРё РєРѕР»РѕРЅРєР°РјРё
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS requests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -608,13 +608,13 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                 )
             ''')
             
-            # Добавляем колонку phone если её нет
+            # Р”РѕР±Р°РІР»СЏРµРј РєРѕР»РѕРЅРєСѓ phone РµСЃР»Рё РµС‘ РЅРµС‚
             try:
                 cur.execute("ALTER TABLE requests ADD COLUMN phone TEXT")
             except Exception:
-                pass  # Колонка уже существует
+                pass  # РљРѕР»РѕРЅРєР° СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
 
-            # Получим прямой URL к файлу от Telegram API (если есть)
+            # РџРѕР»СѓС‡РёРј РїСЂСЏРјРѕР№ URL Рє С„Р°Р№Р»Сѓ РѕС‚ Telegram API (РµСЃР»Рё РµСЃС‚СЊ)
             photo_file_url = None
             if qr_photo_id:
                 try:
@@ -623,9 +623,9 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                     if fpath:
                         photo_file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{fpath}"
                 except Exception as e:
-                    logger.warning(f"Не удалось получить прямой URL фото вывода: {e}")
+                    logger.warning(f"РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РїСЂСЏРјРѕР№ URL С„РѕС‚Рѕ РІС‹РІРѕРґР°: {e}")
 
-            # Сохраняем заявку в requests
+            # РЎРѕС…СЂР°РЅСЏРµРј Р·Р°СЏРІРєСѓ РІ requests
             cur.execute('''
                 INSERT INTO requests
                 (user_id, username, first_name, bookmaker, account_id, amount, request_type, status,
@@ -647,7 +647,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
             conn.commit()
             conn.close()
 
-            # Синхронизация с сайтом (Django): отправим и file_id, и прямой URL к фото
+            # РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ СЃ СЃР°Р№С‚РѕРј (Django): РѕС‚РїСЂР°РІРёРј Рё file_id, Рё РїСЂСЏРјРѕР№ URL Рє С„РѕС‚Рѕ
             try:
                 sync_withdraw_to_django_admin(
                     user_id=user_id,
@@ -664,20 +664,20 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                     status='pending'
                 )
             except Exception as e:
-                logger.error(f"Ошибка синхронизации заявки на вывод с Django: {e}")
+                logger.error(f"РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё Р·Р°СЏРІРєРё РЅР° РІС‹РІРѕРґ СЃ Django: {e}")
 
-            # Отправляем заявку в группу
+            # РћС‚РїСЂР°РІР»СЏРµРј Р·Р°СЏРІРєСѓ РІ РіСЂСѓРїРїСѓ
             group_id = bookmakers[bookmaker]['withdraw_group_id']
             logger.info(f"Sending withdraw request to group {group_id} for bookmaker {bookmaker}")
             
-            # Генерируем уникальный ID заявки
+            # Р“РµРЅРµСЂРёСЂСѓРµРј СѓРЅРёРєР°Р»СЊРЅС‹Р№ ID Р·Р°СЏРІРєРё
             request_id = random.randint(1000, 9999)
             
-            # Сохраняем данные заявки в словарь для API обработчиков
+            # РЎРѕС…СЂР°РЅСЏРµРј РґР°РЅРЅС‹Рµ Р·Р°СЏРІРєРё РІ СЃР»РѕРІР°СЂСЊ РґР»СЏ API РѕР±СЂР°Р±РѕС‚С‡РёРєРѕРІ
             import handlers.api_handlers as api_handlers
             api_handlers.pending_requests[request_id] = {
                 'user_id': user_id,
-                'amount': amount,  # Сумма полученная через API
+                'amount': amount,  # РЎСѓРјРјР° РїРѕР»СѓС‡РµРЅРЅР°СЏ С‡РµСЂРµР· API
                 'xbet_id': withdraw_id,
                 'bookmaker': bookmaker,
                 'type': 'withdraw',
@@ -686,27 +686,27 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
             }
             
             application_text = f"""
-🔔 <b>Новая заявка на вывод</b>
+рџ”” <b>РќРѕРІР°СЏ Р·Р°СЏРІРєР° РЅР° РІС‹РІРѕРґ</b>
 
-👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'}
-🆔 <b>ID:</b> <code>{withdraw_id}</code>
-📱 <b>Телефон:</b> +{withdraw_phone or 'не указан'}
-🏢 <b>Букмекер:</b> {bookmakers[bookmaker]['name']}
-🏦 <b>Банк:</b> {bank_code.title()}
-💰 <b>Сумма:</b> {amount} сом
-🔐 <b>Код вывода:</b> скрыт (только для API)
-🆔 <b>ID заявки:</b> {request_id}
+рџ‘¤ <b>РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ:</b> @{message.from_user.username or 'Р±РµР· username'}
+рџ†” <b>ID:</b> <code>{withdraw_id}</code>
+рџ“± <b>РўРµР»РµС„РѕРЅ:</b> +{withdraw_phone or 'РЅРµ СѓРєР°Р·Р°РЅ'}
+рџЏў <b>Р‘СѓРєРјРµРєРµСЂ:</b> {bookmakers[bookmaker]['name']}
+рџЏ¦ <b>Р‘Р°РЅРє:</b> {bank_code.title()}
+рџ’° <b>РЎСѓРјРјР°:</b> {amount} СЃРѕРј
+рџ”ђ <b>РљРѕРґ РІС‹РІРѕРґР°:</b> СЃРєСЂС‹С‚ (С‚РѕР»СЊРєРѕ РґР»СЏ API)
+рџ†” <b>ID Р·Р°СЏРІРєРё:</b> {request_id}
 """
             
-            # Создаем клавиатуру с кнопками
+            # РЎРѕР·РґР°РµРј РєР»Р°РІРёР°С‚СѓСЂСѓ СЃ РєРЅРѕРїРєР°РјРё
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [
-                    InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"approve_withdraw_{request_id}"),
-                    InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_withdraw_{request_id}")
+                    InlineKeyboardButton(text="вњ… РџРѕРґС‚РІРµСЂРґРёС‚СЊ", callback_data=f"approve_withdraw_{request_id}"),
+                    InlineKeyboardButton(text="вќЊ РћС‚РєР»РѕРЅРёС‚СЊ", callback_data=f"reject_withdraw_{request_id}")
                 ]
             ])
             
-            # Отправляем заявку в группу с QR-фото
+            # РћС‚РїСЂР°РІР»СЏРµРј Р·Р°СЏРІРєСѓ РІ РіСЂСѓРїРїСѓ СЃ QR-С„РѕС‚Рѕ
             await message.bot.send_photo(
                 chat_id=group_id,
                 photo=qr_photo_id,
@@ -715,7 +715,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                 parse_mode="HTML"
             )
             
-            # Уведомляем пользователя
+            # РЈРІРµРґРѕРјР»СЏРµРј РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
             keyboard = ReplyKeyboardMarkup(
                 keyboard=[
                     [KeyboardButton(text=translations['deposit']), KeyboardButton(text=translations['withdraw'])],
@@ -733,7 +733,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
             
             await message.answer(success_message, reply_markup=keyboard, parse_mode="HTML")
             
-            # Отправляем заявку в группу админу
+            # РћС‚РїСЂР°РІР»СЏРµРј Р·Р°СЏРІРєСѓ РІ РіСЂСѓРїРїСѓ Р°РґРјРёРЅСѓ
             await send_withdraw_request_to_group(
                 bot=message.bot,
                 user_id=user_id,
@@ -745,19 +745,19 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                 photo_file_id=qr_photo_id
             )
             
-            # Очищаем состояние
+            # РћС‡РёС‰Р°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ
             db.save_user_data(user_id, 'current_state', '')
             
         except Exception as e:
-            logger.error(f"Ошибка отправки заявки на вывод в группу: {e}")
-            await message.answer("❌ Ошибка при отправке заявки. Попробуйте позже.")
+            logger.error(f"РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё Р·Р°СЏРІРєРё РЅР° РІС‹РІРѕРґ РІ РіСЂСѓРїРїСѓ: {e}")
+            await message.answer("вќЊ РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ Р·Р°СЏРІРєРё. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.")
             
     except Exception as e:
-        logger.error(f"Ошибка при обработке кода вывода: {e}")
-        await message.answer("Произошла ошибка")
+        logger.error(f"РћС€РёР±РєР° РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ РєРѕРґР° РІС‹РІРѕРґР°: {e}")
+        await message.answer("РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР°")
 
 def sync_withdraw_to_django_admin(*, user_id, username, first_name, bookmaker, amount, withdraw_id, bank_code, withdraw_code, withdraw_phone, photo_file_id, photo_file_url, status):
-    """Отправка заявки на вывод на сайт (Django) с URL чека."""
+    """РћС‚РїСЂР°РІРєР° Р·Р°СЏРІРєРё РЅР° РІС‹РІРѕРґ РЅР° СЃР°Р№С‚ (Django) СЃ URL С‡РµРєР°."""
     try:
         import requests
         import os
@@ -780,44 +780,44 @@ def sync_withdraw_to_django_admin(*, user_id, username, first_name, bookmaker, a
         endpoint = f"{base_url.rstrip('/')}/bot/api/bot/withdraw-request/"
         resp = requests.post(endpoint, json=data, timeout=8)
         if resp.status_code in (200, 201):
-            logger.info("✅ Заявка на вывод синхронизирована с Django админкой")
+            logger.info("вњ… Р—Р°СЏРІРєР° РЅР° РІС‹РІРѕРґ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅР° СЃ Django Р°РґРјРёРЅРєРѕР№")
         else:
-            logger.error(f"❌ Ошибка синхронизации вывода: {resp.status_code} - {resp.text}")
+            logger.error(f"вќЊ РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РІС‹РІРѕРґР°: {resp.status_code} - {resp.text}")
     except Exception as e:
-        logger.error(f"❌ Ошибка при отправке заявки на вывод в Django: {e}")
+        logger.error(f"вќЊ РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ Р·Р°СЏРІРєРё РЅР° РІС‹РІРѕРґ РІ Django: {e}")
 
 def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None):
-    """Регистрация обработчиков"""
+    """Р РµРіРёСЃС‚СЂР°С†РёСЏ РѕР±СЂР°Р±РѕС‚С‡РёРєРѕРІ"""
     
-    # Обработчики текстовых сообщений для состояний вывода
+    # РћР±СЂР°Р±РѕС‚С‡РёРєРё С‚РµРєСЃС‚РѕРІС‹С… СЃРѕРѕР±С‰РµРЅРёР№ РґР»СЏ СЃРѕСЃС‚РѕСЏРЅРёР№ РІС‹РІРѕРґР°
     @dp.message(lambda message: message.photo and db.get_user_data(message.from_user.id, 'current_state') == 'waiting_for_receipt')
     async def handle_receipt_photo_handler(message: types.Message):
-        """Обработка фото чека для пополнения"""
+        """РћР±СЂР°Р±РѕС‚РєР° С„РѕС‚Рѕ С‡РµРєР° РґР»СЏ РїРѕРїРѕР»РЅРµРЅРёСЏ"""
         await process_receipt_photo(message, db, bookmakers)
 
-    # Глобальный обработчик: недоступные банки вывода
+    # Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ РѕР±СЂР°Р±РѕС‚С‡РёРє: РЅРµРґРѕСЃС‚СѓРїРЅС‹Рµ Р±Р°РЅРєРё РІС‹РІРѕРґР°
     @dp.callback_query(F.data.startswith('withdraw_bank_unavailable_'))
     async def handle_unavailable(cb: types.CallbackQuery):
         try:
-            await cb.answer("На данный момент вывод на этот банк недоступен", show_alert=True)
+            await cb.answer("РќР° РґР°РЅРЅС‹Р№ РјРѕРјРµРЅС‚ РІС‹РІРѕРґ РЅР° СЌС‚РѕС‚ Р±Р°РЅРє РЅРµРґРѕСЃС‚СѓРїРµРЅ", show_alert=True)
         except Exception:
             try:
-                await cb.answer("Недоступно", show_alert=True)
+                await cb.answer("РќРµРґРѕСЃС‚СѓРїРЅРѕ", show_alert=True)
             except Exception:
                 pass
 
-    # Обработка нажатия на инлайн-кнопку выбора банка для вывода (доступные)
+    # РћР±СЂР°Р±РѕС‚РєР° РЅР°Р¶Р°С‚РёСЏ РЅР° РёРЅР»Р°Р№РЅ-РєРЅРѕРїРєСѓ РІС‹Р±РѕСЂР° Р±Р°РЅРєР° РґР»СЏ РІС‹РІРѕРґР° (РґРѕСЃС‚СѓРїРЅС‹Рµ)
     @dp.callback_query(F.data.startswith("withdraw_bank_"))
     async def handle_withdraw_bank_callback(callback: types.CallbackQuery):
         data = callback.data or ''
-        # Если это недоступный банк — просто алерт (перехватывается выше), выходим
+        # Р•СЃР»Рё СЌС‚Рѕ РЅРµРґРѕСЃС‚СѓРїРЅС‹Р№ Р±Р°РЅРє вЂ” РїСЂРѕСЃС‚Рѕ Р°Р»РµСЂС‚ (РїРµСЂРµС…РІР°С‚С‹РІР°РµС‚СЃСЏ РІС‹С€Рµ), РІС‹С…РѕРґРёРј
         if data.startswith('withdraw_bank_unavailable_'):
             try:
-                await callback.answer("Недоступно", show_alert=True)
+                await callback.answer("РќРµРґРѕСЃС‚СѓРїРЅРѕ", show_alert=True)
             except Exception:
                 pass
             return
-        # Формат: withdraw_bank_<code>
+        # Р¤РѕСЂРјР°С‚: withdraw_bank_<code>
         try:
             bank_code = data.split('_', 2)[-1]
         except Exception:
@@ -835,6 +835,6 @@ def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None):
         except Exception as e:
             logger.error(f"withdraw bank callback error: {e}")
             try:
-                await callback.answer("Ошибка обработки", show_alert=True)
+                await callback.answer("РћС€РёР±РєР° РѕР±СЂР°Р±РѕС‚РєРё", show_alert=True)
             except Exception:
                 pass
