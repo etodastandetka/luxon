@@ -144,6 +144,15 @@
   <div style="text-align:center;">
     <img src="{{ photo_url }}" alt="Чек" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #2d2d2d;" />
   </div>
+  {% if transaction.status not in ('completed','rejected','auto_completed','failed','cancelled') %}
+  <div id="actions-row" class="btns-row" style="margin-top:12px;">
+    <button class="action-btn action-btn--approve" onclick="handleAction('approve')" title="Принять">✅ Принять</button>
+    <button class="action-btn action-btn--reject" onclick="handleAction('reject')" title="Отклонить">❌ Отклонить</button>
+    {% if transaction.request_type == 'deposit' %}
+      <button class="action-btn action-btn--neutral" onclick="handleApiProcess()" title="Обработать по API">🔗 API подтвердить</button>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -366,6 +375,26 @@ async function handleAction(action) {
   }
 }
 
+async function handleApiProcess(){
+  try{
+    // Переводим в статус processing, чтобы зафиксировать начало API обработки
+    const requestId = Number('{{ transaction.id }}');
+    const requestType = ('{{ rt }}' === 'withdraw') ? 'withdraw' : 'deposit';
+    const payload = { request_type: requestType, request_id: requestId, status: 'processing', user_id: Number('{{ transaction.user_id }}'), amount: Number('{{ transaction.amount }}') };
+    const res = await fetch('{% url "bot_control:update_request_status" %}', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(res.ok && data.success){
+      currentStatus = 'processing';
+      const el = document.getElementById('status-text'); if(el) el.textContent = ruStatus('processing');
+      alert('Статус: В обработке (API). Продолжите подтверждение в Телеграме.');
+    } else {
+      alert((data && data.error) || 'Ошибка');
+    }
+  }catch(e){ alert('Ошибка запроса'); }
+}
+
 
 document.addEventListener('DOMContentLoaded', function() {
   try { startStatusPolling(); } catch(e) {}
@@ -403,7 +432,7 @@ function startStatusPolling(){
         if (el) el.textContent = ruStatus(st);
         const chip = document.getElementById('status-chip');
         if (chip) chip.textContent = ruStatus(st);
-        if (st === 'completed' || st === 'rejected' || st === 'auto_completed') {
+        if (st === 'completed' || st === 'rejected' || st === 'auto_completed' || st === 'failed' || st === 'cancelled') {
           const bar = document.getElementById('sticky-actions');
           if (bar) bar.style.display = 'none';
         }
@@ -435,10 +464,13 @@ function copyText(t) {
 {% endblock %}
 
 {% block extra_body %}
-{% if transaction.status != 'completed' and transaction.status != 'rejected' %}
+{% if transaction.status not in ('completed','rejected','auto_completed','failed','cancelled') %}
 <div id="sticky-actions" style="position:sticky; bottom:0; left:0; right:0; background:rgba(10,10,10,.96); border-top:1px solid #222; padding:10px; display:flex; gap:10px; z-index:20;">
   <button class="action-btn action-btn--approve" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('approve')">Принять</button>
   <button class="action-btn action-btn--reject" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('reject')">Отказать</button>
+  {% if transaction.request_type == 'deposit' %}
+  <button class="action-btn action-btn--neutral" style="flex:0 0 auto;" onclick="handleApiProcess()">API подтвердить</button>
+  {% endif %}
   <a class="action-btn action-btn--neutral" style="flex:0 0 auto;" href="{% url 'dashboard:deposits_list' %}">Назад</a>
   
 </div>
