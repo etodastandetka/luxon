@@ -243,11 +243,15 @@ async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookm
         except Exception as e:
             logger.error(f"Error editing message: {e}")
     
-    # Отправляем инструкцию по получению QR-кода
+    # Отправляем инструкцию по получению QR-кода (с фолбэком на RU)
+    try:
+        ru_tr = get_translation('ru')
+    except Exception:
+        ru_tr = {}
     qr_instruction = f"""
-{translations['qr_instruction']}
+{translations.get('qr_instruction', ru_tr.get('qr_instruction', 'Отправьте QR-код для перевода.'))}
 
-{translations['send_qr_wallet']}
+{translations.get('send_qr_wallet', ru_tr.get('send_qr_wallet', 'Отправьте QR код вашего кошелька:'))}
     """
     
     # Убираем клавиатуру
