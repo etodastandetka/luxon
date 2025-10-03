@@ -275,9 +275,7 @@
             <div style="display:flex; align-items:center; gap:10px; min-width:0;">
               {% with fn=r.first_name|default:'' ln=r.last_name|default:'' uname=r.username|default:transaction.username %}
                 {% if fn or ln %}
-                  {% with full=(fn|stringformat:"s")|add:" "|add:(ln|stringformat:"s") %}
-                    <div style="font-weight:700; color:#e5e7eb; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px;">{{ full|trim }}</div>
-                  {% endwith %}
+                  <div style="font-weight:700; color:#e5e7eb; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px;">{{ fn }}{% if fn and ln %} {% endif %}{{ ln }}</div>
                 {% elif uname %}
                   <div style="font-weight:700; color:#e5e7eb; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px;">{{ uname }}</div>
                 {% else %}
