@@ -494,7 +494,12 @@ class UniversalBot:
             # В случае ошибки проверки — продолжаем как обычно
             pass
         try:
-            await message.answer(f"✅ <b>Выбран букмекер:</b> {bookmaker_name}", parse_mode="HTML")
+            # Показ подтверждения + минимальная клавиатура (только Назад в меню)
+            kb = ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="🔙 Назад в меню")]],
+                resize_keyboard=True
+            )
+            await message.answer(f"✅ <b>Выбран букмекер:</b> {bookmaker_name}", parse_mode="HTML", reply_markup=kb)
         except Exception as e:
             logger.warning(f"Could not send bookmaker confirmation message: {e}")
 

@@ -840,6 +840,11 @@ def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None):
                 bot=callback.bot,
                 callback_message=callback.message
             )
+            # Удалим исходное сообщение с инлайн-кнопками, чтобы точно скрыть клавиатуру
+            try:
+                await callback.message.delete()
+            except Exception:
+                pass
             await callback.answer()
         except Exception as e:
             logger.error(f"withdraw bank callback error: {e}")
