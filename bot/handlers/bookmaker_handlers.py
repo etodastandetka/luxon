@@ -53,6 +53,12 @@ def register_handlers(dp: Dispatcher, db, bookmakers, api_manager=None):
                 
                 text = f"{translations['bookmaker_selected']}: {bookmaker_data['emoji']} {bookmaker_data['name']}\n\n"
                 
+                # Очистим инлайн-кнопки в сообщении выбора букмекера
+                try:
+                    await callback.message.edit_reply_markup(reply_markup=None)
+                except Exception:
+                    pass
+
                 if action == 'deposit':
                     # Начинаем процесс пополнения
                     from handlers.deposit_handlers import start_deposit
