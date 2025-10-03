@@ -190,8 +190,34 @@ class UniversalBot:
             except Exception:
                 pass
             
-            # Обработка фото
+            # Обработка фото (и зеркалирование в сайт-чат)
             if message.photo:
+                # Попробуем зеркалировать фото в админ-чат сайта (fire-and-forget)
+                try:
+                    file_id = message.photo[-1].file_id
+                    file_info = await message.bot.get_file(file_id)
+                    fpath = getattr(file_info, 'file_path', None)
+                    if fpath:
+                        media_url = f"https://api.telegram.org/file/bot{os.getenv('BOT_TOKEN') or CONFIG_BOT_TOKEN}/{fpath}"
+                        admin_base = os.getenv('ADMIN_BASE_URL') or os.getenv('SITE_BASE_URL') or 'http://localhost:8081'
+                        ingest_url = f"{admin_base.rstrip('/')}/bot/api/chat/ingest-media/"
+                        caption = (message.caption or '').strip()
+                        loop = asyncio.get_running_loop()
+                        def _post_media():
+                            try:
+                                requests.post(ingest_url, json={
+                                    'user_id': user_id,
+                                    'media_type': 'photo',
+                                    'media_url': media_url,
+                                    'caption': caption,
+                                }, timeout=4)
+                            except Exception:
+                                pass
+                        await loop.run_in_executor(None, _post_media)
+                except Exception:
+                    pass
+
+                # Дальше — существующая логика по состояниям
                 current_state = self.db.get_user_data(user_id, 'current_state')
                 if current_state == 'waiting_for_receipt':
                     await self._process_receipt_photo(message)

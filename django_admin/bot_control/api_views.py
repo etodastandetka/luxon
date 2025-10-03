@@ -667,6 +667,34 @@ def chat_ingest_from_bot(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def chat_ingest_media_from_bot(request):
+    """Bot pushes user's media (photo/video) into admin chat storage.
+    Expects JSON: { user_id:int, media_type:'photo'|'video', media_url:str, caption?:str }
+    """
+    try:
+        data = json.loads(request.body or '{}')
+        user_id = int(data.get('user_id') or 0)
+        media_type = (data.get('media_type') or '').strip()
+        media_url = (data.get('media_url') or '').strip()
+        caption = (data.get('caption') or '').strip()
+        if not user_id or media_type not in ('photo','video') or not media_url:
+            return JsonResponse({'success': False, 'error': 'user_id, media_type (photo|video), media_url обязательны'}, status=400)
+
+        bot_db = getattr(settings, 'BOT_DATABASE_PATH', None)
+        if not bot_db:
+            return JsonResponse({'success': False, 'error': 'BOT_DATABASE_PATH не задан'}, status=500)
+        conn = sqlite3.connect(str(bot_db))
+        cur = conn.cursor()
+        _ensure_chat_table(conn)
+        cur.execute('INSERT INTO chat_messages (user_id, direction, message, kind, media_url) VALUES (?, ?, ?, ?, ?)', (user_id, 'in', caption, media_type, media_url))
+        conn.commit()
+        conn.close()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def chat_typing_from_admin(request: HttpRequest):
     """Relay typing indicator to Telegram (sendChatAction). action defaults to 'typing'."""
     try:
