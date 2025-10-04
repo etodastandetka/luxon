@@ -230,24 +230,41 @@ def pending_requests(request: HttpRequest):
         conn = sqlite3.connect(str(bot_db))
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        # Join users for username/first_name if present
-        cur.execute('''
-            SELECT r.id, r.user_id, COALESCE(u.username, '') AS username,
-                   COALESCE(r.bookmaker,'') AS bookmaker,
-                   COALESCE(r.account_id,'') AS account_id,
-                   COALESCE(r.amount,0) AS amount,
-                   COALESCE(r.bank,'') AS bank,
-                   COALESCE(r.status,'pending') AS status,
-                   COALESCE(r.created_at,'') AS created_at,
-                   -- try multiple photo URL fields for compatibility
-                   COALESCE(r.photo_file_url, r.receipt_photo_url, r.qr_photo_url, r.photo_url, r.screenshot_url, '') AS receipt_photo_url
-            FROM requests r
-            LEFT JOIN users u ON r.user_id = u.user_id
-            WHERE r.request_type = 'deposit' AND r.status = 'pending'
-            ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
-            LIMIT ?
-        ''', (limit,))
-        rows = cur.fetchall()
+        # Пытаемся выбрать расширенный набор колонок, но если каких-то колонок нет в старой БД,
+        # используем упрощённый SELECT без них.
+        rows = []
+        try:
+            cur.execute('''
+                SELECT r.id, r.user_id, COALESCE(u.username, '') AS username,
+                       COALESCE(r.bookmaker,'') AS bookmaker,
+                       COALESCE(r.account_id,'') AS account_id,
+                       COALESCE(r.amount,0) AS amount,
+                       COALESCE(r.bank,'') AS bank,
+                       COALESCE(r.status,'pending') AS status,
+                       COALESCE(r.created_at,'') AS created_at,
+                       COALESCE(r.photo_file_url, r.receipt_photo_url, r.qr_photo_url, r.photo_url, r.screenshot_url, '') AS receipt_photo_url
+                FROM requests r
+                LEFT JOIN users u ON r.user_id = u.user_id
+                WHERE r.request_type = 'deposit' AND r.status = 'pending'
+                ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
+                LIMIT ?
+            ''', (limit,))
+            rows = cur.fetchall()
+        except Exception:
+            cur.execute('''
+                SELECT r.id, r.user_id, COALESCE(u.username, '') AS username,
+                       COALESCE(r.bookmaker,'') AS bookmaker,
+                       COALESCE(r.account_id,'') AS account_id,
+                       COALESCE(r.amount,0) AS amount,
+                       COALESCE(r.status,'pending') AS status,
+                       COALESCE(r.created_at,'') AS created_at
+                FROM requests r
+                LEFT JOIN users u ON r.user_id = u.user_id
+                WHERE r.request_type = 'deposit' AND r.status = 'pending'
+                ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
+                LIMIT ?
+            ''', (limit,))
+            rows = cur.fetchall()
         conn.close()
 
         deposits = []
@@ -258,6 +275,9 @@ def pending_requests(request: HttpRequest):
                 item['amount'] = float(item.get('amount') or 0)
             except Exception:
                 item['amount'] = 0.0
+            # заполним отсутствующие поля по умолчанию для единообразия
+            item.setdefault('bank', '')
+            item.setdefault('receipt_photo_url', '')
             deposits.append(item)
 
         return JsonResponse({'success': True, 'deposits': deposits})
