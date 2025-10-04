@@ -76,6 +76,7 @@ urlpatterns = [
     path('api/bot/withdraw-request/', api_views.create_withdraw_request, name='create_withdraw_request'),
     path('api/bot/update-status/', api_views.update_request_status, name='update_request_status'),
     path('api/bot/requests/', api_views.get_requests, name='get_requests'),
+    path('api/pending-requests/', api_views.pending_requests, name='pending_requests'),
     # Payment hook
     path('api/payment-hook/', api_views.payment_hook, name='payment_hook'),
 

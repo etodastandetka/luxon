@@ -214,6 +214,56 @@ def create_withdraw_request(request):
             'error': str(e)
         }, status=500)
 
+
+@require_http_methods(["GET"])
+def pending_requests(request: HttpRequest):
+    """Return pending deposit requests for the site UI, sourced from the bot DB `requests` table.
+
+    Shape aligns with get_requests() deposit objects: id, user_id, username, bookmaker, account_id, amount, bank, status, created_at, receipt_photo_url
+    """
+    try:
+        limit = int(request.GET.get('limit', 50))
+        bot_db = getattr(settings, 'BOT_DATABASE_PATH', None)
+        if not bot_db:
+            return JsonResponse({'success': False, 'error': 'BOT_DATABASE_PATH не задан'}, status=500)
+
+        conn = sqlite3.connect(str(bot_db))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        # Join users for username/first_name if present
+        cur.execute('''
+            SELECT r.id, r.user_id, COALESCE(u.username, '') AS username,
+                   COALESCE(r.bookmaker,'') AS bookmaker,
+                   COALESCE(r.account_id,'') AS account_id,
+                   COALESCE(r.amount,0) AS amount,
+                   COALESCE(r.bank,'') AS bank,
+                   COALESCE(r.status,'pending') AS status,
+                   COALESCE(r.created_at,'') AS created_at,
+                   -- try multiple photo URL fields for compatibility
+                   COALESCE(r.photo_file_url, r.receipt_photo_url, r.qr_photo_url, r.photo_url, r.screenshot_url, '') AS receipt_photo_url
+            FROM requests r
+            LEFT JOIN users u ON r.user_id = u.user_id
+            WHERE r.request_type = 'deposit' AND r.status = 'pending'
+            ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
+            LIMIT ?
+        ''', (limit,))
+        rows = cur.fetchall()
+        conn.close()
+
+        deposits = []
+        for row in rows:
+            item = dict(row)
+            # coerce types
+            try:
+                item['amount'] = float(item.get('amount') or 0)
+            except Exception:
+                item['amount'] = 0.0
+            deposits.append(item)
+
+        return JsonResponse({'success': True, 'deposits': deposits})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 # ============================
 # Referral Withdrawal Endpoints
 # ============================
