@@ -9,10 +9,12 @@ import os
 from datetime import datetime
 from .qr_api import api_get_qr_hashes, api_add_qr_hash, api_toggle_qr_hash, api_delete_qr_hash
 from .models import BotConfiguration
+from .models import TransactionLog
+from django.db.models import Q
 from django.conf import settings
 import subprocess
 import sys
-from .models import BankSettings, QRHash
+from .models import BankSettings, QRHash, BankWallet
 from datetime import datetime, date
 from typing import Dict, Any
 
@@ -37,9 +39,126 @@ def statistics(request):
     return render(request, 'bot_control/statistics_mobile.html')
 
 
+def payments_history(request):
+    """История поступлений из Android-хука: таблица с фильтрами и ручным изменением статуса.
+
+    URL: /payments/
+    GET-параметры: bank, status, start, end, q
+    POST: { id, status } — изменить статус записи
+    """
+    # Handle status change
+    if request.method == 'POST':
+        try:
+            tid = int(request.POST.get('id') or 0)
+            new_status = (request.POST.get('status') or '').strip()
+            if tid and new_status in ('received', 'processed', 'error'):
+                TransactionLog.objects.filter(id=tid).update(status=new_status)
+        except Exception:
+            pass
+
+    # Filters
+    bank = (request.GET.get('bank') or '').strip()
+    status = (request.GET.get('status') or '').strip()
+    start = (request.GET.get('start') or '').strip()
+    end = (request.GET.get('end') or '').strip()
+    query = (request.GET.get('q') or '').strip()
+
+    qs = TransactionLog.objects.all().order_by('-created_at')
+    if bank:
+        qs = qs.filter(bank__iexact=bank)
+    if status:
+        qs = qs.filter(status=status)
+    if start:
+        qs = qs.filter(timestamp__date__gte=start)
+    if end:
+        qs = qs.filter(timestamp__date__lte=end)
+    if query:
+        qs = qs.filter(Q(raw_message__icontains=query) | Q(bank__icontains=query))
+
+    # Simple pagination
+    try:
+        page = max(1, int(request.GET.get('page') or 1))
+    except Exception:
+        page = 1
+    page_size = 50
+    total = qs.count()
+    items = list(qs[(page-1)*page_size: page*page_size])
+
+    ctx = {
+        'items': items,
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'filters': {
+            'bank': bank,
+            'status': status,
+            'start': start,
+            'end': end,
+            'q': query,
+        }
+    }
+    return render(request, 'bot_control/payments.html', ctx)
+
+
 def bank_management(request):
     """Страница управления банками"""
     return render(request, 'bot_control/bank_management.html')
+
+
+def wallets_management(request):
+    """Управление кошельками банков (MBank/Bakai/Optima). Отдельно от Демирбанка (QRHash)."""
+    message = None
+    error = None
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        try:
+            if action == 'create_wallet':
+                bank_code = (request.POST.get('bank_code') or '').strip()
+                account_name = (request.POST.get('account_name') or '').strip()
+                hash_value = (request.POST.get('hash_value') or '').strip()
+                is_active = bool(request.POST.get('is_active'))
+                is_main = bool(request.POST.get('is_main'))
+                if not bank_code or not account_name or not hash_value:
+                    raise ValueError('Укажите банк, название и хеш')
+                w = BankWallet.objects.create(
+                    bank_code=bank_code,
+                    account_name=account_name,
+                    hash_value=hash_value,
+                    is_active=is_active,
+                    is_main=is_main,
+                )
+                if is_main:
+                    BankWallet.objects.filter(bank_code=bank_code, is_main=True).exclude(id=w.id).update(is_main=False)
+                message = 'Кошелёк добавлен'
+            elif action == 'toggle_active':
+                wid = int(request.POST.get('id') or 0)
+                w = BankWallet.objects.get(id=wid)
+                w.is_active = not w.is_active
+                w.save()
+                message = 'Статус активности изменён'
+            elif action == 'set_main':
+                wid = int(request.POST.get('id') or 0)
+                w = BankWallet.objects.get(id=wid)
+                BankWallet.objects.filter(bank_code=w.bank_code, is_main=True).exclude(id=w.id).update(is_main=False)
+                w.is_main = True
+                w.save()
+                message = 'Основной кошелёк выбран'
+        except Exception as e:
+            error = str(e)
+
+    wallets = BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at')
+    groups = {
+        'mbank': [w for w in wallets if w.bank_code == 'mbank'],
+        'bakai': [w for w in wallets if w.bank_code == 'bakai'],
+        'optima': [w for w in wallets if w.bank_code == 'optima'],
+    }
+    qrhash = QRHash.objects.all().order_by('-is_main', '-is_active', '-created_at')
+    return render(request, 'bot_control/wallets.html', {
+        'groups': groups,
+        'qrhash': qrhash,
+        'message': message,
+        'error': error,
+    })
 
 def bot_settings_page(request):
     """Страница настроек бота (новая)"""

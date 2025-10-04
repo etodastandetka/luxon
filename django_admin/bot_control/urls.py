@@ -76,6 +76,12 @@ urlpatterns = [
     path('api/bot/withdraw-request/', api_views.create_withdraw_request, name='create_withdraw_request'),
     path('api/bot/update-status/', api_views.update_request_status, name='update_request_status'),
     path('api/bot/requests/', api_views.get_requests, name='get_requests'),
+    # Payment hook
+    path('api/payment-hook/', api_views.payment_hook, name='payment_hook'),
+
+    # Payments history page
+    path('payments/', views.payments_history, name='payments_history'),
+    path('wallets/', views.wallets_management, name='wallets_management'),
 
     # Chat API (admin <-> user via Telegram relay)
     path('api/chat/history/<int:user_id>/', api_views.chat_history, name='chat_history'),

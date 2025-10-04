@@ -13,7 +13,7 @@ import requests
 import sqlite3
 
 from .referral_models import ReferralWithdrawalRequest
-from .models import BotDepositRequest, BotWithdrawRequest, BotConfiguration
+from .models import BotDepositRequest, BotWithdrawRequest, BotConfiguration, TransactionLog
 from .views_referral import (
     _get_user_ctx,
     _get_referral_stats,
@@ -58,6 +58,67 @@ def create_deposit_request(request):
     except Exception as e:
         logging.exception("create_deposit_request failed: %s", e)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ============================
+# Payment hook from Android app
+# ============================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def payment_hook(request: HttpRequest):
+    """Accept payment notifications and store in TransactionLog.
+
+    Auth: expects header Authorization: Bearer <TOKEN> or Token <TOKEN>.
+    TOKEN is taken from settings.PAYMENT_HOOK_TOKEN or BotConfiguration key 'payment_hook_token'.
+    """
+    try:
+        # Auth
+        auth = request.headers.get('Authorization', '')
+        token = ''
+        if auth.lower().startswith('bearer '):
+            token = auth.split(' ', 1)[1].strip()
+        elif auth.lower().startswith('token '):
+            token = auth.split(' ', 1)[1].strip()
+
+        expected = getattr(settings, 'PAYMENT_HOOK_TOKEN', '') or (BotConfiguration.get_setting('payment_hook_token') or '')
+        if not expected or token != expected:
+            return JsonResponse({'detail': 'Unauthorized'}, status=401)
+
+        # Parse JSON
+        try:
+            data = json.loads(request.body or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'detail': 'Invalid JSON'}, status=400)
+
+        # Validate
+        missing = [k for k in ('amount', 'bank', 'timestamp', 'raw_message') if data.get(k) is None]
+        if missing:
+            return JsonResponse({'detail': f'Missing fields: {", ".join(missing)}'}, status=400)
+
+        # Coerce fields
+        try:
+            amount = round(float(data['amount']), 2)
+        except Exception:
+            return JsonResponse({'detail': 'Invalid amount'}, status=400)
+
+        from django.utils.dateparse import parse_datetime
+        ts = parse_datetime(str(data['timestamp']))
+        if not ts:
+            return JsonResponse({'detail': 'Invalid timestamp'}, status=400)
+
+        obj = TransactionLog.objects.create(
+            amount=amount,
+            bank=str(data['bank'])[:50],
+            timestamp=ts,
+            raw_message=str(data.get('raw_message', '')),
+            status='received'
+        )
+
+        return JsonResponse({'status': obj.status, 'id': obj.id})
+    except Exception as e:
+        logging.exception('payment_hook failed: %s', e)
+        return JsonResponse({'detail': str(e)}, status=500)
 
 
 # ============================

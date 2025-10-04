@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+  <h2>Поступления (Payment Hook)</h2>
+
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-2">
+      <input class="form-control" type="text" name="bank" placeholder="Банк" value="{{ filters.bank }}" />
+    </div>
+    <div class="col-md-2">
+      <select class="form-select" name="status">
+        <option value="">Статус (все)</option>
+        <option value="received" {% if filters.status == 'received' %}selected{% endif %}>Получено</option>
+        <option value="processed" {% if filters.status == 'processed' %}selected{% endif %}>Обработано</option>
+        <option value="error" {% if filters.status == 'error' %}selected{% endif %}>Ошибка</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <input class="form-control" type="date" name="start" value="{{ filters.start }}" />
+    </div>
+    <div class="col-md-2">
+      <input class="form-control" type="date" name="end" value="{{ filters.end }}" />
+    </div>
+    <div class="col-md-3">
+      <input class="form-control" type="text" name="q" placeholder="Поиск..." value="{{ filters.q }}" />
+    </div>
+    <div class="col-md-1">
+      <button class="btn btn-primary w-100" type="submit">Фильтр</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-striped table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Банк</th>
+          <th>Сумма</th>
+          <th>Время</th>
+          <th>Сообщение</th>
+          <th>Статус</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for x in items %}
+        <tr>
+          <td>{{ x.id }}</td>
+          <td>{{ x.bank }}</td>
+          <td>{{ x.amount }}</td>
+          <td>{{ x.timestamp|date:'d.m.Y H:i' }}</td>
+          <td style="max-width: 480px; white-space: break-spaces">{{ x.raw_message|default:'-' }}</td>
+          <td>
+            {% if x.status == 'received' %}<span class="badge bg-warning text-dark">Получено</span>{% endif %}
+            {% if x.status == 'processed' %}<span class="badge bg-success">Обработано</span>{% endif %}
+            {% if x.status == 'error' %}<span class="badge bg-danger">Ошибка</span>{% endif %}
+          </td>
+          <td>
+            <form method="post" action="" class="d-flex gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="id" value="{{ x.id }}" />
+              <select name="status" class="form-select form-select-sm" style="width: 140px;">
+                <option value="received" {% if x.status == 'received' %}selected{% endif %}>Получено</option>
+                <option value="processed" {% if x.status == 'processed' %}selected{% endif %}>Обработано</option>
+                <option value="error" {% if x.status == 'error' %}selected{% endif %}>Ошибка</option>
+              </select>
+              <button class="btn btn-sm btn-outline-primary" type="submit">Сохранить</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center">Нет записей</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center">
+    <div>Всего: {{ total }}</div>
+    <div>
+      {% if page > 1 %}
+        <a class="btn btn-outline-secondary btn-sm" href="?page={{ page|add:'-1' }}&bank={{ filters.bank }}&status={{ filters.status }}&start={{ filters.start }}&end={{ filters.end }}&q={{ filters.q }}">Назад</a>
+      {% endif %}
+      {% if total > page*page_size %}
+        <a class="btn btn-outline-secondary btn-sm" href="?page={{ page|add:'1' }}&bank={{ filters.bank }}&status={{ filters.status }}&start={{ filters.start }}&end={{ filters.end }}&q={{ filters.q }}">Вперед</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -551,15 +551,18 @@ async def handle_history_back_to_menu(callback: types.CallbackQuery, bot_name: s
     
     await callback.message.edit_text(welcome_text, reply_markup=keyboard)
     await callback.answer()
+
 async def handle_channel_command(message: types.Message, bot_name: str, user_languages: Dict[int, str], db_manager):
-    \
-\\1@01>BG8:
-:><0=4K
-:0=0;0\\\
+    """Показать информацию о канале и ссылку."""
     if not message.from_user:
         return
     user_id = message.from_user.id
     language = get_user_language(user_id, user_languages, db_manager)
     text = get_translation(language, 'channel_description')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=get_translation(language, 'go_to_channel_button'), url=get_translation(language, 'channel_link'))]])
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(
+            text=get_translation(language, 'go_to_channel_button'),
+            url=get_translation(language, 'channel_link')
+        )]]
+    )
     await message.answer(text, reply_markup=keyboard)

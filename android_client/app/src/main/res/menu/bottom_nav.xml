@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_main"
+        android:title="Главная"
+        android:icon="@android:drawable/ic_menu_manage" />
+    <item
+        android:id="@+id/action_history"
+        android:title="История"
+        android:icon="@android:drawable/ic_menu_recent_history" />
+</menu>
