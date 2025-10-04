@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 def get_bot_settings():
     """Получает настройки бота из Django админки"""
     try:
-        response = requests.get('http://localhost:8081/bot/api/bot-settings/', timeout=5)
+        base = os.getenv('DJANGO_ADMIN_URL') or os.getenv('SITE_BASE_URL') or 'http://localhost:8000'
+        response = requests.get(f"{base.rstrip('/')}/bot/api/bot-settings/", timeout=5)
         if response.status_code == 200:
             return response.json()
     except Exception as e:

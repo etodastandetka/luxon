@@ -12,6 +12,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from translations import get_translation
 from config import BOOKMAKERS, BOT_TOKEN
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -473,9 +474,9 @@ def sync_to_django_admin(user_id, username, first_name, bookmaker, amount, accou
             'is_deposit': True
         }
         
-        # URL админ-панели можно переопределить через переменную окружения DJANGO_ADMIN_URL
-        # По умолчанию используем локальный сервер на http://localhost:8081 (как у тебя)
-        base_url = os.getenv('DJANGO_ADMIN_URL', 'http://localhost:8081')
+        # URL админ-панели берём из окружения, fallback на локальный порт 8000
+        # Приоритет: DJANGO_ADMIN_URL -> SITE_BASE_URL -> http://localhost:8000
+        base_url = os.getenv('DJANGO_ADMIN_URL') or os.getenv('SITE_BASE_URL') or 'http://localhost:8000'
         endpoint = f"{base_url.rstrip('/')}/bot/api/bot/deposit-request/"
 
         # Отправляем POST запрос в Django API
@@ -493,7 +494,8 @@ def get_bot_settings():
     """Получает настройки бота из Django админки"""
     try:
         import requests
-        response = requests.get('http://localhost:8081/bot/api/bot-settings/', timeout=5)
+        base = os.getenv('DJANGO_ADMIN_URL') or os.getenv('SITE_BASE_URL') or 'http://localhost:8000'
+        response = requests.get(f"{base.rstrip('/')}/bot/api/bot-settings/", timeout=5)
         if response.status_code == 200:
             return response.json()
     except Exception as e:

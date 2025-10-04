@@ -3,10 +3,10 @@ def _get_site_base() -> str:
     Источники, по приоритету:
     - DJANGO_BASE
     - SITE_BASE
-    - Fallback: http://127.0.0.1:8081
+    - Fallback: http://127.0.0.1:8000
     Примеры значений: https://xendro.pro, https://api.xendro.pro
     """
-    base = os.getenv('DJANGO_BASE') or os.getenv('SITE_BASE') or 'http://127.0.0.1:8081'
+    base = os.getenv('DJANGO_BASE') or os.getenv('SITE_BASE') or 'http://127.0.0.1:8000'
     return base.rstrip('/')
 
 """
