@@ -350,6 +350,11 @@ async def send_deposit_request_to_group(bot, user_id: int, amount: float, bookma
                 import sqlite3 as _sqlite3
                 conn2 = _sqlite3.connect(db_path)
                 cur2 = conn2.cursor()
+                # Ensure backward-compatible column exists (idempotent)
+                try:
+                    cur2.execute("ALTER TABLE requests ADD COLUMN bank_received INTEGER DEFAULT 0")
+                except Exception:
+                    pass
                 cur2.execute("SELECT COALESCE(bank_received,0) FROM requests WHERE id=?", (request_id,))
                 row2 = cur2.fetchone()
                 conn2.close()
