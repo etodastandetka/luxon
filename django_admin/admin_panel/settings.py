@@ -121,10 +121,8 @@ WSGI_APPLICATION = 'admin_panel.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        # ВНИМАНИЕ: это база Django (models, admin). Не путать с bot universal DB.
-        # Если хотите держать её отдельно, укажите, например: BASE_DIR / 'admin.sqlite3'
-        # Здесь оставляем как есть, чтобы не ломать миграции, при необходимости поменяем отдельно.
-        'NAME': '/var/www/luxservice/django_admin/admin.sqlite3',
+        # База Django (models, admin). Храним рядом с проектом.
+        'NAME': str(BASE_DIR / 'admin.sqlite3'),
     }
 }
 
@@ -134,7 +132,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATIC_ROOT = '/var/www/luxservice/django_admin/staticfiles'
+# Каталог для collectstatic (поднимайте Nginx/услугу на этот путь)
+STATIC_ROOT = '/var/www/lux/django_admin/staticfiles'
 # Serve both app static and repo-level images/ as static
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
@@ -144,8 +143,8 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 BOT_TOKEN = '7489617815:AAFt-qZwXCHZYdjWDiihq9slYxg1c8UCzCg'
-# Единый путь к базе бота (универсальная БД): c:\Users\...\bets\universal_bot.db
-BOT_DATABASE_PATH = '/var/www/luxservice/universal_bot.db'
+# Единый путь к базе бота. Бот пишет в bot/universal_bot.db в корне репозитория на сервере.
+BOT_DATABASE_PATH = '/var/www/lux/bot/universal_bot.db'
 
 # Настройки безопасности для продакшена
 SECURE_BROWSER_XSS_FILTER = True
