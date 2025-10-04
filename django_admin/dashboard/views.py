@@ -19,25 +19,20 @@ def history(request):
 def wallet(request):
     """Страница кошелька"""
     from bot_control.models import BankSettings, QRHash
-    
     banks = BankSettings.objects.all()
     qr_codes = QRHash.objects.all()
 
     # Читаем реквизиты из bot/universal_bot.db
     requisites = []
     try:
-        # используем qr_utils.ensure_requisites_table для уверенности
+        # используем qr_utils.ensure_requisites_table для уверенности (best-effort)
         try:
             from bot.qr_utils import ensure_requisites_table
             ensure_requisites_table()
         except Exception:
             pass
 
-        # Закрываем соединение после всех выборок
-        try:
-            conn.close()
-        except Exception:
-            pass
+        # Открываем соединение один раз и работаем с ним
         conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
         cur = conn.cursor()
         # Локальный DDL на случай, если импорт не сработал
@@ -52,6 +47,7 @@ def wallet(request):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        # Читаем список
         cur.execute('''
             SELECT id, value, COALESCE(is_active,0), COALESCE(created_at,'')
             FROM requisites
