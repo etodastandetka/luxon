@@ -19,6 +19,89 @@
         </div>
     </div>
 </div>
+<div class="content-container" style="margin-top:16px;">
+  <div class="card">
+    <div class="card-header">
+      <h3>⚡ Быстрое добавление кошельков</h3>
+      <div class="text-muted" style="font-size:13px; margin-top:6px;">
+        Заполните только название и hash. Банк фиксирован для каждого блока.
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row" style="display:flex; gap:16px; flex-wrap:wrap;">
+        <div class="col" style="flex:1; min-width:260px;">
+          <div class="card" style="border-color:#e3f2fd;">
+            <div class="card-header" style="background:#e3f2fd;">
+              <strong>MBank</strong>
+            </div>
+            <div class="card-body">
+              <form method="post" action="/bot_control/wallets/">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_wallet" />
+                <input type="hidden" name="bank_code" value="mbank" />
+                <div class="mb-2">
+                  <label class="form-label">Название</label>
+                  <input class="form-control" type="text" name="account_name" placeholder="Например: MBank Кошелёк 1" required />
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Hash</label>
+                  <input class="form-control" type="text" name="hash_value" placeholder="Вставьте hash" required />
+                </div>
+                <button class="btn btn-primary" type="submit">Добавить</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="col" style="flex:1; min-width:260px;">
+          <div class="card" style="border-color:#f3e8ff;">
+            <div class="card-header" style="background:#f3e8ff;">
+              <strong>Bakai</strong>
+            </div>
+            <div class="card-body">
+              <form method="post" action="/bot_control/wallets/">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_wallet" />
+                <input type="hidden" name="bank_code" value="bakai" />
+                <div class="mb-2">
+                  <label class="form-label">Название</label>
+                  <input class="form-control" type="text" name="account_name" placeholder="Например: Bakai Кошелёк 1" required />
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Hash</label>
+                  <input class="form-control" type="text" name="hash_value" placeholder="Вставьте hash" required />
+                </div>
+                <button class="btn btn-primary" type="submit">Добавить</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="col" style="flex:1; min-width:260px;">
+          <div class="card" style="border-color:#e8f5e9;">
+            <div class="card-header" style="background:#e8f5e9;">
+              <strong>Optima</strong>
+            </div>
+            <div class="card-body">
+              <form method="post" action="/bot_control/wallets/">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_wallet" />
+                <input type="hidden" name="bank_code" value="optima" />
+                <div class="mb-2">
+                  <label class="form-label">Название</label>
+                  <input class="form-control" type="text" name="account_name" placeholder="Например: Optima Кошелёк 1" required />
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Hash</label>
+                  <input class="form-control" type="text" name="hash_value" placeholder="Вставьте hash" required />
+                </div>
+                <button class="btn btn-primary" type="submit">Добавить</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
