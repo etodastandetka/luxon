@@ -339,8 +339,38 @@ def deposit_detail(request, deposit_id):
     """Deposit request details"""
     try:
         deposit = get_object_or_404(AutoDepositRequest, id=deposit_id)
+
+        # Load recent requests history for the same user from bot DB (SQLite)
+        user_history = []
+        try:
+            uid = getattr(deposit, 'user_id', None)
+            if uid is not None:
+                conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+                conn.row_factory = sqlite3.Row
+                cur = conn.cursor()
+                cur.execute('''
+                    SELECT id, COALESCE(request_type,'') AS request_type, COALESCE(amount,0) AS amount,
+                           COALESCE(status,'pending') AS status, COALESCE(created_at,'') AS created_at
+                    FROM requests
+                    WHERE user_id = ?
+                    ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
+                    LIMIT 100
+                ''', (uid,))
+                for row in cur.fetchall():
+                    user_history.append({
+                        'id': row['id'],
+                        'request_type': row['request_type'] or 'deposit',
+                        'amount': float(row['amount'] or 0),
+                        'status': row['status'] or 'pending',
+                        'created_at': row['created_at'] or '',
+                    })
+                conn.close()
+        except Exception:
+            user_history = []
+
         return render(request, 'bot_control/deposit_detail.html', {
-            'deposit': deposit
+            'deposit': deposit,
+            'user_history': user_history,
         })
     except Exception as e:
         logger.error(f"Error in deposit_detail: {str(e)}", exc_info=True)

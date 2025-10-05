@@ -5,7 +5,7 @@
 async function deleteBank(bankId) {
     if (!confirm('Удалить этот банк?')) return;
     try {
-        const res = await fetch(`/bot/api/banks/${bankId}/delete/`, {
+        const res = await fetch(`/bot_control/api/banks/${bankId}/delete/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -201,7 +201,7 @@ async function addQRHash() {
     }
     
     try {
-        const response = await fetch('/bot/api/qr-hashes/', {
+        const response = await fetch('/bot_control/api/qr-hashes/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

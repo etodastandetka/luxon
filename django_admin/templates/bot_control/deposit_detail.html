@@ -310,7 +310,7 @@
 function updateStatus(newStatus) {
     const statusText = newStatus === 'completed' ? 'подтвердить' : 'отклонить';
     if (confirm(`Вы уверены, что хотите ${statusText} заявку #{{ deposit.id }}?`)) {
-        fetch(`/bot/api/deposit-status/{{ deposit.id }}/`, {
+        fetch(`/bot_control/api/deposit-status/{{ deposit.id }}/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
