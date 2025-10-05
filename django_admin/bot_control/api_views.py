@@ -3,6 +3,7 @@
 API views для интеграции с ботом
 """
 from django.http import JsonResponse, HttpRequest
+import logging
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
@@ -234,6 +235,7 @@ def pending_requests(request: HttpRequest):
         # Узнаём схему таблицы `requests`
         cur.execute("PRAGMA table_info(requests)")
         cols = {row[1] for row in cur.fetchall()}  # имена колонок
+        logging.getLogger(__name__).info("[pending_requests] detected columns: %s", sorted(list(cols)))
 
         # Готовим выражения с учётом существующих колонок
         def has(col: str) -> bool:
@@ -279,6 +281,7 @@ def pending_requests(request: HttpRequest):
             f"\nORDER BY {order_expr}\nLIMIT ?"
         )
 
+        logging.getLogger(__name__).info("[pending_requests] final SQL: %s", final_sql)
         cur.execute(final_sql, (limit,))
         rows = cur.fetchall()
         conn.close()
