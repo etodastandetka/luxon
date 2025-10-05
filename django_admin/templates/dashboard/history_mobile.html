@@ -286,11 +286,11 @@ async function loadTransactions() {
                 }
                 // ELQR для пополнений (используем загруженный elqr.svg), иначе дефолт
                 // Добавляем cache-busting параметр, чтобы обойти CDN/браузерный кэш
-                const overlayIcon = isDeposit ? '{% static "elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
+                const overlayIcon = isDeposit ? '{% static "images/elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
 
                 // Вместо буквенного аватара используем сами иконки (ELQR для пополнений, банк для выводов)
                 // Добавляем cache-busting параметр
-                const mainIcon = isDeposit ? '{% static "elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
+                const mainIcon = isDeposit ? '{% static "images/elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">

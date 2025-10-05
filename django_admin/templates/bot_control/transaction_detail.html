@@ -97,7 +97,7 @@
   <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
     <div style="display:flex; align-items:center; gap:10px;">
       {% if rt == 'deposit' %}
-        <img src="{% static 'elqr.svg' %}?v=20251002" alt="ELQR" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;background:#0f0f0f;object-fit:contain;">
+        <img src="{% static 'images/elqr.svg' %}?v=20251002" alt="ELQR" style="width:28px;height:28px;border-radius:6px;border:1px solid #2a2a2a;background:#0f0f0f;object-fit:contain;">
       {% else %}
         {% with b=transaction.bank|default:'' %}
           {% if b|lower == 'mbank' %}
@@ -204,7 +204,7 @@
         <div style="display:flex; align-items:center; gap:14px; min-width:0;">
           {# Иконка для каждой заявки в списке #}
           {% if r.type == 'deposit' %}
-            <img src="{% static 'elqr.svg' %}?v=20251002" alt="ELQR" style="width:32px;height:32px;border-radius:8px;border:1px solid #2a2a2a;object-fit:contain;background:#0f0f0f;">
+            <img src="{% static 'images/elqr.svg' %}?v=20251002" alt="ELQR" style="width:32px;height:32px;border-radius:8px;border:1px solid #2a2a2a;object-fit:contain;background:#0f0f0f;">
           {% else %}
             {% with wd=r.wallet_details|default:''|lower %}
               {% if 'mbank' in wd %}

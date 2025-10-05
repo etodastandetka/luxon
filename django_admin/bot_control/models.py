@@ -167,6 +167,31 @@ class BotConfiguration(models.Model):
     def set_json_value(self, data):
         self.value = json.dumps(data, ensure_ascii=False)
 
+    # ===== КЛАСС-МЕТОДЫ ДЛЯ ДОСТУПА К НАСТРОЙКАМ =====
+    @classmethod
+    def get_setting(cls, key: str, default: str | None = None) -> str | None:
+        """Безопасно читает значение настройки по ключу. Возвращает default, если записи нет.
+
+        Используется в коде как BotConfiguration.get_setting('bot_token'), и т.п.
+        """
+        try:
+            obj = cls.objects.filter(key=key).only('value').first()
+            return obj.value if obj else default
+        except Exception:
+            return default
+
+    @classmethod
+    def set_setting(cls, key: str, value: str) -> None:
+        """Создаёт или обновляет настройку по ключу."""
+        try:
+            obj, _ = cls.objects.get_or_create(key=key, defaults={'value': value})
+            if obj.value != value:
+                obj.value = value
+                obj.save(update_fields=['value', 'updated_at'])
+        except Exception:
+            # Тихо игнорируем, чтобы не ронять API, где это вызывается best-effort
+            pass
+
 
 class BotDepositRequest(models.Model):
     """Заявки на пополнение от бота"""

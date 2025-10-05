@@ -17,7 +17,7 @@
     <div class="list-icon" style="margin-right: 16px;">
         <div style="width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 2px solid #333; background:#0f0f0f; overflow:hidden;">
             <img alt="icon" style="width:100%; height:100%; object-fit: contain; padding:4px;"
-                 src="{% if rt == 'deposit' %}{% static 'elqr.svg' %}?v=20251002{% else %}{% with wd=request.wallet_details|default:''|lower %}
+                 src="{% if rt == 'deposit' %}{% static 'images/elqr.svg' %}?v=20251002{% else %}{% with wd=request.wallet_details|default:''|lower %}
                       {% if 'mbank' in wd %}{% static 'images/mbank.png' %}
                       {% elif 'optima' in wd %}{% static 'images/optima.jpg' %}
                       {% elif 'omoney' in wd %}{% static 'images/omoney.jpg' %}

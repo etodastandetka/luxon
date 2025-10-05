@@ -115,7 +115,7 @@ async function loadRequests() {
                 // Определяем иконку: ELQR для пополнений, банк по wallet_details для выводов
                 let iconSrc = '';
                 if (isDeposit) {
-                  iconSrc = '{% static "elqr.svg" %}?v=20251002';
+                  iconSrc = '{% static "images/elqr.svg" %}?v=20251002';
                 } else {
                   const wd = (request.wallet_details || '').toLowerCase();
                   if (wd.includes('mbank')) iconSrc = '{% static "images/mbank.png" %}';
