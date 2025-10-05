@@ -248,7 +248,8 @@ def pending_requests(request: HttpRequest):
             ("COALESCE(r.bookmaker,'') AS bookmaker" if has('bookmaker') else "'' AS bookmaker"),
             ("COALESCE(r.account_id,'') AS account_id" if has('account_id') else "'' AS account_id"),
             ("COALESCE(r.amount,0) AS amount" if has('amount') else "0 AS amount"),
-            ("COALESCE(r.bank,'') AS bank" if has('bank') else "'' AS bank"),
+            # во избежание ошибок с отсутствующей колонкой во всех вариантах схемы возвращаем пустую строку
+            "'' AS bank",
             ("COALESCE(r.status,'pending') AS status" if has('status') else "'pending' AS status"),
             ("COALESCE(r.created_at,'') AS created_at" if has('created_at') else "'' AS created_at"),
         ]
