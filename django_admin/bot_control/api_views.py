@@ -164,6 +164,7 @@ def referral_leaderboard(request: HttpRequest):
         return JsonResponse({
             'success': True,
             'items': items,
+            'transactions': items,
             'data': items,
             'count': len(items),
         })
@@ -304,6 +305,9 @@ def pending_requests(request: HttpRequest):
             # заполним отсутствующие поля по умолчанию для единообразия
             item.setdefault('bank', '')
             item.setdefault('receipt_photo_url', '')
+            # для фронта дублируем тип и пустое поле wallet_details (нужно для ветки выводов)
+            item.setdefault('type', 'deposit')
+            item.setdefault('wallet_details', '')
             deposits.append(item)
 
         # Возвращаем сразу в нескольких форматах, чтобы UI не зависел от названий ключей
@@ -311,6 +315,7 @@ def pending_requests(request: HttpRequest):
             'success': True,
             'deposits': deposits,
             'data': deposits,
+            'requests': deposits,
             'count': len(deposits),
         })
     except Exception as e:
