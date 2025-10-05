@@ -41,8 +41,8 @@
                       <td style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ w.hash_value }}">{{ w.hash_value }}</td>
                       <td>{{ w.created_at|date:'Y-m-d H:i:s' }}</td>
                       <td>
-                        {% if w.is_main %}<span class="badge bg-warning text-dark">Основной</span>{% endif %}
-                        {% if w.is_active %}<span class="badge bg-success">Активен</span>{% else %}<span class="badge bg-secondary">Неактивен</span>{% endif %}
+                        {% if w.is_main %}<span title="Основной">⭐</span>{% endif %}
+                        {% if w.is_active %}<span title="Активен">✅</span>{% else %}<span title="Неактивен">⭕</span>{% endif %}
                       </td>
                       <td>
                         <form method="post" action="/bot_control/wallets/" style="display:inline-block;">
