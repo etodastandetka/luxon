@@ -160,6 +160,105 @@ def wallets_management(request):
         'error': error,
     })
 
+# ===== API для BankWallet (MBank/Bakai/Optima) =====
+@csrf_exempt
+def api_bank_wallets(request):
+    """GET: список всех кошельков банков.
+
+    Ответ: { success, items: [ {id, bank_code, account_name, hash_value, is_active, is_main, created_at} ] }
+    """
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        items = [
+            {
+                'id': w.id,
+                'bank_code': w.bank_code,
+                'account_name': w.account_name,
+                'hash_value': w.hash_value,
+                'is_active': bool(w.is_active),
+                'is_main': bool(w.is_main),
+                'created_at': w.created_at.isoformat(),
+            }
+            for w in BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at')
+        ]
+        return JsonResponse({'success': True, 'items': items, 'count': len(items)})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_bank_wallets_create(request):
+    """POST: создать кошелёк банка.
+    Body: { bank_code: mbank|optima|bakai, account_name: str, hash_value: str, is_active?:bool, is_main?:bool }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        data = json.loads(request.body or '{}')
+        bank_code = str(data.get('bank_code') or '').strip()
+        account_name = str(data.get('account_name') or '').strip()
+        hash_value = str(data.get('hash_value') or '').strip()
+        is_active = bool(data.get('is_active', True))
+        is_main = bool(data.get('is_main', False))
+        if bank_code not in ('mbank','optima','bakai'):
+            return JsonResponse({'success': False, 'error': 'bank_code должен быть mbank|optima|bakai'}, status=400)
+        if not account_name or not hash_value:
+            return JsonResponse({'success': False, 'error': 'Укажите название и hash'}, status=400)
+        w = BankWallet.objects.create(
+            bank_code=bank_code,
+            account_name=account_name,
+            hash_value=hash_value,
+            is_active=is_active,
+            is_main=is_main,
+        )
+        if is_main:
+            BankWallet.objects.filter(bank_code=bank_code, is_main=True).exclude(id=w.id).update(is_main=False)
+        return JsonResponse({'success': True, 'id': w.id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_bank_wallets_toggle(request, wid: int):
+    """POST: переключить активность кошелька."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        w = BankWallet.objects.get(id=wid)
+        w.is_active = not w.is_active
+        w.save(update_fields=['is_active','updated_at'])
+        return JsonResponse({'success': True, 'is_active': bool(w.is_active)})
+    except BankWallet.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_bank_wallets_set_main(request, wid: int):
+    """POST: сделать кошелёк основным для своего банка."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        w = BankWallet.objects.get(id=wid)
+        BankWallet.objects.filter(bank_code=w.bank_code, is_main=True).exclude(id=w.id).update(is_main=False)
+        w.is_main = True
+        w.save(update_fields=['is_main','updated_at'])
+        return JsonResponse({'success': True})
+    except BankWallet.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_bank_wallets_delete(request, wid: int):
+    """DELETE: удалить кошелёк."""
+    if request.method != 'DELETE':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        BankWallet.objects.filter(id=wid).delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 def bot_settings_page(request):
     """Страница настроек бота (новая)"""
     return render(request, 'bot_control/bot_settings.html')

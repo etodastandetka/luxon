@@ -45,6 +45,12 @@ urlpatterns = [
     path('api/broadcast-history/', bot_views.api_broadcast_history, name='api_broadcast_history'),
     path('api/statistics/', bot_views.api_statistics, name='api_statistics'),
     path('api/export-statistics/', bot_views.api_export_statistics, name='api_export_statistics'),
+    # API кошельков банков (MBank/Optima/Bakai)
+    path('api/bank-wallets/', bot_views.api_bank_wallets, name='api_bank_wallets'),
+    path('api/bank-wallets/create/', bot_views.api_bank_wallets_create, name='api_bank_wallets_create'),
+    path('api/bank-wallets/<int:wid>/toggle/', bot_views.api_bank_wallets_toggle, name='api_bank_wallets_toggle'),
+    path('api/bank-wallets/<int:wid>/set-main/', bot_views.api_bank_wallets_set_main, name='api_bank_wallets_set_main'),
+    path('api/bank-wallets/<int:wid>/delete/', bot_views.api_bank_wallets_delete, name='api_bank_wallets_delete'),
     
     # API для букмекеров
     path('api/1xbet-balance/', bot_views.api_1xbet_balance, name='api_1xbet_balance'),

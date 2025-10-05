@@ -21,6 +21,90 @@ async function deleteBank(bankId) {
         alert('Ошибка удаления банка');
     }
 }
+
+// ===== BankWallet UI =====
+async function fetchBankWallets() {
+  try {
+    const res = await fetch('/api/bank-wallets/');
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    renderBankWallets(data.items || []);
+  } catch (e) {
+    const c = document.getElementById('bw_list');
+    if (c) c.innerHTML = `<div style="color:#f66;">${e.message}</div>`;
+  }
+}
+
+function renderBankWallets(items) {
+  const c = document.getElementById('bw_list');
+  if (!c) return;
+  if (!items.length) { c.innerHTML = '<div style="color:#888;">Кошельки не добавлены</div>'; return; }
+  c.innerHTML = '';
+  items.forEach(w => {
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid #222; border-radius:10px; background:#141414;';
+    el.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="color:#fff; font-weight:600; font-size:13px;">${w.bank_code.toUpperCase()} • ${w.account_name}</div>
+        <div style="color:#9aa4b2; font-size:11px;">${w.hash_value}</div>
+        <div style="color:#888; font-size:10px;">${w.is_active ? '✅ Активен' : '❌ Неактивен'} ${w.is_main ? ' • ⭐ Основной' : ''}</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="toggleBankWallet(${w.id})" style="background:${w.is_active ? '#ef4444' : '#00ff88'}; border:none; color:#000; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">${w.is_active ? 'Выключить' : 'Включить'}</button>
+        <button onclick="setMainBankWallet(${w.id})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Сделать основным</button>
+        <button onclick="deleteBankWallet(${w.id})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Удалить</button>
+      </div>
+    `;
+    c.appendChild(el);
+  });
+}
+
+async function createBankWallet() {
+  const bank_code = document.getElementById('bw_bank').value;
+  const account_name = document.getElementById('bw_name').value.trim();
+  const hash_value = document.getElementById('bw_hash').value.trim();
+  const is_active = document.getElementById('bw_active').checked;
+  const is_main = document.getElementById('bw_main').checked;
+  if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
+  try {
+    const res = await fetch('/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main }) });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    await fetchBankWallets();
+    document.getElementById('bw_name').value = '';
+    document.getElementById('bw_hash').value = '';
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+async function toggleBankWallet(id) {
+  try {
+    const res = await fetch(`/api/bank-wallets/${id}/toggle/`, { method:'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    await fetchBankWallets();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+async function setMainBankWallet(id) {
+  try {
+    const res = await fetch(`/api/bank-wallets/${id}/set-main/`, { method:'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    await fetchBankWallets();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+async function deleteBankWallet(id) {
+  if (!confirm('Удалить кошелёк?')) return;
+  try {
+    const res = await fetch(`/api/bank-wallets/${id}/delete/`, { method:'DELETE' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    await fetchBankWallets();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+document.addEventListener('DOMContentLoaded', fetchBankWallets);
 </script>
 
 {% block title %}Кошелек{% endblock %}
@@ -220,23 +304,23 @@ async function deleteQR(qrId) {
 <!-- Реквизиты для QR (Новый блок) -->
 <div class="requisites-section" style="margin-top: 24px;">
   <div class="stat-card" style="background: #1a1a1a; border-radius: 12px; padding: 20px; border: 1px solid #333; margin-bottom: 16px;">
-    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Добавить реквизит</h3>
+    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Demirbank — добавить реквизит</h3>
 
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
       <div>
-        <label style="color:#fff; font-size:12px;">Название</label>
+        <label style="color:#fff; font-size:12px;">Название аккаунта</label>
         <input id="rq_name" type="text" placeholder="Например: Демирбанк Акк 1" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
       </div>
       <div>
-        <label style="color:#fff; font-size:12px;">Реквизит (16 цифр)</label>
+        <label style="color:#fff; font-size:12px;">Реквизит Demirbank (16 цифр)</label>
         <input id="rq_value" type="text" placeholder="1180000353932089" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
       </div>
       <div>
-        <label style="color:#fff; font-size:12px;">Email</label>
+        <label style="color:#fff; font-size:12px;">Email (для Demirbank уведомлений)</label>
         <input id="rq_email" type="email" placeholder="you@example.com" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
       </div>
       <div>
-        <label style="color:#fff; font-size:12px;">Пароль</label>
+        <label style="color:#fff; font-size:12px;">Пароль (для Demirbank уведомлений)</label>
         <input id="rq_password" type="password" placeholder="Пароль" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
@@ -270,6 +354,45 @@ async function deleteQR(qrId) {
     {% else %}
       <div style="text-align:center; color:#888; padding:20px;">Реквизиты не добавлены</div>
     {% endif %}
+  </div>
+</div>
+
+<!-- Кошельки банков (MBank / Optima / Bakai) -->
+<div class="requisites-section" style="margin-top: 24px;">
+  <div class="stat-card" style="background: #1a1a1a; border-radius: 12px; padding: 20px; border: 1px solid #333; margin-bottom: 16px;">
+    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Добавить кошелёк (MBank / Optima / Bakai)</h3>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div>
+        <label style="color:#fff; font-size:12px;">Банк</label>
+        <select id="bw_bank" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+          <option value="mbank">MBank</option>
+          <option value="optima">Optima</option>
+          <option value="bakai">Bakai</option>
+        </select>
+      </div>
+      <div>
+        <label style="color:#fff; font-size:12px;">Название</label>
+        <input id="bw_name" type="text" placeholder="Например: MBank Акк 1" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      </div>
+      <div style="grid-column: 1 / span 2;">
+        <label style="color:#fff; font-size:12px;">Hash/Реквизит</label>
+        <input id="bw_hash" type="text" placeholder="Вставьте hash" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      </div>
+      <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
+        <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
+          <input id="bw_active" type="checkbox" checked> Активный
+        </label>
+        <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
+          <input id="bw_main" type="checkbox"> Основной
+        </label>
+        <button onclick="createBankWallet()" style="margin-left:auto; padding:10px 14px; background:#4CAF50; color:#fff; border:none; border-radius:8px; cursor:pointer;">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="background:#1a1a1a; border-radius:12px; padding: 16px; border:1px solid #333;">
+    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Кошельки банков</h3>
+    <div id="bw_list" style="display:flex; flex-direction:column; gap:10px;"></div>
   </div>
 </div>
 
