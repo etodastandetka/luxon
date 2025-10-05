@@ -25,7 +25,7 @@ async function deleteBank(bankId) {
 // ===== BankWallet UI =====
 async function fetchBankWallets() {
   try {
-    const res = await fetch('/dashboard/api/bank-wallets/');
+    const res = await fetch('/api/bank-wallets/');
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     renderBankWallets(data.items || []);
@@ -67,9 +67,14 @@ window.createBankWallet = async function() {
   const is_main = document.getElementById('bw_main').checked;
   if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
   try {
-    const res = await fetch('/dashboard/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main }) });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    const res = await fetch('/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main }) });
+    const raw = await res.text();
+    let data = {};
+    try { data = raw ? JSON.parse(raw) : {}; } catch(parseErr) {
+      console.error('Create wallet response (non-JSON):', raw);
+      throw new Error(`HTTP ${res.status} ${res.statusText}. Body: ${raw.slice(0,200)}`);
+    }
+    if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
     await fetchBankWallets();
     document.getElementById('bw_name').value = '';
     document.getElementById('bw_hash').value = '';
@@ -78,7 +83,7 @@ window.createBankWallet = async function() {
 
 async function toggleBankWallet(id) {
   try {
-    const res = await fetch(`/dashboard/api/bank-wallets/${id}/toggle/`, { method:'POST' });
+    const res = await fetch(`/api/bank-wallets/${id}/toggle/`, { method:'POST' });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
@@ -87,7 +92,7 @@ async function toggleBankWallet(id) {
 
 async function setMainBankWallet(id) {
   try {
-    const res = await fetch(`/dashboard/api/bank-wallets/${id}/set-main/`, { method:'POST' });
+    const res = await fetch(`/api/bank-wallets/${id}/set-main/`, { method:'POST' });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
@@ -97,7 +102,7 @@ async function setMainBankWallet(id) {
 async function deleteBankWallet(id) {
   if (!confirm('Удалить кошелёк?')) return;
   try {
-    const res = await fetch(`/dashboard/api/bank-wallets/${id}/delete/`, { method:'DELETE' });
+    const res = await fetch(`/api/bank-wallets/${id}/delete/`, { method:'DELETE' });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
@@ -553,7 +558,7 @@ if (typeof window.createBankWallet !== 'function') {
       const is_active = activeEl.checked;
       const is_main = mainEl.checked;
       if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
-      const res = await fetch('/dashboard/api/bank-wallets/create/', {
+      const res = await fetch('/api/bank-wallets/create/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main })
