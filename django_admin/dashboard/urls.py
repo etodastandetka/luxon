@@ -51,6 +51,12 @@ urlpatterns = [
     path('api/bank-wallets/<int:wid>/toggle/', bot_views.api_bank_wallets_toggle, name='api_bank_wallets_toggle'),
     path('api/bank-wallets/<int:wid>/set-main/', bot_views.api_bank_wallets_set_main, name='api_bank_wallets_set_main'),
     path('api/bank-wallets/<int:wid>/delete/', bot_views.api_bank_wallets_delete, name='api_bank_wallets_delete'),
+    # Алиасы для совместимости со старыми путями фронта (кэш): dashboard/api/...
+    path('dashboard/api/bank-wallets/', bot_views.api_bank_wallets),
+    path('dashboard/api/bank-wallets/create/', bot_views.api_bank_wallets_create),
+    path('dashboard/api/bank-wallets/<int:wid>/toggle/', bot_views.api_bank_wallets_toggle),
+    path('dashboard/api/bank-wallets/<int:wid>/set-main/', bot_views.api_bank_wallets_set_main),
+    path('dashboard/api/bank-wallets/<int:wid>/delete/', bot_views.api_bank_wallets_delete),
     
     # API для букмекеров
     path('api/1xbet-balance/', bot_views.api_1xbet_balance, name='api_1xbet_balance'),
