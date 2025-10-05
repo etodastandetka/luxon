@@ -182,6 +182,88 @@ document.addEventListener('DOMContentLoaded', fetchBankWallets);
 <!-- Статистика скрыта по просьбе: удалён блок с показателями -->
 
 <script>
+// ===== BankWallet UI (moved inside content block) =====
+async function fetchBankWallets() {
+  try {
+    const res = await fetch('/dashboard/api/bank-wallets/');
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    renderBankWallets(data.items || []);
+  } catch (e) {
+    const c = document.getElementById('bw_list');
+    if (c) c.innerHTML = `<div style="color:#f66;">${e.message}</div>`;
+  }
+}
+
+function renderBankWallets(items) {
+  const c = document.getElementById('bw_list');
+  if (!c) return;
+  if (!items.length) { c.innerHTML = '<div style="color:#888;">Кошельки не добавлены</div>'; return; }
+  c.innerHTML = '';
+  items.forEach(w => {
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid #222; border-radius:10px; background:#141414;';
+    el.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="color:#fff; font-weight:600; font-size:13px;">${w.bank_code.toUpperCase()} • ${w.account_name}</div>
+        <div style="color:#9aa4b2; font-size:11px;">${w.hash_value}</div>
+        <div style="color:#888; font-size:10px;">${w.is_active ? '✅ Активен' : '❌ Неактивен'} ${w.is_main ? ' • ⭐ Основной' : ''}</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="toggleBankWallet(${w.id})" style="background:${w.is_active ? '#ef4444' : '#00ff88'}; border:none; color:#000; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">${w.is_active ? 'Выключить' : 'Включить'}</button>
+        <button onclick="setMainBankWallet(${w.id})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Сделать основным</button>
+        <button onclick="deleteBankWallet(${w.id})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Удалить</button>
+      </div>
+    `;
+    c.appendChild(el);
+  });
+}
+
+window.createBankWallet = async function() {
+  const bank_code = document.getElementById('bw_bank').value;
+  const account_name = document.getElementById('bw_name').value.trim();
+  const hash_value = document.getElementById('bw_hash').value.trim();
+  const is_active = document.getElementById('bw_active').checked;
+  const is_main = document.getElementById('bw_main').checked;
+  if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
+  try {
+    const res = await fetch('/dashboard/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main }) });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    await fetchBankWallets();
+    document.getElementById('bw_name').value = '';
+    document.getElementById('bw_hash').value = '';
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+async function toggleBankWallet(id) {
+  try {
+    const res = await fetch(`/dashboard/api/bank-wallets/${id}/toggle/`, { method:'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    await fetchBankWallets();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+async function setMainBankWallet(id) {
+  try {
+    const res = await fetch(`/dashboard/api/bank-wallets/${id}/set-main/`, { method:'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    await fetchBankWallets();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+async function deleteBankWallet(id) {
+  if (!confirm('Удалить кошелёк?')) return;
+  try {
+    const res = await fetch(`/dashboard/api/bank-wallets/${id}/delete/`, { method:'DELETE' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    await fetchBankWallets();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // init
 });
@@ -450,3 +532,47 @@ async function deleteRequisite(id) {
 }
 </script>
 {% endblock %}
+
+<script>
+// Fallback shim: ensure createBankWallet exists globally
+if (typeof window.createBankWallet !== 'function') {
+  window.createBankWallet = async function() {
+    try {
+      const bankEl = document.getElementById('bw_bank');
+      const nameEl = document.getElementById('bw_name');
+      const hashEl = document.getElementById('bw_hash');
+      const activeEl = document.getElementById('bw_active');
+      const mainEl = document.getElementById('bw_main');
+      if (!bankEl || !nameEl || !hashEl || !activeEl || !mainEl) {
+        alert('Не найдены поля формы для добавления кошелька');
+        return;
+      }
+      const bank_code = bankEl.value;
+      const account_name = nameEl.value.trim();
+      const hash_value = hashEl.value.trim();
+      const is_active = activeEl.checked;
+      const is_main = mainEl.checked;
+      if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
+      const res = await fetch('/dashboard/api/bank-wallets/create/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error((data && data.error) || 'Ошибка добавления кошелька');
+      }
+      if (typeof window.fetchBankWallets === 'function') {
+        await window.fetchBankWallets();
+      } else {
+        // мягкое обновление, если списка нет
+        location.reload();
+      }
+      nameEl.value = '';
+      hashEl.value = '';
+    } catch (e) {
+      alert('Ошибка: ' + (e && e.message ? e.message : e));
+    }
+  };
+}
+</script>
