@@ -23,6 +23,11 @@ urlpatterns = [
     path('bot-settings/', views.bot_settings_page, name='bot_settings_page'),
     path('broadcast/', views.broadcast_message, name='broadcast_message'),
     path('statistics/', views.statistics, name='statistics'),
+    path('bank-report/', views.bank_report, name='bank_report'),
+    
+    # API: bank settings (for bank_management page)
+    path('api/bank-settings/', views.api_bank_settings_list, name='api_bank_settings_list'),
+    path('api/bank-settings/<int:bank_id>/toggle/', views.api_bank_settings_toggle, name='api_bank_settings_toggle'),
     
     # API для автоматического пополнения
     path('api/bank-notification/', auto_deposit_processor.receive_bank_notification, name='receive_bank_notification'),

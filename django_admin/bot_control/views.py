@@ -10,7 +10,7 @@ from datetime import datetime
 from .qr_api import api_get_qr_hashes, api_add_qr_hash, api_toggle_qr_hash, api_delete_qr_hash
 from .models import BotConfiguration
 from .models import TransactionLog
-from django.db.models import Q
+from django.db.models import Q, Sum, Count
 from django.conf import settings
 import subprocess
 import sys
@@ -27,8 +27,18 @@ def format_chart_date(date_string):
         return date_string
 
 def bot_settings(request):
-    """Страница настроек бота"""
-    return render(request, 'bot_control/settings.html')
+    """Страница настроек бота с секцией кошельков/реквизитов (🔧 Главное)"""
+    wallets = BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at')
+    groups = {
+        'mbank': [w for w in wallets if w.bank_code == 'mbank'],
+        'bakai': [w for w in wallets if w.bank_code == 'bakai'],
+        'optima': [w for w in wallets if w.bank_code == 'optima'],
+    }
+    qrhash = QRHash.objects.all().order_by('-is_main', '-is_active', '-created_at')
+    return render(request, 'bot_control/settings.html', {
+        'groups': groups,
+        'qrhash': qrhash,
+    })
 
 def broadcast_message(request):
     """Страница рассылки сообщений"""
@@ -38,6 +48,93 @@ def statistics(request):
     """Страница статистики"""
     return render(request, 'bot_control/statistics_mobile.html')
 
+
+def bank_report(request):
+    """Отчёт по поступлениям: агрегаты по банкам и список операций.
+
+    GET:
+      - start: YYYY-MM-DD
+      - end: YYYY-MM-DD
+      - bank: код банка (фильтр)
+    """
+    start = (request.GET.get('start') or '').strip()
+    end = (request.GET.get('end') or '').strip()
+    bank_filter = (request.GET.get('bank') or '').strip()
+
+    qs = TransactionLog.objects.all()
+    if start:
+        qs = qs.filter(timestamp__date__gte=start)
+    if end:
+        qs = qs.filter(timestamp__date__lte=end)
+    if bank_filter:
+        qs = qs.filter(bank__iexact=bank_filter)
+
+    # Агрегаты по банкам
+    by_bank = (
+        qs.values('bank')
+          .annotate(total_amount=Sum('amount'), cnt=Count('id'))
+          .order_by('bank')
+    )
+    total_amount = qs.aggregate(total=Sum('amount'))['total'] or 0
+    total_count = qs.count()
+
+    # Последние операции
+    items = list(qs.order_by('-timestamp')[:200])
+
+    ctx = {
+        'filters': {'start': start, 'end': end, 'bank': bank_filter},
+        'by_bank': by_bank,
+        'total_amount': float(total_amount),
+        'total_count': total_count,
+        'items': items,
+    }
+    return render(request, 'bot_control/bank_report.html', ctx)
+
+@csrf_exempt
+def api_bank_settings_list(request):
+    """GET: список всех банков и их флагов (deposit/withdraw) для UI."""
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        items = [
+            {
+                'id': b.id,
+                'bank_code': b.bank_code,
+                'bank_name': b.bank_name,
+                'is_enabled_deposit': bool(b.is_enabled_deposit),
+                'is_enabled_withdraw': bool(b.is_enabled_withdraw),
+            }
+            for b in BankSettings.objects.all().order_by('bank_name')
+        ]
+        return JsonResponse({'success': True, 'banks': items})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def api_bank_settings_toggle(request, bank_id: int):
+    """POST: переключить флаг deposit/withdraw у банка.
+    Body: { setting: 'deposit'|'withdraw', enabled: bool }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        data = json.loads(request.body or '{}')
+        setting = (data.get('setting') or '').strip()
+        enabled = bool(data.get('enabled', True))
+        b = BankSettings.objects.get(id=int(bank_id))
+        if setting == 'deposit':
+            b.is_enabled_deposit = enabled
+        elif setting == 'withdraw':
+            b.is_enabled_withdraw = enabled
+        else:
+            return JsonResponse({'success': False, 'error': 'invalid setting'}, status=400)
+        b.save(update_fields=['is_enabled_deposit', 'is_enabled_withdraw', 'updated_at'])
+        return JsonResponse({'success': True})
+    except BankSettings.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 def payments_history(request):
     """История поступлений из Android-хука: таблица с фильтрами и ручным изменением статуса.

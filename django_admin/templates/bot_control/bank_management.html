@@ -288,7 +288,7 @@
 // Загрузка списка банков
 async function loadBanks() {
     try {
-        const response = await fetch('/bot/api/bank-settings/');
+        const response = await fetch('/bot_control/api/bank-settings/');
         const data = await response.json();
         displayBanks(data.banks || []);
     } catch (error) {
@@ -352,7 +352,7 @@ function displayBanks(banks) {
 // Переключение настроек банка
 async function toggleBankSetting(bankId, setting, enabled) {
     try {
-        const response = await fetch(`/bot/api/bank-settings/${bankId}/toggle/`, {
+        const response = await fetch(`/bot_control/api/bank-settings/${bankId}/toggle/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
