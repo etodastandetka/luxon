@@ -25,7 +25,7 @@ async function deleteBank(bankId) {
 // ===== BankWallet UI =====
 async function fetchBankWallets() {
   try {
-    const res = await fetch('/api/bank-wallets/');
+    const res = await fetch('/dashboard/api/bank-wallets/');
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     renderBankWallets(data.items || []);
@@ -59,7 +59,7 @@ function renderBankWallets(items) {
   });
 }
 
-async function createBankWallet() {
+window.createBankWallet = async function() {
   const bank_code = document.getElementById('bw_bank').value;
   const account_name = document.getElementById('bw_name').value.trim();
   const hash_value = document.getElementById('bw_hash').value.trim();
@@ -67,7 +67,7 @@ async function createBankWallet() {
   const is_main = document.getElementById('bw_main').checked;
   if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
   try {
-    const res = await fetch('/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main }) });
+    const res = await fetch('/dashboard/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main }) });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
@@ -78,7 +78,7 @@ async function createBankWallet() {
 
 async function toggleBankWallet(id) {
   try {
-    const res = await fetch(`/api/bank-wallets/${id}/toggle/`, { method:'POST' });
+    const res = await fetch(`/dashboard/api/bank-wallets/${id}/toggle/`, { method:'POST' });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
@@ -87,7 +87,7 @@ async function toggleBankWallet(id) {
 
 async function setMainBankWallet(id) {
   try {
-    const res = await fetch(`/api/bank-wallets/${id}/set-main/`, { method:'POST' });
+    const res = await fetch(`/dashboard/api/bank-wallets/${id}/set-main/`, { method:'POST' });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
@@ -97,7 +97,7 @@ async function setMainBankWallet(id) {
 async function deleteBankWallet(id) {
   if (!confirm('Удалить кошелёк?')) return;
   try {
-    const res = await fetch(`/api/bank-wallets/${id}/delete/`, { method:'DELETE' });
+    const res = await fetch(`/dashboard/api/bank-wallets/${id}/delete/`, { method:'DELETE' });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
@@ -233,7 +233,7 @@ async function addQRHash() {
 async function setMainQR(qrId) {
     if (confirm('Сделать этот QR хеш основным?')) {
         try {
-            const response = await fetch(`/bot/api/qr-hashes/${qrId}/set-main/`, {
+            const response = await fetch(`/bot_control/api/qr-hashes/${qrId}/set-main/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -257,7 +257,7 @@ async function setMainQR(qrId) {
 async function toggleQR(qrId) {
     if (confirm('Изменить статус QR хеша?')) {
         try {
-            const response = await fetch(`/bot/api/qr-hashes/${qrId}/toggle/`, {
+            const response = await fetch(`/bot_control/api/qr-hashes/${qrId}/toggle/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -280,7 +280,7 @@ async function toggleQR(qrId) {
 async function deleteQR(qrId) {
     if (confirm('Удалить этот QR хеш? Это действие нельзя отменить!')) {
         try {
-            const response = await fetch(`/bot/api/qr-hashes/${qrId}/delete/`, {
+            const response = await fetch(`/bot_control/api/qr-hashes/${qrId}/delete/`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
