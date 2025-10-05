@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}Wallets Management - Luxon{% endblock %}
+{% block header_icon %}money bill alternate outline{% endblock %}
+{% block header_title %}Wallets Management{% endblock %}
+{% block header_subtitle %}MBank / Bakai / Optima{% endblock %}
+
+{% block content %}
+<div class="content-container">
+  <div class="card">
+    <div class="card-header">
+      <h3>💼 Кошельки (MBank / Bakai / Optima)</h3>
+      {% if message %}<div class="alert alert-success" style="margin-top:8px;">{{ message }}</div>{% endif %}
+      {% if error %}<div class="alert alert-danger" style="margin-top:8px;">{{ error }}</div>{% endif %}
+      <div class="text-muted" style="font-size:13px; margin-top:6px;">
+        Управляйте активностью и основным кошельком для каждого банка.
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row" style="display:flex; gap:16px; flex-wrap:wrap;">
+        <div class="col" style="flex:1; min-width:320px;">
+          <div class="card" style="border-color:#e3f2fd;">
+            <div class="card-header" style="background:#e3f2fd;"><strong>MBank</strong></div>
+            <div class="card-body">
+              {% if groups.mbank and groups.mbank|length %}
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Название</th>
+                      <th>Реквизит</th>
+                      <th>Создан</th>
+                      <th>Статусы</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for w in groups.mbank %}
+                    <tr>
+                      <td>{{ w.account_name }}</td>
+                      <td style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ w.hash_value }}">{{ w.hash_value }}</td>
+                      <td>{{ w.created_at|date:'Y-m-d H:i:s' }}</td>
+                      <td>
+                        {% if w.is_main %}<span class="badge bg-warning text-dark">Основной</span>{% endif %}
+                        {% if w.is_active %}<span class="badge bg-success">Активен</span>{% else %}<span class="badge bg-secondary">Неактивен</span>{% endif %}
+                      </td>
+                      <td>
+                        <form method="post" action="/bot_control/wallets/" style="display:inline-block;">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="toggle_active" />
+                          <input type="hidden" name="id" value="{{ w.id }}" />
+                          <button class="btn btn-sm btn-outline-primary" type="submit">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
+                        </form>
+                        {% if not w.is_main %}
+                        <form method="post" action="/bot_control/wallets/" style="display:inline-block; margin-left:6px;">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="set_main" />
+                          <input type="hidden" name="id" value="{{ w.id }}" />
+                          <button class="btn btn-sm btn-outline-warning" type="submit">Сделать основным</button>
+                        </form>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+                <div class="text-muted">Нет кошельков MBank</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="col" style="flex:1; min-width:320px;">
+          <div class="card" style="border-color:#f3e8ff;">
+            <div class="card-header" style="background:#f3e8ff;"><strong>Bakai</strong></div>
+            <div class="card-body">
+              {% if groups.bakai and groups.bakai|length %}
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Название</th>
+                      <th>Реквизит</th>
+                      <th>Создан</th>
+                      <th>Статусы</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for w in groups.bakai %}
+                    <tr>
+                      <td>{{ w.account_name }}</td>
+                      <td style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ w.hash_value }}">{{ w.hash_value }}</td>
+                      <td>{{ w.created_at|date:'Y-m-d H:i:s' }}</td>
+                      <td>
+                        {% if w.is_main %}<span class="badge bg-warning text-dark">Основной</span>{% endif %}
+                        {% if w.is_active %}<span class="badge bg-success">Активен</span>{% else %}<span class="badge bg-secondary">Неактивен</span>{% endif %}
+                      </td>
+                      <td>
+                        <form method="post" action="/bot_control/wallets/" style="display:inline-block;">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="toggle_active" />
+                          <input type="hidden" name="id" value="{{ w.id }}" />
+                          <button class="btn btn-sm btn-outline-primary" type="submit">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
+                        </form>
+                        {% if not w.is_main %}
+                        <form method="post" action="/bot_control/wallets/" style="display:inline-block; margin-left:6px;">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="set_main" />
+                          <input type="hidden" name="id" value="{{ w.id }}" />
+                          <button class="btn btn-sm btn-outline-warning" type="submit">Сделать основным</button>
+                        </form>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+                <div class="text-muted">Нет кошельков Bakai</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="col" style="flex:1; min-width:320px;">
+          <div class="card" style="border-color:#e8f5e9;">
+            <div class="card-header" style="background:#e8f5e9;"><strong>Optima</strong></div>
+            <div class="card-body">
+              {% if groups.optima and groups.optima|length %}
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Название</th>
+                      <th>Реквизит</th>
+                      <th>Создан</th>
+                      <th>Статусы</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for w in groups.optima %}
+                    <tr>
+                      <td>{{ w.account_name }}</td>
+                      <td style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ w.hash_value }}">{{ w.hash_value }}</td>
+                      <td>{{ w.created_at|date:'Y-m-d H:i:s' }}</td>
+                      <td>
+                        {% if w.is_main %}<span class="badge bg-warning text-dark">Основной</span>{% endif %}
+                        {% if w.is_active %}<span class="badge bg-success">Активен</span>{% else %}<span class="badge bg-secondary">Неактивен</span>{% endif %}
+                      </td>
+                      <td>
+                        <form method="post" action="/bot_control/wallets/" style="display:inline-block;">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="toggle_active" />
+                          <input type="hidden" name="id" value="{{ w.id }}" />
+                          <button class="btn btn-sm btn-outline-primary" type="submit">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
+                        </form>
+                        {% if not w.is_main %}
+                        <form method="post" action="/bot_control/wallets/" style="display:inline-block; margin-left:6px;">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="set_main" />
+                          <input type="hidden" name="id" value="{{ w.id }}" />
+                          <button class="btn btn-sm btn-outline-warning" type="submit">Сделать основным</button>
+                        </form>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+                <div class="text-muted">Нет кошельков Optima</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

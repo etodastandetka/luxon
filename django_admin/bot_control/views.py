@@ -101,8 +101,19 @@ def payments_history(request):
 
 
 def bank_management(request):
-    """Страница управления банками"""
-    return render(request, 'bot_control/bank_management.html')
+    """Страница управления банками с отображением всех кошельков внизу"""
+    # Группы кошельков по банкам для нижнего блока
+    wallets = BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at')
+    groups = {
+        'mbank': [w for w in wallets if w.bank_code == 'mbank'],
+        'bakai': [w for w in wallets if w.bank_code == 'bakai'],
+        'optima': [w for w in wallets if w.bank_code == 'optima'],
+    }
+    qrhash = QRHash.objects.all().order_by('-is_main', '-is_active', '-created_at')
+    return render(request, 'bot_control/bank_management.html', {
+        'groups': groups,
+        'qrhash': qrhash,
+    })
 
 
 def wallets_management(request):
