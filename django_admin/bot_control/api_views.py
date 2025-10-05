@@ -258,6 +258,8 @@ def pending_requests(request: HttpRequest):
             # во избежание ошибок с отсутствующей колонкой во всех вариантах схемы возвращаем пустую строку
             "'' AS bank",
             ("COALESCE(r.status,'pending') AS status" if has('status') else "'pending' AS status"),
+            # Тип заявки (deposit/withdraw...) если колонка есть
+            ("COALESCE(r.request_type,'deposit') AS type" if has('request_type') else "'deposit' AS type"),
             ("COALESCE(r.created_at,'') AS created_at" if has('created_at') else "'' AS created_at"),
         ]
 
@@ -269,6 +271,14 @@ def pending_requests(request: HttpRequest):
             coalesce = "'' AS receipt_photo_url"
         select_parts.append(coalesce)
 
+        # Детали кошелька/банка для выводов: пробуем несколько возможных колонок
+        wd_cols = [c for c in ['wallet_details', 'withdraw_method', 'payment_system', 'provider', 'bank'] if has(c)]
+        if wd_cols:
+            wd_coalesce = "COALESCE(" + ", ".join(f"r.{c}" for c in wd_cols) + ", '') AS wallet_details"
+        else:
+            wd_coalesce = "'' AS wallet_details"
+        select_parts.append(wd_coalesce)
+
         select_sql = (
             "SELECT " + ",\n                   ".join(select_parts) +
             "\nFROM requests r\nLEFT JOIN users u ON r.user_id = u.user_id\n"
@@ -276,8 +286,6 @@ def pending_requests(request: HttpRequest):
 
         # WHERE-условия тоже зависят от наличия колонок
         where_clauses = ["1=1"]
-        if has('request_type'):
-            where_clauses.append("r.request_type = 'deposit'")
         if has('status'):
             where_clauses.append("r.status = 'pending'")
 
@@ -305,7 +313,7 @@ def pending_requests(request: HttpRequest):
             # заполним отсутствующие поля по умолчанию для единообразия
             item.setdefault('bank', '')
             item.setdefault('receipt_photo_url', '')
-            # для фронта дублируем тип и пустое поле wallet_details (нужно для ветки выводов)
+            # type уже пришёл из SELECT; wallet_details сформирован, но дадим значения по умолчанию
             item.setdefault('type', 'deposit')
             item.setdefault('wallet_details', '')
             deposits.append(item)
