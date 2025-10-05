@@ -6,6 +6,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # ВАЖНО: ставим алиас ДО include('dashboard.urls'), чтобы он не перекрывался.
     path('api/pending-requests/', api_views.pending_requests, name='pending_requests_root'),
+    path('api/transaction-history/', api_views.transaction_history, name='transaction_history_root'),
     path('', include('dashboard.urls')),
     path('bot/', include('bot_control.urls')),
     # Публичная страница по типу /history (не в админке)

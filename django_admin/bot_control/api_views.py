@@ -304,6 +304,67 @@ def pending_requests(request: HttpRequest):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+@require_http_methods(["GET"])
+def transaction_history(request: HttpRequest):
+    """Возвращает историю транзакций (депозиты и выводы) из БД бота.
+
+    Параметры:
+      - limit: количество записей (по умолчанию 50)
+    Возвращает:
+      { success: true, items: [ {id, user_id, username, type, amount, status, created_at, bookmaker, account_id} ] }
+    """
+    try:
+        limit = int(request.GET.get('limit', 50))
+        bot_db = getattr(settings, 'BOT_DATABASE_PATH', None)
+        if not bot_db:
+            return JsonResponse({'success': False, 'error': 'BOT_DATABASE_PATH не задан'}, status=500)
+
+        conn = sqlite3.connect(str(bot_db))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        # Схема таблицы
+        cur.execute("PRAGMA table_info(requests)")
+        cols = {row[1] for row in cur.fetchall()}
+        def has(c: str) -> bool:
+            return c in cols
+
+        # Формируем SELECT безопасно к отсутствующим колонкам
+        select_parts = [
+            "r.id",
+            "r.user_id",
+            "COALESCE(u.username,'') as username",
+            ("COALESCE(r.request_type,'') as type" if has('request_type') else "'' as type"),
+            ("COALESCE(r.amount,0) as amount" if has('amount') else "0 as amount"),
+            ("COALESCE(r.status,'') as status" if has('status') else "'' as status"),
+            ("COALESCE(r.created_at,'') as created_at" if has('created_at') else "'' as created_at"),
+            ("COALESCE(r.bookmaker,'') as bookmaker" if has('bookmaker') else "'' as bookmaker"),
+            ("COALESCE(r.account_id,'') as account_id" if has('account_id') else "'' as account_id"),
+        ]
+
+        sql = (
+            "SELECT " + ", ".join(select_parts) +
+            " FROM requests r LEFT JOIN users u ON r.user_id = u.user_id " +
+            (" WHERE r.request_type IN ('deposit','withdraw')" if has('request_type') else "") +
+            (" ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC" if has('created_at') else " ORDER BY r.id DESC") +
+            " LIMIT ?"
+        )
+        cur.execute(sql, (limit,))
+        rows = cur.fetchall()
+        conn.close()
+
+        items = []
+        for row in rows:
+            d = dict(row)
+            try:
+                d['amount'] = float(d.get('amount') or 0)
+            except Exception:
+                d['amount'] = 0.0
+            items.append(d)
+
+        return JsonResponse({'success': True, 'items': items})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 # ============================
 # Referral Withdrawal Endpoints
 # ============================
