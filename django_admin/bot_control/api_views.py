@@ -230,41 +230,57 @@ def pending_requests(request: HttpRequest):
         conn = sqlite3.connect(str(bot_db))
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        # Пытаемся выбрать расширенный набор колонок, но если каких-то колонок нет в старой БД,
-        # используем упрощённый SELECT без них.
-        rows = []
-        try:
-            cur.execute('''
-                SELECT r.id, r.user_id, COALESCE(u.username, '') AS username,
-                       COALESCE(r.bookmaker,'') AS bookmaker,
-                       COALESCE(r.account_id,'') AS account_id,
-                       COALESCE(r.amount,0) AS amount,
-                       COALESCE(r.bank,'') AS bank,
-                       COALESCE(r.status,'pending') AS status,
-                       COALESCE(r.created_at,'') AS created_at,
-                       COALESCE(r.photo_file_url, r.receipt_photo_url, r.qr_photo_url, r.photo_url, r.screenshot_url, '') AS receipt_photo_url
-                FROM requests r
-                LEFT JOIN users u ON r.user_id = u.user_id
-                WHERE r.request_type = 'deposit' AND r.status = 'pending'
-                ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
-                LIMIT ?
-            ''', (limit,))
-            rows = cur.fetchall()
-        except Exception:
-            cur.execute('''
-                SELECT r.id, r.user_id, COALESCE(u.username, '') AS username,
-                       COALESCE(r.bookmaker,'') AS bookmaker,
-                       COALESCE(r.account_id,'') AS account_id,
-                       COALESCE(r.amount,0) AS amount,
-                       COALESCE(r.status,'pending') AS status,
-                       COALESCE(r.created_at,'') AS created_at
-                FROM requests r
-                LEFT JOIN users u ON r.user_id = u.user_id
-                WHERE r.request_type = 'deposit' AND r.status = 'pending'
-                ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
-                LIMIT ?
-            ''', (limit,))
-            rows = cur.fetchall()
+
+        # Узнаём схему таблицы `requests`
+        cur.execute("PRAGMA table_info(requests)")
+        cols = {row[1] for row in cur.fetchall()}  # имена колонок
+
+        # Готовим выражения с учётом существующих колонок
+        def has(col: str) -> bool:
+            return col in cols
+
+        select_parts = [
+            "r.id",
+            "r.user_id",
+            "COALESCE(u.username, '') AS username",
+            ("COALESCE(r.bookmaker,'') AS bookmaker" if has('bookmaker') else "'' AS bookmaker"),
+            ("COALESCE(r.account_id,'') AS account_id" if has('account_id') else "'' AS account_id"),
+            ("COALESCE(r.amount,0) AS amount" if has('amount') else "0 AS amount"),
+            ("COALESCE(r.bank,'') AS bank" if has('bank') else "'' AS bank"),
+            ("COALESCE(r.status,'pending') AS status" if has('status') else "'pending' AS status"),
+            ("COALESCE(r.created_at,'') AS created_at" if has('created_at') else "'' AS created_at"),
+        ]
+
+        # Фото-URL: возьмём первую из существующих колонок, иначе пусто
+        photo_cols = [c for c in ['photo_file_url', 'receipt_photo_url', 'qr_photo_url', 'photo_url', 'screenshot_url'] if has(c)]
+        if photo_cols:
+            coalesce = "COALESCE(" + ", ".join(f"r.{c}" for c in photo_cols) + ", '') AS receipt_photo_url"
+        else:
+            coalesce = "'' AS receipt_photo_url"
+        select_parts.append(coalesce)
+
+        select_sql = (
+            "SELECT " + ",\n                   ".join(select_parts) +
+            "\nFROM requests r\nLEFT JOIN users u ON r.user_id = u.user_id\n"
+        )
+
+        # WHERE-условия тоже зависят от наличия колонок
+        where_clauses = ["1=1"]
+        if has('request_type'):
+            where_clauses.append("r.request_type = 'deposit'")
+        if has('status'):
+            where_clauses.append("r.status = 'pending'")
+
+        order_expr = "datetime(COALESCE(r.created_at,'1970-01-01')) DESC" if has('created_at') else "r.id DESC"
+
+        final_sql = (
+            select_sql +
+            "WHERE " + " AND ".join(where_clauses) +
+            f"\nORDER BY {order_expr}\nLIMIT ?"
+        )
+
+        cur.execute(final_sql, (limit,))
+        rows = cur.fetchall()
         conn.close()
 
         deposits = []
