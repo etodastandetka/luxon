@@ -160,7 +160,13 @@ def referral_leaderboard(request: HttpRequest):
     """Return top-3 leaderboard of users with most active referrals."""
     try:
         items = _get_leaderboard(limit=3)
-        return JsonResponse({'success': True, 'items': items})
+        # Возвращаем сразу в нескольких форматах, чтобы UI не зависел от названий ключей
+        return JsonResponse({
+            'success': True,
+            'items': items,
+            'data': items,
+            'count': len(items),
+        })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
@@ -300,7 +306,13 @@ def pending_requests(request: HttpRequest):
             item.setdefault('receipt_photo_url', '')
             deposits.append(item)
 
-        return JsonResponse({'success': True, 'deposits': deposits})
+        # Возвращаем сразу в нескольких форматах, чтобы UI не зависел от названий ключей
+        return JsonResponse({
+            'success': True,
+            'deposits': deposits,
+            'data': deposits,
+            'count': len(deposits),
+        })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
