@@ -533,6 +533,33 @@ def update_amount_in_qr_hash_proper(qr_hash: str, new_amount: float) -> str:
         return qr_hash
 
 
+def update_or_insert_amount_tag(qr_hash: str, new_amount: float) -> str:
+    """Обновляет сумму 54. Если тега 54 нет, вставляет его перед тегом 59 и пересчитывает 63 тем же методом, что у исходного QR."""
+    try:
+        updated = update_amount_in_qr_hash_proper(qr_hash, new_amount)
+        if updated != qr_hash:
+            return updated
+        # Попробуем вставить 54 перед 59
+        import re
+        payload = re.sub(r"6304[0-9A-Fa-f]{4}$", "", qr_hash)
+        payload = re.sub(r"63[0-9A-Fa-f]{4}$", "", payload)
+        m59 = re.search(r"59(\d{2})", payload)
+        if not m59:
+            return qr_hash  # не знаем куда вставлять
+        pos59 = m59.start()
+        # Посчитаем сумму
+        from decimal import Decimal, ROUND_HALF_UP
+        amount_cents = int((Decimal(str(new_amount)) * Decimal('100')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+        amount_str = str(amount_cents).rjust(5, '0')
+        field54 = f"54{len(amount_str):02d}{amount_str}"
+        payload_new = payload[:pos59] + field54 + payload[pos59:]
+        method = detect_checksum_method(qr_hash)
+        cs = calculate_checksum(payload_new, method=method)
+        return payload_new + "6304" + cs
+    except Exception:
+        return qr_hash
+
+
 def enforce_amount_with_kopecks(amount: float) -> float:
     """Гарантировать, что сумма имеет копейки.
     Если пользователь ввёл целое значение, добавляем СЛУЧАЙНЫЕ копейки (1..99).
