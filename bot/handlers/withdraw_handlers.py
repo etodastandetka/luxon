@@ -238,7 +238,7 @@ async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookm
         try:
             # РЈР±РёСЂР°РµРј РёРЅР»Р°Р№РЅ-РєРЅРѕРїРєРё Рё РґРѕРїРёСЃС‹РІР°РµРј РІС‹Р±СЂР°РЅРЅС‹Р№ Р±Р°РЅРє
             await callback_message.edit_text(
-                (callback_message.text or "") + f"\n\nвњ… <b>Р’С‹Р±СЂР°РЅ Р±Р°РЅРє:</b> {bank_code.upper()}",
+                (callback_message.text or "") + f"\n\n✅ <b>Выбран банк:</b> {bank_code.upper()}",
                 parse_mode="HTML"
             )
         except Exception as e:
