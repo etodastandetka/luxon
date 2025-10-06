@@ -29,6 +29,15 @@ async def update_payment_timer(message, user_id: int, amount: float, translation
             current_state = db.get_user_data(user_id, 'current_state')
             if current_state != 'waiting_for_receipt':
                 logger.info(f"Timer stopped for user {user_id}, state changed to: {current_state}")
+                # Удаляем сообщение с таймером и кнопками при сбросе состояния
+                try:
+                    await message.delete()
+                except Exception:
+                    # Если удалить нельзя (например, слишком старое), хотя бы уберём клавиатуру
+                    try:
+                        await message.edit_reply_markup(reply_markup=None)
+                    except Exception:
+                        pass
                 break
                 
             # Вычисляем минуты и секунды
@@ -155,21 +164,24 @@ async def update_payment_timer(message, user_id: int, amount: float, translation
                     conn.close()
 
                 # Сообщаем пользователю об отмене и возвращаем в меню
+                # Сначала удалим исходное сообщение с кнопками
+                try:
+                    await message.delete()
+                except Exception:
+                    # Если удалить не удалось, уберём клавиатуру
+                    try:
+                        await message.edit_reply_markup(reply_markup=None)
+                    except Exception:
+                        pass
                 # Текст отмены по таймауту (локализованный)
                 cancel_main = translations.get('payment_timer_expired', '⏳ Пополнение отменено, время оплаты прошло')
                 cancel_warn = translations.get('old_requisites_warning', '❌Не переводите по старым реквизитам, создайте новую заявку, нажав «Пополнить».')
                 cancel_text = f"{cancel_main}\n\n{cancel_warn}"
+                # Отправим новое уведомление об отмене
                 try:
-                    await message.edit_text(
-                        cancel_text,
-                        reply_markup=None
-                    )
+                    await message.answer(cancel_text)
                 except Exception:
-                    # если не удалось отредактировать, отправим новым сообщением
-                    try:
-                        await message.answer(cancel_text)
-                    except Exception:
-                        pass
+                    pass
                 # Завершаем таймер и возвращаем главное меню
                 db.save_user_data(user_id, 'current_state', '')
                 try:
