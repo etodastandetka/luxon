@@ -287,8 +287,17 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
         else:
             text_msg = base_text
 
-        photo_path = Path(f"images/{bookmaker}-id.jpg")
-        if photo_path.exists():
+        # Пытаемся найти фото-пример для выбранного букмекера по нескольким путям
+        bm = (bookmaker or '').lower()
+        candidates = [
+            Path(f"images/{bm}-id.jpg"),
+            Path(f"images/{bm}_id.jpg"),
+            Path(f"images/{bm}/id.jpg"),
+            Path(f"images/id-{bm}.jpg"),
+            Path("images/id-example.jpg"),
+        ]
+        photo_path = next((p for p in candidates if p.exists()), None)
+        if photo_path:
             try:
                 photo = FSInputFile(str(photo_path))
                 await message.answer_photo(photo=photo, caption=text_msg, reply_markup=keyboard, parse_mode="HTML")
