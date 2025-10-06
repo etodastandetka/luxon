@@ -639,6 +639,23 @@ async function loadWallets() {
         const info = document.getElementById('wallets-count');
         if (info) info.textContent = `Найдено: QR ${qrCount}, кошельков ${bwCount}, реквизитов ${rqCount}`;
 
+        // Программно выбрать текущий элемент с тем же приоритетом: Requisite > QR > Bank
+        try {
+            const select = document.getElementById('wallet-select');
+            // Попробуем прочитать свежие данные ещё раз (они у нас уже в памяти)
+            const rq = await rqResp.json().catch(()=>({requisites:[]}));
+            const qr = await qrResp.json().catch(()=>({wallets:[]}));
+            const bw = await bwResp.json().catch(()=>({items:[]}));
+            const rqMain = (rq.requisites || []).find(r => r.is_active);
+            const qrMain = (qr.wallets || []).find(w => w.is_main);
+            const bwMain = (bw.items || []).find(w => w.is_main);
+            let target = '';
+            if (rqMain) target = `rq:${rqMain.id}`;
+            else if (qrMain) target = `qr:${qrMain.id}`;
+            else if (bwMain) target = `bw:${bwMain.id}`;
+            if (target) select.value = target;
+        } catch (e) { /* ignore */ }
+
     } catch (e) {
         console.error('Ошибка загрузки списка кошельков:', e);
     }
