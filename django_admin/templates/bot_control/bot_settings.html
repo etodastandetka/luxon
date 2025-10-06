@@ -208,8 +208,31 @@
                     <label class="form-label" for="wallet-select">Выберите кошелек</label>
                     <select id="wallet-select" name="wallet-select" class="form-input" style="appearance: none;">
                         <option value="">Выберите реквизит…</option>
+                        {% if ssr_qr_wallets %}
+                        <optgroup label="Demirbank (QR)">
+                            {% for q in ssr_qr_wallets %}
+                            <option value="qr:{{ q.id }}" {% if q.is_main %}selected{% endif %}>{{ q.account_name|default:"QR" }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if ssr_bank_wallets %}
+                        <optgroup label="Банковские кошельки">
+                            {% for w in ssr_bank_wallets %}
+                            <option value="bw:{{ w.id }}" {% if w.is_main %}selected{% endif %}>{{ w.bank_code|upper }} • {{ w.account_name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if ssr_requisites %}
+                        <optgroup label="Реквизиты (Demirbank)">
+                            {% for r in ssr_requisites %}
+                            <option value="rq:{{ r.id }}" {% if r.is_active %}selected{% endif %}>{{ r.value }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
                     </select>
-                    <div id="wallets-count" style="margin-top:6px;color:#888;font-size:12px;">—</div>
+                    <div id="wallets-count" style="margin-top:6px;color:#888;font-size:12px;">
+                        Найдено: QR {{ ssr_qr_wallets|length|default:0 }}, кошельков {{ ssr_bank_wallets|length|default:0 }}, реквизитов {{ ssr_requisites|length|default:0 }}
+                    </div>
                 </div>
 
                 <div style="display:flex; gap:8px;">

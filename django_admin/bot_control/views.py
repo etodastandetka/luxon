@@ -414,9 +414,34 @@ def bot_settings_page(request):
         qrhash = list(QRHash.objects.all().order_by('-is_main', '-is_active', '-created_at'))
     except Exception:
         wallets, qrhash = [], []
+    # SSR для реквизитов (SQLite), как на странице кошелька
+    ssr_requisites = []
+    try:
+        import sqlite3
+        from django.conf import settings as dj_settings
+        conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS requisites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                value TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 0,
+                name TEXT,
+                email TEXT,
+                password TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cur.execute('SELECT id, value, COALESCE(is_active,0), COALESCE(created_at,"") FROM requisites ORDER BY is_active DESC, id DESC')
+        for rid, value, is_active, created_at in cur.fetchall():
+            ssr_requisites.append({'id': rid, 'value': value, 'is_active': bool(is_active), 'created_at': created_at})
+        conn.close()
+    except Exception:
+        ssr_requisites = []
     return render(request, 'bot_control/bot_settings.html', {
         'ssr_bank_wallets': wallets,
         'ssr_qr_wallets': qrhash,
+        'ssr_requisites': ssr_requisites,
     })
 
 @csrf_exempt
