@@ -508,57 +508,115 @@ async function loadSettings() {
     } finally { __loadingSettings = false; }
 }
 
-// Загрузка текущего активного реквизита (из bot/universal_bot.db)
+// Загрузка текущего основного кошелька/реквизита из QRHash и BankWallets
 async function loadMainWallet() {
     try {
-        const resp = await fetch('{% url "dashboard:api_requisites_list" %}');
-        if (!resp.ok) throw new Error('Failed to load requisites');
-        const data = await resp.json();
-        const active = (data && data.requisites) ? (data.requisites.find(r => r.is_active) || null) : null;
-        document.getElementById('current-main-wallet').textContent = active ? active.value : '—';
+        const [qrResp, bwResp] = await Promise.all([
+            fetch('{% url "bot_control:api_list_qr_hashes" %}'),
+            fetch('{% url "dashboard:api_bank_wallets" %}')
+        ]);
+        let qr = { wallets: [] }, bw = { items: [] };
+        try { qr = await qrResp.json(); } catch(e) {}
+        try { bw = await bwResp.json(); } catch(e) {}
+        const qrMain = (qr.wallets || []).find(w => w.is_main);
+        const bwMain = (bw.items || []).find(w => w.is_main);
+        const label = qrMain
+            ? (qrMain.account_name || '(Demirbank)')
+            : (bwMain ? `${(bwMain.bank_code || '').toUpperCase()} • ${bwMain.account_name || 'Wallet'}` : '—');
+        document.getElementById('current-main-wallet').textContent = label || '—';
     } catch (e) {
-        console.error('Ошибка загрузки реквизитов:', e);
+        console.error('Ошибка загрузки основного кошелька:', e);
         document.getElementById('current-main-wallet').textContent = '—';
     }
 }
 
-// Загрузить все реквизиты и заполнить селект
+// Загрузить QRHash (Demirbank) и BankWallets, собрать единый селект
 async function loadWallets() {
     try {
-        const resp = await fetch('{% url "dashboard:api_requisites_list" %}');
-        if (!resp.ok) throw new Error('Failed to load requisites list');
-        const data = await resp.json();
+        const [qrResp, bwResp] = await Promise.all([
+            fetch('{% url "bot_control:api_list_qr_hashes" %}'),
+            fetch('{% url "dashboard:api_bank_wallets" %}')
+        ]);
         const select = document.getElementById('wallet-select');
-        // Очистим и добавим placeholder
         select.innerHTML = '<option value="">Выберите реквизит…</option>';
-        (data.requisites || []).forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = String(r.id);
-            opt.textContent = `${r.value} ${r.is_active ? '• активный' : ''}`.trim();
-            if (r.is_active) opt.selected = true;
-            select.appendChild(opt);
-        });
+
+        // Demirbank (QR)
+        try {
+            const qr = await qrResp.json();
+            (qr.wallets || []).forEach(q => {
+                const opt = document.createElement('option');
+                opt.value = `qr:${q.id}`;
+                opt.dataset.type = 'qr';
+                opt.dataset.id = String(q.id);
+                opt.textContent = `${q.account_name || q.id} ${q.is_active ? '• активный' : ''}`.trim();
+                if (q.is_main) opt.selected = true;
+                select.appendChild(opt);
+            });
+        } catch(e) { console.warn('QR list parse failed'); }
+
+        // BankWallets (MBank/Bakai/Optima)
+        try {
+            const bw = await bwResp.json();
+            (bw.items || []).forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = `bw:${w.id}`;
+                opt.dataset.type = 'bw';
+                opt.dataset.id = String(w.id);
+                opt.textContent = `${(w.bank_code || '').toUpperCase()} • ${w.account_name} ${w.is_active ? '• активный' : ''}`.trim();
+                if (w.is_main) opt.selected = true;
+                select.appendChild(opt);
+            });
+        } catch(e) { console.warn('BW list parse failed'); }
+
     } catch (e) {
-        console.error('Ошибка загрузки списка реквизитов:', e);
+        console.error('Ошибка загрузки списка кошельков:', e);
     }
 }
 
-// Установить активный реквизит по выбранному значению
+// Сделать выбранный элемент активным единственным
 async function setMainWalletSelected() {
     const select = document.getElementById('wallet-select');
-    const id = (select.value || '').trim();
-    if (!id) { alert('Выберите реквизит'); return; }
+    const raw = (select.value || '').trim();
+    if (!raw) { alert('Выберите реквизит'); return; }
+    const [type, idStr] = raw.split(':');
+    const id = parseInt(idStr || '0', 10);
+    if (!id || (type !== 'qr' && type !== 'bw')) { alert('Неверный выбор'); return; }
     try {
-        const urlTemplate = '{% url "dashboard:api_requisites_set_active" 0 %}';
-        const url = urlTemplate.replace('/0/', `/${id}/`);
-        const resp = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
-        const data = await resp.json();
-        if (resp.ok && data.success) {
-            await loadMainWallet();
-            await loadWallets();
-        } else {
-            alert('Ошибка: ' + (data.error || 'не удалось установить активный реквизит'));
+        if (type === 'qr') {
+            // 1) Сделать выбранный QR основным
+            const setMainUrl = '{% url "bot_control:api_set_main_qr_hash" 0 %}'.replace('/0/', `/${id}/`);
+            await fetch(setMainUrl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+            // 2) Выключить все прочие QR и включить выбранный
+            const qrListResp = await fetch('{% url "bot_control:api_list_qr_hashes" %}');
+            const qrList = await qrListResp.json();
+            for (const q of (qrList.wallets || [])) {
+                if (q.id === id) {
+                    if (!q.is_active) {
+                        const tgl = '{% url "bot_control:api_toggle_qr_hash" 0 %}'.replace('/0/', `/${q.id}/`);
+                        await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                    }
+                } else if (q.is_active) {
+                    const tgl = '{% url "bot_control:api_toggle_qr_hash" 0 %}'.replace('/0/', `/${q.id}/`);
+                    await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                }
+            }
+            // 3) Не трогаем кошельки банков (по ТЗ требуется только отключить другие hash)
+        } else if (type === 'bw') {
+            // 1) Сделать выбранный банковский кошелёк основным
+            const setMainUrl = '{% url "dashboard:api_bank_wallets_set_main" 0 %}'.replace('/0/', `/${id}/`);
+            await fetch(setMainUrl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+            // 2) Отключить все QR hash (чтобы работал только выбранный тип реквизита)
+            const qrListResp = await fetch('{% url "bot_control:api_list_qr_hashes" %}');
+            const qrList = await qrListResp.json();
+            for (const q of (qrList.wallets || [])) {
+                if (q.is_active) {
+                    const tgl = '{% url "bot_control:api_toggle_qr_hash" 0 %}'.replace('/0/', `/${q.id}/`);
+                    await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                }
+            }
         }
+        await loadMainWallet();
+        await loadWallets();
     } catch (e) {
         console.error(e);
         alert('Ошибка запроса');

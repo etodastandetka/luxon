@@ -101,43 +101,7 @@
     
     <button class="btn btn-secondary" onclick="saveMaintenanceMessage()"><i class="fas fa-save"></i> Сохранить сообщение</button>
 </div>
-<!-- Реквизиты Demirbank (список всех hash) -->
-<div class="card">
-    <h3>Реквизиты ({{ qrhash|length }})</h3>
-    <div class="text-muted" style="font-size:13px; margin:6px 0 12px 0;">
-        Здесь показываются все реквизиты Demirbank. Активный используется ботом при выдаче QR/реквизитов.
-    </div>
-
-    {% if qrhash and qrhash|length %}
-    <div class="table-responsive">
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>Реквизит (hash)</th>
-                    <th>Название</th>
-                    <th>Статус</th>
-                    <th>Создан</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for q in qrhash %}
-                <tr>
-                    <td style="max-width:360px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ q.hash_value }}">{{ q.hash_value }}</td>
-                    <td>{{ q.account_name }}</td>
-                    <td>
-                        {% if q.is_active %}<span class="badge bg-success">АКТИВНЫЙ</span>{% else %}<span class="badge bg-secondary">не активен</span>{% endif %}
-                        {% if q.is_main %}<span class="badge bg-warning text-dark" style="margin-left:6px;">основной</span>{% endif %}
-                    </td>
-                    <td>{{ q.created_at|date:'Y-m-d H:i:s' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-        <div class="text-muted">Нет реквизитов</div>
-    {% endif %}
-</div>
+ 
 {% endblock %}
 
 {% block extra_js %}
