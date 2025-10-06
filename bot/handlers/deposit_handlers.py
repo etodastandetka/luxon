@@ -729,6 +729,7 @@ async def show_bank_selection(message: types.Message, amount: float, db, bookmak
         get_bank_links_by_type,
         enforce_amount_with_kopecks,
         update_amount_in_qr_hash_proper,
+        update_or_insert_amount_tag,
     )
 
     # Берем активный реквизит из БД или активный банковский кошелек (MBank/Bakai/Optima)
@@ -773,9 +774,10 @@ async def show_bank_selection(message: types.Message, amount: float, db, bookmak
             await message.answer("❌ Ошибка генерации QR. Попробуйте позже.")
             return
     else:
-        # Для банковских кошельков обновляем сумму в hash (тег 54) и пересчитываем 63 по исходному методу
+        # Для банковских кошельков обновляем сумму в hash (тег 54). Если 54 нет — вставляем его перед 59.
+        # Контрольная сумма 63 пересчитывается тем же методом, который был в исходном hash.
         base_hash = str(bank_wallet.get('hash_value') or '')
-        fixed_qr_hash = update_amount_in_qr_hash_proper(base_hash, amount)
+        fixed_qr_hash = update_or_insert_amount_tag(base_hash, amount)
 
     # Генерируем ссылки для банков. Оставляем все КРОМЕ "Компаньон".
     logger.info(f"[DEPOSIT] Payment payload prepared for type={bank_type}: {fixed_qr_hash[:80]}...")
