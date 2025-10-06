@@ -54,6 +54,7 @@
   const SEND_URL = '{% url "bot_control:chat_send_from_admin" %}';
   const TYPING_URL = '{% url "bot_control:chat_typing_from_admin" %}';
   function getCookie(name){ const v = `; ${document.cookie}`; const p = v.split(`; ${name}=`); if(p.length===2) return p.pop().split(';').shift(); }
+  const CSRF = getCookie('csrftoken') || '';
   function setTypingVisible(show){ const el=document.getElementById('typing'); if(!el) return; el.style.display = show ? 'block' : 'none'; }
   let lastTypingSent = 0; let typingHideTimer = null;
   function pingTyping(action='typing'){
@@ -61,7 +62,14 @@
     if(now - lastTypingSent < 1500) return;
     lastTypingSent = now;
     setTypingVisible(true);
-    try{ fetch(TYPING_URL,{method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')||''}, body: JSON.stringify({'user_id': {{ user.user_id }}, 'action': action})}); }catch(e){}
+    try{
+      fetch(TYPING_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+        credentials:'same-origin',
+        body: JSON.stringify({'user_id': {{ user.user_id }}, 'action': action})
+      });
+    }catch(e){}
     if(typingHideTimer) clearTimeout(typingHideTimer);
     typingHideTimer = setTimeout(()=> setTypingVisible(false), 3000);
   }
@@ -90,30 +98,40 @@
     row.appendChild(div); b.appendChild(row); b.scrollTop = b.scrollHeight;
   }
 
+  let __sendingMedia = false;
+  let __previewUrls = [];
   async function sendMedia(file){
     if(!file) return;
+    if(__sendingMedia) return; __sendingMedia = true;
     const t=document.getElementById('text');
     const caption=(t.value||'').trim();
     const isPhoto = file.type && file.type.startsWith('image/');
     const isVideo = file.type && file.type.startsWith('video/');
     if(!isPhoto && !isVideo){ alert('Поддерживаются только фото и видео'); return; }
     // optimistic preview
-    add({direction:'out', message: caption, kind: isPhoto ? 'photo' : 'video', media_url: URL.createObjectURL(file)});
+    const blobUrl = URL.createObjectURL(file);
+    __previewUrls.push(blobUrl);
+    add({direction:'out', message: caption, kind: isPhoto ? 'photo' : 'video', media_url: blobUrl});
     const form = new FormData();
     form.append('user_id', String({{ user.user_id }}));
     form.append('media_type', isPhoto ? 'photo' : 'video');
     form.append('caption', caption);
     form.append('file', file, file.name || (isPhoto ? 'photo.jpg' : 'video.mp4'));
     try{
-      const r = await fetch('{% url "bot_control:chat_send_media_from_admin" %}', { method:'POST', body: form, credentials:'same-origin' });
+      const r = await fetch('{% url "bot_control:chat_send_media_from_admin" %}', {
+        method:'POST',
+        body: form,
+        credentials:'same-origin',
+        headers: { 'X-CSRFToken': CSRF }
+      });
       const d = await r.json().catch(()=>({success:false,error:'bad response'}));
       if(!r.ok || !d.success){ alert((d && d.error) || 'Ошибка отправки медиа'); }
-    }catch(e){
+    } catch(e){
       alert('Ошибка сети при отправке медиа');
     } finally {
       scrollToBottom();
       load();
-    }
+      __sendingMedia = false;
   }
   function scrollToBottom(){
     try{
@@ -121,25 +139,47 @@
       window.requestAnimationFrame(()=>{ window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' }); });
     }catch(e){}
   }
+  let __loading = false;
   async function load(){
+    if(__loading) return; __loading = true;
     try{
       const r=await fetch(HISTORY_URL,{credentials:'same-origin'});
-      if(!r.ok) return; const d=await r.json(); if(!d.success) return;
-      const b=document.getElementById('board'); b.innerHTML='';
+      const b=document.getElementById('board');
+      if(!r.ok){
+        if(b){ b.innerHTML=''; }
+        const e=document.getElementById('empty'); if(e){ e.style.display='block'; e.textContent='Не удалось загрузить историю.'; }
+        scrollToBottom();
+        return;
+      }
+      const d=await r.json(); if(!d.success){
+        if(b){ b.innerHTML=''; }
+        const e=document.getElementById('empty'); if(e){ e.style.display='block'; e.textContent='История недоступна.'; }
+        scrollToBottom();
+        return;
+      }
+      b.innerHTML='';
       if(!d.items||!d.items.length){ document.getElementById('empty').style.display='block'; scrollToBottom(); return; }
       d.items.forEach(add);
       scrollToBottom();
     }catch(e){}
+    finally {
+      // Очистим временные blob-ссылки от предпросмотра
+      try { __previewUrls.forEach(u=>{ try{ URL.revokeObjectURL(u); }catch(_){} }); __previewUrls = []; } catch(_){}
+      __loading = false;
+    }
   }
+  let __sending = false;
   async function send(){
     const t=document.getElementById('text');
     const v=(t.value||'').trim(); if(!v) return;
+    if(__sending) return; __sending = true;
     t.value='';
     add({direction:'out', message:v});
     try{
       const r = await fetch(SEND_URL,{
         method:'POST',
-        headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')||''},
+        headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+        credentials:'same-origin',
         body:JSON.stringify({'user_id': {{ user.user_id }}, 'message': v})
       });
       const d = await r.json().catch(()=>({success:false,error:'bad response'}));
@@ -152,18 +192,21 @@
       // Обновим историю, чтобы зафиксировать итоговое состояние
       load();
       setTypingVisible(false);
+      __sending = false;
     }
   }
 
   document.addEventListener('DOMContentLoaded',()=>{
     load();
-    document.getElementById('send').addEventListener('click', send);
+    const sendBtn = document.getElementById('send'); if (sendBtn) sendBtn.addEventListener('click', send);
     const inputEl = document.getElementById('text');
     try{ inputEl.focus(); }catch(e){}
-    inputEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); else pingTyping('typing'); });
-    inputEl.addEventListener('input',()=>{ if(inputEl.value.trim()) pingTyping('typing'); });
-    document.getElementById('attach').addEventListener('click', ()=> document.getElementById('file').click());
-    document.getElementById('file').addEventListener('change', (e)=>{ const f=e.target.files && e.target.files[0]; if(f){ const kind = f.type && f.type.startsWith('video/') ? 'upload_video' : 'upload_photo'; pingTyping(kind); } sendMedia(f); e.target.value=''; });
+    if (inputEl) {
+      inputEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter') send(); else pingTyping('typing'); });
+      inputEl.addEventListener('input',()=>{ if(inputEl.value.trim()) pingTyping('typing'); });
+    }
+    const attachBtn = document.getElementById('attach'); if (attachBtn) attachBtn.addEventListener('click', ()=> { const fEl=document.getElementById('file'); if(fEl) fEl.click(); });
+    const fileEl = document.getElementById('file'); if (fileEl) fileEl.addEventListener('change', (e)=>{ const f=e.target.files && e.target.files[0]; if(f){ const kind = f.type && f.type.startsWith('video/') ? 'upload_video' : 'upload_photo'; pingTyping(kind); } sendMedia(f); e.target.value=''; });
     setInterval(load, 4000);
     // Дополнительно прокрутим страницу к низу, чтобы панель ввода была видна сразу
     scrollToBottom();

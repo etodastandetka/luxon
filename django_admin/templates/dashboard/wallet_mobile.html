@@ -92,10 +92,51 @@ async function toggleBankWallet(id) {
 
 async function setMainBankWallet(id) {
   try {
+    // 1) Сделать выбранный банковский кошелёк основным
     const res = await fetch(`/api/bank-wallets/${id}/set-main/`, { method:'POST' });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+
+    // 2) Пройтись по всем банковским кошелькам: активен только выбранный
+    try {
+      const listRes = await fetch('/api/bank-wallets/');
+      const listData = await listRes.json();
+      const items = (listData && listData.items) || [];
+      for (const w of items) {
+        if (w.id === id) {
+          if (!w.is_active) {
+            await fetch(`/api/bank-wallets/${w.id}/toggle/`, { method:'POST' });
+          }
+        } else if (w.is_active) {
+          await fetch(`/api/bank-wallets/${w.id}/toggle/`, { method:'POST' });
+        }
+      }
+    } catch(e) { console.warn('Normalize bank wallets failed', e); }
+
+    // 3) Выключить все QR Demirbank (эксклюзивность между типами)
+    try {
+      const qrList = document.querySelectorAll('[onclick^="toggleQR("]');
+      // Если на странице нет явного списка, дергаем API
+      const alt = await fetch('/bot_control/api/qr-hashes/');
+      const altData = await alt.json().catch(()=>({}));
+      // У нас нет общего списка всех id через этот API, поэтому fallback через DOM остаётся
+      // Дополнительно попробуем получить детальный список, если доступен api_list_qr_hashes
+      try {
+        const list = await fetch('/bot_control/api/qr-hashes/list/');
+        const listJson = await list.json().catch(()=>({}));
+        const arr = (listJson && listJson.wallets) || [];
+        for (const q of arr) {
+          if (q.is_active) {
+            await fetch(`/bot_control/api/qr-hashes/${q.id}/toggle/`, { method:'POST' });
+          }
+        }
+      } catch(_) {
+        // Ничего
+      }
+    } catch(e) { console.warn('Deactivate QR on bank main select failed', e); }
+
     await fetchBankWallets();
+    location.reload();
   } catch(e) { alert('Ошибка: ' + e.message); }
 }
 
@@ -145,44 +186,7 @@ document.addEventListener('DOMContentLoaded', fetchBankWallets);
     {% endfor %}
 </div>
 
-<!-- Список QR хешей -->
-<div class="qr-hashes-list" style="margin-bottom: 20px;">
-    
-    {% for qr in qr_codes %}
-    <div class="qr-item" style="background: #1a1a1a; border-radius: 12px; padding: 16px; border: 1px solid #333; margin-bottom: 12px; {% if qr.is_main %}border-left: 4px solid #ffc107;{% endif %}">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="flex: 1;">
-                <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                    <div style="font-size: 14px; font-weight: 600; color: #fff;">{{ qr.account_name }}</div>
-                    {% if qr.is_main %}
-                    <span style="background: #ffc107; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px;">ОСНОВНОЙ</span>
-                    {% endif %}
-                </div>
-                <div style="font-size: 11px; color: #999; font-family: monospace; word-break: break-all; margin-bottom: 4px;">{{ qr.hash_value|truncatechars:50 }}...</div>
-                <div style="font-size: 10px; color: #666;">
-                    {% if qr.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}
-                    {% if qr.gmail_email %} • 📧 {{ qr.gmail_email }}{% endif %}
-                </div>
-            </div>
-            <div style="margin-left: 12px; display: flex; gap: 8px;">
-                {% if not qr.is_main %}
-                <button onclick="setMainQR({{ qr.id }})" style="background: #ffc107; border: none; color: #000; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
-                    <i class="fas fa-star"></i>
-                </button>
-                {% endif %}
-                <button onclick="toggleQR({{ qr.id }})" style="background: {% if qr.is_active %}#ef4444{% else %}#00ff88{% endif %}; border: none; color: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
-                    <i class="fas fa-{% if qr.is_active %}times{% else %}check{% endif %}"></i>
-                </button>
-                <button onclick="deleteQR({{ qr.id }})" style="background: #dc3545; border: none; color: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <!-- нет QR хешей -->
-    {% endfor %}
-</div>
+<!-- Удалён блок "Список QR хешей" по требованию: списки снизу — только реквизиты и кошельки -->
 
 <!-- Статистика скрыта по просьбе: удалён блок с показателями -->
 
@@ -318,25 +322,45 @@ async function addQRHash() {
 
 // Установка основного QR хеша
 async function setMainQR(qrId) {
-    if (confirm('Сделать этот QR хеш основным?')) {
-        try {
-            const response = await fetch(`/bot_control/api/qr-hashes/${qrId}/set-main/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-            
-            if (response.ok) {
-                alert('QR хеш установлен как основной!');
-                location.reload();
-            } else {
-                alert('Ошибка установки основного хеша');
-            }
-        } catch (error) {
-            console.error('Ошибка:', error);
-            alert('Ошибка установки основного хеша');
+    if (!confirm('Сделать этот QR хеш основным и отключить банковские кошельки?')) return;
+    try {
+      // 1) Сделать выбранный QR основным и активным
+      const response = await fetch(`/bot_control/api/qr-hashes/${qrId}/set-main/`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      if (!response.ok) throw new Error('Ошибка установки основного хеша');
+
+      // 2) Отключить все прочие QR
+      try {
+        const list = await fetch('/bot_control/api/qr-hashes/list/');
+        const listJson = await list.json().catch(()=>({}));
+        const arr = (listJson && listJson.wallets) || [];
+        for (const q of arr) {
+          if (q.id !== qrId && q.is_active) {
+            await fetch(`/bot_control/api/qr-hashes/${q.id}/toggle/`, { method:'POST' });
+          }
         }
+        // Убедимся, что выбранный активен
+        const self = arr.find(x=>x.id===qrId);
+        if (self && !self.is_active) {
+          await fetch(`/bot_control/api/qr-hashes/${qrId}/toggle/`, { method:'POST' });
+        }
+      } catch(e) { console.warn('Normalize QR list failed', e); }
+
+      // 3) Отключить все банковские кошельки
+      try {
+        const listRes = await fetch('/api/bank-wallets/');
+        const listData = await listRes.json();
+        const items = (listData && listData.items) || [];
+        for (const w of items) {
+          if (w.is_active) {
+            await fetch(`/api/bank-wallets/${w.id}/toggle/`, { method:'POST' });
+          }
+        }
+      } catch(e) { console.warn('Deactivate bank wallets on QR select failed', e); }
+
+      location.reload();
+    } catch (error) {
+      console.error('Ошибка:', error);
+      alert('Ошибка установки основного хеша');
     }
 }
 
