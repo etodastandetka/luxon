@@ -408,7 +408,16 @@ def api_bank_wallets_delete(request, wid: int):
 
 def bot_settings_page(request):
     """Страница настроек бота (новая)"""
-    return render(request, 'bot_control/bot_settings.html')
+    try:
+        from .models import BankWallet, QRHash
+        wallets = list(BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at'))
+        qrhash = list(QRHash.objects.all().order_by('-is_main', '-is_active', '-created_at'))
+    except Exception:
+        wallets, qrhash = [], []
+    return render(request, 'bot_control/bot_settings.html', {
+        'ssr_bank_wallets': wallets,
+        'ssr_qr_wallets': qrhash,
+    })
 
 @csrf_exempt
 def api_request_status(request, request_id: int):

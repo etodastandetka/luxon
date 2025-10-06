@@ -512,9 +512,10 @@ async function loadSettings() {
 // Загрузка текущего основного кошелька/реквизита из QRHash и BankWallets
 async function loadMainWallet() {
     try {
+        const ts = Date.now();
         const [qrResp, bwResp] = await Promise.all([
-            fetch('{% url "bot_control:api_list_qr_hashes" %}'),
-            fetch('{% url "dashboard:api_bank_wallets" %}')
+            fetch('{% url "bot_control:api_list_qr_hashes" %}?t=' + ts),
+            fetch('{% url "dashboard:api_bank_wallets" %}?t=' + ts)
         ]);
         let qr = { wallets: [] }, bw = { items: [] };
         try { qr = await qrResp.json(); } catch(e) {}
@@ -552,6 +553,7 @@ async function loadWallets() {
         let qrCount = 0;
         try {
             const qr = await qrResp.json();
+            console.debug('QR raw:', qr);
             const qrItems = Array.isArray(qr.wallets) ? qr.wallets : [];
             console.log('QR items:', qrItems.length);
             if (qrItems.length) {
@@ -571,6 +573,7 @@ async function loadWallets() {
         let bwCount = 0;
         try {
             const bw = await bwResp.json();
+            console.debug('BW raw:', bw);
             const items = Array.isArray(bw.items) ? bw.items : [];
             console.log('BankWallet items:', items.length);
             if (items.length) {
