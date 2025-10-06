@@ -532,22 +532,25 @@ async function loadSettings() {
     } finally { __loadingSettings = false; }
 }
 
-// Загрузка текущего основного кошелька/реквизита из QRHash и BankWallets
+// Загрузка текущего основного кошелька/реквизита из Requisites, QRHash и BankWallets (приоритет: Requisite > QR > Bank)
 async function loadMainWallet() {
     try {
         const ts = Date.now();
-        const [qrResp, bwResp] = await Promise.all([
+        const [qrResp, bwResp, rqResp] = await Promise.all([
             fetch('{% url "bot_control:api_list_qr_hashes" %}?t=' + ts),
-            fetch('{% url "dashboard:api_bank_wallets" %}?t=' + ts)
+            fetch('{% url "dashboard:api_bank_wallets" %}?t=' + ts),
+            fetch('{% url "dashboard:api_requisites_list" %}?t=' + ts)
         ]);
-        let qr = { wallets: [] }, bw = { items: [] };
+        let qr = { wallets: [] }, bw = { items: [] }, rq = { requisites: [] };
         try { qr = await qrResp.json(); } catch(e) {}
         try { bw = await bwResp.json(); } catch(e) {}
+        try { rq = await rqResp.json(); } catch(e) {}
+        const rqMain = (rq.requisites || []).find(r => r.is_active);
         const qrMain = (qr.wallets || []).find(w => w.is_main);
         const bwMain = (bw.items || []).find(w => w.is_main);
-        const label = qrMain
-            ? (qrMain.account_name || '(Demirbank)')
-            : (bwMain ? `${(bwMain.bank_code || '').toUpperCase()} • ${bwMain.account_name || 'Wallet'}` : '—');
+        const label = rqMain
+            ? `${rqMain.value}`
+            : (qrMain ? (qrMain.account_name || '(Demirbank)') : (bwMain ? `${(bwMain.bank_code || '').toUpperCase()} • ${bwMain.account_name || 'Wallet'}` : '—'));
         document.getElementById('current-main-wallet').textContent = label || '—';
     } catch (e) {
         console.error('Ошибка загрузки основного кошелька:', e);
@@ -555,12 +558,14 @@ async function loadMainWallet() {
     }
 }
 
-// Загрузить QRHash (Demirbank) и BankWallets, собрать единый селект
+// Загрузить QRHash (Demirbank), BankWallets и Requisites, собрать единый селект
 async function loadWallets() {
     try {
-        const [qrResp, bwResp] = await Promise.all([
-            fetch('{% url "bot_control:api_list_qr_hashes" %}'),
-            fetch('{% url "dashboard:api_bank_wallets" %}')
+        const ts = Date.now();
+        const [qrResp, bwResp, rqResp] = await Promise.all([
+            fetch('{% url "bot_control:api_list_qr_hashes" %}?t=' + ts),
+            fetch('{% url "dashboard:api_bank_wallets" %}?t=' + ts),
+            fetch('{% url "dashboard:api_requisites_list" %}?t=' + ts)
         ]);
         const select = document.getElementById('wallet-select');
         select.innerHTML = '<option value="">Выберите реквизит…</option>';
