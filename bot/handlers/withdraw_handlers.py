@@ -280,8 +280,8 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
             resize_keyboard=True,
         )
 
-        # Формируем текст с отображением сохранённого ID, если он есть
-        base_text = translations.get('enter_withdraw_id', '🆔 Введите ID вашего счета для вывода:')
+        # Формируем текст как в пополнении (единый стиль), добавляя текущий ID
+        base_text = translations.get('enter_id', '🆔 Отправьте ID вашего счета')
         if saved_id:
             text_msg = f"{base_text}\n\n<b>Текущий ID:</b> <code>{saved_id}</code>"
         else:
@@ -296,7 +296,7 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
                 logger.warning(f"Не удалось отправить фото примера ID: {e}")
                 await message.answer(text_msg, reply_markup=keyboard, parse_mode="HTML")
         else:
-            await message.answer(text_msg, reply_markup=keyboard)
+            await message.answer(text_msg, reply_markup=keyboard, parse_mode="HTML")
 
     except Exception as e:
         logger.error(f"Ошибка при обработке номера телефона для вывода: {e}")
