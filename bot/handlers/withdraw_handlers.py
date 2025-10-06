@@ -280,16 +280,21 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
             resize_keyboard=True,
         )
 
-        text_msg = translations['enter_withdraw_id']
+        # Формируем текст с отображением сохранённого ID, если он есть
+        base_text = translations.get('enter_withdraw_id', '🆔 Введите ID вашего счета для вывода:')
+        if saved_id:
+            text_msg = f"{base_text}\n\n<b>Текущий ID:</b> <code>{saved_id}</code>"
+        else:
+            text_msg = base_text
 
         photo_path = Path(f"images/{bookmaker}-id.jpg")
         if photo_path.exists():
             try:
                 photo = FSInputFile(str(photo_path))
-                await message.answer_photo(photo=photo, caption=text_msg, reply_markup=keyboard)
+                await message.answer_photo(photo=photo, caption=text_msg, reply_markup=keyboard, parse_mode="HTML")
             except Exception as e:
                 logger.warning(f"Не удалось отправить фото примера ID: {e}")
-                await message.answer(text_msg, reply_markup=keyboard)
+                await message.answer(text_msg, reply_markup=keyboard, parse_mode="HTML")
         else:
             await message.answer(text_msg, reply_markup=keyboard)
 
