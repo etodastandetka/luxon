@@ -146,7 +146,7 @@ async function deleteBankWallet(id) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // init
+    try { fetchBankWallets(); } catch(e) { console.warn('init wallets failed', e); }
 });
 
 // Добавление QR хеша
@@ -219,12 +219,12 @@ async function setMainQR(qrId) {
 
       // 3) Отключить все банковские кошельки
       try {
-        const listRes = await fetch('/api/bank-wallets/');
+        const listRes = await fetch('/dashboard/api/bank-wallets/');
         const listData = await listRes.json();
         const items = (listData && listData.items) || [];
         for (const w of items) {
           if (w.is_active) {
-            await fetch(`/api/bank-wallets/${w.id}/toggle/`, { method:'POST' });
+            await fetch(`/dashboard/api/bank-wallets/${w.id}/toggle/`, { method:'POST' });
           }
         }
       } catch(e) { console.warn('Deactivate bank wallets on QR select failed', e); }
@@ -353,7 +353,24 @@ async function deleteQR(qrId) {
 
   <div class="stat-card" style="background:#1a1a1a; border-radius:12px; padding: 16px; border:1px solid #333;">
     <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Кошельки банков</h3>
-    <div id="bw_list" style="display:flex; flex-direction:column; gap:10px;"></div>
+    <div id="bw_list" style="display:flex; flex-direction:column; gap:10px;">
+      {% if bank_wallets %}
+        {% for w in bank_wallets %}
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid #222; border-radius:10px; background:#141414;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="color:#fff; font-weight:600; font-size:13px;">{{ w.bank_code|upper }} • {{ w.account_name }}</div>
+            <div style="color:#9aa4b2; font-size:11px;">{{ w.hash_value }}</div>
+            <div style="color:#888; font-size:10px;">{% if w.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}{% if w.is_main %} • ⭐ Основной{% endif %}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button onclick="toggleBankWallet({{ w.id }})" style="background:{% if w.is_active %}#ef4444{% else %}#00ff88{% endif %}; border:none; color:#000; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
+            <button onclick="setMainBankWallet({{ w.id }})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Сделать основным</button>
+            <button onclick="deleteBankWallet({{ w.id }})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Удалить</button>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
   </div>
 </div>
 

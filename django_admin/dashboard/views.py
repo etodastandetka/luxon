@@ -18,9 +18,10 @@ def history(request):
 
 def wallet(request):
     """Страница кошелька"""
-    from bot_control.models import BankSettings, QRHash
+    from bot_control.models import BankSettings, QRHash, BankWallet
     banks = BankSettings.objects.all()
     qr_codes = QRHash.objects.all()
+    bank_wallets = BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at')
 
     # Читаем реквизиты из bot/universal_bot.db
     requisites = []
@@ -68,6 +69,7 @@ def wallet(request):
         'banks': banks,
         'banks_count': banks.count(),
         'qr_codes_count': qr_codes.count(),
+        'bank_wallets': bank_wallets,
         'requisites': requisites,
         'requisites_count': len(requisites),
     }
