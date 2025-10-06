@@ -453,22 +453,12 @@ def api_requisites_set_active(request, rid: int):
                 value TEXT NOT NULL,
                 is_active INTEGER NOT NULL DEFAULT 0,
                 name TEXT,
-                email TEXT,
-                password TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
         cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
         cur.execute('UPDATE requisites SET is_active = 1 WHERE id = ?', (rid,))
         conn.commit()
         conn.close()
-        return JsonResponse({'success': True})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-
-@csrf_exempt
-def api_requisites_delete(request, rid: int):
+        # Взаимоисключаемость: при активации реквизита выключаем все QR и банковские кошельки
     """DELETE: удалить реквизит."""
     if request.method != 'DELETE':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
