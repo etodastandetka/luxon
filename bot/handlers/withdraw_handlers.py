@@ -280,12 +280,15 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
             resize_keyboard=True,
         )
 
-        # Формируем текст как в пополнении (единый стиль), добавляя текущий ID
-        base_text = translations.get('enter_id', '🆔 Отправьте ID вашего счета')
-        if saved_id:
-            text_msg = f"{base_text}\n\n<b>Текущий ID:</b> <code>{saved_id}</code>"
-        else:
-            text_msg = base_text
+        # Формируем текст в точности как в пополнении, без вставки текущего ID в текст
+        brand = (bookmakers.get(bookmaker, {}).get('name') if bookmakers and bookmaker in bookmakers else bookmaker or '').upper()
+        if not brand:
+            brand = '1XBET'
+        text_msg = (
+            f"📱 Введите ваш ID {brand}\n\n"
+            f"⚠️ Проверьте внимательно!\n"
+            f"❌ Ошибки не исправляются."
+        )
 
         # Пытаемся найти фото-пример для выбранного букмекера по нескольким путям (абсолютные пути)
         base_images = Path(__file__).resolve().parents[2] / 'images'
