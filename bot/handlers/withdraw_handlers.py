@@ -269,7 +269,7 @@ async def handle_withdraw_id_input(message: types.Message, db, bookmakers):
         translations = get_translation(language)
             
         # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РЅР°Р¶Р°Р» Р»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ "РќР°Р·Р°Рґ"
-        if text == translations.get('back_to_menu', 'рџ”™ РќР°Р·Р°Рґ'):
+        if text == translations.get('back_to_menu', '🔙 Назад'):
             await show_main_menu(message, language)
             db.save_user_data(user_id, 'current_state', '')
             return
@@ -293,7 +293,7 @@ async def handle_withdraw_id_input(message: types.Message, db, bookmakers):
         
         # РЈР±РёСЂР°РµРј РєРЅРѕРїРєРё Рё РѕСЃС‚Р°РІР»СЏРµРј С‚РѕР»СЊРєРѕ "РќР°Р·Р°Рґ РІ РјРµРЅСЋ"
         keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="рџ”™ РќР°Р·Р°Рґ РІ РјРµРЅСЋ")]],
+            keyboard=[[KeyboardButton(text="🔙 Назад в меню")]],
             resize_keyboard=True
         )
         
@@ -316,7 +316,7 @@ async def handle_withdraw_id_input(message: types.Message, db, bookmakers):
             
     except Exception as e:
         logger.error(f"РћС€РёР±РєР° РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ ID РґР»СЏ РІС‹РІРѕРґР°: {e}")
-        await message.answer("РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР°")
+        await message.answer("Произошла ошибка")
     
 async def process_qr_photo(message: types.Message, db, bookmakers):
     """РћР±СЂР°Р±РѕС‚РєР° QR-С„РѕС‚Рѕ - РїРµСЂРµС…РѕРґ Рє РЁР°РіСѓ 3: Р’РІРѕРґ РЅРѕРјРµСЂР° С‚РµР»РµС„РѕРЅР°"""
@@ -344,7 +344,7 @@ async def process_qr_photo(message: types.Message, db, bookmakers):
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text=str(saved_phone))] if saved_phone else [],
-                [KeyboardButton(text=translations.get('back_to_menu', 'рџ”™ РќР°Р·Р°Рґ'))]
+                [KeyboardButton(text=translations.get('back_to_menu', '🔙 Назад'))]
             ],
             resize_keyboard=True
         )
@@ -375,7 +375,7 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
         # РџСЂРѕРІРµСЂСЏРµРј С„РѕСЂРјР°С‚ РЅРѕРјРµСЂР° С‚РµР»РµС„РѕРЅР° (РґРѕР»Р¶РµРЅ РЅР°С‡РёРЅР°С‚СЊСЃСЏ СЃ 996 Рё СЃРѕРґРµСЂР¶Р°С‚СЊ 12 С†РёС„СЂ)
         phone_clean = text.strip().replace('+', '').replace(' ', '').replace('-', '')
         if not phone_clean.isdigit() or len(phone_clean) != 12 or not phone_clean.startswith('996'):
-            await message.answer("вќЊ РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РЅРѕРјРµСЂР°. Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РІ С„РѕСЂРјР°С‚Рµ: 996505000000")
+            await message.answer("❌ Неверный формат номера. Введите номер в формате: 996505000000")
             return
             
         # РЎРѕС…СЂР°РЅСЏРµРј РЅРѕРјРµСЂ С‚РµР»РµС„РѕРЅР°
