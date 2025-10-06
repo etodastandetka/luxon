@@ -548,7 +548,7 @@ async function loadWallets() {
                 opt.value = `qr:${q.id}`;
                 opt.dataset.type = 'qr';
                 opt.dataset.id = String(q.id);
-                opt.textContent = `${q.account_name || q.id} ${q.is_active ? '• активный' : ''}`.trim();
+                opt.textContent = `${q.account_name || q.id}`.trim();
                 if (q.is_main) opt.selected = true;
                 select.appendChild(opt);
             });
@@ -562,7 +562,7 @@ async function loadWallets() {
                 opt.value = `bw:${w.id}`;
                 opt.dataset.type = 'bw';
                 opt.dataset.id = String(w.id);
-                opt.textContent = `${(w.bank_code || '').toUpperCase()} • ${w.account_name} ${w.is_active ? '• активный' : ''}`.trim();
+                opt.textContent = `${(w.bank_code || '').toUpperCase()} • ${w.account_name}`.trim();
                 if (w.is_main) opt.selected = true;
                 select.appendChild(opt);
             });
@@ -600,12 +600,38 @@ async function setMainWalletSelected() {
                     await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
                 }
             }
-            // 3) Не трогаем кошельки банков (по ТЗ требуется только отключить другие hash)
+            // 3) Отключить ВСЕ банковские кошельки (эксклюзивность между типами)
+            try {
+                const bwResp = await fetch('{% url "dashboard:api_bank_wallets" %}');
+                const bw = await bwResp.json();
+                for (const w of (bw.items || [])) {
+                    if (w.is_active) {
+                        const tgl = '{% url "dashboard:api_bank_wallets_toggle" 0 %}'.replace('/0/', `/${w.id}/`);
+                        await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                    }
+                }
+            } catch(e) { console.warn('BW deactivate on QR select failed', e); }
         } else if (type === 'bw') {
             // 1) Сделать выбранный банковский кошелёк основным
             const setMainUrl = '{% url "dashboard:api_bank_wallets_set_main" 0 %}'.replace('/0/', `/${id}/`);
             await fetch(setMainUrl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
-            // 2) Отключить все QR hash (чтобы работал только выбранный тип реквизита)
+            // 2) Пройтись по всем банковским кошелькам: активен только выбранный
+            try {
+                const bwResp = await fetch('{% url "dashboard:api_bank_wallets" %}');
+                const bw = await bwResp.json();
+                for (const w of (bw.items || [])) {
+                    if (w.id === id) {
+                        if (!w.is_active) {
+                            const tgl = '{% url "dashboard:api_bank_wallets_toggle" 0 %}'.replace('/0/', `/${w.id}/`);
+                            await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                        }
+                    } else if (w.is_active) {
+                        const tgl = '{% url "dashboard:api_bank_wallets_toggle" 0 %}'.replace('/0/', `/${w.id}/`);
+                        await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                    }
+                }
+            } catch(e) { console.warn('BW toggle normalize failed', e); }
+            // 3) Отключить все QR hash (чтобы работал только выбранный тип реквизита)
             const qrListResp = await fetch('{% url "bot_control:api_list_qr_hashes" %}');
             const qrList = await qrListResp.json();
             for (const q of (qrList.wallets || [])) {
