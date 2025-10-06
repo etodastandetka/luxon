@@ -129,6 +129,7 @@ async function toggleBankWallet(id) {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
+    try { await refreshRequisites(); } catch (_) {}
   } catch(e) { alert('Ошибка: ' + e.message); }
 }
 
@@ -141,11 +142,13 @@ async function deleteBankWallet(id) {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
+    try { await refreshRequisites(); } catch (_) {}
   } catch(e) { alert('Ошибка: ' + e.message); }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     try { fetchBankWallets(); } catch(e) { console.warn('init wallets failed', e); }
+    try { refreshRequisites(); } catch(e) { console.warn('init requisites failed', e); }
 });
 
 // Добавление QR хеша
@@ -374,26 +377,28 @@ async function deleteQR(qrId) {
 <div class="requisites-section" style="margin-top: 16px;">
   <div class="stat-card" style="background:#1a1a1a; border-radius:12px; padding: 16px; border:1px solid #333;">
     <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Реквизиты ({{ requisites_count }})</h3>
-    {% if requisites %}
-      {% for r in requisites %}
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #222;">
-        <div style="flex:1;">
-          <div style="color:#fff; font-weight:600; font-size:13px;">
-            {{ r.value }} {% if r.is_active %}<span style="background:#00ff88; color:#000; border-radius:4px; padding:2px 6px; font-size:10px; margin-left:6px;">АКТИВНЫЙ</span>{% endif %}
+    <div id="rq_list">
+      {% if requisites %}
+        {% for r in requisites %}
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #222;">
+          <div style="flex:1;">
+            <div style="color:#fff; font-weight:600; font-size:13px;">
+              {{ r.value }} {% if r.is_active %}<span style="background:#00ff88; color:#000; border-radius:4px; padding:2px 6px; font-size:10px; margin-left:6px;">АКТИВНЫЙ</span>{% endif %}
+            </div>
+            <div style="color:#888; font-size:11px; margin-top:2px;">{{ r.created_at }}</div>
           </div>
-          <div style="color:#888; font-size:11px; margin-top:2px;">{{ r.created_at }}</div>
+          <div style="display:flex; gap:8px;">
+            {% if not r.is_active %}
+            <button onclick="setActiveRequisite({{ r.id }})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Сделать активным</button>
+            {% endif %}
+            <button onclick="deleteRequisite({{ r.id }})" style="background:#ef4444; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Удалить</button>
+          </div>
         </div>
-        <div style="display:flex; gap:8px;">
-          {% if not r.is_active %}
-          <button onclick="setActiveRequisite({{ r.id }})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Сделать активным</button>
-          {% endif %}
-          <button onclick="deleteRequisite({{ r.id }})" style="background:#ef4444; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Удалить</button>
-        </div>
-      </div>
-      {% endfor %}
-    {% else %}
-      <div style="text-align:center; color:#888; padding:20px;">Реквизиты не добавлены</div>
-    {% endif %}
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center; color:#888; padding:20px;">Реквизиты не добавлены</div>
+      {% endif %}
+    </div>
   </div>
 </div>
 

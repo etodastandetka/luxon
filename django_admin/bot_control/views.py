@@ -142,6 +142,28 @@ def api_bank_settings_toggle(request, bank_id: int):
                 QRHash.objects.filter(is_active=True).update(is_active=False)
                 # Деактивируем кошельки других банков
                 BankWallet.objects.exclude(bank_code=b.bank_code).update(is_active=False)
+                # Деактивируем активные реквизиты (SQLite requisites)
+                try:
+                    import sqlite3
+                    from django.conf import settings as dj_settings
+                    conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
+                    cur = conn.cursor()
+                    cur.execute('''
+                        CREATE TABLE IF NOT EXISTS requisites (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            value TEXT NOT NULL,
+                            is_active INTEGER NOT NULL DEFAULT 0,
+                            name TEXT,
+                            email TEXT,
+                            password TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
+                    cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
+                    conn.commit()
+                    conn.close()
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -370,6 +392,28 @@ def api_bank_wallets_toggle(request, wid: int):
                 from .models import BankWallet as BW2, QRHash as Q2
                 BW2.objects.exclude(id=w.id).update(is_active=False)
                 Q2.objects.filter(is_active=True).update(is_active=False)
+                # Деактивируем активные реквизиты (SQLite requisites)
+                try:
+                    import sqlite3
+                    from django.conf import settings as dj_settings
+                    conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
+                    cur = conn.cursor()
+                    cur.execute('''
+                        CREATE TABLE IF NOT EXISTS requisites (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            value TEXT NOT NULL,
+                            is_active INTEGER NOT NULL DEFAULT 0,
+                            name TEXT,
+                            email TEXT,
+                            password TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
+                    cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
+                    conn.commit()
+                    conn.close()
+                except Exception:
+                    pass
             except Exception:
                 pass
 
