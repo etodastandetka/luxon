@@ -592,8 +592,29 @@ async function loadWallets() {
             }
         } catch(e) { console.warn('BW list parse failed', e); }
 
+        // Группа Requisites (SQLite Demirbank реквизиты)
+        let rqCount = 0;
+        try {
+            const rq = await rqResp.json();
+            console.debug('RQ raw:', rq);
+            const items = Array.isArray(rq.requisites) ? rq.requisites : [];
+            console.log('Requisites items:', items.length);
+            if (items.length) {
+                const grp = document.createElement('optgroup');
+                grp.label = 'Реквизиты (Demirbank)';
+                items.forEach(r => {
+                    const label = `${r.value}`;
+                    const opt = makeOpt(`rq:${r.id}`, label);
+                    if (r.is_active) opt.selected = true;
+                    grp.appendChild(opt);
+                });
+                select.appendChild(grp);
+                rqCount = items.length;
+            }
+        } catch(e) { console.warn('RQ list parse failed', e); }
+
         const info = document.getElementById('wallets-count');
-        if (info) info.textContent = `Найдено: QR ${qrCount}, кошельков ${bwCount}`;
+        if (info) info.textContent = `Найдено: QR ${qrCount}, кошельков ${bwCount}, реквизитов ${rqCount}`;
 
     } catch (e) {
         console.error('Ошибка загрузки списка кошельков:', e);
@@ -607,7 +628,7 @@ async function setMainWalletSelected() {
     if (!raw) { alert('Выберите реквизит'); return; }
     const [type, idStr] = raw.split(':');
     const id = parseInt(idStr || '0', 10);
-    if (!id || (type !== 'qr' && type !== 'bw')) { alert('Неверный выбор'); return; }
+    if (!id || (type !== 'qr' && type !== 'bw' && type !== 'rq')) { alert('Неверный выбор'); return; }
     try {
         if (type === 'qr') {
             // 1) Сделать выбранный QR основным
@@ -667,6 +688,44 @@ async function setMainWalletSelected() {
                     await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
                 }
             }
+            // 4) Отключить все Requisites (снять активный флаг)
+            try {
+                const rqResp = await fetch('{% url "dashboard:api_requisites_list" %}');
+                const rq = await rqResp.json();
+                for (const r of (rq.requisites || [])) {
+                    if (r.is_active && r.id) {
+                        // Снимем активность, затем включим нужный тип (bw)
+                        // Нет отдельного API для деактивации всех, поэтому перевыбор сделаем при выборе rq
+                        // Здесь пропустим
+                    }
+                }
+            } catch(e) {}
+        } else if (type === 'rq') {
+            // Выбор реквизита из SQLite: делаем его активным, выключаем QR и все банковские кошельки
+            const setActiveUrl = '{% url "dashboard:api_requisites_set_active" rid=0 %}'.replace('/0/', `/${id}/`);
+            await fetch(setActiveUrl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+            // Отключаем QR
+            try {
+                const qrListResp = await fetch('{% url "bot_control:api_list_qr_hashes" %}');
+                const qrList = await qrListResp.json();
+                for (const q of (qrList.wallets || [])) {
+                    if (q.is_active) {
+                        const tgl = '{% url "bot_control:api_toggle_qr_hash" 0 %}'.replace('/0/', `/${q.id}/`);
+                        await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                    }
+                }
+            } catch(e) { console.warn('QR deactivate on RQ select failed', e); }
+            // Отключаем все банковские кошельки
+            try {
+                const bwResp = await fetch('{% url "dashboard:api_bank_wallets" %}');
+                const bw = await bwResp.json();
+                for (const w of (bw.items || [])) {
+                    if (w.is_active) {
+                        const tgl = '{% url "dashboard:api_bank_wallets_toggle" 0 %}'.replace('/0/', `/${w.id}/`);
+                        await fetch(tgl, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                    }
+                }
+            } catch(e) { console.warn('BW deactivate on RQ select failed', e); }
         }
         await loadMainWallet();
         await loadWallets();
