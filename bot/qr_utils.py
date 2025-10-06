@@ -469,7 +469,14 @@ def update_amount_in_qr_hash_proper(qr_hash: str, new_amount: float) -> str:
     """
     import re
 
+    def _normalize_qr_input(s: str) -> str:
+        """Нормализация входа: убираем переводы строк и табы, триммим края, но СОХРАНЯЕМ обычные пробелы внутри TLV (важно для 59)."""
+        s = str(s).strip()
+        return s.replace("\n", "").replace("\r", "").replace("\t", "")
+
     try:
+        # 0) Нормализация без удаления внутренних пробелов
+        qr_hash = _normalize_qr_input(qr_hash)
         # Снять существующую контрольную сумму в конце
         qr_wo_checksum = re.sub(r"6304[0-9A-Fa-f]{4}$", "", qr_hash)
         qr_wo_checksum = re.sub(r"63[0-9A-Fa-f]{4}$", "", qr_wo_checksum)
@@ -536,6 +543,8 @@ def update_amount_in_qr_hash_proper(qr_hash: str, new_amount: float) -> str:
 def update_or_insert_amount_tag(qr_hash: str, new_amount: float) -> str:
     """Обновляет сумму 54. Если тега 54 нет, вставляет его перед тегом 59 и пересчитывает 63 тем же методом, что у исходного QR."""
     try:
+        # 0) Нормализуем: убираем все пробельные символы из исходного hash
+        qr_hash = "".join(str(qr_hash).split())
         updated = update_amount_in_qr_hash_proper(qr_hash, new_amount)
         if updated != qr_hash:
             return updated
