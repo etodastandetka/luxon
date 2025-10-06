@@ -543,7 +543,8 @@ async function loadWallets() {
         // Demirbank (QR)
         try {
             const qr = await qrResp.json();
-            (qr.wallets || []).forEach(q => {
+            const qrItems = Array.isArray(qr.wallets) ? qr.wallets : [];
+            qrItems.forEach(q => {
                 const opt = document.createElement('option');
                 opt.value = `qr:${q.id}`;
                 opt.dataset.type = 'qr';
@@ -552,6 +553,24 @@ async function loadWallets() {
                 if (q.is_main) opt.selected = true;
                 select.appendChild(opt);
             });
+            // Fallback: если пусто, попробуем старый API api_qr_hashes (вернёт только основной)
+            if (qrItems.length === 0) {
+                try {
+                    const alt = await fetch('{% url "bot_control:api_qr_hashes" %}');
+                    if (alt.ok) {
+                        const altData = await alt.json();
+                        const mh = (altData && altData.qr_hashes) ? altData.qr_hashes : null;
+                        if (mh && (mh.demirbank || mh.main_account)) {
+                            const opt = document.createElement('option');
+                            opt.value = `qr:main`;
+                            opt.dataset.type = 'qr';
+                            opt.textContent = `${mh.main_account || 'Demirbank'}`;
+                            opt.selected = true;
+                            select.appendChild(opt);
+                        }
+                    }
+                } catch(e) { /* ignore */ }
+            }
         } catch(e) { console.warn('QR list parse failed'); }
 
         // BankWallets (MBank/Bakai/Optima)
