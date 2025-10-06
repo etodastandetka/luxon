@@ -96,11 +96,10 @@ function renderBankWallets(items) {
       <div style="display:flex; flex-direction:column; gap:4px;">
         <div style="color:#fff; font-weight:600; font-size:13px;">${w.bank_code.toUpperCase()} • ${w.account_name}</div>
         <div style="color:#9aa4b2; font-size:11px;" title="${w.hash_value}">${shortHash(w.hash_value)}</div>
-        <div style="color:#888; font-size:10px;">${w.is_active ? '✅ Активен' : '❌ Неактивен'} ${w.is_main ? ' • ⭐ Основной' : ''}</div>
+        <div style="color:#888; font-size:10px;">${w.is_active ? '✅ Активен' : '❌ Неактивен'}</div>
       </div>
       <div style="display:flex; gap:8px;">
         <button onclick="toggleBankWallet(${w.id})" style="background:${w.is_active ? '#ef4444' : '#00ff88'}; border:none; color:#000; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">${w.is_active ? 'Выключить' : 'Включить'}</button>
-        <button onclick="setMainBankWallet(${w.id})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Сделать основным</button>
         <button onclick="deleteBankWallet(${w.id})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Удалить</button>
       </div>
     `;
@@ -113,10 +112,9 @@ window.createBankWallet = async function() {
   const account_name = document.getElementById('bw_name').value.trim();
   const hash_value = document.getElementById('bw_hash').value.trim();
   const is_active = document.getElementById('bw_active').checked;
-  const is_main = document.getElementById('bw_main').checked;
   if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
   try {
-    const res = await fetch('/dashboard/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main }) });
+    const res = await fetch('/dashboard/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active }) });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
     await fetchBankWallets();
@@ -134,14 +132,7 @@ async function toggleBankWallet(id) {
   } catch(e) { alert('Ошибка: ' + e.message); }
 }
 
-async function setMainBankWallet(id) {
-  try {
-    const res = await fetch(`/dashboard/api/bank-wallets/${id}/set-main/`, { method:'POST' });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
-    await fetchBankWallets();
-  } catch(e) { alert('Ошибка: ' + e.message); }
-}
+// функция выбора основного кошелька удалена по требованию
 
 async function deleteBankWallet(id) {
   if (!confirm('Удалить кошелёк?')) return;
@@ -351,9 +342,7 @@ async function deleteQR(qrId) {
         <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
           <input id="bw_active" type="checkbox" checked> Активный
         </label>
-        <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
-          <input id="bw_main" type="checkbox"> Основной
-        </label>
+        <!-- Убран чекбокс 'Основной' -->
         <button onclick="createBankWallet()" style="margin-left:auto; padding:10px 14px; background:#4CAF50; color:#fff; border:none; border-radius:8px; cursor:pointer;">Добавить</button>
       </div>
     </div>
@@ -368,11 +357,10 @@ async function deleteQR(qrId) {
           <div style="display:flex; flex-direction:column; gap:4px;">
             <div style="color:#fff; font-weight:600; font-size:13px;">{{ w.bank_code|upper }} • {{ w.account_name }}</div>
             <div style="color:#9aa4b2; font-size:11px;" title="{{ w.hash_value }}">{{ w.hash_value|slice:":18" }}…{{ w.hash_value|slice:"-10:" }}</div>
-            <div style="color:#888; font-size:10px;">{% if w.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}{% if w.is_main %} • ⭐ Основной{% endif %}</div>
+            <div style="color:#888; font-size:10px;">{% if w.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}</div>
           </div>
           <div style="display:flex; gap:8px;">
             <button onclick="toggleBankWallet({{ w.id }})" style="background:{% if w.is_active %}#ef4444{% else %}#00ff88{% endif %}; border:none; color:#000; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
-            <button onclick="setMainBankWallet({{ w.id }})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Сделать основным</button>
             <button onclick="deleteBankWallet({{ w.id }})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Удалить</button>
           </div>
         </div>
