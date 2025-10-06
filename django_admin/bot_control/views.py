@@ -130,6 +130,21 @@ def api_bank_settings_toggle(request, bank_id: int):
         else:
             return JsonResponse({'success': False, 'error': 'invalid setting'}, status=400)
         b.save(update_fields=['is_enabled_deposit', 'is_enabled_withdraw', 'updated_at'])
+
+        # Взаимоисключаемость для депозитов: если включили депозит для банка b,
+        # отключаем депозиты остальных банков и деактивируем Demirbank (QRHash) и кошельки других банков
+        try:
+            if setting == 'deposit' and enabled:
+                from .models import BankWallet, QRHash, BankSettings
+                # Выключим депозиты на других банках
+                BankSettings.objects.exclude(id=b.id).update(is_enabled_deposit=False)
+                # Деактивируем все QR Demirbank
+                QRHash.objects.filter(is_active=True).update(is_active=False)
+                # Деактивируем кошельки других банков
+                BankWallet.objects.exclude(bank_code=b.bank_code).update(is_active=False)
+        except Exception:
+            pass
+
         return JsonResponse({'success': True})
     except BankSettings.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'not found'}, status=404)
@@ -348,6 +363,16 @@ def api_bank_wallets_toggle(request, wid: int):
         w = BankWallet.objects.get(id=wid)
         w.is_active = not w.is_active
         w.save(update_fields=['is_active','updated_at'])
+
+        # Если кошелёк включили — делаем его единственно активным и выключаем Demirbank
+        if w.is_active:
+            try:
+                from .models import BankWallet as BW2, QRHash as Q2
+                BW2.objects.exclude(id=w.id).update(is_active=False)
+                Q2.objects.filter(is_active=True).update(is_active=False)
+            except Exception:
+                pass
+
         return JsonResponse({'success': True, 'is_active': bool(w.is_active)})
     except BankWallet.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
