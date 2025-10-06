@@ -209,6 +209,7 @@
                     <select id="wallet-select" name="wallet-select" class="form-input" style="appearance: none;">
                         <option value="">Выберите реквизит…</option>
                     </select>
+                    <div id="wallets-count" style="margin-top:6px;color:#888;font-size:12px;">—</div>
                 </div>
 
                 <div style="display:flex; gap:8px;">
@@ -540,52 +541,56 @@ async function loadWallets() {
         const select = document.getElementById('wallet-select');
         select.innerHTML = '<option value="">Выберите реквизит…</option>';
 
-        // Demirbank (QR)
+        const makeOpt = (val, text) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = text;
+            return opt;
+        };
+
+        // Группа Demirbank (QR)
+        let qrCount = 0;
         try {
             const qr = await qrResp.json();
             const qrItems = Array.isArray(qr.wallets) ? qr.wallets : [];
-            qrItems.forEach(q => {
-                const opt = document.createElement('option');
-                opt.value = `qr:${q.id}`;
-                opt.dataset.type = 'qr';
-                opt.dataset.id = String(q.id);
-                opt.textContent = `${q.account_name || q.id}`.trim();
-                if (q.is_main) opt.selected = true;
-                select.appendChild(opt);
-            });
-            // Fallback: если пусто, попробуем старый API api_qr_hashes (вернёт только основной)
-            if (qrItems.length === 0) {
-                try {
-                    const alt = await fetch('{% url "bot_control:api_qr_hashes" %}');
-                    if (alt.ok) {
-                        const altData = await alt.json();
-                        const mh = (altData && altData.qr_hashes) ? altData.qr_hashes : null;
-                        if (mh && (mh.demirbank || mh.main_account)) {
-                            const opt = document.createElement('option');
-                            opt.value = `qr:main`;
-                            opt.dataset.type = 'qr';
-                            opt.textContent = `${mh.main_account || 'Demirbank'}`;
-                            opt.selected = true;
-                            select.appendChild(opt);
-                        }
-                    }
-                } catch(e) { /* ignore */ }
+            console.log('QR items:', qrItems.length);
+            if (qrItems.length) {
+                const grp = document.createElement('optgroup');
+                grp.label = 'Demirbank (QR)';
+                qrItems.forEach(q => {
+                    const opt = makeOpt(`qr:${q.id}`, `${q.account_name || ('QR '+q.id)}`.trim());
+                    if (q.is_main) opt.selected = true;
+                    grp.appendChild(opt);
+                });
+                select.appendChild(grp);
+                qrCount = qrItems.length;
             }
-        } catch(e) { console.warn('QR list parse failed'); }
+        } catch(e) { console.warn('QR list parse failed', e); }
 
-        // BankWallets (MBank/Bakai/Optima)
+        // Группа банковских кошельков
+        let bwCount = 0;
         try {
             const bw = await bwResp.json();
-            (bw.items || []).forEach(w => {
-                const opt = document.createElement('option');
-                opt.value = `bw:${w.id}`;
-                opt.dataset.type = 'bw';
-                opt.dataset.id = String(w.id);
-                opt.textContent = `${(w.bank_code || '').toUpperCase()} • ${w.account_name}`.trim();
-                if (w.is_main) opt.selected = true;
-                select.appendChild(opt);
-            });
-        } catch(e) { console.warn('BW list parse failed'); }
+            const items = Array.isArray(bw.items) ? bw.items : [];
+            console.log('BankWallet items:', items.length);
+            if (items.length) {
+                // Сортировка: по bank_code, затем по имени
+                items.sort((a,b)=>String(a.bank_code).localeCompare(String(b.bank_code)) || String(a.account_name).localeCompare(String(b.account_name)));
+                const grp = document.createElement('optgroup');
+                grp.label = 'Банковские кошельки';
+                items.forEach(w => {
+                    const label = `${(w.bank_code || '').toUpperCase()} • ${w.account_name}`.trim();
+                    const opt = makeOpt(`bw:${w.id}`, label);
+                    if (w.is_main) opt.selected = true;
+                    grp.appendChild(opt);
+                });
+                select.appendChild(grp);
+                bwCount = items.length;
+            }
+        } catch(e) { console.warn('BW list parse failed', e); }
+
+        const info = document.getElementById('wallets-count');
+        if (info) info.textContent = `Найдено: QR ${qrCount}, кошельков ${bwCount}`;
 
     } catch (e) {
         console.error('Ошибка загрузки списка кошельков:', e);
