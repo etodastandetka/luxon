@@ -287,14 +287,22 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
         else:
             text_msg = base_text
 
-        # Пытаемся найти фото-пример для выбранного букмекера по нескольким путям
+        # Пытаемся найти фото-пример для выбранного букмекера по нескольким путям (абсолютные пути)
+        base_images = Path(__file__).resolve().parents[2] / 'images'
         bm = (bookmaker or '').lower()
         candidates = [
-            Path(f"images/{bm}-id.jpg"),
-            Path(f"images/{bm}_id.jpg"),
-            Path(f"images/{bm}/id.jpg"),
-            Path(f"images/id-{bm}.jpg"),
-            Path("images/id-example.jpg"),
+            base_images / f"{bm}-id.jpg",
+            base_images / f"{bm}_id.jpg",
+            base_images / bm / "id.jpg",
+            base_images / f"id-{bm}.jpg",
+            base_images / "id-example.jpg",
+        ]
+        # Жёсткие фолбэки на известные картинки из репозитория
+        candidates += [
+            base_images / "1xbet-id.jpg",
+            base_images / "1win-id.jpg",
+            base_images / "melbet-id.jpg",
+            base_images / "mostbet-id.jpg",
         ]
         photo_path = next((p for p in candidates if p.exists()), None)
         if photo_path:
