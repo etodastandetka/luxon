@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 РҐРµРЅРґР»РµСЂС‹ РґР»СЏ РІС‹РІРѕРґР° СЃСЂРµРґСЃС‚РІ - СѓРїСЂРѕС‰РµРЅРЅС‹Р№ РїСЂРѕС†РµСЃСЃ
 """
@@ -45,14 +45,14 @@ async def send_withdraw_request_to_group(bot, user_id: int, amount: float, bookm
 вЏ° <b>Р’СЂРµРјСЏ:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}
         """
         
-        # РЎРѕР·РґР°РµРј РєР»Р°РІРёР°С‚СѓСЂСѓ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё Р·Р°СЏРІРєРё
+        # Создаём клавиатуру для обработки заявки (исправлены тексты UTF-8)
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [
-                InlineKeyboardButton(text="вњ… РџРѕРґС‚РІРµСЂРґРёС‚СЊ", callback_data=f"confirm_withdraw_{user_id}_{amount}"),
-                InlineKeyboardButton(text="вќЊ РћС‚РєР»РѕРЅРёС‚СЊ", callback_data=f"reject_withdraw_{user_id}_{amount}")
+                InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_withdraw_{user_id}_{amount}"),
+                InlineKeyboardButton(text="✖️ Отклонить", callback_data=f"reject_withdraw_{user_id}_{amount}")
             ],
             [
-                InlineKeyboardButton(text="рџ”Ќ РџСЂРѕРІРµСЂРёС‚СЊ API", callback_data=f"check_withdraw_api_{user_id}_{amount}")
+                InlineKeyboardButton(text="🔍 Проверить API", callback_data=f"check_withdraw_api_{user_id}_{amount}")
             ]
         ])
         
@@ -170,7 +170,8 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
                 banks = json.loads(row_banks[0]) if row_banks and row_banks[0] else []
             except Exception:
                 banks = []
-            valid = {'РљРѕРјРїР°РЅСЊРѕРЅ','Рћ! Р”РµРЅСЊРіРё','Р‘Р°РєР°Р№','Balance.kg','MegaPay','MBank'}
+            # Валидные названия банков (UTF-8)
+            valid = {'Компаньон','О! Деньги','Бакаи','Balance.kg','MegaPay','MBank'}
             banks = [b for b in banks if b in valid]
             return enabled, set(banks)
         except Exception:
@@ -178,16 +179,16 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
 
     w_enabled, allowed_banks = _read_withdraw_settings()
     if not w_enabled:
-        await message.answer("в›” Р’С‹РІРѕРґС‹ РІСЂРµРјРµРЅРЅРѕ РЅРµ СЂР°Р±РѕС‚Р°СЋС‚. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.")
-        # Р’РѕР·РІСЂР°С‰Р°РµРј РіР»Р°РІРЅРѕРµ РјРµРЅСЋ
+        await message.answer("⛔ Выводы временно не работают. Попробуйте позже.")
+        # Возвращаем главное меню
         await show_main_menu(message, language)
         return
     
     # РЎРїРёСЃРѕРє Р±Р°РЅРєРѕРІ РґР»СЏ РІС‹РІРѕРґР°
     banks = [
-        ("РљРѕРјРїР°РЅСЊРѕРЅ", "kompanion"),
-        ("Рћ! Р”РµРЅСЊРіРё", "odengi"),
-        ("Р‘Р°РєР°Р№", "bakai"),
+        ("Компаньон", "kompanion"),
+        ("О! Деньги", "odengi"),
+        ("Бакаи", "bakai"),
         ("Balance.kg", "balance"),
         ("MegaPay", "megapay"),
         ("MBank", "mbank")
@@ -198,9 +199,9 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
         if not allowed_banks or bank_name in allowed_banks:
             kb.button(text=bank_name, callback_data=f"withdraw_bank_{bank_code}")
         else:
-            kb.button(text=f"{bank_name} (РЅРµРґРѕСЃС‚СѓРїРЅРѕ)", callback_data=f"withdraw_bank_unavailable_{bank_code}")
+            kb.button(text=f"{bank_name} (недоступно)", callback_data=f"withdraw_bank_unavailable_{bank_code}")
     
-    kb.button(text="рџ”™ РќР°Р·Р°Рґ РІ РјРµРЅСЋ", callback_data="back_to_menu")
+    kb.button(text="🔙 Назад в меню", callback_data="back_to_menu")
     kb.adjust(2)
     
     bank_selection_text = f"""
