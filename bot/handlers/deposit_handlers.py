@@ -730,11 +730,31 @@ async def show_bank_selection(message: types.Message, amount: float, db, bookmak
         enforce_amount_with_kopecks,
     )
 
-    # Берем активный реквизит из БД
+    # Берем активный реквизит из БД или активный банковский кошелек (MBank/Bakai/Optima)
     active_req = get_active_requisite_from_db()
+
+    bank_wallet = None
+    bank_type = 'DEMIRBANK'
     if not active_req:
-        await message.answer("❌ Не настроен активный реквизит для платежей. Обратитесь к администратору.")
-        logger.error("Active requisite not found in DB")
+        try:
+            import os, requests
+            base = os.getenv('DJANGO_ADMIN_URL') or os.getenv('SITE_BASE_URL') or 'http://localhost:8000'
+            # 1) Попробуем активный банковский кошелек
+            bw_resp = requests.get(f"{base.rstrip('/')}/dashboard/api/bank-wallets/", timeout=5)
+            bw_json = bw_resp.json() if bw_resp.ok else {}
+            items = (bw_json.get('items') or [])
+            # берем первый активный
+            bank_wallet = next((w for w in items if w.get('is_active')), None)
+            if not bank_wallet and items:
+                bank_wallet = items[0]
+            if bank_wallet:
+                bank_code = str(bank_wallet.get('bank_code') or '').lower()
+                bank_type = {'mbank': 'MBANK', 'bakai': 'BAKAI', 'optima': 'OPTIMA'}.get(bank_code, 'DEMIRBANK')
+        except Exception as e:
+            logger.warning(f"Fallback to bank-wallet failed: {e}")
+    if not active_req and not bank_wallet:
+        await message.answer("❌ Не настроен активный источник реквизитов. Обратитесь к администратору.")
+        logger.error("Active requisite and bank wallet not found")
         return
 
     # Гарантируем наличие копеек для уникальности суммы (улучшает авто-матчинг)
@@ -744,16 +764,20 @@ async def show_bank_selection(message: types.Message, amount: float, db, bookmak
         pass
 
     # Собираем QR строго по шаблону: меняем только реквизит и сумму
-    try:
-        fixed_qr_hash = build_demirbank_qr_by_template(requisite=active_req, amount=amount, static_qr=True)
-    except Exception as e:
-        logger.error(f"Failed to build QR by template: {e}")
-        await message.answer("❌ Ошибка генерации QR. Попробуйте позже.")
-        return
+    if active_req:
+        try:
+            fixed_qr_hash = build_demirbank_qr_by_template(requisite=active_req, amount=amount, static_qr=True)
+        except Exception as e:
+            logger.error(f"Failed to build QR by template: {e}")
+            await message.answer("❌ Ошибка генерации QR. Попробуйте позже.")
+            return
+    else:
+        # Используем hash_value из активного банковского кошелька
+        fixed_qr_hash = str(bank_wallet.get('hash_value') or '')
 
     # Генерируем ссылки для банков. Оставляем все КРОМЕ "Компаньон".
-    logger.info(f"[DEPOSIT] QR by template built: {fixed_qr_hash[:80]}...")
-    bank_links = get_bank_links_by_type(fixed_qr_hash, 'DEMIRBANK')
+    logger.info(f"[DEPOSIT] Payment payload prepared for type={bank_type}: {fixed_qr_hash[:80]}...")
+    bank_links = get_bank_links_by_type(fixed_qr_hash, bank_type)
 
     # Прочитаем настройки депозитов из bot_settings
     def _read_deposit_settings():
@@ -798,7 +822,7 @@ async def show_bank_selection(message: types.Message, amount: float, db, bookmak
     kb.adjust(2)
     
     # Разрешён ли показ QR-картинки: включены депозиты и включён 'QR' в списке банков (если список задан)
-    allow_qr_image = dep_enabled and (not enabled_banks or ('QR' in enabled_banks))
+    allow_qr_image = (bank_type == 'DEMIRBANK') and dep_enabled and (not enabled_banks or ('QR' in enabled_banks))
 
     if allow_qr_image:
         try:
