@@ -251,6 +251,20 @@ def wallets_management(request):
                 w.is_main = True
                 w.save()
                 message = 'Основной кошелёк выбран'
+            elif action == 'toggle_active_qr':
+                qid = int(request.POST.get('id') or 0)
+                q = QRHash.objects.get(id=qid)
+                q.is_active = not q.is_active
+                q.save(update_fields=['is_active','updated_at']) if hasattr(q, 'updated_at') else q.save()
+                message = 'Статус активности (Demirbank) изменён'
+            elif action == 'set_main_qr':
+                qid = int(request.POST.get('id') or 0)
+                q = QRHash.objects.get(id=qid)
+                # Сбрасываем другие main в QRHash
+                QRHash.objects.filter(is_main=True).exclude(id=q.id).update(is_main=False)
+                q.is_main = True
+                q.save(update_fields=['is_main','updated_at']) if hasattr(q, 'updated_at') else q.save()
+                message = 'Основной кошелёк Demirbank выбран'
         except Exception as e:
             error = str(e)
 

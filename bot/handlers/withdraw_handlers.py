@@ -141,7 +141,7 @@ async def show_bank_selection_for_withdrawal(message: types.Message, db, bookmak
 
     w_enabled, allowed_banks = _read_withdraw_settings()
     if not w_enabled:
-        await message.answer("⛔ Выводы временно не работают. Попробуйте позже.")
+        await message.answer(get_translation(language, 'withdrawal_api_error'))
         await show_main_menu(message, language)
         return
 
@@ -195,9 +195,9 @@ async def handle_withdraw_bank_selection(user_id: int, bank_code: str, db, bookm
             logger.error(f"Error editing message: {e}")
 
     qr_instruction = f"""
-{translations.get('qr_instruction', 'Отправьте QR-код для перевода.')}
+{get_translation(language, 'qr_instruction')}
 
-{translations.get('send_qr_wallet', 'Отправьте QR код вашего кошелька:')}
+{get_translation(language, 'send_qr_wallet')}
     """
 
     keyboard = ReplyKeyboardMarkup(
@@ -240,7 +240,7 @@ async def process_qr_photo(message: types.Message, db, bookmakers):
 
     except Exception as e:
         logger.error(f"Ошибка при обработке QR-фото: {e}")
-        await message.answer("Произошла ошибка")
+        await message.answer(get_translation(language, 'withdrawal_api_error'))
 
 
 async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
@@ -258,7 +258,7 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
 
         phone_clean = text.strip().replace('+', '').replace(' ', '').replace('-', '')
         if not phone_clean.isdigit() or len(phone_clean) != 12 or not phone_clean.startswith('996'):
-            await message.answer("❌ Неверный формат номера. Введите номер в формате: 996505000000")
+            await message.answer(get_translation(language, 'enter_phone_format'))
             return
 
         db.save_user_data(user_id, 'withdraw_phone', phone_clean)
@@ -280,15 +280,11 @@ async def handle_withdraw_phone_input(message: types.Message, db, bookmakers):
             resize_keyboard=True,
         )
 
-        # Формируем текст в точности как в пополнении, без вставки текущего ID в текст
+        # Формируем текст как в депозите, локализовано
         brand = (bookmakers.get(bookmaker, {}).get('name') if bookmakers and bookmaker in bookmakers else bookmaker or '').upper()
         if not brand:
             brand = '1XBET'
-        text_msg = (
-            f"📱 Введите ваш ID {brand}\n\n"
-            f"⚠️ Проверьте внимательно!\n"
-            f"❌ Ошибки не исправляются."
-        )
+        text_msg = get_translation(language, 'deposit_instruction', bookmaker_name=brand)
 
         # Пытаемся найти фото-пример для выбранного букмекера по нескольким путям (абсолютные пути)
         base_images = Path(__file__).resolve().parents[2] / 'images'
@@ -495,14 +491,13 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
                     logger.error(f"API payout failed: {raw_msg or (payout_result or {}).get('error', 'No response')}")
                     if raw_msg:
                         await message.answer(
-                            f"❌ Ошибка вывода: {raw_msg}. Заявка отправлена на ручную обработку."
+                            get_translation(language, 'withdrawal_api_error') + (f"\n\n{raw_msg}" if raw_msg else "")
                         )
                     else:
-                        await message.answer(translations['withdrawal_api_error'])
+                        await message.answer(get_translation(language, 'withdrawal_api_error'))
 
         except Exception as e:
             logger.error(f"Error calling API for payout: {e}")
-
         # Сохранение заявки в единую таблицу requests (для сайта)
         try:
             import sqlite3
@@ -676,7 +671,7 @@ async def handle_withdraw_code_input(message: types.Message, db, bookmakers):
 
         except Exception as e:
             logger.error(f"Ошибка отправки заявки на вывод в группу: {e}")
-            await message.answer("❌ Ошибка при отправке заявки. Попробуйте позже.")
+            await message.answer(get_translation(language, 'withdrawal_api_error'))
 
     except Exception as e:
         logger.error(f"Ошибка при обработке кода вывода: {e}")
