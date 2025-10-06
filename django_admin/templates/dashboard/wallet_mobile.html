@@ -64,6 +64,14 @@ async function deleteBank(bankId) {
 
 <script>
 // ===== BankWallet UI (moved inside content block) =====
+function shortHash(val){
+  try{
+    if(!val) return '';
+    const s = String(val);
+    if(s.length <= 30) return s;
+    return s.slice(0, 18) + '…' + s.slice(-10);
+  }catch(_){ return val; }
+}
 async function fetchBankWallets() {
   try {
     const res = await fetch('/dashboard/api/bank-wallets/');
@@ -87,7 +95,7 @@ function renderBankWallets(items) {
     el.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:4px;">
         <div style="color:#fff; font-weight:600; font-size:13px;">${w.bank_code.toUpperCase()} • ${w.account_name}</div>
-        <div style="color:#9aa4b2; font-size:11px;">${w.hash_value}</div>
+        <div style="color:#9aa4b2; font-size:11px;" title="${w.hash_value}">${shortHash(w.hash_value)}</div>
         <div style="color:#888; font-size:10px;">${w.is_active ? '✅ Активен' : '❌ Неактивен'} ${w.is_main ? ' • ⭐ Основной' : ''}</div>
       </div>
       <div style="display:flex; gap:8px;">
@@ -359,7 +367,7 @@ async function deleteQR(qrId) {
         <div style="display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid #222; border-radius:10px; background:#141414;">
           <div style="display:flex; flex-direction:column; gap:4px;">
             <div style="color:#fff; font-weight:600; font-size:13px;">{{ w.bank_code|upper }} • {{ w.account_name }}</div>
-            <div style="color:#9aa4b2; font-size:11px;">{{ w.hash_value }}</div>
+            <div style="color:#9aa4b2; font-size:11px;" title="{{ w.hash_value }}">{{ w.hash_value|slice:":18" }}…{{ w.hash_value|slice:"-10:" }}</div>
             <div style="color:#888; font-size:10px;">{% if w.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}{% if w.is_main %} • ⭐ Основной{% endif %}</div>
           </div>
           <div style="display:flex; gap:8px;">
