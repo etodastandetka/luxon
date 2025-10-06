@@ -453,32 +453,24 @@ def api_requisites_set_active(request, rid: int):
                 value TEXT NOT NULL,
                 is_active INTEGER NOT NULL DEFAULT 0,
                 name TEXT,
-        cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
-        cur.execute('UPDATE requisites SET is_active = 1 WHERE id = ?', (rid,))
-        conn.commit()
-        conn.close()
-
-        # Взаимоисключаемость: при активации реквизита выключаем все QR и банковские кошельки
-    """DELETE: удалить реквизит."""
-    if request.method != 'DELETE':
-        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
-    try:
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS requisites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                name TEXT,
                 email TEXT,
                 password TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        cur.execute('DELETE FROM requisites WHERE id = ?', (rid,))
+        # Сделать выбранный реквизит единственным активным
+        cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
+        cur.execute('UPDATE requisites SET is_active = 1 WHERE id = ?', (rid,))
         conn.commit()
         conn.close()
+
+        # Взаимоисключаемость: выключаем все QR и банковские кошельки
+        try:
+            from bot_control.models import QRHash, BankWallet
+            QRHash.objects.filter(is_active=True).update(is_active=False)
+            BankWallet.objects.filter(is_active=True).update(is_active=False)
+        except Exception:
+            pass
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
