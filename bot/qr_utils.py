@@ -566,6 +566,62 @@ def get_bank_links_by_type(qr_hash: str, bank_type: str) -> dict:
     }
 
 
+# ===== Унифицированный генератор под разные банки =====
+def build_qr_and_url(bank_code: str, *, amount: float, base_hash: str | None = None, requisite: str | None = None, static_qr: bool = True) -> dict:
+    """
+    Возвращает словарь { 'hash': <QR hash>, 'url': <app_url#hash> } для выбранного банка.
+
+    Правила:
+    - DEMIRBANK: если передан 16-значный requisite — собираем QR по шаблону `build_demirbank_qr_by_template()`.
+      Иначе, если дан base_hash — обновляем только сумму (тег 54) и пересчитываем 63.
+    - BAKAI / MBANK / OPTIMA: ожидаем `base_hash` из админки, меняем только 54 и 63.
+
+    Контрольная сумма — тот же метод, что у исходного hash (detect_checksum_method), по умолчанию SHA256-last-4.
+    Итоговая ссылка: <bank_app_url>#<hash>.
+    """
+    bank = (bank_code or '').strip().upper()
+    if bank in ('DEMIR', 'DEMIRBANK'):
+        if requisite and len(str(requisite)) == 16 and str(requisite).isdigit():
+            qr = build_demirbank_qr_by_template(requisite=str(requisite), amount=amount, static_qr=static_qr)
+        elif base_hash:
+            qr = update_amount_in_qr_hash_proper(base_hash, amount)
+        else:
+            raise ValueError('Для DEMIRBANK укажи requisite (16 цифр) или base_hash')
+        url = f"https://retail.demirbank.kg/#{qr}"
+        return {'hash': qr, 'url': url}
+
+    if bank in ('BAKAI', 'BAKAI24'):
+        if not base_hash:
+            raise ValueError('Для Bakai требуется base_hash из админки')
+        qr = update_amount_in_qr_hash_proper(base_hash, amount)
+        return {'hash': qr, 'url': f"https://bakai24.app/#{qr}"}
+
+    if bank in ('MBANK',):
+        if not base_hash:
+            raise ValueError('Для MBank требуется base_hash из админки')
+        qr = update_amount_in_qr_hash_proper(base_hash, amount)
+        return {'hash': qr, 'url': f"https://app.mbank.kg/qr/#{qr}"}
+
+    if bank in ('OPTIMA', 'OPTIMA BANK'):
+        if not base_hash:
+            raise ValueError('Для Optima требуется base_hash из админки')
+        qr = update_amount_in_qr_hash_proper(base_hash, amount)
+        # Уточни при необходимости домен/путь
+        return {'hash': qr, 'url': f"https://optima.kg/qr/#{qr}"}
+
+    # Фолбэк: возвращаем ссылки для известных, если есть
+    if base_hash:
+        qr = update_amount_in_qr_hash_proper(base_hash, amount)
+        urls = get_bank_links_by_type(qr, bank)
+        # Пытаемся взять точный ключ
+        key_map = {
+            'DEmirbank': 'DemirBank',
+            'DEMirbank': 'DemirBank'
+        }
+        url = urls.get(key_map.get(bank, bank), next(iter(urls.values())))
+        return {'hash': qr, 'url': url}
+    raise ValueError(f'Неизвестный банк или отсутствуют данные для генерации: {bank_code}')
+
 def generate_simple_qr(amount: float) -> str:
     """Простой генератор DemirBank QR: динамический (010212), корректный 32 как подTLV,
     контрольная сумма — по выбранному методу (по умолчанию SHA256-last-4), нижний регистр."""
