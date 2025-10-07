@@ -197,17 +197,18 @@
 <script>
 let currentTab = 'all';
 
-// Возвращает URL иконки банка по имени/коду (в нижнем регистре)
+// Возвращает URL иконки банка по известным реальным файлам в static/images
 function getBankIconUrl(bankStr){
     const s = String(bankStr||'').toLowerCase();
-    if (s.includes('mbank')) return '{% static "img/banks/mbank.svg" %}';
-    if (s.includes('bakai')) return '{% static "img/banks/bakai.svg" %}';
-    if (s.includes('optima')) return '{% static "img/banks/optima.svg" %}';
-    if (s.includes('demir')) return '{% static "img/banks/demirbank.svg" %}';
-    if (s.includes('megapay')) return '{% static "img/banks/megapay.svg" %}';
-    if (s.includes('balance')) return '{% static "img/banks/balance.svg" %}';
-    if (s.includes('o!') || s.includes('omoney') || s.includes('odengi') || s.includes('o! bank')) return '{% static "img/banks/odengi.svg" %}';
-    return '{% static "img/banks/default.svg" %}';
+    // Карта соответствий под твои фактические файлы
+    if (s.includes('mbank')) return '{% static "images/mbank.png" %}';
+    if (s.includes('bakai')) return '{% static "images/bakai.jpg" %}'; // если появится
+    if (s.includes('optima')) return '{% static "images/optima.jpg" %}';
+    if (s.includes('demir')) return '{% static "images/demirbank.jpg" %}';
+    if (s.includes('megapay')) return '{% static "images/megapay.jpg" %}';
+    if (s.includes('balance')) return '{% static "images/balance.jpg" %}';
+    if (s.includes('o!') || s.includes('omoney') || s.includes('odengi') || s.includes('o! bank')) return '{% static "images/omoney.jpg" %}';
+    return '{% static "images/companion.png" %}';
 }
 
 // Загружаем данные при загрузке страницы
@@ -296,7 +297,8 @@ async function loadTransactions() {
                 transactionItem.innerHTML = `
                     <div class="list-icon">
                         <div style="width: 40px; height: 40px; border-radius: 10px; background:#0f0f0f; border:2px solid #333; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;" onerror="this.src='{% static "img/banks/default.svg" %}';"/>
+                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;"
+                                 onerror="if(this.src.indexOf('/static/Images/')===-1){this.src=this.src.replace('/static/images/','/static/Images/');}else{this.onerror=null;this.src='{% static "images/companion.png" %}';}"/>
                         </div>
                     </div>
                     <div class="list-content">

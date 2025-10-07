@@ -86,17 +86,17 @@ function formatDate(dateString) {
     return `${day}.${month}.${year} • ${hours}:${minutes}`;
 }
 
-// Единый маппер иконок банка
+// Единый маппер иконок банка под фактические файлы в static/images
 function getBankIconUrl(bankStr){
   const s = String(bankStr||'').toLowerCase();
-  if (s.includes('mbank')) return '{% static "img/banks/mbank.svg" %}';
-  if (s.includes('bakai')) return '{% static "img/banks/bakai.svg" %}';
-  if (s.includes('optima')) return '{% static "img/banks/optima.svg" %}';
-  if (s.includes('demir')) return '{% static "img/banks/demirbank.svg" %}';
-  if (s.includes('megapay')) return '{% static "img/banks/megapay.svg" %}';
-  if (s.includes('balance')) return '{% static "img/banks/balance.svg" %}';
-  if (s.includes('o!') || s.includes('omoney') || s.includes('odengi') || s.includes('o! bank')) return '{% static "img/banks/odengi.svg" %}';
-  return '{% static "img/banks/default.svg" %}';
+  if (s.includes('mbank')) return '{% static "images/mbank.png" %}';
+  if (s.includes('bakai')) return '{% static "images/bakai.jpg" %}'; // добавь файл при наличии
+  if (s.includes('optima')) return '{% static "images/optima.jpg" %}';
+  if (s.includes('demir')) return '{% static "images/demirbank.jpg" %}';
+  if (s.includes('megapay')) return '{% static "images/megapay.jpg" %}';
+  if (s.includes('balance')) return '{% static "images/balance.jpg" %}';
+  if (s.includes('o!') || s.includes('omoney') || s.includes('odengi') || s.includes('o! bank')) return '{% static "images/omoney.jpg" %}';
+  return '{% static "images/companion.png" %}';
 }
 
 // Функция для загрузки заявок
@@ -136,19 +136,14 @@ async function loadRequests() {
 
                 const item = document.createElement('div');
                 item.className = 'list-item';
-                item.style.cursor = 'pointer';
                 item.onclick = () => { window.location.href = `/bot/transactions/${request.id}/`; };
                 item.innerHTML = `
                     <div class="list-icon">
                         <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid #333;background:#0f0f0f;overflow:hidden;">
                             <img src="${iconSrc}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:4px;"
-                                 onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,\
-<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\'>\
-<rect width=\'100%\' height=\'100%\' rx=\'16\' ry=\'16\' fill=\'#334155\'/>\
-<text x=\'50%\' y=\'55%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Segoe UI, Arial, sans-serif\' font-size=\'44\' fill=\'#ffffff\' font-weight=\'700\'>BNK</text>\
-</svg>';"/>
+                                 onerror="if(this.src.indexOf('/static/Images/')===-1){this.src=this.src.replace('/static/images/','/static/Images/');}else{this.onerror=null;this.src='{% static "images/companion.png" %}';}"/>
                         </div>
-                    </div>
+{{ ... }}
                     <div class="list-content">
                         <div class="list-title">${userName}</div>
                         <div class="list-subtitle">${(request.bookmaker || '').toUpperCase()} • ID: ${request.user_id}</div>
