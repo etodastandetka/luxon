@@ -15,15 +15,15 @@
 .tab:hover { background: #222; color: #ccc; }
 .tab-refresh { padding: 12px; border-radius: 12px; cursor: pointer; transition: all .3s; color: #999; background: transparent; font-size: 16px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tab-refresh:hover { background: #333; color: #fff; }
-.list-item { background: transparent; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; box-shadow: none; border: none; transition: all .3s; }
-.list-item:hover { background: #1a1a1a; }
-.list-icon { margin-right: 16px; }
-.list-content { flex: 1; }
-.list-title { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 4px; }
-.list-subtitle { font-size: 12px; color: #999; margin-bottom: 4px; }
+.list-item { background: #0f0f0f; border:1px solid #222; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; gap:12px; transition: background .2s ease; }
+.list-item:hover { background: #141414; }
+.list-icon { margin-right: 0; }
+.list-content { flex: 1; min-width: 0; }
+.list-title { font-size: 14px; font-weight: 700; color: #e8f0ff; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-subtitle { font-size: 11px; color: #93a4ba; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .list-right { text-align: right; }
-.list-date { font-size: 11px; color: #999; margin-bottom: 4px; }
-.list-amount { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+.list-date { font-size: 10px; color: #93a4ba; margin-bottom: 2px; }
+.list-amount { font-size: 15px; font-weight: 800; margin-bottom: 2px; }
 .list-status { display: flex; align-items: center; justify-content: flex-end; font-size: 11px; color: #999; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
 .status-pending { background: #ffa500; }
@@ -141,7 +141,7 @@ async function loadRequests() {
                     <div class="list-icon">
                         <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid #333;background:#0f0f0f;overflow:hidden;">
                             <img src="${iconSrc}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:4px;"
-                                 onerror="if(this.src.indexOf('/static/Images/')===-1){this.src=this.src.replace('/static/images/','/static/Images/');}else{this.onerror=null;this.src='{% static "images/companion.png" %}';}"/>
+                                 onerror="this.onerror=null;this.src='{% static "images/companion.png" %}';"/>
                         </div>
                     <div class="list-content">
                         <div class="list-title">${userName}</div>
