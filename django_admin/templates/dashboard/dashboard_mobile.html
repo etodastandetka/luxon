@@ -143,7 +143,6 @@ async function loadRequests() {
                             <img src="${iconSrc}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:4px;"
                                  onerror="if(this.src.indexOf('/static/Images/')===-1){this.src=this.src.replace('/static/images/','/static/Images/');}else{this.onerror=null;this.src='{% static "images/companion.png" %}';}"/>
                         </div>
-{{ ... }}
                     <div class="list-content">
                         <div class="list-title">${userName}</div>
                         <div class="list-subtitle">${(request.bookmaker || '').toUpperCase()} • ID: ${request.user_id}</div>
