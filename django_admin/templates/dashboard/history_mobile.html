@@ -197,6 +197,19 @@
 <script>
 let currentTab = 'all';
 
+// Возвращает URL иконки банка по имени/коду (в нижнем регистре)
+function getBankIconUrl(bankStr){
+    const s = String(bankStr||'').toLowerCase();
+    if (s.includes('mbank')) return '{% static "img/banks/mbank.svg" %}';
+    if (s.includes('bakai')) return '{% static "img/banks/bakai.svg" %}';
+    if (s.includes('optima')) return '{% static "img/banks/optima.svg" %}';
+    if (s.includes('demir')) return '{% static "img/banks/demirbank.svg" %}';
+    if (s.includes('megapay')) return '{% static "img/banks/megapay.svg" %}';
+    if (s.includes('balance')) return '{% static "img/banks/balance.svg" %}';
+    if (s.includes('o!') || s.includes('omoney') || s.includes('odengi') || s.includes('o! bank')) return '{% static "img/banks/odengi.svg" %}';
+    return '{% static "img/banks/default.svg" %}';
+}
+
 // Загружаем данные при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     loadTransactions();
@@ -275,27 +288,15 @@ async function loadTransactions() {
                 const iconColor = isDeposit ? '#00c16a' : '#ef4444';
 
                 // Определяем банк для вывода
-                const bankRaw = (transaction.bank || transaction.wallet_details || '').toString().toLowerCase();
-                let bankIcon = '';
-                if (!isDeposit) {
-                  if (bankRaw.includes('mbank')) bankIcon = '{% static "mbank.png" %}';
-                  else if (bankRaw.includes('optima')) bankIcon = '{% static "optima.jpg" %}';
-                  else if (bankRaw.includes('omoney')) bankIcon = '{% static "omoney.jpg" %}';
-                  else if (bankRaw.includes('demir')) bankIcon = '{% static "demirbank.jpg" %}';
-                  else if (bankRaw.includes('megapay')) bankIcon = '{% static "megapay.jpg" %}';
-                }
-                // ELQR для пополнений (используем загруженный elqr.svg), иначе дефолт
-                // Добавляем cache-busting параметр, чтобы обойти CDN/браузерный кэш
-                const overlayIcon = isDeposit ? '{% static "images/elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
-
-                // Вместо буквенного аватара используем сами иконки (ELQR для пополнений, банк для выводов)
-                // Добавляем cache-busting параметр
-                const mainIcon = isDeposit ? '{% static "images/elqr.svg" %}?v=20251002' : (bankIcon || '{% static "companion.png" %}?v=20251002');
+                const bankRaw = (transaction.bank || transaction.wallet_details || '').toString();
+                const bankIcon = !isDeposit ? getBankIconUrl(bankRaw) : '';
+                // ELQR для пополнений, иначе иконка банка
+                const mainIcon = isDeposit ? '{% static "images/elqr.svg" %}?v=20251002' : (bankIcon);
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">
                         <div style="width: 40px; height: 40px; border-radius: 10px; background:#0f0f0f; border:2px solid #333; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;"/>
+                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;" onerror="this.src='{% static "img/banks/default.svg" %}';"/>
                         </div>
                     </div>
                     <div class="list-content">

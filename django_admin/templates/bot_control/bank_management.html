@@ -297,6 +297,22 @@ async function loadBanks() {
     }
 }
 
+// Рендер иконки банка по bank_code из статических файлов с fallback на эмодзи
+function getBankIcon(bankCode, label) {
+    const code = String(bankCode || '').toLowerCase();
+    const emojiMap = { demirbank: '🏦', odengi: '💰', bakai: '🏛️', balance: '⚖️', megapay: '💳', mbank: '🏪', optima: '🏦' };
+    const fileMap = { demirbank: 'demirbank.svg', odengi: 'odengi.svg', bakai: 'bakai.svg', balance: 'balance.svg', megapay: 'megapay.svg', mbank: 'mbank.svg', optima: 'optima.svg' };
+    const file = fileMap[code];
+    const src = file ? "{% static 'img/banks/' %}" + file : '';
+    const emoji = emojiMap[code] || '🏦';
+    if (!file) return `<div class="bank-icon" title="${label || code}">${emoji}</div>`;
+    return `
+      <div class="bank-icon" title="${label || code}">
+        <img src="${src}" alt="${label || code}" onerror="this.parentElement.innerHTML='${emoji}';" />
+      </div>
+    `;
+}
+
 // Отображение списка банков
 function displayBanks(banks) {
     const container = document.getElementById('bank-list');
@@ -307,21 +323,10 @@ function displayBanks(banks) {
     }
     
     const html = banks.map(bank => {
-        // Иконки для банков
-        const bankIcons = {
-            'demirbank': '🏦',
-            'odengi': '💰',
-            'bakai': '🏛️',
-            'balance': '⚖️',
-            'megapay': '💳',
-            'mbank': '🏪'
-        };
-        
-        const bankIcon = bankIcons[bank.bank_code] || '🏦';
-        
+        const iconHtml = getBankIcon(bank.bank_code, bank.bank_name);
         return `
             <div class="bank-item">
-                <div class="bank-icon">${bankIcon}</div>
+                ${iconHtml}
                 <div class="bank-info">
                     <div class="bank-name">${bank.bank_name}</div>
                     <div class="bank-code">Код: ${bank.bank_code}</div>
@@ -438,7 +443,10 @@ body {
     justify-content: center;
     margin-right: 16px;
     font-size: 18px;
+    overflow: hidden;
 }
+
+.bank-icon img { max-width: 70%; max-height: 70%; display: block; }
 
 .bank-info {
     flex: 1;
