@@ -81,45 +81,12 @@
     border: none;
 }
 
-.list-item {
-    background: transparent;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    box-shadow: none;
-    border: none;
-    transition: all 0.3s ease;
-}
-
-.list-item:hover {
-    background: #1a1a1a;
-    transform: none;
-    box-shadow: none;
-    cursor: pointer;
-}
-
-.list-icon {
-    margin-right: 16px;
-}
-
-.list-content {
-    flex: 1;
-}
-
-.list-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #fff;
-    margin-bottom: 4px;
-}
-
-.list-subtitle {
-    font-size: 12px;
-    color: #999;
-    margin-bottom: 4px;
-}
+.list-item { background:#0f0f0f; border:1px solid #222; border-radius:12px; padding:12px 14px; margin-bottom:10px; display:flex; align-items:center; gap:12px; transition:background .2s ease; cursor:pointer; }
+.list-item:hover { background:#141414; }
+.list-icon { margin-right: 0; }
+.list-content { flex:1; min-width:0; }
+.list-title { font-size:14px; font-weight:700; color:#e8f0ff; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.list-subtitle { font-size:11px; color:#93a4ba; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 .list-tag {
     font-size: 11px;
@@ -296,9 +263,9 @@ async function loadTransactions() {
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">
-                        <div style="width: 40px; height: 40px; border-radius: 10px; background:#0f0f0f; border:2px solid #333; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                            <img src="${mainIcon}" alt="icon" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;"
-                                 onerror="if(this.src.indexOf('/static/Images/')===-1){this.src=this.src.replace('/static/images/','/static/Images/');}else{this.onerror=null;this.src='{% static "images/companion.png" %}';}"/>
+                        <div style="width:40px;height:40px;border-radius:10px;background:#0f0f0f;border:2px solid #333;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                            <img src="${mainIcon}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:4px;"
+                                 onerror="this.onerror=null;this.src='{% static "images/companion.png" %}';"/>
                         </div>
                     </div>
                     <div class="list-content">
