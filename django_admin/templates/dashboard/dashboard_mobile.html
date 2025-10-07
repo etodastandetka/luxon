@@ -141,7 +141,12 @@ async function loadRequests() {
                 item.innerHTML = `
                     <div class="list-icon">
                         <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid #333;background:#0f0f0f;overflow:hidden;">
-                            <img src="${iconSrc}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:4px;" onerror="this.src='{% static "img/banks/default.svg" %}';"/>
+                            <img src="${iconSrc}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:4px;"
+                                 onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,\
+<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\'>\
+<rect width=\'100%\' height=\'100%\' rx=\'16\' ry=\'16\' fill=\'#334155\'/>\
+<text x=\'50%\' y=\'55%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Segoe UI, Arial, sans-serif\' font-size=\'44\' fill=\'#ffffff\' font-weight=\'700\'>BNK</text>\
+</svg>';"/>
                         </div>
                     </div>
                     <div class="list-content">
