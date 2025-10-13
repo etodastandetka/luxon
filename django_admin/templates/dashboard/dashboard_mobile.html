@@ -9,26 +9,33 @@
 
 {% block content %}
 <style>
+/* Tabs */
 .tabs-container { display: flex; gap: 8px; margin-bottom: 16px; background: transparent; border: none; box-shadow: none; }
-.tab { flex: 1; padding: 10px 14px; text-align: center; border-radius: 10px; cursor: pointer; transition: all .2s; color: #999; font-weight: 600; font-size: 13px; background: #1a1a1a; border: 1px solid #222; }
-.tab.active { background: #2a2a2a; color: #fff; border-color: #444; }
-.tab:hover { background: #222; color: #ccc; }
-.tab-refresh { padding: 12px; border-radius: 12px; cursor: pointer; transition: all .3s; color: #999; background: transparent; font-size: 16px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.tab-refresh:hover { background: #333; color: #fff; }
-.list-item { background: #0f0f0f; border:1px solid #222; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; gap:12px; transition: background .2s ease; }
-.list-item:hover { background: #141414; }
-.list-icon { margin-right: 0; }
-.list-content { flex: 1; min-width: 0; }
-.list-title { font-size: 14px; font-weight: 700; color: #e8f0ff; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.list-subtitle { font-size: 11px; color: #93a4ba; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.list-right { text-align: right; }
-.list-date { font-size: 10px; color: #93a4ba; margin-bottom: 2px; }
-.list-amount { font-size: 15px; font-weight: 800; margin-bottom: 2px; }
-.list-status { display: flex; align-items: center; justify-content: flex-end; font-size: 11px; color: #999; }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
-.status-pending { background: #ffa500; }
-.status-completed { background: #00ff88; }
-.status-rejected { background: #ff4444; }
+.tab { flex: 1; padding: 10px 14px; text-align: center; border-radius: 12px; cursor: pointer; transition: all .18s; color: #bfc8d6; font-weight: 700; font-size: 13px; background: transparent; border: 1px solid rgba(255,255,255,0.04); }
+.tab.active { background: rgba(255,255,255,0.03); color: #fff; border-color: rgba(255,255,255,0.06); box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset; }
+.tab:hover { background: rgba(255,255,255,0.02); color: #e6eef9; }
+.tab-refresh { padding: 10px; border-radius: 12px; cursor: pointer; transition: all .22s; color: #9aa8b8; background: rgba(255,255,255,0.02); font-size: 16px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tab-refresh:hover { background: rgba(255,255,255,0.04); color: #fff; }
+
+/* Card list */
+.list-item { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); border:1px solid rgba(255,255,255,0.03); border-radius: 14px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap:12px; transition: transform .12s ease, box-shadow .12s ease; box-shadow: 0 1px 0 rgba(0,0,0,0.6); }
+.list-item:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.6); }
+.list-icon { margin-right: 6px; flex: 0 0 52px; }
+.list-content { flex: 1; min-width: 0; padding-right: 8px; }
+.list-title { font-size: 15px; font-weight: 800; color: #eaf3ff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-subtitle { font-size: 12px; color: #9fb0c4; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.list-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap:6px; min-width: 100px; }
+.list-date { font-size: 11px; color: #9fb0c4; margin-bottom: 0; }
+.list-amount { font-size: 16px; font-weight: 900; margin-bottom: 0; padding: 6px 10px; border-radius: 12px; background: rgba(255,255,255,0.02); color: #ffffff; display: inline-block; box-shadow: 0 1px 0 rgba(0,0,0,0.6); }
+.list-amount.positive { color: #00e08a; background: linear-gradient(180deg, rgba(0,224,138,0.06), rgba(0,224,138,0.02)); }
+.list-amount.negative { color: #ff6b6b; background: linear-gradient(180deg, rgba(255,107,107,0.06), rgba(255,107,107,0.02)); }
+
+.list-status { display: flex; align-items: center; justify-content: flex-end; font-size: 12px; color: #b6c6d6; gap:8px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-pending { background: #ffb86b; box-shadow: 0 0 6px rgba(255,184,107,0.08); }
+.status-completed { background: #4ef1a6; box-shadow: 0 0 8px rgba(78,241,166,0.08); }
+.status-rejected { background: #ff6b6b; box-shadow: 0 0 6px rgba(255,107,107,0.06); }
 </style>
 
 <!-- Фильтры: Ожидающие (по умолчанию) | Оставленные (ручные) -->
@@ -137,19 +144,21 @@ async function loadRequests() {
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 item.onclick = () => { window.location.href = `/bot/transactions/${request.id}/`; };
+                const amountClass = isDeposit ? 'positive' : 'negative';
                 item.innerHTML = `
                     <div class="list-icon">
-                        <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid #333;background:#0f0f0f;overflow:hidden;">
-                            <img src="${iconSrc}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:4px;"
+                        <div style="width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03);background:rgba(255,255,255,0.01);overflow:hidden;">
+                            <img src="${iconSrc}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:6px;"
                                  onerror="this.onerror=null;this.src='{% static "images/companion.png" %}';"/>
                         </div>
+                    </div>
                     <div class="list-content">
                         <div class="list-title">${userName}</div>
                         <div class="list-subtitle">${(request.bookmaker || '').toUpperCase()} • ID: ${request.user_id}</div>
                     </div>
                     <div class="list-right">
                         <div class="list-date">${formatDate(request.created_at || new Date())}</div>
-                        <div class="list-amount" style="color:${amountColor};">${amountSign}${Number(request.amount || 0).toFixed(2)}</div>
+                        <div class="list-amount ${amountClass}">${amountSign}${Number(request.amount || 0).toFixed(2)}</div>
                         <div class="list-status"><div class="status-dot ${statusClass}"></div><span>${request.status === 'awaiting_manual' ? 'Оставлена' : (request.status === 'processing' ? 'В работе' : (request.status === 'rejected' ? 'Отклонено' : (request.status === 'completed' || request.status === 'approved' || request.status === 'auto_completed' ? 'Успешно' : 'Ожидает')))}</span></div>
                     </div>`;
                 container.appendChild(item);
