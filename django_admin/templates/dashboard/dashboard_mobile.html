@@ -20,7 +20,7 @@
 /* Card list */
 .list-item { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); border:1px solid rgba(255,255,255,0.03); border-radius: 14px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap:12px; transition: transform .12s ease, box-shadow .12s ease; box-shadow: 0 1px 0 rgba(0,0,0,0.6); }
 .list-item:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.6); }
-.list-icon { margin-right: 6px; flex: 0 0 52px; }
+.list-icon { margin-right: 10px; flex: 0 0 64px; display:flex; align-items:center; justify-content:center; }
 .list-content { flex: 1; min-width: 0; padding-right: 8px; }
 .list-title { font-size: 15px; font-weight: 800; color: #eaf3ff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .list-subtitle { font-size: 12px; color: #9fb0c4; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -148,8 +148,8 @@ async function loadRequests() {
                 const amountClass = isDeposit ? 'positive' : 'negative';
                 item.innerHTML = `
                     <div class="list-icon">
-                        <div style="width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03);background:rgba(255,255,255,0.01);overflow:hidden;">
-                            <img src="${iconSrc}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:6px;"
+                        <div style="width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                            <img src="${iconSrc}" alt="icon" style="width:56px;height:56px;object-fit:cover;"
                                  onerror="this.onerror=null;this.src='{% static "images/companion.png" %}';"/>
                         </div>
                     </div>
