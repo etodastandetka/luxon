@@ -12,6 +12,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from translations import get_translation
 from config import BOOKMAKERS, BOT_TOKEN
+from bot.utils.files import download_telegram_file_locally
 import os
 
 logger = logging.getLogger(__name__)
@@ -338,7 +339,7 @@ async def send_deposit_request_to_group(bot, user_id: int, amount: float, bookma
             photo_file_url = None
             if photo_file_id:
                 try:
-                    photo_file_url = await _download_telegram_file_locally(bot, photo_file_id)
+                    photo_file_url = await download_telegram_file_locally(bot, photo_file_id, BOT_TOKEN)
                 except Exception as e:
                     logger.warning(f"Не удалось сохранить файл локально: {e}")
 
