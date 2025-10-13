@@ -157,3 +157,9 @@ SECURE_HSTS_PRELOAD = True
 # Настройки для работы за прокси
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_TZ = True
+
+# Media files (user uploads, receipts)
+# MEDIA_URL is the public URL, MEDIA_ROOT is the filesystem path where uploads are stored.
+MEDIA_URL = '/media/'
+# Put media under project root so both bot and Django can access saved receipts
+MEDIA_ROOT = PROJECT_ROOT / 'media'
