@@ -16,6 +16,50 @@ import os
 
 logger = logging.getLogger(__name__)
 
+
+async def _download_telegram_file_locally(bot, file_id: str) -> str | None:
+    """Download Telegram file by file_id and save under media/receipts/, return local URL (/media/...) or None.
+    Fallback: return Telegram direct file URL if download fails.
+    """
+    if not file_id:
+        return None
+    try:
+        file_info = await bot.get_file(file_id)
+        fpath = getattr(file_info, 'file_path', None)
+        if not fpath:
+            return None
+
+        tg_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{fpath}"
+        try:
+            import requests
+            from pathlib import Path
+            from datetime import datetime
+
+            project_root = Path(__file__).resolve().parents[2]
+            save_dir = project_root / 'media' / 'receipts'
+            save_dir.mkdir(parents=True, exist_ok=True)
+
+            ext = Path(fpath).suffix or '.jpg'
+            safe_name = f"{int(datetime.now().timestamp())}_{file_id}{ext}"
+            save_path = save_dir / safe_name
+
+            r = requests.get(tg_url, stream=True, timeout=15)
+            if r.status_code == 200:
+                with open(save_path, 'wb') as fh:
+                    for chunk in r.iter_content(1024 * 8):
+                        if chunk:
+                            fh.write(chunk)
+                return f"/media/receipts/{safe_name}"
+            else:
+                logger.warning(f"Failed to download telegram file {file_id}, status {r.status_code}")
+                return tg_url
+        except Exception as e:
+            logger.warning(f"Error saving telegram file locally: {e}")
+            return tg_url
+    except Exception as e:
+        logger.warning(f"Cannot get file info from Telegram for {file_id}: {e}")
+        return None
+
 async def update_payment_timer(message, user_id: int, amount: float, translations, db):
     """Обновляет таймер платежа каждую секунду"""
     try:
@@ -290,16 +334,13 @@ async def send_deposit_request_to_group(bot, user_id: int, amount: float, bookma
                 )
             ''')
             
-            # Получим прямой URL к файлу от Telegram API (если есть), чтобы сохранить и в БД, и отправить на сайт
+            # Попробуем скачать файл локально и получить локальный URL (fallback — TG URL)
             photo_file_url = None
             if photo_file_id:
                 try:
-                    file_info = await bot.get_file(photo_file_id)
-                    file_path = getattr(file_info, 'file_path', None)
-                    if file_path:
-                        photo_file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+                    photo_file_url = await _download_telegram_file_locally(bot, photo_file_id)
                 except Exception as e:
-                    logger.warning(f"Не удалось получить file_path для чека: {e}")
+                    logger.warning(f"Не удалось сохранить файл локально: {e}")
 
             # Попробуем обновить уже созданную раннюю запись
             current_request_id = None
