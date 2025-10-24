@@ -782,6 +782,7 @@ def api_transaction_history(request):
             cursor = conn.cursor()
 
             tx_type = request.GET.get('type', 'all')  # all | deposits | withdrawals
+            user_id = request.GET.get('user_id')  # ID пользователя для фильтрации
 
             # Новая единая таблица requests
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='requests'")
@@ -792,6 +793,12 @@ def api_transaction_history(request):
             # История = завершённые/отклонённые. Учитываем также 'approved' и 'auto_completed'.
             where = ["r.status IN ('completed','rejected','approved','auto_completed')"]
             params = []
+            
+            # Фильтр по пользователю
+            if user_id:
+                where.append("r.user_id = ?")
+                params.append(user_id)
+            
             if tx_type == 'deposits':
                 where.append("r.request_type='deposit'")
             elif tx_type == 'withdrawals':
