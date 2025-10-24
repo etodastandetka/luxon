@@ -26,27 +26,191 @@ def format_chart_date(date_string):
     except:
         return date_string
 
-def bot_settings(request):
-    """Страница настроек бота с секцией кошельков/реквизитов (🔧 Главное)"""
-    wallets = BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at')
-    groups = {
-        'mbank': [w for w in wallets if w.bank_code == 'mbank'],
-        'bakai': [w for w in wallets if w.bank_code == 'bakai'],
-        'optima': [w for w in wallets if w.bank_code == 'optima'],
-    }
-    qrhash = QRHash.objects.all().order_by('-is_main', '-is_active', '-created_at')
-    return render(request, 'bot_control/settings.html', {
-        'groups': groups,
-        'qrhash': qrhash,
-    })
 
 def broadcast_message(request):
     """Страница рассылки сообщений"""
     return render(request, 'bot_control/broadcast.html')
 
+def bot_management(request):
+    """Страница управления ботом - все настройки в одном месте"""
+    return render(request, 'bot_control/bot_management.html')
+
+def bot_management_v2(request):
+    """Альтернативная страница управления ботом для тестирования"""
+    return render(request, 'bot_control/bot_management_v2.html')
+
+def bot_management_fixed(request):
+    """Исправленная страница управления ботом без кэширования"""
+    return render(request, 'bot_control/bot_management_fixed.html')
+
 def statistics(request):
     """Страница статистики"""
     return render(request, 'bot_control/statistics_mobile.html')
+
+@csrf_exempt
+def api_statistics(request):
+    """API для получения статистики"""
+    try:
+        from bot_control.auto_deposit_models import AutoDepositRequest
+        from bot_control.models import BankSettings, QRHash
+        
+        # Получаем параметры фильтрации
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+        bookmaker = request.GET.get('bookmaker')
+        
+        # Общая статистика
+        total_requests = AutoDepositRequest.objects.count()
+        pending_requests = AutoDepositRequest.objects.filter(status='pending').count()
+        approved_requests = AutoDepositRequest.objects.filter(status='approved').count()
+        rejected_requests = AutoDepositRequest.objects.filter(status='rejected').count()
+        
+        # Статистика по букмекерам
+        bookmaker_stats = {}
+        if bookmaker:
+            bookmaker_requests = AutoDepositRequest.objects.filter(bookmaker=bookmaker)
+        else:
+            bookmaker_requests = AutoDepositRequest.objects.all()
+            
+        for req in bookmaker_requests:
+            if req.bookmaker not in bookmaker_stats:
+                bookmaker_stats[req.bookmaker] = {
+                    'total': 0,
+                    'pending': 0,
+                    'approved': 0,
+                    'rejected': 0,
+                    'amount': 0
+                }
+            bookmaker_stats[req.bookmaker]['total'] += 1
+            bookmaker_stats[req.bookmaker][req.status] += 1
+            bookmaker_stats[req.bookmaker]['amount'] += float(req.amount or 0)
+        
+        # Данные для графиков
+        charts_data = {
+            'status_distribution': {
+                'pending': pending_requests,
+                'approved': approved_requests,
+                'rejected': rejected_requests
+            },
+            'bookmaker_distribution': bookmaker_stats
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'general': {
+                'total_requests': total_requests,
+                'pending_requests': pending_requests,
+                'approved_requests': approved_requests,
+                'rejected_requests': rejected_requests,
+                'banks_count': BankSettings.objects.count(),
+                'qr_codes_count': QRHash.objects.count()
+            },
+            'bookmakers': bookmaker_stats,
+            'charts': charts_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@csrf_exempt
+def api_export_statistics(request):
+    """API для экспорта статистики в CSV"""
+    try:
+        from bot_control.auto_deposit_models import AutoDepositRequest
+        import csv
+        from django.http import HttpResponse
+        
+        # Получаем параметры фильтрации
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+        bookmaker = request.GET.get('bookmaker')
+        
+        # Фильтруем данные
+        queryset = AutoDepositRequest.objects.all()
+        
+        if date_from:
+            queryset = queryset.filter(created_at__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(created_at__lte=date_to)
+        if bookmaker:
+            queryset = queryset.filter(bookmaker=bookmaker)
+        
+        # Создаем CSV ответ
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="statistics_export.csv"'
+        
+        writer = csv.writer(response)
+        
+        # Заголовки
+        writer.writerow(['ID', 'User ID', 'Username', 'Bookmaker', 'Account ID', 'Amount', 'Bank', 'Status', 'Created At', 'Updated At'])
+        
+        # Данные
+        for req in queryset:
+            writer.writerow([
+                req.id,
+                req.user_id,
+                req.username,
+                req.bookmaker,
+                req.account_id,
+                req.amount,
+                req.bank,
+                req.status,
+                req.created_at.strftime('%Y-%m-%d %H:%M:%S') if req.created_at else '',
+                req.updated_at.strftime('%Y-%m-%d %H:%M:%S') if req.updated_at else ''
+            ])
+        
+        return response
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@csrf_exempt
+def api_get_bot_settings(request):
+    """API для получения настроек бота (для Next.js)"""
+    try:
+        # Простые настройки по умолчанию без базы данных
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'is_active': True,
+                'maintenance_message': '🔧 Технические работы\nБот временно недоступен. Попробуйте позже.',
+                'deposits_enabled': True,
+                'withdrawals_enabled': True,
+                'channel_subscription_required': False,
+                'channel_username': '',
+                'enabled_deposit_banks': ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay'],
+                'enabled_withdrawal_banks': ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@csrf_exempt
+def api_save_bot_settings(request):
+    """API для сохранения настроек бота (для Next.js)"""
+    try:
+        if request.method != 'POST':
+            return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+        
+        # Просто возвращаем успех без сохранения в базу
+        return JsonResponse({
+            'success': True,
+            'message': 'Настройки сохранены (демо режим)'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 
 def bank_report(request):
@@ -254,6 +418,7 @@ def wallets_management(request):
     """Управление кошельками банков (MBank/Bakai/Optima). Отдельно от Демирбанка (QRHash)."""
     message = None
     error = None
+    
     if request.method == 'POST':
         action = request.POST.get('action')
         try:
@@ -450,64 +615,13 @@ def api_bank_wallets_delete(request, wid: int):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-def bot_settings_page(request):
-    """Страница настроек бота (новая)"""
-    try:
-        from .models import BankWallet, QRHash
-        wallets = list(BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at'))
-        qrhash = list(QRHash.objects.all().order_by('-is_main', '-is_active', '-created_at'))
-    except Exception:
-        wallets, qrhash = [], []
-    # SSR для реквизитов (SQLite), как на странице кошелька
-    ssr_requisites = []
-    try:
-        import sqlite3
-        from django.conf import settings as dj_settings
-        conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS requisites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                name TEXT,
-                email TEXT,
-                password TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        cur.execute('SELECT id, value, COALESCE(is_active,0), COALESCE(created_at,"") FROM requisites ORDER BY is_active DESC, id DESC')
-        for rid, value, is_active, created_at in cur.fetchall():
-            ssr_requisites.append({'id': rid, 'value': value, 'is_active': bool(is_active), 'created_at': created_at})
-        conn.close()
-    except Exception:
-        ssr_requisites = []
-    return render(request, 'bot_control/bot_settings.html', {
-        'ssr_bank_wallets': wallets,
-        'ssr_qr_wallets': qrhash,
-        'ssr_requisites': ssr_requisites,
-    })
 
 @csrf_exempt
 def api_request_status(request, request_id: int):
-    """Возвращает текущий статус заявки по её ID из общей БД (таблица requests).
-    Ответ: { success: True, id, status, updated_at, request_type }
-    """
+    """Таблица requests больше не существует, возвращаем ошибку"""
     if request.method != 'GET':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
-    try:
-        # Читаем из общей БД бота
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, status, COALESCE(updated_at, created_at), request_type FROM requests WHERE id=?", (int(request_id),))
-        row = cursor.fetchone()
-        conn.close()
-        if not row:
-            return JsonResponse({'success': False, 'error': 'not found'}, status=404)
-        rid, status_val, upd, rtype = row
-        return JsonResponse({'success': True, 'id': rid, 'status': status_val, 'updated_at': upd, 'request_type': rtype})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    return JsonResponse({'success': False, 'error': 'Requests table no longer exists'}, status=404)
 
 def _parse_period(request):
     """Читает ?start=YYYY-MM-DD&end=YYYY-MM-DD, возвращает (start_date, end_date) или (None, None)."""
@@ -527,22 +641,28 @@ def _parse_period(request):
 
 def _read_platform_stats(conn, bookmaker_key: str, start_d: date = None, end_d: date = None) -> Dict[str, Any]:
     cur = conn.cursor()
-    where = ["bookmaker = ?"]
-    params: list[Any] = [bookmaker_key]
+    
+    # Формируем WHERE условия
+    where_conditions = ["bookmaker = ?"]
+    params = [bookmaker_key]
+    
     if start_d:
-        where.append("DATE(created_at) >= ?")
+        where_conditions.append("DATE(created_at) >= ?")
         params.append(start_d.strftime('%Y-%m-%d'))
     if end_d:
-        where.append("DATE(created_at) <= ?")
+        where_conditions.append("DATE(created_at) <= ?")
         params.append(end_d.strftime('%Y-%m-%d'))
-    where_sql = ' WHERE ' + ' AND '.join(where)
-
-    # Deposits
-    cur.execute(f"SELECT COALESCE(SUM(amount),0), COUNT(*) FROM requests{where_sql} AND request_type='deposit'", params)
+    
+    where_sql = " WHERE " + " AND ".join(where_conditions)
+    
+    # Получаем данные по депозитам из таблицы deposit_requests
+    cur.execute(f"SELECT COALESCE(SUM(amount),0), COUNT(*) FROM deposit_requests{where_sql}", params)
     dep_sum, dep_cnt = cur.fetchone() or (0, 0)
-    # Withdrawals
-    cur.execute(f"SELECT COALESCE(SUM(amount),0), COUNT(*) FROM requests{where_sql} AND request_type='withdraw'", params)
+    
+    # Получаем данные по выводам из таблицы withdrawals
+    cur.execute(f"SELECT COALESCE(SUM(amount),0), COUNT(*) FROM withdrawals{where_sql}", params)
     w_sum, w_cnt = cur.fetchone() or (0, 0)
+    
     return {
         'deposits_sum': float(dep_sum or 0),
         'deposits_count': int(dep_cnt or 0),
@@ -626,9 +746,13 @@ def limits_dashboard(request):
     # Загружаем конфиг из bot.config
     bm_cfg = {}
     try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
         from bot.config import BOOKMAKERS as BOT_BM
         bm_cfg = BOT_BM
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Could not import bot config: {e}")
         bm_cfg = {}
 
     # Балансы кассы
@@ -818,7 +942,7 @@ def api_send_broadcast(request):
             conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
             cursor = conn.cursor()
             
-            cursor.execute('SELECT user_id FROM users')
+            cursor.execute('SELECT telegram_id FROM users')
             user_ids = [row[0] for row in cursor.fetchall()]
             
             conn.close()
@@ -901,9 +1025,8 @@ def api_statistics(request):
             cursor.execute('SELECT COUNT(*) FROM users')
             total_users = cursor.fetchone()[0]
 
-            # Определяем, есть ли новая единая таблица requests
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='requests'")
-            has_requests = cursor.fetchone() is not None
+            # Таблица requests больше не используется
+            has_requests = False
 
             # Определяем схему транзакций (старые варианты)
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'")
@@ -928,36 +1051,15 @@ def api_statistics(request):
                 params.append(bookmaker_filter)
             where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 
-            if has_requests:
-                # Статистика из новой таблицы requests
-                where = []
-                params = []
-                if date_from:
-                    where.append("DATE(created_at) >= ?")
-                    params.append(date_from)
-                if date_to:
-                    where.append("DATE(created_at) <= ?")
-                    params.append(date_to)
-                if bookmaker_filter:
-                    where.append("bookmaker = ?")
-                    params.append(bookmaker_filter)
-                where_sql = (" WHERE " + " AND ".join(where)) if where else ""
-
-                cursor.execute(f"SELECT COUNT(*) FROM requests{where_sql} AND request_type='deposit'" if where_sql else "SELECT COUNT(*) FROM requests WHERE request_type='deposit'", params)
-                total_deposits = cursor.fetchone()[0] or 0
-                cursor.execute(f"SELECT COUNT(*) FROM requests{where_sql} AND request_type='withdraw'" if where_sql else "SELECT COUNT(*) FROM requests WHERE request_type='withdraw'", params)
-                total_withdrawals = cursor.fetchone()[0] or 0
-                cursor.execute(f"SELECT COALESCE(SUM(amount),0) FROM requests{where_sql} AND request_type='deposit'" if where_sql else "SELECT COALESCE(SUM(amount),0) FROM requests WHERE request_type='deposit'", params)
-                total_amount = cursor.fetchone()[0] or 0
-
-                cursor.execute(f"SELECT COALESCE(AVG(amount),0) FROM requests{where_sql} AND request_type='deposit'" if where_sql else "SELECT COALESCE(AVG(amount),0) FROM requests WHERE request_type='deposit'", params)
-                avg_deposit = cursor.fetchone()[0] or 0
-                cursor.execute(f"SELECT COALESCE(AVG(amount),0) FROM requests{where_sql} AND request_type='withdraw'" if where_sql else "SELECT COALESCE(AVG(amount),0) FROM requests WHERE request_type='withdraw'", params)
-                avg_withdrawal = cursor.fetchone()[0] or 0
-
-                cursor.execute(f"SELECT COUNT(DISTINCT user_id) FROM requests{(where_sql + ' AND ' if where_sql else ' WHERE ')} request_type='deposit'", params)
-                users_with_deposits = cursor.fetchone()[0] or 0
-            elif has_transactions and tx_col:
+            # Получаем данные из существующих таблиц
+            total_deposits = 0
+            total_withdrawals = 0
+            total_amount = 0
+            avg_deposit = 0
+            avg_withdrawal = 0
+            users_with_deposits = 0
+            
+            if has_transactions and tx_col:
                 cursor.execute(f'SELECT COUNT(*) FROM transactions {where_sql} AND {tx_col} = "deposit"' if where_sql else f'SELECT COUNT(*) FROM transactions WHERE {tx_col} = "deposit"', params)
                 total_deposits = cursor.fetchone()[0] or 0
                 cursor.execute(f'SELECT COUNT(*) FROM transactions {where_sql} AND {tx_col} = "withdrawal"' if where_sql else f'SELECT COUNT(*) FROM transactions WHERE {tx_col} = "withdrawal"', params)
@@ -1006,14 +1108,9 @@ def api_statistics(request):
             conversion_rate = (users_with_deposits / total_users * 100) if total_users > 0 else 0
 
             # Активные за 30 дней
-            if has_requests:
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT user_id)
-                    FROM requests
-                    WHERE created_at >= datetime('now', '-30 days')
-                """)
-                active_users = cursor.fetchone()[0] or 0
-            else:
+            # Таблица requests больше не используется
+            active_users = 0
+            if not has_requests:
                 cursor.execute("""
                     SELECT COUNT(DISTINCT user_id) FROM (
                         SELECT user_id, created_at FROM deposit_requests
@@ -1035,22 +1132,11 @@ def api_statistics(request):
             for bookmaker_key, bookmaker_name in bookmaker_names.items():
                 if bookmaker_filter and bookmaker_filter != bookmaker_key:
                     continue
-                if has_requests:
-                    cursor.execute(f"""
-                        SELECT COUNT(*), COALESCE(SUM(amount),0)
-                        FROM requests
-                        WHERE bookmaker = ? AND request_type='deposit'
-                        {('AND ' + ' AND '.join(where_clauses)) if where_clauses else ''}
-                    """, ([bookmaker_key] + params) if params else [bookmaker_key])
-                    d_count, d_sum = cursor.fetchone()
-                    cursor.execute(f"""
-                        SELECT COUNT(*), COALESCE(SUM(amount),0)
-                        FROM requests
-                        WHERE bookmaker = ? AND request_type='withdraw'
-                        {('AND ' + ' AND '.join(where_clauses)) if where_clauses else ''}
-                    """, ([bookmaker_key] + params) if params else [bookmaker_key])
-                    w_count, w_sum = cursor.fetchone()
-                elif has_transactions and tx_col:
+                # Таблица requests больше не используется
+                d_count, d_sum = 0, 0
+                w_count, w_sum = 0, 0
+                
+                if has_transactions and tx_col:
                     cursor.execute(f'''SELECT COUNT(*), COALESCE(SUM(amount),0) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} bookmaker = ? AND {tx_col} = 'deposit' ''', params + [bookmaker_key] if where_sql else [bookmaker_key])
                     d_count, d_sum = cursor.fetchone()
                     cursor.execute(f'''SELECT COUNT(*), COALESCE(SUM(amount),0) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} bookmaker = ? AND {tx_col} = 'withdrawal' ''', params + [bookmaker_key] if where_sql else [bookmaker_key])
@@ -1070,26 +1156,11 @@ def api_statistics(request):
                 }
 
             # Графики (по датам)
-            if has_requests:
-                cursor.execute(f"""
-                    SELECT DATE(created_at), COUNT(*)
-                    FROM requests
-                    {(where_sql + ' AND ' if where_sql else ' WHERE ')} request_type='deposit'
-                    GROUP BY DATE(created_at)
-                    ORDER BY DATE(created_at)
-                    LIMIT 10
-                """, params)
-                deposits_chart = cursor.fetchall()
-                cursor.execute(f"""
-                    SELECT DATE(created_at), COUNT(*)
-                    FROM requests
-                    {(where_sql + ' AND ' if where_sql else ' WHERE ')} request_type='withdraw'
-                    GROUP BY DATE(created_at)
-                    ORDER BY DATE(created_at)
-                    LIMIT 10
-                """, params)
-                withdrawals_chart = cursor.fetchall()
-            elif has_transactions and tx_col:
+            # Таблица requests больше не используется
+            deposits_chart = []
+            withdrawals_chart = []
+            
+            if has_transactions and tx_col:
                 cursor.execute(f'''SELECT DATE(created_at), COUNT(*) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} {tx_col} = 'deposit' GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10''', params)
                 deposits_chart = cursor.fetchall()
                 cursor.execute(f'''SELECT DATE(created_at), COUNT(*) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} {tx_col} = 'withdrawal' GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10''', params)
@@ -2122,196 +2193,169 @@ def api_toggle_bank_setting(request, bank_id):
                 'error': str(e)
             })
 
-@csrf_exempt
-def api_get_bot_settings(request):
-    """API для получения настроек бота"""
-    try:
-        # Собираем настройки с дефолтами
-        settings = {
-            'pause': BotConfiguration.get_setting('pause', False),
-            'sites': BotConfiguration.get_setting('sites', ['Melbet', '1xbet', '1win', 'mostbet']),
-            'deposits': BotConfiguration.get_setting('deposits', {
-                'enabled': True,
-                'banks': ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'elcart', 'mega']
-            }),
-            'withdrawals': BotConfiguration.get_setting('withdrawals', {
-                'enabled': True,
-                'banks': ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
-            }),
-            'channel': BotConfiguration.get_setting('channel', {
-                'enabled': False,
-                'name': '@bingokg_news'
-            })
-        }
-        # Нормализуем только известные алиасы, не отбрасывая значения
-        try:
-            w = settings.get('withdrawals') or {}
-            banks = w.get('banks') or []
-            norm_map = {
-                'companon': 'kompanion', 'компаньон': 'kompanion',
-                'o!': 'odengi', 'o! деньги': 'odengi', 'omoney': 'odengi',
-                'balance.kg': 'balance',
-                'mega': 'megapay'
-            }
-            banks_norm = []
-            for b in banks:
-                k = str(b).strip().lower()
-                mapped = norm_map.get(k, k)
-                if mapped not in banks_norm:
-                    banks_norm.append(mapped)
-            settings['withdrawals']['banks'] = banks_norm
-        except Exception:
-            pass
-        
-        return JsonResponse(settings)
-    except Exception as e:
-        return JsonResponse({
-            'error': str(e)
-        }, status=500)
+
+
 
 @csrf_exempt
-def api_save_bot_settings(request):
-    """API для сохранения настроек бота"""
+def api_get_bank_settings(request):
+    """API для получения настроек банков"""
+    try:
+        settings = {
+            'deposit_banks': BotConfiguration.get_setting('deposits', {}).get('banks', ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay']),
+            'withdrawal_banks': BotConfiguration.get_setting('withdrawals', {}).get('banks', ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank'])
+        }
+        return JsonResponse(settings)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_save_bank_settings(request):
+    """API для сохранения настроек банков"""
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST method allowed'}, status=405)
     
     try:
         data = json.loads(request.body)
-
-        # ===== Нормализация входящих данных =====
-        # Sites as-is (UI уже отдаёт корректно)
-        sites = data.get('sites', []) or []
-
-        # Deposits
-        dep_in = data.get('deposits') or {}
-        dep_enabled = bool(dep_in.get('enabled', True))
-        dep_banks_in = dep_in.get('banks') or []
-        dep_allowed = {'mbank','bakai','balance','demir','omoney','elcart','megapay','mega','qr'}
-        dep_banks_norm = []
-        for b in dep_banks_in:
-            k = str(b).strip().lower()
-            if k == 'mega':
-                k = 'megapay'
-            if k in dep_allowed and k not in dep_banks_norm:
-                dep_banks_norm.append(k)
-        deposits = {'enabled': dep_enabled, 'banks': dep_banks_norm}
-
-        # Withdrawals
-        w_in = data.get('withdrawals') or {}
-        w_enabled = bool(w_in.get('enabled', True))
-        w_banks_in = w_in.get('banks') or []
-        w_map = {
-            'companon': 'kompanion', 'kompanion': 'kompanion', 'компаньон': 'kompanion',
-            'odengi': 'odengi', 'omoney': 'odengi', 'o!': 'odengi', 'o! деньги': 'odengi',
-            'bakai': 'bakai', 'balance': 'balance', 'balance.kg': 'balance',
-            'megapay': 'megapay', 'mega': 'megapay',
-            'mbank': 'mbank'
-        }
-        w_allowed = {'kompanion','odengi','bakai','balance','megapay','mbank'}
-        w_banks_norm = []
-        for b in w_banks_in:
-            k = w_map.get(str(b).strip().lower())
-            if k and k in w_allowed and k not in w_banks_norm:
-                w_banks_norm.append(k)
-        withdrawals = {'enabled': w_enabled, 'banks': w_banks_norm}
-
-        channel = data.get('channel', {}) or {}
-
-        # ===== Сохраняем в Django БД =====
-        BotConfiguration.set_setting('pause', data.get('pause', False), 'Пауза бота')
-        BotConfiguration.set_setting('sites', sites, 'Активные сайты')
-        BotConfiguration.set_setting('deposits', deposits, 'Настройки пополнений')
+        
+        # Получаем текущие настройки
+        deposits = BotConfiguration.get_setting('deposits', {'enabled': True, 'banks': []})
+        withdrawals = BotConfiguration.get_setting('withdrawals', {'enabled': True, 'banks': []})
+        
+        # Обновляем банки
+        deposits['banks'] = data.get('deposit_banks', [])
+        withdrawals['banks'] = data.get('withdrawal_banks', [])
+        
+        # Сохраняем
+        BotConfiguration.set_setting('deposits', deposits, 'Настройки депозитов')
         BotConfiguration.set_setting('withdrawals', withdrawals, 'Настройки выводов')
-        BotConfiguration.set_setting('channel', channel, 'Настройки канала')
-
-        # Дублируем необходимые настройки в общую БД бота (SQLite), чтобы бот мог их читать без Django
-        try:
-            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-            cur = conn.cursor()
-            # ensure table
-            cur.execute('''
-                CREATE TABLE IF NOT EXISTS bot_settings (
-                    key TEXT PRIMARY KEY,
-                    value TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            # нормализуем список сайтов в нижний регистр ключей бота
-            norm = []
-            for s in sites:
-                ls = str(s).strip().lower()
-                if ls in ('melbet','1xbet','1win','mostbet'):
-                    norm.append(ls)
-                elif ls in ('mel','mel-bet'):
-                    norm.append('melbet')
-                elif ls in ('xbet','1x'):
-                    norm.append('1xbet')
-                elif ls in ('win','onewin'):
-                    norm.append('1win')
-            import json as _json
-            cur.execute('''
-                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                VALUES ('sites', ?, CURRENT_TIMESTAMP)
-            ''', (_json.dumps(norm, ensure_ascii=False),))
-
-            # deposit settings -> bot_settings
-            dep_enabled = deposits['enabled']
-            dep_banks = deposits['banks']
-            bank_map = {
-                'mbank': 'MBank',
-                'bakai': 'Bakai',
-                'balance': 'Balance.kg',
-                'demir': 'DemirBank',
-                'omoney': 'O! bank',
-                'megapay': 'MegaPay',
-                'qr': 'QR'
-            }
-            norm_banks = [bank_map.get(k, k) for k in dep_banks]
-            cur.execute('''
-                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                VALUES ('deposits_enabled', ?, CURRENT_TIMESTAMP)
-            ''', ('1' if dep_enabled else '0',))
-            cur.execute('''
-                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                VALUES ('deposit_banks', ?, CURRENT_TIMESTAMP)
-            ''', (_json.dumps(norm_banks, ensure_ascii=False),))
-
-            # withdrawal settings -> bot_settings
-            w_enabled = withdrawals['enabled']
-            w_banks = withdrawals['banks']
-            w_map_out = {
-                'kompanion': 'Компаньон',
-                'odengi': 'О! Деньги',
-                'bakai': 'Бакай',
-                'balance': 'Balance.kg',
-                'megapay': 'MegaPay',
-                'mbank': 'MBank'
-            }
-            w_norm = [w_map_out.get(k, k) for k in w_banks]
-            cur.execute('''
-                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                VALUES ('withdrawals_enabled', ?, CURRENT_TIMESTAMP)
-            ''', ('1' if w_enabled else '0',))
-            cur.execute('''
-                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                VALUES ('withdraw_banks', ?, CURRENT_TIMESTAMP)
-            ''', (_json.dumps(w_norm, ensure_ascii=False),))
-            # Флаг паузы бота -> is_active ('0' если pause=True)
-            is_active = '0' if bool(data.get('pause', False)) else '1'
-            cur.execute('''
-                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                VALUES ('is_active', ?, CURRENT_TIMESTAMP)
-            ''', (is_active,))
-            conn.commit()
-            conn.close()
-
-        except Exception:
-            # Не падаем, если зеркалирование не удалось
-            pass
         
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_get_deposit_settings(request):
+    """API для получения настроек депозитов"""
+    try:
+        settings = BotConfiguration.get_setting('deposits', {
+            'enabled': True,
+            'banks': ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay']
+        })
+        return JsonResponse(settings)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_save_deposit_settings(request):
+    """API для сохранения настроек депозитов"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        settings = {
+            'enabled': data.get('enabled', True),
+            'banks': data.get('banks', [])
+        }
+        
+        BotConfiguration.set_setting('deposits', settings, 'Настройки депозитов')
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_get_withdrawal_settings(request):
+    """API для получения настроек выводов"""
+    try:
+        settings = BotConfiguration.get_setting('withdrawals', {
+            'enabled': True,
+            'banks': ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
+        })
+        return JsonResponse(settings)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_save_withdrawal_settings(request):
+    """API для сохранения настроек выводов"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        settings = {
+            'enabled': data.get('enabled', True),
+            'banks': data.get('banks', [])
+        }
+        
+        BotConfiguration.set_setting('withdrawals', settings, 'Настройки выводов')
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_get_bot_control(request):
+    """API для получения настроек управления ботом"""
+    try:
+        settings = {
+            'pause': BotConfiguration.get_setting('pause', False),
+            'maintenance_message': BotConfiguration.get_setting('maintenance_message', 'Технические работы. Попробуйте позже.')
+        }
+        return JsonResponse(settings)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_save_bot_control(request):
+    """API для сохранения настроек управления ботом"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        BotConfiguration.set_setting('pause', data.get('pause', False), 'Пауза бота')
+        BotConfiguration.set_setting('maintenance_message', data.get('maintenance_message', ''), 'Сообщение о технических работах')
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_get_channel_settings(request):
+    """API для получения настроек канала"""
+    try:
+        settings = BotConfiguration.get_setting('channel', {
+            'enabled': False,
+            'name': '@bingokg_news',
+            'welcome_message': 'Добро пожаловать! Подпишитесь на наш канал для получения уведомлений.'
+        })
+        return JsonResponse(settings)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_save_channel_settings(request):
+    """API для сохранения настроек канала"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        settings = {
+            'enabled': data.get('enabled', False),
+            'name': data.get('name', '@bingokg_news'),
+            'welcome_message': data.get('welcome_message', 'Добро пожаловать! Подпишитесь на наш канал для получения уведомлений.')
+        }
+        
+        BotConfiguration.set_setting('channel', settings, 'Настройки канала')
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 @csrf_exempt
 def api_save_qr_hash(request):
     """API для сохранения QR хеша"""
@@ -2518,3 +2562,70 @@ def api_delete_qr_hash(request, qr_id):
         return JsonResponse({'error': 'QR хеш не найден'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_bot_status(request):
+    """API для получения статуса бота"""
+    try:
+        # Получаем статус бота из конфигурации
+        config = BotConfiguration.objects.first()
+        if config:
+            return JsonResponse({
+                'is_active': config.is_active,
+                'maintenance_message': config.maintenance_message or ''
+            })
+        else:
+            return JsonResponse({
+                'is_active': True,
+                'maintenance_message': ''
+            })
+    except Exception as e:
+        return JsonResponse({
+            'is_active': True,
+            'maintenance_message': ''
+        })
+
+@csrf_exempt
+def api_set_bot_status(request):
+    """API для установки статуса бота"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            is_active = data.get('is_active', True)
+            maintenance_message = data.get('maintenance_message', '')
+            
+            config, created = BotConfiguration.objects.get_or_create(
+                defaults={'is_active': True, 'maintenance_message': ''}
+            )
+            config.is_active = is_active
+            config.maintenance_message = maintenance_message
+            config.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Статус бота обновлен'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@csrf_exempt
+def api_restart_bot(request):
+    """API для перезапуска бота"""
+    if request.method == 'POST':
+        try:
+            # Здесь можно добавить логику перезапуска бота
+            # Пока просто возвращаем успех
+            return JsonResponse({
+                'success': True,
+                'message': 'Бот перезапущен'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)

@@ -25,7 +25,7 @@ except Exception:
 
 SECRET_KEY = 'django-insecure-luxservice-online-2025-secure-key-change-in-production'
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     'xendro.pro', 
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'rest_framework',
+    'rest_framework.authtoken',
     'bot_control',
 ]
 
@@ -55,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'admin_panel.settings.CORSMiddleware',
+    'middleware.auth_middleware.AuthMiddleware',
 ]
 
 # CORS настройки для API
@@ -144,7 +146,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 BOT_TOKEN = '7489617815:AAFt-qZwXCHZYdjWDiihq9slYxg1c8UCzCg'
 # Единый путь к базе бота. Бот пишет в bot/universal_bot.db в корне репозитория на сервере.
-BOT_DATABASE_PATH = '/var/www/lux/bot/universal_bot.db'
+# Путь к базе данных бота (адаптирован для Windows)
+BOT_DATABASE_PATH = PROJECT_ROOT / 'universal_bot.db'
 
 # Настройки безопасности для продакшена
 SECURE_BROWSER_XSS_FILTER = True
@@ -163,3 +166,27 @@ USE_TZ = True
 MEDIA_URL = '/media/'
 # Put media under project root so both bot and Django can access saved receipts
 MEDIA_ROOT = PROJECT_ROOT / 'media'
+
+# Django REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Временно разрешаем всем
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20
+}
+
+# Настройки сессий для постоянного входа
+SESSION_COOKIE_AGE = 30 * 24 * 60 * 60  # 30 дней
+SESSION_COOKIE_SECURE = False  # True для HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False

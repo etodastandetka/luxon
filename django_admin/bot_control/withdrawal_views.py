@@ -26,7 +26,7 @@ def get_withdrawal_request(request_id):
                    u.phone_number,
                    u.balance as user_balance
             FROM withdrawal_requests wr
-            LEFT JOIN users u ON wr.user_id = u.user_id
+            LEFT JOIN users u ON wr.user_id = u.telegram_id
             WHERE wr.id = ?
         ''', (request_id,))
         

@@ -1,5 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
+
+{% block title %}Кошелек - Управление кошельками{% endblock %}
+{% block header_icon %}wallet{% endblock %}
+{% block header_title %}Кошелек{% endblock %}
+{% block header_subtitle %}Управление кошельками{% endblock %}
 <script>
 // Удаление банка по API
 async function deleteBank(bankId) {
@@ -25,29 +30,174 @@ async function deleteBank(bankId) {
 // удалён дублирующийся блок BankWallet UI (используем нижний, /dashboard/api/bank-wallets/)
 </script>
 
-{% block title %}Кошелек{% endblock %}
-
-{% block header_title %}Кошелек{% endblock %}
-{% block header_subtitle %}Банки и QR-коды{% endblock %}
 
 {% block content %}
+<style>
+/* Modern Wallet Styles */
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-field label {
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.form-field input,
+.form-field select {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.wallet-header {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 24px;
+    color: white;
+}
+
+.wallet-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease;
+    text-align: center;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.bank-item {
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.bank-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    border-color: rgba(255,255,255,0.2);
+}
+
+.bank-name {
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.bank-code {
+    font-size: 12px;
+    color: #9fb0c4;
+    font-family: monospace;
+    background: rgba(255,255,255,0.05);
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.bank-features {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.feature-badge {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.delete-btn {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.delete-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+}
+</style>
+
 
 <!-- Список банков -->
 <div class="banks-list" style="margin-bottom: 20px;">
     
     {% for bank in banks %}
-    <div class="bank-item" style="background: #1a1a1a; border-radius: 12px; padding: 16px; border: 1px solid #333; margin-bottom: 12px;">
+    <div class="bank-item">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px;">{{ bank.bank_name }}</div>
-                <div style="font-size: 11px; color: #999; font-family: monospace;">{{ bank.bank_code }}</div>
-                <div style="font-size: 10px; color: #666; margin-top: 4px;">
-                    {% if bank.is_enabled_deposit %}✅ Пополнение{% endif %}
-                    {% if bank.is_enabled_withdraw %}✅ Вывод{% endif %}
+                <div class="bank-name">{{ bank.bank_name }}</div>
+                <div class="bank-code">{{ bank.bank_code }}</div>
+                <div class="bank-features">
+                    {% if bank.is_enabled_deposit %}<span class="feature-badge">✅ Пополнение</span>{% endif %}
+                    {% if bank.is_enabled_withdraw %}<span class="feature-badge">✅ Вывод</span>{% endif %}
                 </div>
             </div>
             <div style="margin-left: 12px;">
-                <button onclick="deleteBank({{ bank.id }})" style="background: #ef4444; border: none; color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+                <button onclick="deleteBank({{ bank.id }})" class="delete-btn">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -87,11 +237,11 @@ async function fetchBankWallets() {
 function renderBankWallets(items) {
   const c = document.getElementById('bw_list');
   if (!c) return;
-  if (!items.length) { c.innerHTML = '<div style="color:#888;">Кошельки не добавлены</div>'; return; }
+  if (!items.length) { c.innerHTML = '<div style="color:#cccccc; background: transparent;">Кошельки не добавлены</div>'; return; }
   c.innerHTML = '';
   items.forEach(w => {
     const el = document.createElement('div');
-    el.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid #222; border-radius:10px; background:#141414;';
+    el.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid rgba(255, 255, 255, 0.1); border-radius:10px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); backdrop-filter: blur(10px);';
     el.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:4px;">
         <div style="color:#fff; font-weight:600; font-size:13px;">${w.bank_code.toUpperCase()} • ${w.account_name}</div>
@@ -288,25 +438,25 @@ async function deleteQR(qrId) {
 
 <!-- Реквизиты для QR (Новый блок) -->
 <div class="requisites-section" style="margin-top: 24px;">
-  <div class="stat-card" style="background: #1a1a1a; border-radius: 12px; padding: 20px; border: 1px solid #333; margin-bottom: 16px;">
+  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px;">
     <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Demirbank — добавить реквизит</h3>
 
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-      <div>
-        <label style="color:#fff; font-size:12px;">Название аккаунта</label>
-        <input id="rq_name" type="text" placeholder="Например: Демирбанк Акк 1" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
+      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
+        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Название аккаунта</label>
+        <input id="rq_name" type="text" placeholder="Например: Демирбанк Акк 1" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
       </div>
-      <div>
-        <label style="color:#fff; font-size:12px;">Реквизит Demirbank (16 цифр)</label>
-        <input id="rq_value" type="text" placeholder="1180000353932089" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
+        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Реквизит Demirbank (16 цифр)</label>
+        <input id="rq_value" type="text" placeholder="1180000353932089" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
       </div>
-      <div>
-        <label style="color:#fff; font-size:12px;">Email (для Demirbank уведомлений)</label>
-        <input id="rq_email" type="email" placeholder="you@example.com" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
+        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Email (для Demirbank уведомлений)</label>
+        <input id="rq_email" type="email" placeholder="you@example.com" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
       </div>
-      <div>
-        <label style="color:#fff; font-size:12px;">Пароль (для Demirbank уведомлений)</label>
-        <input id="rq_password" type="password" placeholder="Пароль" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
+        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Пароль (для Demirbank уведомлений)</label>
+        <input id="rq_password" type="password" placeholder="Пароль" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
         <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
@@ -322,24 +472,24 @@ async function deleteQR(qrId) {
 
 <!-- Кошельки банков (MBank / Optima / Bakai) -->
 <div class="requisites-section" style="margin-top: 24px;">
-  <div class="stat-card" style="background: #1a1a1a; border-radius: 12px; padding: 20px; border: 1px solid #333; margin-bottom: 16px;">
+  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px;">
     <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Добавить кошелёк (MBank / Optima / Bakai)</h3>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-      <div>
-        <label style="color:#fff; font-size:12px;">Банк</label>
-        <select id="bw_bank" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
+      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
+        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Банк</label>
+        <select id="bw_bank" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
           <option value="mbank">MBank</option>
           <option value="optima">Optima</option>
           <option value="bakai">Bakai</option>
         </select>
       </div>
-      <div>
-        <label style="color:#fff; font-size:12px;">Название</label>
-        <input id="bw_name" type="text" placeholder="Например: MBank Акк 1" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
+        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Название</label>
+        <input id="bw_name" type="text" placeholder="Например: MBank Акк 1" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
       </div>
-      <div style="grid-column: 1 / span 2;">
-        <label style="color:#fff; font-size:12px;">Hash/Реквизит</label>
-        <input id="bw_hash" type="text" placeholder="Вставьте hash" style="width:100%; padding:10px; background:#0a0a0a; border:1px solid #333; border-radius:8px; color:#fff;">
+      <div style="grid-column: 1 / span 2; display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
+        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Hash/Реквизит</label>
+        <input id="bw_hash" type="text" placeholder="Вставьте hash" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
         <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
@@ -351,15 +501,15 @@ async function deleteQR(qrId) {
     </div>
   </div>
 
-  <div class="stat-card" style="background:#1a1a1a; border-radius:12px; padding: 16px; border:1px solid #333;">
+  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(15px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius:12px; padding: 16px; border:1px solid rgba(255, 255, 255, 0.1);">
     <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Кошельки банков</h3>
     <div id="bw_list" style="display:flex; flex-direction:column; gap:10px;">
       {% if bank_wallets %}
         {% for w in bank_wallets %}
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid #222; border-radius:10px; background:#141414;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid rgba(255, 255, 255, 0.1); border-radius:10px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); backdrop-filter: blur(10px);">
           <div style="display:flex; flex-direction:column; gap:4px;">
-            <div style="color:#fff; font-weight:600; font-size:13px;">{{ w.bank_code|upper }} • {{ w.account_name }}</div>
-            <div style="color:#9aa4b2; font-size:11px;" title="{{ w.hash_value }}">{{ w.hash_value|slice:":18" }}…{{ w.hash_value|slice:"-10:" }}</div>
+            <div style="color:#fff; font-weight:600; font-size:13px;">{{ w.bank_name|upper }} • {{ w.wallet_address|slice:":20" }}</div>
+            <div style="color:#9aa4b2; font-size:11px;" title="{{ w.wallet_address }}">{{ w.wallet_address|slice:":18" }}…{{ w.wallet_address|slice:"-10:" }}</div>
             <div style="color:#888; font-size:10px;">{% if w.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}</div>
           </div>
           <div style="display:flex; gap:8px;">
@@ -375,12 +525,12 @@ async function deleteQR(qrId) {
 
 <!-- Перенесённый вниз список реквизитов Demirbank -->
 <div class="requisites-section" style="margin-top: 16px;">
-  <div class="stat-card" style="background:#1a1a1a; border-radius:12px; padding: 16px; border:1px solid #333;">
+  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(15px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius:12px; padding: 16px; border:1px solid rgba(255, 255, 255, 0.1);">
     <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Реквизиты ({{ requisites_count }})</h3>
     <div id="rq_list">
       {% if requisites %}
         {% for r in requisites %}
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #222;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255, 255, 255, 0.1);">
           <div style="flex:1;">
             <div style="color:#fff; font-weight:600; font-size:13px;">
               {{ r.value }} {% if r.is_active %}<span style="background:#00ff88; color:#000; border-radius:4px; padding:2px 6px; font-size:10px; margin-left:6px;">АКТИВНЫЙ</span>{% endif %}
@@ -396,7 +546,7 @@ async function deleteQR(qrId) {
         </div>
         {% endfor %}
       {% else %}
-        <div style="text-align:center; color:#888; padding:20px;">Реквизиты не добавлены</div>
+        <div style="text-align:center; color:#cccccc; padding:20px; background: transparent;">Реквизиты не добавлены</div>
       {% endif %}
     </div>
   </div>

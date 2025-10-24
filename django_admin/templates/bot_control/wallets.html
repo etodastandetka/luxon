@@ -1,0 +1,253 @@
+{% extends 'dashboard/base_mobile.html' %}
+{% load static %}
+
+{% block title %}Управление кошельками{% endblock %}
+
+{% block header_title %}Кошельки{% endblock %}
+{% block header_subtitle %}Управление банковскими кошельками{% endblock %}
+
+{% block content %}
+<div class="wallet-container">
+    <div class="wallet-header" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%); backdrop-filter: blur(15px); border-radius: 16px; padding: 24px; margin-bottom: 24px; color: #ffffff; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2);">
+        <h2 style="color: #ffffff; font-size: 22px; font-weight: 700; margin-bottom: 5px;">Управление кошельками</h2>
+        <p style="color: #cccccc; opacity: 0.8; font-size: 14px;">Настройка банковских кошельков для приема платежей</p>
+    </div>
+    
+    <div class="wallet-stats">
+        <div class="stat-card">
+            <div class="stat-value">{{ groups.mbank|length }}</div>
+            <div class="stat-label">MBank</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ groups.bakai|length }}</div>
+            <div class="stat-label">Bakai</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ groups.optima|length }}</div>
+            <div class="stat-label">Optima</div>
+        </div>
+    </div>
+
+    {% if message %}
+    <div class="alert alert-success">{{ message }}</div>
+    {% endif %}
+    
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="wallet-sections">
+        <div class="wallet-section">
+            <h3>MBank кошельки</h3>
+            {% for wallet in groups.mbank %}
+            <div class="bank-item">
+                <div class="bank-info">
+                    <div class="bank-name">{{ wallet.account_name }}</div>
+                    <div class="bank-code">{{ wallet.bank_code }}</div>
+                </div>
+                <div class="bank-features">
+                    {% if wallet.is_main %}<span class="feature-badge main">Основной</span>{% endif %}
+                    {% if wallet.is_active %}<span class="feature-badge active">Активный</span>{% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p class="empty-state">Нет MBank кошельков</p>
+            {% endfor %}
+        </div>
+
+        <div class="wallet-section">
+            <h3>Bakai кошельки</h3>
+            {% for wallet in groups.bakai %}
+            <div class="bank-item">
+                <div class="bank-info">
+                    <div class="bank-name">{{ wallet.account_name }}</div>
+                    <div class="bank-code">{{ wallet.bank_code }}</div>
+                </div>
+                <div class="bank-features">
+                    {% if wallet.is_main %}<span class="feature-badge main">Основной</span>{% endif %}
+                    {% if wallet.is_active %}<span class="feature-badge active">Активный</span>{% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p class="empty-state">Нет Bakai кошельков</p>
+            {% endfor %}
+        </div>
+
+        <div class="wallet-section">
+            <h3>Optima кошельки</h3>
+            {% for wallet in groups.optima %}
+            <div class="bank-item">
+                <div class="bank-info">
+                    <div class="bank-name">{{ wallet.account_name }}</div>
+                    <div class="bank-code">{{ wallet.bank_code }}</div>
+                </div>
+                <div class="bank-features">
+                    {% if wallet.is_main %}<span class="feature-badge main">Основной</span>{% endif %}
+                    {% if wallet.is_active %}<span class="feature-badge active">Активный</span>{% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p class="empty-state">Нет Optima кошельков</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+.wallet-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.wallet-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.wallet-header h2 {
+    color: #ffffff;
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.wallet-header p {
+    color: #b0b0b0;
+    font-size: 14px;
+}
+
+.wallet-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: rgba(30, 30, 46, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(138, 43, 226, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    background: rgba(74, 42, 106, 0.6);
+    border-color: rgba(138, 43, 226, 0.4);
+    transform: translateY(-2px);
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #b0b0b0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wallet-section {
+    margin-bottom: 30px;
+}
+
+.wallet-section h3 {
+    color: #ffffff;
+    font-size: 18px;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(138, 43, 226, 0.2);
+}
+
+.bank-item {
+    background: rgba(30, 30, 46, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(138, 43, 226, 0.2);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.bank-item:hover {
+    background: rgba(74, 42, 106, 0.6);
+    border-color: rgba(138, 43, 226, 0.4);
+    transform: translateY(-1px);
+}
+
+.bank-name {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.bank-code {
+    color: #b0b0b0;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.bank-features {
+    display: flex;
+    gap: 8px;
+}
+
+.feature-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.feature-badge.main {
+    background: rgba(138, 43, 226, 0.8);
+    color: #ffffff;
+}
+
+.feature-badge.active {
+    background: rgba(0, 224, 138, 0.8);
+    color: #ffffff;
+}
+
+.empty-state {
+    color: #cccccc;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    background: transparent;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.alert-success {
+    background: rgba(0, 224, 138, 0.2);
+    border: 1px solid rgba(0, 224, 138, 0.4);
+    color: #00e08a;
+}
+
+.alert-error {
+    background: rgba(255, 107, 107, 0.2);
+    border: 1px solid rgba(255, 107, 107, 0.4);
+    color: #ff6b6b;
+}
+</style>
+{% endblock %}
+
+

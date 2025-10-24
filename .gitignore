@@ -1,10 +1,3 @@
-# Конфиденциальные данные
-config.py
-*.db
-.env
-.env.*
-*.env
-
 # Python
 __pycache__/
 *.py[cod]
@@ -26,47 +19,88 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Виртуальные окружения
+# Virtual environments
 venv/
 env/
 ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Next.js
+.next/
+out/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Логи
-*.log
-
-# Временные файлы
-*.tmp
-*.temp
-
-# Изображения (если нужно исключить)
-# images/
-
-# PM2
-.pm2/
-
-# Node / Next.js
-node_modules/
-**/node_modules/
-.next/
-**/.next/
-.nuxt/
-**/.nuxt/
-.vercel/
-**/.vercel/
-npm-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+*~
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
-sync_config.jsonc
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Android
+android_client/.gradle/
+android_client/build/
+android_client/local.properties
+android_client/app/build/
+
+# Archives
+*.zip
+*.rar
+*.7z
+*.tar.gz
+
+# Test files
+test_*.py
+*_test.py
+tests/
+test/

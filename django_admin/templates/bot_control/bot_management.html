@@ -1,0 +1,1049 @@
+{% extends 'base.html' %}
+
+{% block title %}⚙️ Управление ботом - Luxon{% endblock %}
+
+{% block extra_head %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<style>
+/* ТЕМНАЯ ТЕМА С ФИОЛЕТОВЫМИ АКЦЕНТАМИ */
+:root {
+    --primary-color: #8b5cf6;
+    --primary-dark: #7c3aed;
+    --primary-light: #a78bfa;
+    --bg-primary: #0f0f23;
+    --bg-secondary: #1a1a2e;
+    --bg-card: #16213e;
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --border-color: #374151;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+}
+
+body {
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.card {
+    background: rgba(22, 33, 62, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+}
+
+.card-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.card-icon {
+    font-size: 24px;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.card-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.card-body {
+    padding: 24px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.setting-description {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    display: block;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 32px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #374151;
+    transition: 0.3s;
+    border-radius: 32px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 24px;
+    width: 24px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+}
+
+input:checked + .slider:before {
+    transform: translateX(28px);
+}
+
+.form-control {
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 12px 16px;
+    font-size: 14px;
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.bank-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.bank-item {
+    background: rgba(31, 41, 55, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.bank-item:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.bank-item.active {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: var(--primary-color);
+}
+
+.bank-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.bank-status {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+#save-status {
+    background: linear-gradient(135deg, var(--success-color), #059669);
+    border: none;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .bank-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+</style>
+{% endblock %}
+{% block header_icon %}cog{% endblock %}
+{% block header_title %}⚙️ Управление ботом{% endblock %}
+{% block header_subtitle %}Настройки системы и банков{% endblock %}
+
+{% block content %}
+    <div class="content">
+        <div id="save-status" style="display:none;position:fixed;top:12px;right:12px;background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%); color:#fff; padding:10px 14px; border-radius:8px; z-index:1000; border:1px solid rgba(34, 197, 94, 0.3); font-size:13px; backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);">Сохранение…</div>
+        
+        <!-- Общие настройки бота -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">⚙️</div>
+                <div>
+                    <div class="card-title">Основные настройки</div>
+                    <div class="card-subtitle">Управление статусом и сообщениями</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Пауза</span>
+                        <span class="setting-description">Временно отключить бота для всех пользователей</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="bot-pause">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Сообщение о технических работах</span>
+                        <span class="setting-description">Текст, который увидят пользователи при паузе</span>
+                    </div>
+                    <textarea id="maintenance-message" class="form-control" rows="3" placeholder="Технические работы. Попробуйте позже."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Настройки депозитов -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">💰</div>
+                <div>
+                    <div class="card-title">Настройки пополнений</div>
+                    <div class="card-subtitle">Управление пополнением средств</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Включить пополнения</span>
+                        <span class="setting-description">Разрешить пользователям пополнять баланс</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="deposits-enabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-section">
+                    <h4>Доступные банки для депозитов</h4>
+                    <div class="bank-grid">
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="deposit-mbank" value="mbank">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">MBank</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="deposit-bakai" value="bakai">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">Bakai</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="deposit-balance" value="balance">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">Balance.kg</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="deposit-demir" value="demir">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">DemirBank</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="deposit-omoney" value="omoney">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">O! Money</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="deposit-megapay" value="megapay">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">MegaPay</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Настройки выводов -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">💸</div>
+                <div>
+                    <div class="card-title">Настройки выводов</div>
+                    <div class="card-subtitle">Управление выводом средств</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Включить выводы</span>
+                        <span class="setting-description">Разрешить пользователям выводить средства</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="withdrawals-enabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-section">
+                    <h4>Доступные банки для выводов</h4>
+                    <div class="bank-grid">
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="withdrawal-kompanion" value="kompanion">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">Компаньон</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="withdrawal-odengi" value="odengi">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">O! Деньги</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="withdrawal-bakai" value="bakai">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">Bakai</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="withdrawal-balance" value="balance">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">Balance.kg</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="withdrawal-megapay" value="megapay">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">MegaPay</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="bank-item">
+                            <label class="bank-checkbox">
+                                <input type="checkbox" id="withdrawal-mbank" value="mbank">
+                                <span class="checkmark"></span>
+                                <div class="bank-info">
+                                    <div class="bank-name">MBank</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Настройки канала -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">📢</div>
+                <div>
+                    <div class="card-title">Настройки канала</div>
+                    <div class="card-subtitle">Управление подпиской на канал</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Требовать подписку на канал</span>
+                        <span class="setting-description">Пользователи должны подписаться на канал для использования бота</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="channel-enabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Название канала</span>
+                        <span class="setting-description">Имя канала для подписки (например: @bingokg_news)</span>
+                    </div>
+                    <input type="text" id="channel-name" class="form-control" placeholder="@bingokg_news">
+                </div>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">Приветственное сообщение</span>
+                        <span class="setting-description">Сообщение, которое увидит пользователь при первом запуске</span>
+                    </div>
+                    <textarea id="channel-welcome" class="form-control" rows="3" placeholder="Добро пожаловать! Подпишитесь на наш канал для получения уведомлений."></textarea>
+                </div>
+            </div>
+        </div>
+
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Версия: 4.0 - Только названия банков без кодов */
+/* Общие стили */
+.content {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    background: #1a1a1a;
+    min-height: 100vh;
+}
+
+/* Карточки */
+.card {
+    background: #2d2d2d;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border: 1px solid #404040;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.card-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.card-subtitle {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 4px 0 0 0;
+}
+
+.card-body {
+    padding: 24px;
+    background: #2d2d2d;
+}
+
+/* Элементы настроек */
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 1px solid #404040;
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-info {
+    flex: 1;
+    margin-right: 20px;
+}
+
+.setting-label {
+    display: block;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 6px;
+    font-size: 16px;
+}
+
+.setting-description {
+    display: block;
+    font-size: 14px;
+    color: #a0a0a0;
+    line-height: 1.4;
+}
+
+/* Toggle переключатели */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 32px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #404040;
+    transition: .4s;
+    border-radius: 32px;
+    border: 2px solid #555555;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+input:checked + .slider {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    border-color: #8b5cf6;
+}
+
+input:checked + .slider:before {
+    transform: translateX(28px);
+    background-color: white;
+}
+
+.toggle-switch:hover .slider {
+    border-color: #8b5cf6;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+/* Секции */
+.setting-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #404040;
+}
+
+.setting-section h4 {
+    color: white;
+    margin-bottom: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting-section h4::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    border-radius: 2px;
+}
+
+/* Сетка банков */
+.bank-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.bank-item {
+    background: #404040;
+    border: 2px solid #555555;
+    border-radius: 12px;
+    padding: 16px 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.bank-item:hover {
+    background: #4a4a4a;
+    border-color: #8b5cf6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+}
+
+.bank-checkbox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+}
+
+.bank-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+.checkmark {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #666666;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    position: relative;
+    transition: all 0.3s ease;
+    background: #2d2d2d;
+}
+
+.bank-checkbox input[type="checkbox"]:checked + .checkmark {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    border-color: #8b5cf6;
+}
+
+.bank-checkbox input[type="checkbox"]:checked + .checkmark::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.bank-info {
+    width: 100%;
+}
+
+.bank-name {
+    font-weight: 600;
+    color: white;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+
+/* Формы */
+.form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #555555;
+    border-radius: 8px;
+    font-size: 14px;
+    color: white;
+    background: #404040;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.form-control::placeholder {
+    color: #a0a0a0;
+}
+
+/* Кнопки */
+.button-group {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    color: white;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+}
+
+.btn-secondary {
+    background: #404040;
+    color: #a0a0a0;
+    border: 2px solid #555555;
+}
+
+.btn-secondary:hover {
+    background: #4a4a4a;
+    color: white;
+}
+
+/* Статус сохранения */
+#save-status {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #2d2d2d;
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    z-index: 1000;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border: 1px solid #8b5cf6;
+    backdrop-filter: blur(10px);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .content {
+        padding: 16px;
+    }
+    
+    .card-body {
+        padding: 20px;
+    }
+    
+    .bank-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .setting-info {
+        margin-right: 0;
+    }
+    
+    .toggle-switch {
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .bank-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .card-header {
+        padding: 16px;
+    }
+    
+    .card-body {
+        padding: 16px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadAllSettings() {
+    try {
+        // Загрузка общих настроек бота
+        const botResponse = await fetch('{% url "bot_control:api_get_bot_control" %}');
+        const botData = await botResponse.json();
+        document.getElementById('bot-pause').checked = botData.pause;
+        document.getElementById('maintenance-message').value = botData.maintenance_message || '';
+
+        // Загрузка настроек депозитов
+        const depositResponse = await fetch('{% url "bot_control:api_get_deposit_settings" %}');
+        const depositData = await depositResponse.json();
+        document.getElementById('deposits-enabled').checked = depositData.enabled;
+        
+        // Сброс чекбоксов депозитов
+        document.querySelectorAll('input[id^="deposit-"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Установка банков для депозитов
+        depositData.banks.forEach(bank => {
+            const checkbox = document.getElementById(`deposit-${bank}`);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        // Загрузка настроек выводов
+        const withdrawalResponse = await fetch('{% url "bot_control:api_get_withdrawal_settings" %}');
+        const withdrawalData = await withdrawalResponse.json();
+        document.getElementById('withdrawals-enabled').checked = withdrawalData.enabled;
+        
+        // Сброс чекбоксов выводов
+        document.querySelectorAll('input[id^="withdrawal-"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Установка банков для выводов
+        withdrawalData.banks.forEach(bank => {
+            const checkbox = document.getElementById(`withdrawal-${bank}`);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        // Загрузка настроек канала
+        const channelResponse = await fetch('{% url "bot_control:api_get_channel_settings" %}');
+        const channelData = await channelResponse.json();
+        document.getElementById('channel-enabled').checked = channelData.enabled;
+        document.getElementById('channel-name').value = channelData.name || '';
+        document.getElementById('channel-welcome').value = channelData.welcome_message || '';
+        
+    } catch (error) {
+        console.error('Ошибка загрузки настроек:', error);
+        alert('Ошибка загрузки настроек');
+    }
+}
+
+async function saveAllSettings() {
+    try {
+        showSaveStatus();
+        
+        // Сохранение общих настроек бота
+        await fetch('{% url "bot_control:api_save_bot_control" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                pause: document.getElementById('bot-pause').checked,
+                maintenance_message: document.getElementById('maintenance-message').value
+            })
+        });
+
+        // Сбор банков для депозитов
+        const depositBanks = [];
+        document.querySelectorAll('input[id^="deposit-"]:checked').forEach(checkbox => {
+            depositBanks.push(checkbox.value);
+        });
+        
+        // Сохранение настроек депозитов
+        await fetch('{% url "bot_control:api_save_deposit_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                enabled: document.getElementById('deposits-enabled').checked,
+                banks: depositBanks
+            })
+        });
+
+        // Сбор банков для выводов
+        const withdrawalBanks = [];
+        document.querySelectorAll('input[id^="withdrawal-"]:checked').forEach(checkbox => {
+            withdrawalBanks.push(checkbox.value);
+        });
+        
+        // Сохранение настроек выводов
+        await fetch('{% url "bot_control:api_save_withdrawal_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                enabled: document.getElementById('withdrawals-enabled').checked,
+                banks: withdrawalBanks
+            })
+        });
+
+        // Сохранение настроек канала
+        await fetch('{% url "bot_control:api_save_channel_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                enabled: document.getElementById('channel-enabled').checked,
+                name: document.getElementById('channel-name').value,
+                welcome_message: document.getElementById('channel-welcome').value
+            })
+        });
+        
+        showSaveStatus('Все настройки сохранены!', 'success');
+        
+    } catch (error) {
+        console.error('Ошибка сохранения:', error);
+        showSaveStatus('Ошибка сохранения!', 'error');
+    }
+}
+
+function showSaveStatus(message = 'Сохранение…', type = 'loading') {
+    const status = document.getElementById('save-status');
+    status.textContent = message;
+    status.style.display = 'block';
+    
+    if (type === 'success') {
+        status.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+        status.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.2) 100%)';
+        setTimeout(() => {
+            status.style.display = 'none';
+        }, 3000);
+    } else if (type === 'error') {
+        status.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+        status.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%)';
+        setTimeout(() => {
+            status.style.display = 'none';
+        }, 3000);
+    }
+}
+
+// Принудительное обновление кэша
+if (performance.navigation.type === 1) {
+    console.log('Страница обновлена - принудительное обновление кэша');
+    location.reload(true);
+}
+
+// Загрузка настроек при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Версия 4.0 - Только названия банков без кодов');
+    loadAllSettings();
+    
+    // Добавляем автоматическое сохранение при изменении элементов
+    const autoSaveElements = [
+        'bot-pause', 'maintenance-message', 'deposits-enabled', 'withdrawals-enabled', 'channel-enabled', 'channel-name', 'channel-welcome'
+    ];
+    
+    // Добавляем все чекбоксы банков
+    ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay'].forEach(bank => {
+        autoSaveElements.push(`deposit-${bank}`);
+    });
+    ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank'].forEach(bank => {
+        autoSaveElements.push(`withdrawal-${bank}`);
+    });
+    
+    autoSaveElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            if (element.type === 'checkbox' || element.type === 'text' || element.tagName === 'TEXTAREA') {
+                element.addEventListener('change', () => {
+                    setTimeout(saveAllSettings, 500); // Задержка 500мс для предотвращения частых запросов
+                });
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

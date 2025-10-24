@@ -1,0 +1,266 @@
+{% extends 'dashboard/base_mobile.html' %}
+
+{% block title %}Настройки автопополнения{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="text-center mb-6">
+        <h1 class="text-2xl font-bold text-white mb-2">🤖 Настройки автопополнения</h1>
+        <p class="text-white/70">Автоматическое подтверждение пополнений через IMAP</p>
+    </div>
+
+    <!-- Статистика -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-green-400" id="processed-24h">0</div>
+            <div class="text-sm text-white/70">Обработано за 24ч</div>
+        </div>
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-blue-400" id="total-processed">0</div>
+            <div class="text-sm text-white/70">Всего обработано</div>
+        </div>
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-yellow-400" id="pending-requests">0</div>
+            <div class="text-sm text-white/70">Ожидают обработки</div>
+        </div>
+    </div>
+
+    <!-- Настройки -->
+    <div class="card space-y-6">
+        <h2 class="text-lg font-semibold text-white">Основные настройки</h2>
+        
+        <form id="autodeposit-form" class="space-y-4">
+            <!-- Включение автопополнения -->
+            <div class="flex items-center justify-between">
+                <label class="text-white font-medium">Включить автопополнение</label>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="autodeposit_enabled" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                </label>
+            </div>
+
+            <!-- IMAP настройки -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-white font-medium mb-2">IMAP сервер</label>
+                    <input type="text" id="autodeposit_imap" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none" placeholder="imap.timeweb.ru">
+                </div>
+                <div>
+                    <label class="block text-white font-medium mb-2">Папка</label>
+                    <input type="text" id="autodeposit_folder" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none" placeholder="INBOX">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-white font-medium mb-2">Email</label>
+                    <input type="email" id="autodeposit_email" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none" placeholder="bank@example.com">
+                </div>
+                <div>
+                    <label class="block text-white font-medium mb-2">Пароль</label>
+                    <input type="password" id="autodeposit_password" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none" placeholder="••••••••">
+                </div>
+            </div>
+
+            <!-- Банк и интервал -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-white font-medium mb-2">Банк</label>
+                    <select id="autodeposit_bank" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none">
+                        <option value="DEMIRBANK">DemirBank</option>
+                        <option value="OPTIMA">Optima Bank</option>
+                        <option value="MBANK">MBank</option>
+                        <option value="MEGAPAY">MegaPay</option>
+                        <option value="BAKAI">Bakai</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-white font-medium mb-2">Интервал проверки (сек)</label>
+                    <input type="number" id="autodeposit_interval_sec" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none" placeholder="60" min="10" max="3600">
+                </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 bg-blue-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
+                    Сохранить настройки
+                </button>
+                <button type="button" id="test-btn" class="flex-1 bg-green-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+                    Тестировать
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Тестирование парсера -->
+    <div class="card space-y-4" id="test-section" style="display: none;">
+        <h2 class="text-lg font-semibold text-white">Тестирование парсера</h2>
+        
+        <div>
+            <label class="block text-white font-medium mb-2">Тестовый текст письма</label>
+            <textarea id="test-text" rows="6" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none resize-none" placeholder="Вставьте текст письма от банка для тестирования..."></textarea>
+        </div>
+        
+        <div class="flex gap-3">
+            <button id="parse-test-btn" class="flex-1 bg-green-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+                Парсить текст
+            </button>
+            <button id="close-test-btn" class="flex-1 bg-gray-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors">
+                Закрыть
+            </button>
+        </div>
+        
+        <div id="test-result" class="hidden">
+            <!-- Результат тестирования будет здесь -->
+        </div>
+    </div>
+
+    <!-- Логи автопополнения -->
+    <div class="card space-y-4">
+        <h2 class="text-lg font-semibold text-white">Логи автопополнения</h2>
+        <div id="autodeposit-logs" class="space-y-2">
+            <!-- Логи будут загружены здесь -->
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+    loadLogs();
+    
+    // Обработчики событий
+    document.getElementById('autodeposit-form').addEventListener('submit', saveSettings);
+    document.getElementById('test-btn').addEventListener('click', showTestSection);
+    document.getElementById('parse-test-btn').addEventListener('click', testParser);
+    document.getElementById('close-test-btn').addEventListener('click', hideTestSection);
+});
+
+async function loadSettings() {
+    try {
+        const response = await fetch('/bot/autodeposit/api/');
+        const data = await response.json();
+        
+        if (data.success) {
+            // Заполняем форму
+            Object.keys(data.settings).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = data.settings[key] === '1';
+                    } else {
+                        element.value = data.settings[key];
+                    }
+                }
+            });
+            
+            // Обновляем статистику
+            document.getElementById('processed-24h').textContent = data.stats.processed_24h;
+            document.getElementById('total-processed').textContent = data.stats.total_processed;
+            document.getElementById('pending-requests').textContent = data.stats.pending_requests;
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+async function saveSettings(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const settings = {};
+    
+    // Собираем данные формы
+    for (let [key, value] of formData.entries()) {
+        settings[key] = value;
+    }
+    
+    // Добавляем checkbox
+    settings.autodeposit_enabled = document.getElementById('autodeposit_enabled').checked ? '1' : '0';
+    
+    try {
+        const response = await fetch('/bot/autodeposit/api/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Настройки сохранены!');
+            loadSettings(); // Перезагружаем данные
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Ошибка сохранения настроек');
+    }
+}
+
+function showTestSection() {
+    document.getElementById('test-section').style.display = 'block';
+}
+
+function hideTestSection() {
+    document.getElementById('test-section').style.display = 'none';
+}
+
+async function testParser() {
+    const testText = document.getElementById('test-text').value;
+    const bank = document.getElementById('autodeposit_bank').value;
+    
+    if (!testText.trim()) {
+        alert('Введите тестовый текст');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/bot/autodeposit/api/test/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                test_text: testText,
+                bank: bank
+            })
+        });
+        
+        const data = await response.json();
+        const resultDiv = document.getElementById('test-result');
+        
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="bg-green-800 p-4 rounded-lg">
+                    <h3 class="font-semibold text-green-200 mb-2">✅ Парсинг успешен</h3>
+                    <p class="text-green-100">Сумма: ${data.parsed.amount} сом</p>
+                    <p class="text-green-100">Дата: ${data.parsed.datetime || 'Не определена'}</p>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="bg-red-800 p-4 rounded-lg">
+                    <h3 class="font-semibold text-red-200 mb-2">❌ Ошибка парсинга</h3>
+                    <p class="text-red-100">${data.error}</p>
+                </div>
+            `;
+        }
+        
+        resultDiv.classList.remove('hidden');
+    } catch (error) {
+        console.error('Error testing parser:', error);
+        alert('Ошибка тестирования');
+    }
+}
+
+async function loadLogs() {
+    // Здесь можно добавить загрузку логов автопополнения
+    // Пока оставляем пустым
+}
+</script>
+{% endblock %}
+

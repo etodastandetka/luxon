@@ -10,7 +10,7 @@
     <div class="row mb-3">
         <div class="col-12">
             <!-- Фильтры -->
-            <div class="card border-0 mb-3">
+            <div class="card border-0 mb-3" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px);">
                 <div class="card-body p-3">
                     <form method="get" class="row g-2">
                         <div class="col-md-3">
@@ -55,6 +55,7 @@
                             <tr>
                                 <th class="ps-3" style="width: 80px;">ID</th>
                                 <th>Пользователь</th>
+                                <th>Банк</th>
                                 <th class="text-end" style="width: 120px;">Сумма</th>
                                 <th class="text-center" style="width: 100px;">Дата</th>
                                 <th class="text-center" style="width: 120px;">Статус</th>
@@ -71,6 +72,12 @@
                                     <td>
                                         <div class="fw-medium">ID {{ req.user_id }}</div>
                                         <div class="text-muted small">{{ req.created_at|date:"d.m.Y H:i" }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-medium">{{ req.bank|default:"Не указан" }}</div>
+                                        {% if req.phone %}
+                                        <div class="text-muted small">+{{ req.phone }}</div>
+                                        {% endif %}
                                     </td>
                                     <td class="text-end">
                                         <div class="fw-medium">{{ req.amount|floatformat:2 }} ₽</div>
@@ -119,7 +126,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center py-4">
+                                    <td colspan="7" class="text-center py-4">
                                         <div class="py-2">
                                             <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
                                             <p class="mb-2">Заявки не найдены</p>
@@ -223,6 +230,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
 {% block extra_js %}
 <script>
 $(document).ready(function() {

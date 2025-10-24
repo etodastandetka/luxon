@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>{% block title %}Заявки - Управление транзакциями{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -13,43 +17,190 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a1a0a 0%, #0f2a0f 50%, #0a1a0a 100%);
+            background-attachment: fixed;
             color: #ffffff;
             min-height: 100vh;
             overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(22, 163, 74, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(22, 163, 74, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(22, 163, 74, 0.08) 0%, transparent 50%);
+            animation: backgroundShift 20s ease-in-out infinite;
+            z-index: -1;
+        }
+        
+        @keyframes backgroundShift {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
         }
         
         /* Мобильный контейнер */
         .mobile-container {
             max-width: 414px;
             margin: 0 auto;
-            background: #000000;
-            min-height: 100vh;
+            background: rgba(30, 30, 46, 0.3);
+            backdrop-filter: blur(20px);
+            height: 100vh !important;
+            max-height: 100vh !important;
             position: relative;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            border-radius: 0;
+            border: 1px solid rgba(138, 43, 226, 0.1);
+            padding-bottom: 0 !important;
+            overflow: hidden !important; /* Убираем скролл у контейнера */
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        
+        /* Дополнительная фиксация для меню */
+        body {
+            padding-bottom: 0 !important;
+            margin: 0 !important;
+        }
+        
+        .bottom-nav {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: 100% !important;
+            max-width: 414px !important;
+            background: rgba(30, 30, 46, 0.98) !important;
+            backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(138, 43, 226, 0.2);
+            display: flex !important;
+            justify-content: space-around;
+            padding: 12px 0 !important;
+            z-index: 99999 !important;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Принудительная фиксация */
+        html, body {
+            height: 100% !important;
+            overflow-x: hidden !important;
+            overflow-y: hidden !important; /* Убираем скролл у body */
+        }
+        
+        /* Красивый скролл для всего body */
+        body::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        body::-webkit-scrollbar-track {
+            background: rgba(30, 30, 46, 0.3);
+            border-radius: 4px;
+        }
+        
+        body::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(138, 43, 226, 0.8), rgba(74, 42, 106, 0.8));
+            border-radius: 4px;
+            border: 1px solid rgba(138, 43, 226, 0.2);
+        }
+        
+        body::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, rgba(138, 43, 226, 1), rgba(74, 42, 106, 1));
+        }
+        
+        /* Адаптивность для разных экранов */
+        @media (max-height: 600px) {
+            .header {
+                padding: 10px 20px;
+            }
+            .header h1 {
+                font-size: 18px;
+            }
+            .header p {
+                font-size: 11px;
+            }
+            .main-content {
+                padding: 8px;
+                padding-bottom: 80px; /* Отступ для меню */
+                max-height: calc(100vh - 100px);
+            }
+            .card {
+                padding: 12px;
+                margin-bottom: 8px;
+            }
+        }
+        
+        @media (max-height: 500px) {
+            .header {
+                padding: 8px 20px;
+            }
+            .header h1 {
+                font-size: 16px;
+            }
+            .header p {
+                font-size: 10px;
+            }
+            .main-content {
+                padding: 6px;
+                padding-bottom: 80px; /* Отступ для меню */
+                max-height: calc(100vh - 90px);
+            }
+            .card {
+                padding: 10px;
+                margin-bottom: 6px;
+            }
+        }
+        
+        @media (max-height: 400px) {
+            .header {
+                padding: 6px 20px;
+            }
+            .header h1 {
+                font-size: 14px;
+            }
+            .header p {
+                font-size: 9px;
+            }
+            .main-content {
+                padding: 4px;
+                padding-bottom: 80px; /* Отступ для меню */
+                max-height: calc(100vh - 80px);
+            }
+            .card {
+                padding: 8px;
+                margin-bottom: 4px;
+            }
         }
         
         
         /* Хедер */
         .header {
-            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-            padding: 20px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 15px 20px;
             text-align: center;
             position: relative;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
         
         .header h1 {
             color: #ffffff;
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 22px;
+            font-weight: 700;
             margin-bottom: 5px;
         }
         
         .header p {
             color: #cccccc;
             opacity: 0.8;
-            font-size: 14px;
+            font-size: 12px;
         }
         
         .header-icon {
@@ -57,35 +208,85 @@
             left: 20px;
             top: 50%;
             transform: translateY(-50%);
-            width: 40px;
-            height: 40px;
+            width: 30px; /* Уменьшаем размер */
+            height: 30px; /* Уменьшаем размер */
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            border-radius: 8px; /* Уменьшаем радиус */
             display: flex;
             align-items: center;
             justify-content: center;
             color: #ffffff;
-            font-size: 20px;
+            font-size: 16px; /* Уменьшаем размер иконки */
         }
         
         /* Основной контент */
         .main-content {
-            padding: 20px;
-            padding-bottom: 80px; /* Отступ для нижнего меню */
-            background: #0a0a0a;
-            min-height: calc(100vh - 150px);
+            padding: 10px;
+            padding-bottom: 80px; /* Отступ для меню */
+            background: transparent;
+            flex: 1;
+            overflow-y: auto;
+            max-height: calc(100vh - 120px);
+            /* Красивый скролл */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(138, 43, 226, 0.5) rgba(30, 30, 46, 0.3);
+        }
+        
+        /* Красивый скролл для WebKit браузеров */
+        .main-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .main-content::-webkit-scrollbar-track {
+            background: rgba(30, 30, 46, 0.3);
+            border-radius: 3px;
+        }
+        
+        .main-content::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8));
+            border-radius: 3px;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        
+        .main-content::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, rgba(34, 197, 94, 1), rgba(22, 163, 74, 1));
         }
         
         /* Карточки */
         .card {
-            background: #2a2a2a;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-            border: 1px solid #444444;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
         }
         
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .card:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6), 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(34, 197, 94, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
         .card-header {
             display: flex;
             align-items: center;
@@ -126,18 +327,19 @@
         }
         
         .stat-card {
-            background: #2a2a2a;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
             border-radius: 15px;
             padding: 20px;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-            border: 1px solid #444444;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
         }
         
         .stat-value {
             font-size: 24px;
             font-weight: bold;
-            color: #999;
+            color: #22c55e;
             margin-bottom: 5px;
         }
         
@@ -165,22 +367,25 @@
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, #666 0%, #555 100%);
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
             color: #ffffff;
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 35px rgba(34, 197, 94, 0.6), 0 4px 15px rgba(0, 0, 0, 0.4);
         }
         
         .btn-secondary {
-            background: #333333;
+            background: rgba(255, 255, 255, 0.1);
             color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
         .btn-secondary:hover {
-            background: #444444;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
         }
         
         .btn-danger {
@@ -193,28 +398,13 @@
         }
         
         /* Навигация */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 414px;
-            background: #1a1a1a;
-            border-top: 1px solid #333;
-            display: flex;
-            justify-content: space-around;
-            padding: 8px 0;
-            z-index: 1000;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
-        }
         
         .nav-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             text-decoration: none;
-            color: #666;
+            color: #b0b0b0;
             transition: all 0.3s ease;
             padding: 8px 12px;
             position: relative;
@@ -224,28 +414,16 @@
         }
         
         .nav-item:hover {
-            color: #999;
-            background: #2a2a2a;
+            color: #e0e0e0;
+            background: rgba(34, 197, 94, 0.2);
             transform: translateY(-2px);
         }
         
         .nav-item.active {
-            color: #fff;
-            background: #2a2a2a;
-            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
-        }
-        
-        .nav-item.active::before {
-            content: '';
-            position: absolute;
-            top: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 30px;
-            height: 3px;
-            background: #666;
-            border-radius: 2px;
-            animation: slideIn 0.3s ease;
+            color: #ffffff;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border: 1px solid rgba(34, 197, 94, 0.6);
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
         }
         
         @keyframes slideIn {
@@ -280,7 +458,7 @@
         .nav-dot {
             width: 6px;
             height: 6px;
-            background: #ff6b6b;
+            background: #22c55e;
             border-radius: 50%;
             position: absolute;
             top: 4px;
@@ -318,18 +496,21 @@
         .form-control {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #333333;
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 10px;
             font-size: 14px;
             transition: all 0.3s ease;
-            background: #1a1a1a;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+            backdrop-filter: blur(10px);
             color: #ffffff;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         }
         
         .form-control:focus {
             outline: none;
-            border-color: #00ff88;
-            box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+            border-color: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2), 0 12px 35px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
         }
         
         /* Списки */
@@ -502,22 +683,18 @@
             <a href="{% url 'dashboard:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                 <i class="fas fa-home"></i>
                 <span>Главная</span>
-                {% if request.resolver_match.url_name == 'dashboard' %}<div class="nav-dot"></div>{% endif %}
             </a>
             <a href="{% url 'dashboard:history' %}" class="nav-item {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
                 <i class="fas fa-history"></i>
                 <span>История</span>
-                {% if request.resolver_match.url_name == 'history' %}<div class="nav-dot"></div>{% endif %}
             </a>
             <a href="{% url 'dashboard:wallet' %}" class="nav-item {% if request.resolver_match.url_name == 'wallet' %}active{% endif %}">
                 <i class="fas fa-wallet"></i>
                 <span>Кошелек</span>
-                {% if request.resolver_match.url_name == 'wallet' %}<div class="nav-dot"></div>{% endif %}
             </a>
             <a href="{% url 'dashboard:menu' %}" class="nav-item {% if request.resolver_match.url_name == 'menu' %}active{% endif %}">
                 <i class="fas fa-bars"></i>
                 <span>Меню</span>
-                {% if request.resolver_match.url_name == 'menu' %}<div class="nav-dot"></div>{% endif %}
             </a>
         </nav>
 
@@ -545,13 +722,13 @@
                     <button onclick="toggleMenu()" class="menu-close">×</button>
                 </div>
                 <div class="menu-items">
-                    <a href="{% url 'bot_control:bot_settings' %}" class="menu-item">
+                    <a href="{% url 'bot_control:bot_management' %}" class="menu-item">
                         <i class="fas fa-cog"></i>
-                        <span>Настройки бота</span>
+                        <span>Управление ботом</span>
                     </a>
-                    <a href="{% url 'bot_control:broadcast_message' %}" class="menu-item">
-                        <i class="fas fa-bullhorn"></i>
-                        <span>Рассылка</span>
+                    <a href="{% url 'bot_control:autodeposit_settings' %}" class="menu-item">
+                        <i class="fas fa-robot"></i>
+                        <span>Автопополнение</span>
                     </a>
                     <a href="{% url 'bot_control:statistics' %}" class="menu-item">
                         <i class="fas fa-chart-bar"></i>
@@ -603,6 +780,29 @@
                 toggleMenu();
             }
         });
+        
+        // Принудительная фиксация меню
+        function fixBottomNav() {
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+                bottomNav.style.position = 'fixed';
+                bottomNav.style.bottom = '0';
+                bottomNav.style.left = '50%';
+                bottomNav.style.transform = 'translateX(-50%)';
+                bottomNav.style.width = '100%';
+                bottomNav.style.maxWidth = '414px';
+                bottomNav.style.zIndex = '99999';
+                bottomNav.style.display = 'flex';
+            }
+        }
+        
+        // Фиксируем меню при загрузке и скролле
+        document.addEventListener('DOMContentLoaded', fixBottomNav);
+        window.addEventListener('scroll', fixBottomNav);
+        window.addEventListener('resize', fixBottomNav);
+        
+        // Дополнительная проверка каждые 100мс
+        setInterval(fixBottomNav, 100);
     </script>
 
     {% block extra_js %}{% endblock %}
