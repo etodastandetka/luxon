@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}LUXON Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-tachometer-alt"></i>
+                        LUXON Dashboard
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-info">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Добро пожаловать</span>
+                                    <span class="info-box-number">{{ user.username }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-success">
+                                    <i class="fas fa-shield-alt"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Статус</span>
+                                    <span class="info-box-number">Аутентифицирован</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Быстрые действия</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <a href="/admin/" class="btn btn-primary btn-block">
+                                                <i class="fas fa-cog"></i>
+                                                Админ панель
+                                            </a>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <a href="/bot/" class="btn btn-success btn-block">
+                                                <i class="fas fa-robot"></i>
+                                                Управление ботом
+                                            </a>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <a href="/history/" class="btn btn-info btn-block">
+                                                <i class="fas fa-history"></i>
+                                                История
+                                            </a>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <a href="/admin/logout/" class="btn btn-danger btn-block">
+                                                <i class="fas fa-sign-out-alt"></i>
+                                                Выйти
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
