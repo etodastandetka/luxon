@@ -123,6 +123,16 @@ export default function HistoryPage(){
     }
   }
 
+  // Функция для совместимости с HTML шаблоном
+  const displayRealTransactions = () => {
+    loadTransactions()
+  }
+
+  // Делаем функцию доступной глобально для HTML шаблона
+  useEffect(() => {
+    (window as any).displayRealTransactions = displayRealTransactions
+  }, [])
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'text-green-400'
