@@ -5,12 +5,14 @@ import AnimatedHeader from '../components/AnimatedHeader'
 import LoadingScreen from '../components/LoadingScreen'
 import ServiceStatus from '../components/ServiceStatus'
 import { useLanguage } from '../components/LanguageContext'
+import { useBotSettings } from '../components/SettingsLoader'
 import { initTelegramWebApp, getTelegramUser, syncWithBot, TelegramUser } from '../utils/telegram'
 
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { language } = useLanguage()
+  const { settings, loading: settingsLoading, error: settingsError } = useBotSettings()
 
   useEffect(() => {
     // Инициализируем Telegram WebApp

@@ -96,7 +96,10 @@ export default function HistoryPage(){
       }
 
       // Запрашиваем историю транзакций пользователя с Django API
-      const response = await fetch(`http://localhost:8081/api/transaction-history/?user_id=${userId}`)
+      const apiUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:8081' 
+        : 'https://xendro.pro'
+      const response = await fetch(`${apiUrl}/api/transaction-history/?user_id=${userId}`)
       const data = await response.json()
       
       if (data.success && data.transactions) {
