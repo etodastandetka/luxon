@@ -34,12 +34,12 @@ export default function NotificationSystem() {
     const tg = getTelegramWebApp()
     if (tg) {
       // Слушаем события от бота
-      tg.onEvent('notification', handleNotification)
+      tg.onEvent('notification', () => handleNotification({}))
     }
 
     return () => {
       if (tg) {
-        tg.offEvent('notification', handleNotification)
+        tg.offEvent('notification', () => handleNotification({}))
       }
     }
   }, [])
