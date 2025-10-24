@@ -200,7 +200,10 @@ export default function DepositStep4() {
   // Функция для получения активного реквизита из админки
   const getActiveRequisite = async (): Promise<string | null> => {
     try {
-      const response = await fetch('http://localhost:8081/api/requisites/list/')
+      const apiUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:8081' 
+        : 'https://xendro.pro'
+      const response = await fetch(`${apiUrl}/api/requisites/list/`)
       if (response.ok) {
         const data = await response.json()
         // Ищем активный реквизит по active_id

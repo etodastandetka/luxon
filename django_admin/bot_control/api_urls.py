@@ -11,4 +11,7 @@ urlpatterns = [
     
     # Legacy API (для совместимости)
     path('transactions/', api_views.transaction_api, name='transaction_api'),
+    
+    # API для настроек бота
+    path('bot-settings/', api_views.api_bot_settings, name='api_bot_settings'),
 ]
