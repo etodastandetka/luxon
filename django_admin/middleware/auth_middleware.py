@@ -39,15 +39,14 @@ class AuthMiddleware:
         if not request.user.is_authenticated:
             return redirect('/login/')
         
-        # Проверяем 2FA для аутентифицированных пользователей
-        if hasattr(request.user, 'profile') and request.user.profile.is_2fa_enabled:
-            # Проверяем, прошел ли пользователь 2FA в этой сессии
-            if not request.session.get('2fa_verified', False):
-                # Если пользователь уже аутентифицирован, но не прошел 2FA,
-                # нужно сохранить его ID в сессии для 2FA процесса
-                if not request.session.get('temp_user_id'):
-                    request.session['temp_user_id'] = request.user.id
-                return redirect('/2fa-verify/')
+        # ВСЕГДА требуем 2FA для всех аутентифицированных пользователей
+        # Проверяем, прошел ли пользователь 2FA в этой сессии
+        if not request.session.get('2fa_verified', False):
+            # Если пользователь уже аутентифицирован, но не прошел 2FA,
+            # нужно сохранить его ID в сессии для 2FA процесса
+            if not request.session.get('temp_user_id'):
+                request.session['temp_user_id'] = request.user.id
+            return redirect('/2fa-verify/')
         
         response = self.get_response(request)
         return response
