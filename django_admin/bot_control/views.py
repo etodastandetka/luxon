@@ -1090,19 +1090,19 @@ def api_statistics(request):
                     dep_params.append(bookmaker_filter)
                 dep_sql = (" WHERE " + " AND ".join(dep_where)) if dep_where else ""
 
-                cursor.execute(f'SELECT COUNT(*) FROM deposit_requests{dep_sql}', dep_params)
+                cursor.execute(f'SELECT COUNT(*) FROM requests WHERE request_type="deposit"{dep_sql}', dep_params)
                 total_deposits = cursor.fetchone()[0] or 0
-                cursor.execute(f'SELECT COUNT(*) FROM withdrawals{dep_sql}', dep_params)
+                cursor.execute(f'SELECT COUNT(*) FROM requests WHERE request_type="withdraw"{dep_sql}', dep_params)
                 total_withdrawals = cursor.fetchone()[0] or 0
-                cursor.execute(f'SELECT COALESCE(SUM(amount),0) FROM deposit_requests{dep_sql}', dep_params)
+                cursor.execute(f'SELECT COALESCE(SUM(amount),0) FROM requests WHERE request_type="deposit"{dep_sql}', dep_params)
                 total_amount = cursor.fetchone()[0] or 0
 
-                cursor.execute(f'SELECT COALESCE(AVG(amount),0) FROM deposit_requests{dep_sql}', dep_params)
+                cursor.execute(f'SELECT COALESCE(AVG(amount),0) FROM requests WHERE request_type="deposit"{dep_sql}', dep_params)
                 avg_deposit = cursor.fetchone()[0] or 0
-                cursor.execute(f'SELECT COALESCE(AVG(amount),0) FROM withdrawals{dep_sql}', dep_params)
+                cursor.execute(f'SELECT COALESCE(AVG(amount),0) FROM requests WHERE request_type="withdraw"{dep_sql}', dep_params)
                 avg_withdrawal = cursor.fetchone()[0] or 0
 
-                cursor.execute('SELECT COUNT(DISTINCT user_id) FROM deposit_requests')
+                cursor.execute('SELECT COUNT(DISTINCT user_id) FROM requests WHERE request_type="deposit"')
                 users_with_deposits = cursor.fetchone()[0] or 0
 
             conversion_rate = (users_with_deposits / total_users * 100) if total_users > 0 else 0
@@ -1112,11 +1112,8 @@ def api_statistics(request):
             active_users = 0
             if not has_requests:
                 cursor.execute("""
-                    SELECT COUNT(DISTINCT user_id) FROM (
-                        SELECT user_id, created_at FROM deposit_requests
-                        UNION ALL
-                        SELECT user_id, created_at FROM withdrawals
-                    ) WHERE created_at >= datetime('now', '-30 days')
+                    SELECT COUNT(DISTINCT user_id) FROM requests
+                    WHERE created_at >= datetime('now', '-30 days')
                 """)
                 active_users = cursor.fetchone()[0] or 0
 
@@ -1142,9 +1139,9 @@ def api_statistics(request):
                     cursor.execute(f'''SELECT COUNT(*), COALESCE(SUM(amount),0) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} bookmaker = ? AND {tx_col} = 'withdrawal' ''', params + [bookmaker_key] if where_sql else [bookmaker_key])
                     w_count, w_sum = cursor.fetchone()
                 else:
-                    cursor.execute('SELECT COUNT(*), COALESCE(SUM(amount),0) FROM deposit_requests WHERE bookmaker = ?', (bookmaker_key,))
+                    cursor.execute('SELECT COUNT(*), COALESCE(SUM(amount),0) FROM requests WHERE request_type="deposit" AND bookmaker = ?', (bookmaker_key,))
                     d_count, d_sum = cursor.fetchone()
-                    cursor.execute('SELECT COUNT(*), COALESCE(SUM(amount),0) FROM withdrawals WHERE bookmaker = ?', (bookmaker_key,))
+                    cursor.execute('SELECT COUNT(*), COALESCE(SUM(amount),0) FROM requests WHERE request_type="withdraw" AND bookmaker = ?', (bookmaker_key,))
                     w_count, w_sum = cursor.fetchone()
 
                 bookmakers[bookmaker_key] = {
@@ -1166,9 +1163,9 @@ def api_statistics(request):
                 cursor.execute(f'''SELECT DATE(created_at), COUNT(*) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} {tx_col} = 'withdrawal' GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10''', params)
                 withdrawals_chart = cursor.fetchall()
             else:
-                cursor.execute('SELECT DATE(created_at), COUNT(*) FROM deposit_requests GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10')
+                cursor.execute('SELECT DATE(created_at), COUNT(*) FROM requests WHERE request_type="deposit" GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10')
                 deposits_chart = cursor.fetchall()
-                cursor.execute('SELECT DATE(created_at), COUNT(*) FROM withdrawals GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10')
+                cursor.execute('SELECT DATE(created_at), COUNT(*) FROM requests WHERE request_type="withdraw" GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10')
                 withdrawals_chart = cursor.fetchall()
 
             conn.close()
