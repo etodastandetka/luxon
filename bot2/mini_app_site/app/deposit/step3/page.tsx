@@ -126,7 +126,7 @@ export default function DepositStep3() {
                 placeholder={t.placeholder}
                 min="35"
                 max="100000"
-                style={{'-moz-appearance': 'textfield'}}
+                style={{'MozAppearance': 'textfield'}}
               />
               <style jsx>{`
                 input[type="number"]::-webkit-outer-spin-button,

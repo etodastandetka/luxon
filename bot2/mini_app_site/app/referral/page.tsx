@@ -11,7 +11,7 @@ export default function ReferralPage() {
   const [topPlayers, setTopPlayers] = useState([])
   const [userRank, setUserRank] = useState(0)
   const [isFromBot, setIsFromBot] = useState(true)
-  const { language } = useLanguage()
+  const { language, setLanguage } = useLanguage()
   
   const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage)
@@ -104,6 +104,12 @@ export default function ReferralPage() {
       referrals: 'Number of referrals',
       nextPayout: 'Next payout',
       howItWorks: 'How it works',
+      topPlayers: '🏆 Top Players',
+      yourRank: 'Your rank',
+      prizes: 'Prizes',
+      firstPlace: '1st place: 10,000 som',
+      secondPlace: '2nd place: 5,000 som',
+      thirdPlace: '3rd place: 2,500 som',
       steps: [
         'Share the link with friends',
         'You get 5% for each referral deposit',

@@ -228,7 +228,7 @@ export default function DepositStep4() {
         return
       }
 
-      const amountCents = Math.round(parseFloat(amount) * 100)
+      const amountCents = Math.round(parseFloat(String(amount)) * 100)
       const amountStr = amountCents.toString().padStart(5, '0')
       
       // Создаем TLV структуру с реквизитом из админки
@@ -253,7 +253,7 @@ export default function DepositStep4() {
         all_bank_urls: bankLinks,
         enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank']
       })
-      setPaymentUrl(bankLinks[currentBank] || bankLinks['demirbank'])
+      setPaymentUrl(bankLinks[currentBank as keyof typeof bankLinks] || bankLinks['demirbank'])
     } catch (error) {
       console.error('Ошибка fallback генерации:', error)
     }
