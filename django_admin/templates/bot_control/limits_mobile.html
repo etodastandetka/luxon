@@ -2,34 +2,30 @@
 {% load static %}
 
 {% block title %}Лимиты и балансы{% endblock %}
+{% block header_icon %}wallet{% endblock %}
+{% block header_title %}Лимиты{% endblock %}
+{% block header_subtitle %}Лимиты и балансы платформ{% endblock %}
 
 {% block content %}
 <style>
-  .card { border-radius: 14px !important; border: 1px solid #242424 !important; background: #111 !important; }
+  .card { border-radius: 14px !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%) !important; backdrop-filter: blur(10px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3); }
   .section-title { font-weight: 700; font-size: 18px; margin: 8px 0 12px; }
   .muted { color: #9aa7bd; font-size: 12px; }
-  .block { background:#111; border:1px solid #2a2a2a; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .block { background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%); border:1px solid rgba(255, 255, 255, 0.2); border-radius:12px; padding:14px; margin-bottom:12px; backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
   .row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; }
-  .name { color:#e5e7eb; }
-  .value { color:#cde8ff; font-weight:700; }
+  .name { color:#ffffff; }
+  .value { color:#22c55e; font-weight:700; }
   .pill { display:inline-block; padding:6px 10px; background:#151515; border:1px solid #2a2a2a; border-radius:10px; color:#c9c9c9; font-size:12px; }
   .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
   .stat-label { color:#9aa7bd; font-size:12px; }
-  .stat-value { color:#e7ffee; font-weight:700; font-size:16px; }
+  .stat-value { color:#22c55e; font-weight:700; font-size:16px; }
   .small { font-size:11px; color:#9aa7bd; }
   .actions { display:flex; gap:8px; }
   input[type=date] { background:#0f0f0f; color:#e5e7eb; border:1px solid #2a2a2a; border-radius:8px; padding:8px 10px; }
-  button.apply { background:#1e293b; color:#c7d2fe; border:1px solid #334155; border-radius:8px; padding:8px 12px; cursor:pointer; }
-  button.apply:hover { background:#243044; }
+  button.apply { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color:#ffffff; border:1px solid rgba(34, 197, 94, 0.6); border-radius:8px; padding:8px 12px; cursor:pointer; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); }
+  button.apply:hover { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4); }
 </style>
 
-<div class="page-header">
-  <div class="header-avatar"><i class="fas fa-wallet"></i></div>
-  <div class="header-content">
-    <h1>Лимиты и балансы</h1>
-    <p>Платформы 1XBET и MELBET</p>
-  </div>
-</div>
 
 <div class="block">
   <div class="section-title">Период (от — до)</div>
@@ -55,7 +51,7 @@
     <div class="value">{{ p.limit|floatformat:2 }} с</div>
   </div>
   {% empty %}
-  <div class="muted">Нет данных по лимитам</div>
+  <div class="muted" style="background: transparent; color: #cccccc;">Нет данных по лимитам</div>
   {% endfor %}
 </div>
 

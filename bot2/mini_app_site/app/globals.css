@@ -1,0 +1,271 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { 
+  color-scheme: dark; 
+  --tg-theme-bg-color: #0e1621;
+  --tg-theme-text-color: #ffffff;
+  --tg-theme-hint-color: #999999;
+  --tg-theme-link-color: #2481cc;
+  --tg-theme-button-color: #2481cc;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-secondary-bg-color: #1e2732;
+}
+
+body { 
+  @apply bg-tgBg text-tgText min-h-screen;
+  background: linear-gradient(135deg, #0f1b0f 0%, #1a2e1a 50%, #0f1b0f 100%);
+  background-attachment: fixed;
+  color: var(--tg-theme-text-color);
+  overflow-x: hidden;
+}
+
+/* Анимированный фон */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(34, 197, 94, 0.05) 0%, transparent 50%);
+  animation: backgroundShift 20s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes backgroundShift {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.container { @apply max-w-md mx-auto px-4; }
+
+.card { 
+  @apply bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20 transition-all duration-500;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.6s ease;
+}
+
+.card:hover::before {
+  left: 100%;
+}
+
+.card:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6), 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(34, 197, 94, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn { 
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-4 font-semibold transition-all duration-300;
+  background: linear-gradient(135deg, #2481cc 0%, #1a6bb3 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 6px 20px rgba(36, 129, 204, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn:hover {
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 12px 35px rgba(34, 197, 94, 0.6), 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.btn-primary { 
+  @apply btn;
+  background: #22c55e;
+}
+
+.btn-primary:hover {
+  background: #16a34a;
+}
+
+.btn-ghost { 
+  @apply btn;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.input { 
+  @apply w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-accent/60;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.input:focus {
+  border-color: var(--tg-theme-button-color);
+  box-shadow: 0 0 0 2px rgba(36, 129, 204, 0.2);
+}
+
+.label { @apply text-xs text-white/60 mb-1; }
+
+/* Анимации */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-5px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(5px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.99); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.slide-in-left {
+  opacity: 0;
+  animation: slideInLeft 0.8s ease-out forwards;
+}
+
+.slide-in-right {
+  opacity: 0;
+  animation: slideInRight 0.8s ease-out forwards;
+}
+
+.scale-in {
+  opacity: 0;
+  animation: scaleIn 0.7s ease-out forwards;
+}
+
+.gentle-float {
+  animation: gentleFloat 4s ease-in-out infinite;
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Задержки для последовательного появления */
+.delay-100 { animation-delay: 0.2s; }
+.delay-200 { animation-delay: 0.4s; }
+.delay-300 { animation-delay: 0.6s; }
+.delay-400 { animation-delay: 0.8s; }
+.delay-500 { animation-delay: 1.0s; }
+.delay-600 { animation-delay: 1.2s; }
+.delay-700 { animation-delay: 1.4s; }
+.delay-800 { animation-delay: 1.6s; }
+
+/* Стили для деталей */
+details summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+details[open] summary {
+  margin-bottom: 0.5rem;
+}
+
+/* Стили для кнопок букмекеров */
+.bookmaker-btn {
+  @apply transition-all duration-200;
+}
+
+.bookmaker-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Стили для статусов транзакций */
+.status-completed {
+  @apply text-green-400;
+}
+
+.status-pending {
+  @apply text-yellow-400;
+}
+
+.status-failed {
+  @apply text-red-400;
+}
+
+/* Стили для загрузки */
+.loading {
+  @apply animate-pulse;
+}
+
+/* Стили для мобильных устройств */
+@media (max-width: 480px) {
+  .container {
+    @apply px-3;
+  }
+  
+  .card {
+    @apply p-3;
+  }
+  
+  .btn {
+    @apply px-3 py-2 text-sm;
+  }
+}

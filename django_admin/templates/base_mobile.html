@@ -13,41 +13,65 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a1a0a 0%, #0f2a0f 50%, #0a1a0a 100%);
+            background-attachment: fixed;
             color: #ffffff;
             min-height: 100vh;
             overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(22, 163, 74, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(22, 163, 74, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(22, 163, 74, 0.08) 0%, transparent 50%);
+            animation: backgroundShift 20s ease-in-out infinite;
+            z-index: -1;
+        }
+        
+        @keyframes backgroundShift {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
         }
         
         /* Мобильный контейнер */
         .mobile-container {
             max-width: 414px;
             margin: 0 auto;
-            background: #000000;
+            background: transparent;
             min-height: 100vh;
             position: relative;
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.1);
         }
         
         
         /* Хедер */
         .header {
-            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             padding: 20px;
             text-align: center;
             position: relative;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
         
         .header h1 {
-            color: #000000;
+            color: #ffffff;
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 5px;
         }
         
         .header p {
-            color: #000000;
+            color: #cccccc;
             opacity: 0.8;
             font-size: 14px;
         }
@@ -213,14 +237,17 @@
             flex-direction: column;
             align-items: center;
             text-decoration: none;
-            color: #cccccc;
+            color: #22c55e;
             transition: all 0.3s ease;
             padding: 5px;
             position: relative;
         }
         
         .nav-item.active {
-            color: #00ff88;
+            color: #22c55e;
+            background: none;
+            border-radius: 8px;
+            padding: 5px;
         }
         
         .nav-item i {
@@ -340,15 +367,17 @@
         }
         
         .list-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            width: 50px;
+            height: 50px;
+            background: none;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #000000;
+            color: #22c55e;
             margin-right: 15px;
+            border: none;
+            font-size: 24px;
         }
         
         .list-content {
@@ -368,8 +397,12 @@
         
         .list-amount {
             font-weight: bold;
-            color: #00ff88;
+            color: #ffffff;
             font-size: 16px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-block;
         }
         
         /* Стили для истории */
@@ -495,7 +528,7 @@
         .menu-item i {
             margin-right: 15px;
             font-size: 18px;
-            color: #00ff88;
+            color: #22c55e;
         }
         
         .menu-item span {
@@ -549,15 +582,15 @@
                 <span>Кошелек</span>
                 {% if request.resolver_match.url_name == 'wallet' %}<div class="nav-dot"></div>{% endif %}
             </a>
-            <a href="{% url 'bot_control:bot_settings_page' %}" class="nav-item {% if request.resolver_match.url_name == 'bot_settings_page' %}active{% endif %}">
+            <a href="{% url 'bot_control:bot_management' %}" class="nav-item {% if request.resolver_match.url_name == 'bot_management' %}active{% endif %}">
                 <i class="fas fa-cog"></i>
-                <span>Настройки</span>
-                {% if request.resolver_match.url_name == 'bot_settings_page' %}<div class="nav-dot"></div>{% endif %}
+                <span>Управление</span>
+                {% if request.resolver_match.url_name == 'bot_management' %}<div class="nav-dot"></div>{% endif %}
             </a>
-            <a href="{% url 'bot_control:unified_api' %}" class="nav-item {% if request.resolver_match.url_name == 'unified_api' %}active{% endif %}">
-                <i class="fas fa-plug"></i>
-                <span>API</span>
-                {% if request.resolver_match.url_name == 'unified_api' %}<div class="nav-dot"></div>{% endif %}
+            <a href="{% url 'bot_control:referral_management' %}" class="nav-item {% if request.resolver_match.url_name == 'referral_management' %}active{% endif %}">
+                <i class="fas fa-users"></i>
+                <span>Рефералы</span>
+                {% if request.resolver_match.url_name == 'referral_management' %}<div class="nav-dot"></div>{% endif %}
             </a>
             <a href="#" class="nav-item" onclick="toggleMenu()">
                 <i class="fas fa-bars"></i>
@@ -574,17 +607,17 @@
                     <button onclick="toggleMenu()" class="menu-close">×</button>
                 </div>
                 <div class="menu-items">
-                    <a href="{% url 'bot_control:bot_settings' %}" class="menu-item">
+                    <a href="{% url 'bot_control:bot_management' %}" class="menu-item">
                         <i class="fas fa-cog"></i>
-                        <span>Настройки бота</span>
+                        <span>Управление ботом</span>
                     </a>
-                    <a href="{% url 'bot_control:broadcast_message' %}" class="menu-item">
-                        <i class="fas fa-bullhorn"></i>
-                        <span>Рассылка</span>
+                    <a href="{% url 'bot_control:autodeposit_settings' %}" class="menu-item">
+                        <i class="fas fa-robot"></i>
+                        <span>Автопополнение</span>
                     </a>
-                    <a href="{% url 'bot_control:statistics' %}" class="menu-item">
+                    <a href="{% url 'bot_control:referral_management' %}" class="menu-item">
                         <i class="fas fa-chart-bar"></i>
-                        <span>Статистика</span>
+                        <span>Рефералы</span>
                     </a>
                     <a href="/admin/" target="_blank" class="menu-item">
                         <i class="fas fa-database"></i>

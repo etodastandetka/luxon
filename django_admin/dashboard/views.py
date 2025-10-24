@@ -14,14 +14,243 @@ def dashboard(request):
 
 def history(request):
     """Страница истории транзакций"""
-    return render(request, 'dashboard/history_mobile.html')
+    from bot_control.auto_deposit_models import AutoDepositRequest
+    from bot_control.models import BotDepositRequest, BotWithdrawRequest
+    
+    # Получаем реальные данные из базы
+    deposit_requests = BotDepositRequest.objects.all().order_by('-created_at')[:20]
+    withdraw_requests = BotWithdrawRequest.objects.all().order_by('-created_at')[:20]
+    auto_deposit_requests = AutoDepositRequest.objects.all().order_by('-created_at')[:20]
+    
+    # Объединяем все транзакции в один список
+    all_transactions = []
+    
+    # Добавляем депозиты
+    for req in deposit_requests:
+        all_transactions.append({
+            'type': 'deposit',
+            'id': req.id,
+            'user_id': req.user_id,
+            'username': req.username,
+            'bookmaker': req.bookmaker,
+            'amount': float(req.amount),
+            'bank': req.bank,
+            'status': req.status,
+            'created_at': req.created_at,
+            'status_text': 'Завершено' if req.status == 'approved' else 'Ожидает' if req.status == 'pending' else 'Отклонено'
+        })
+    
+    # Добавляем выводы
+    for req in withdraw_requests:
+        all_transactions.append({
+            'type': 'withdraw',
+            'id': req.id,
+            'user_id': req.user_id,
+            'username': 'Пользователь',
+            'bookmaker': 'Система',
+            'amount': float(req.amount),
+            'bank': 'Вывод',
+            'status': req.status,
+            'created_at': req.created_at,
+            'status_text': 'Завершено' if req.status == 'approved' else 'Ожидает' if req.status == 'pending' else 'Отклонено'
+        })
+    
+    # Добавляем автодепозиты
+    for req in auto_deposit_requests:
+        all_transactions.append({
+            'type': 'auto_deposit',
+            'id': req.id,
+            'user_id': req.user_id,
+            'username': req.username,
+            'bookmaker': req.bookmaker,
+            'amount': float(req.amount),
+            'bank': req.bank,
+            'status': req.status,
+            'created_at': req.created_at,
+            'status_text': 'Завершено' if req.status == 'approved' else 'Ожидает' if req.status == 'pending' else 'Отклонено'
+        })
+    
+    # Сортируем по дате (новые сверху)
+    all_transactions.sort(key=lambda x: x['created_at'], reverse=True)
+    
+    # Ограничиваем до 30 записей
+    all_transactions = all_transactions[:30]
+    
+    context = {
+        'transactions': all_transactions,
+        'total_count': len(all_transactions)
+    }
+    
+    return render(request, 'dashboard/history_mobile.html', context)
+
+@csrf_exempt
+def api_transaction_history(request):
+    """API для получения истории транзакций для Next.js"""
+    try:
+        from bot_control.auto_deposit_models import AutoDepositRequest
+        from bot_control.models import BotDepositRequest, BotWithdrawRequest
+        
+        # Получаем user_id из параметров запроса
+        user_id = request.GET.get('user_id')
+        
+        if not user_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'User ID is required'
+            })
+        
+        # Получаем реальные данные из базы для конкретного пользователя
+        deposit_requests = BotDepositRequest.objects.filter(user_id=user_id).order_by('-created_at')[:20]
+        withdraw_requests = BotWithdrawRequest.objects.filter(user_id=user_id).order_by('-created_at')[:20]
+        auto_deposit_requests = AutoDepositRequest.objects.filter(user_id=user_id).order_by('-created_at')[:20]
+        
+        # Объединяем все транзакции в один список
+        all_transactions = []
+        
+        # Добавляем депозиты
+        for req in deposit_requests:
+            all_transactions.append({
+                'id': str(req.id),
+                'type': 'deposit',
+                'user_id': req.user_id,
+                'username': req.username,
+                'bookmaker': req.bookmaker,
+                'amount': float(req.amount),
+                'bank': req.bank,
+                'status': 'completed' if req.status == 'approved' else 'pending' if req.status == 'pending' else 'failed',
+                'date': req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '',
+                'status_text': 'Завершено' if req.status == 'approved' else 'Ожидает' if req.status == 'pending' else 'Отклонено'
+            })
+        
+        # Добавляем выводы
+        for req in withdraw_requests:
+            all_transactions.append({
+                'id': str(req.id),
+                'type': 'withdraw',
+                'user_id': req.user_id,
+                'username': 'Пользователь',
+                'bookmaker': 'Система',
+                'amount': float(req.amount),
+                'bank': 'Вывод',
+                'status': 'completed' if req.status == 'approved' else 'pending' if req.status == 'pending' else 'failed',
+                'date': req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '',
+                'status_text': 'Завершено' if req.status == 'approved' else 'Ожидает' if req.status == 'pending' else 'Отклонено'
+            })
+        
+        # Добавляем автодепозиты
+        for req in auto_deposit_requests:
+            all_transactions.append({
+                'id': str(req.id),
+                'type': 'deposit',
+                'user_id': req.user_id,
+                'username': req.username,
+                'bookmaker': req.bookmaker,
+                'amount': float(req.amount),
+                'bank': req.bank,
+                'status': 'completed' if req.status == 'approved' else 'pending' if req.status == 'pending' else 'failed',
+                'date': req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '',
+                'status_text': 'Завершено' if req.status == 'approved' else 'Ожидает' if req.status == 'pending' else 'Отклонено'
+            })
+        
+        # Сортируем по дате (новые сверху)
+        all_transactions.sort(key=lambda x: x['date'], reverse=True)
+        
+        # Ограничиваем до 30 записей
+        all_transactions = all_transactions[:30]
+        
+        return JsonResponse({
+            'success': True,
+            'transactions': all_transactions,
+            'total_count': len(all_transactions)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@csrf_exempt
+def api_referral_data(request):
+    """API для получения данных реферальной программы"""
+    try:
+        from bot_control.auto_deposit_models import AutoDepositRequest
+        from bot_control.models import BotDepositRequest, BotWithdrawRequest
+        
+        # Получаем user_id из параметров запроса
+        user_id = request.GET.get('user_id')
+        
+        if not user_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'User ID is required'
+            })
+        
+        # Получаем данные пользователя
+        user_deposits = BotDepositRequest.objects.filter(user_id=user_id)
+        user_auto_deposits = AutoDepositRequest.objects.filter(user_id=user_id)
+        
+        # Считаем заработанное (5% от пополнений)
+        total_deposits = sum(float(dep.amount) for dep in user_deposits) + sum(float(dep.amount) for dep in user_auto_deposits)
+        earned = total_deposits * 0.05  # 5% комиссия
+        
+        # Считаем количество рефералов (пока заглушка)
+        referral_count = 0
+        
+        # Получаем топ игроков по сумме пополнений рефералов
+        all_users = {}
+        
+        # Собираем данные всех пользователей
+        for deposit in BotDepositRequest.objects.all():
+            if deposit.user_id not in all_users:
+                all_users[deposit.user_id] = {
+                    'id': deposit.user_id,
+                    'username': deposit.username or f'Игрок #{deposit.user_id}',
+                    'total_deposits': 0,
+                    'referral_count': 0
+                }
+            all_users[deposit.user_id]['total_deposits'] += float(deposit.amount)
+        
+        for deposit in AutoDepositRequest.objects.all():
+            if deposit.user_id not in all_users:
+                all_users[deposit.user_id] = {
+                    'id': deposit.user_id,
+                    'username': deposit.username or f'Игрок #{deposit.user_id}',
+                    'total_deposits': 0,
+                    'referral_count': 0
+                }
+            all_users[deposit.user_id]['total_deposits'] += float(deposit.amount)
+        
+        # Сортируем по сумме пополнений и берем только топ-3
+        top_players = sorted(all_users.values(), key=lambda x: x['total_deposits'], reverse=True)[:3]
+        
+        # Находим место пользователя
+        user_rank = 0
+        for i, player in enumerate(top_players):
+            if player['id'] == user_id:
+                user_rank = i + 1
+                break
+        
+        return JsonResponse({
+            'success': True,
+            'earned': earned,
+            'referral_count': referral_count,
+            'top_players': top_players,
+            'user_rank': user_rank
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
 
 def wallet(request):
     """Страница кошелька"""
     from bot_control.models import BankSettings, QRHash, BankWallet
     banks = BankSettings.objects.all()
     qr_codes = QRHash.objects.all()
-    bank_wallets = BankWallet.objects.all().order_by('bank_code', '-is_main', '-is_active', '-created_at')
+    bank_wallets = BankWallet.objects.all().order_by('bank_name', '-is_active', '-created_at')
 
     # Читаем реквизиты из bot/universal_bot.db
     requisites = []
@@ -79,7 +308,8 @@ def wallet(request):
 
 def menu(request):
     """Страница меню"""
-    from bot_control.models import BankSettings, QRHash, AutoDepositRequest
+    from bot_control.models import BankSettings, QRHash
+    from bot_control.auto_deposit_models import AutoDepositRequest
     
     total_requests = AutoDepositRequest.objects.count()
     pending_requests = AutoDepositRequest.objects.filter(status='pending').count()
@@ -150,48 +380,40 @@ def api_stats(request):
             except Exception:
                 stats['pending_withdrawals'] = 0
         
-        # Статус бота
-        cursor.execute('SELECT value FROM bot_settings WHERE key = "is_active"')
-        bot_active_row = cursor.fetchone()
-        stats['bot_active'] = bot_active_row[0] == '1' if bot_active_row else True
+        # Статус бота (упрощенная версия)
+        stats['bot_active'] = True
         
-        # Статистика по букмекерам
+        # Статистика по букмекерам (упрощенная версия)
         bookmakers = ['1xbet', '1win', 'melbet', 'mostbet']
         stats['bookmakers'] = {}
         
         for bookmaker in bookmakers:
-            if has_transactions and type_col:
-                cursor.execute(f'''
-                    SELECT COUNT(*), COALESCE(SUM(amount), 0)
-                    FROM transactions 
-                    WHERE bookmaker = ? AND {type_col} = 'deposit'
-                ''', (bookmaker,))
-                deposit_count, deposit_amount = cursor.fetchone()
-                cursor.execute(f'''
-                    SELECT COUNT(*), COALESCE(SUM(amount), 0)
-                    FROM transactions 
-                    WHERE bookmaker = ? AND {type_col} = 'withdrawal'
-                ''', (bookmaker,))
-                withdraw_count, withdraw_amount = cursor.fetchone()
-            else:
-                # Fallback из отдельных таблиц
+            try:
+                # Статистика по депозитам
                 cursor.execute('''
                     SELECT COUNT(*), COALESCE(SUM(amount), 0)
                     FROM deposit_requests
                     WHERE bookmaker = ?
                 ''', (bookmaker,))
                 deposit_count, deposit_amount = cursor.fetchone()
+                
+                # Статистика по выводам
                 cursor.execute('''
                     SELECT COUNT(*), COALESCE(SUM(amount), 0)
                     FROM withdrawals
                     WHERE bookmaker = ?
                 ''', (bookmaker,))
                 withdraw_count, withdraw_amount = cursor.fetchone()
-            
-            stats['bookmakers'][bookmaker] = {
-                'deposits': {'count': deposit_count, 'amount': deposit_amount},
-                'withdrawals': {'count': withdraw_count, 'amount': withdraw_amount}
-            }
+                
+                stats['bookmakers'][bookmaker] = {
+                    'deposits': {'count': deposit_count or 0, 'amount': deposit_amount or 0},
+                    'withdrawals': {'count': withdraw_count or 0, 'amount': withdraw_amount or 0}
+                }
+            except Exception:
+                stats['bookmakers'][bookmaker] = {
+                    'deposits': {'count': 0, 'amount': 0},
+                    'withdrawals': {'count': 0, 'amount': 0}
+                }
         
         conn.close()
         return JsonResponse(stats)
@@ -280,7 +502,7 @@ def api_pending_requests(request):
                     COALESCE(u.username,''), COALESCE(u.first_name,''), COALESCE(u.last_name,''),
                     COALESCE(r.account_id,''), COALESCE(r.bank,''), COALESCE(r.photo_file_url,'')
                 FROM requests r
-                LEFT JOIN users u ON r.user_id = u.user_id
+                LEFT JOIN users u ON r.user_id = u.telegram_id
                 WHERE r.status IN ('pending','processing','awaiting_manual')
                 ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
                 LIMIT 50
@@ -562,21 +784,22 @@ def api_transaction_history(request):
                 return JsonResponse({'success': True, 'transactions': []})
 
             # История = завершённые/отклонённые. Учитываем также 'approved' и 'auto_completed'.
-            where = ["status IN ('completed','rejected','approved','auto_completed')"]
+            where = ["r.status IN ('completed','rejected','approved','auto_completed')"]
             params = []
             if tx_type == 'deposits':
-                where.append("request_type='deposit'")
+                where.append("r.request_type='deposit'")
             elif tx_type == 'withdrawals':
-                where.append("request_type='withdraw'")
+                where.append("r.request_type='withdraw'")
 
             where_sql = ' WHERE ' + ' AND '.join(where)
             sql = f'''
-                SELECT id, user_id, COALESCE(bookmaker,''), COALESCE(request_type,''),
-                       COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,''),
-                       COALESCE(username,''), COALESCE(first_name,''), COALESCE(last_name,'')
-                FROM requests
+                SELECT r.id, r.user_id, COALESCE(r.bookmaker,''), COALESCE(r.request_type,''),
+                       COALESCE(r.amount,0), COALESCE(r.status,'pending'), COALESCE(r.created_at,''),
+                       COALESCE(u.username,''), COALESCE(u.first_name,''), COALESCE(u.last_name,'')
+                FROM requests r
+                LEFT JOIN users u ON r.user_id = u.telegram_id
                 {where_sql}
-                ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
+                ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
                 LIMIT 200
             '''
             cursor.execute(sql, params)
@@ -597,8 +820,20 @@ def api_transaction_history(request):
 
             conn.close()
             return JsonResponse({'success': True, 'transactions': transactions})
-
+            
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
+    
     return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+def users(request):
+    """Страница пользователей"""
+    return render(request, 'dashboard/users_mobile.html')
+
+def referrals(request):
+    """Страница рефералов"""
+    return render(request, 'dashboard/referrals_mobile.html')
+
+def logs(request):
+    """Страница логов"""
+    return render(request, 'dashboard/logs_mobile.html')

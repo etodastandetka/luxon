@@ -1,0 +1,406 @@
+{% extends 'dashboard/base_mobile.html' %}
+
+{% block title %}Пользователи{% endblock %}
+
+{% block content %}
+<div class="mobile-container">
+    <div class="header" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);">
+        <div class="header-content">
+            <div class="header-title" style="color: #ffffff;">👥 Пользователи</div>
+            <div class="header-subtitle" style="color: #cccccc;">Управление пользователями и балансами</div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="filters-section">
+        <div class="filter-group">
+            <input type="text" id="searchInput" placeholder="Поиск по ID, имени или username" class="filter-input">
+            <select id="statusFilter" class="filter-select">
+                <option value="">Все пользователи</option>
+                <option value="active">Активные</option>
+                <option value="inactive">Неактивные</option>
+            </select>
+            <button onclick="applyFilters()" class="filter-btn">Применить</button>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="totalUsers">0</div>
+            <div class="stat-label">Всего пользователей</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="activeUsers">0</div>
+            <div class="stat-label">Активных</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="newUsers">0</div>
+            <div class="stat-label">Новых сегодня</div>
+        </div>
+    </div>
+
+    <!-- Список пользователей -->
+    <div class="users-list" id="usersList">
+        <!-- Пользователи будут загружены через JavaScript -->
+    </div>
+
+    <!-- Пагинация -->
+    <div class="pagination" id="pagination">
+        <!-- Пагинация будет добавлена через JavaScript -->
+    </div>
+</div>
+
+<style>
+.filters-section {
+    margin: 20px 0;
+    padding: 0 20px;
+}
+
+.filter-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-input, .filter-select {
+    flex: 1;
+    min-width: 200px;
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    font-size: 14px;
+}
+
+.filter-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.filter-btn {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin: 20px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #22c55e;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.users-list {
+    margin: 20px;
+}
+
+.user-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 15px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.user-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.user-info h3 {
+    color: white;
+    font-size: 16px;
+    margin: 0 0 5px 0;
+}
+
+.user-info p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    margin: 0;
+}
+
+.user-balance {
+    text-align: right;
+}
+
+.balance-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #10b981;
+}
+
+.balance-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.user-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.detail-item {
+    text-align: center;
+}
+
+.detail-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 5px;
+}
+
+.detail-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 30px 20px;
+}
+
+.page-btn {
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.page-btn:hover, .page-btn.active {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-color: #22c55e;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 768px) {
+    .filter-group {
+        flex-direction: column;
+    }
+    
+    .filter-input, .filter-select {
+        min-width: 100%;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .user-details {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+let currentPage = 1;
+let totalPages = 1;
+let currentFilters = {};
+
+async function loadUsers(page = 1) {
+    try {
+        const response = await fetch(`/api/users/?page=${page}&${new URLSearchParams(currentFilters)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayUsers(data.users);
+            updateStats(data.stats);
+            updatePagination(data.pagination);
+        } else {
+            console.error('Ошибка загрузки пользователей:', data.error);
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+    }
+}
+
+function displayUsers(users) {
+    const container = document.getElementById('usersList');
+    
+    if (users.length === 0) {
+        container.innerHTML = '<div class="loading">Пользователи не найдены</div>';
+        return;
+    }
+    
+    container.innerHTML = users.map(user => `
+        <div class="user-item">
+            <div class="user-header">
+                <div class="user-info">
+                    <h3>${user.username || 'Пользователь'}</h3>
+                    <p>ID: ${user.user_id} • ${user.first_name || ''} ${user.last_name || ''}</p>
+                </div>
+                <div class="user-balance">
+                    <div class="balance-amount">${user.balance || 0} сом</div>
+                    <div class="balance-label">Баланс</div>
+                </div>
+            </div>
+            <div class="user-details">
+                <div class="detail-item">
+                    <div class="detail-value">${user.deposits_count || 0}</div>
+                    <div class="detail-label">Пополнений</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value">${user.withdrawals_count || 0}</div>
+                    <div class="detail-label">Выводов</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value">${user.referrals_count || 0}</div>
+                    <div class="detail-label">Рефералов</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value">${user.last_activity || 'Никогда'}</div>
+                    <div class="detail-label">Последняя активность</div>
+                </div>
+            </div>
+            <div class="user-actions">
+                <button class="action-btn btn-primary" onclick="viewUser(${user.user_id})">Подробнее</button>
+                <button class="action-btn btn-secondary" onclick="editUser(${user.user_id})">Редактировать</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateStats(stats) {
+    document.getElementById('totalUsers').textContent = stats.total_users || 0;
+    document.getElementById('activeUsers').textContent = stats.active_users || 0;
+    document.getElementById('newUsers').textContent = stats.new_users_today || 0;
+}
+
+function updatePagination(pagination) {
+    const container = document.getElementById('pagination');
+    currentPage = pagination.current_page;
+    totalPages = pagination.total_pages;
+    
+    let html = '';
+    
+    if (currentPage > 1) {
+        html += `<button class="page-btn" onclick="loadUsers(${currentPage - 1})">‹</button>`;
+    }
+    
+    for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="loadUsers(${i})">${i}</button>`;
+    }
+    
+    if (currentPage < totalPages) {
+        html += `<button class="page-btn" onclick="loadUsers(${currentPage + 1})">›</button>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+function applyFilters() {
+    currentFilters = {
+        search: document.getElementById('searchInput').value,
+        status: document.getElementById('statusFilter').value
+    };
+    loadUsers(1);
+}
+
+function viewUser(userId) {
+    // Переход к детальной странице пользователя
+    window.location.href = `/bot/user/${userId}/`;
+}
+
+function editUser(userId) {
+    // Открытие модального окна редактирования
+    alert('Функция редактирования пользователя будет добавлена');
+}
+
+// Загрузка при открытии страницы
+document.addEventListener('DOMContentLoaded', function() {
+    loadUsers(1);
+});
+</script>
+{% endblock %}
+

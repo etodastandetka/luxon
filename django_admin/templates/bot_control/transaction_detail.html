@@ -298,7 +298,7 @@ async function handleAction(action) {
       amount: Number('{{ transaction.amount }}')
     };
 
-    const res = await fetch('{% url "bot_control:update_request_status" %}', {
+    const res = await fetch('/bot/api/requests/{{ transaction.id }}/status/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -347,7 +347,7 @@ function disableActionsUI() {
 
 function startStatusPolling(){
   const id = Number('{{ transaction.id }}');
-  const url = '{% url "bot_control:api_request_status" 0 %}'.replace('/0/', `/${id}/`);
+  const url = '/bot/api/requests/' + id + '/status/';
   setInterval(async ()=>{
     try{
       const res = await fetch(url, {credentials:'same-origin'});

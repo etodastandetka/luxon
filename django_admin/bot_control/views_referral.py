@@ -147,7 +147,7 @@ def _get_leaderboard(limit: int = 3) -> List[Dict[str, Any]]:
                u.first_name,
                COUNT(DISTINCT r.referred_id) AS active_count
         FROM referrals r
-        JOIN users u ON u.user_id = r.referrer_id
+        JOIN users u ON u.telegram_id = r.referrer_id
         WHERE EXISTS (
             SELECT 1 FROM requests q
             WHERE q.user_id = r.referred_id

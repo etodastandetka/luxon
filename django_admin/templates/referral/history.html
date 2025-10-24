@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'dashboard/base_mobile.html' %}
 
 {% block title %}История заявок на вывод (Рефералы){% endblock %}
 
@@ -106,7 +106,7 @@
         </div>
       </div>
     {% empty %}
-      <div class="card" style="padding:16px; text-align:center; color:#9aa7bd;">Нет заявок</div>
+      <div class="card" style="padding:16px; text-align:center; color:#cccccc; background: transparent; border: none; box-shadow: none;">Нет заявок</div>
     {% endfor %}
   </div>
 </div>

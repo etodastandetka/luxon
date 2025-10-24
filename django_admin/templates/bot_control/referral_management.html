@@ -1,0 +1,366 @@
+{% extends 'dashboard/base_mobile.html' %}
+
+{% block title %}Реферальная система{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="text-center mb-6">
+        <h1 class="text-2xl font-bold text-white mb-2">🤝 Реферальная система</h1>
+        <p class="text-white/70">Управление реферальной программой</p>
+    </div>
+
+    <!-- Общая статистика -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-blue-400" id="active-referrers">0</div>
+            <div class="text-sm text-white/70">Активных рефереров</div>
+        </div>
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-green-400" id="total-referrals">0</div>
+            <div class="text-sm text-white/70">Всего рефералов</div>
+        </div>
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-yellow-400" id="total-paid">0</div>
+            <div class="text-sm text-white/70">Выплачено</div>
+        </div>
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-green-400" id="pending-payments">0</div>
+            <div class="text-sm text-white/70">Ожидает выплаты</div>
+        </div>
+    </div>
+
+    <!-- Настройки реферальной системы -->
+    <div class="card space-y-4 mb-6">
+        <h2 class="text-lg font-semibold text-white">⚙️ Настройки</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-white font-medium mb-2">Включить реферальную систему</label>
+                <select id="referral-enabled" class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none">
+                    <option value="1">Включена</option>
+                    <option value="0">Отключена</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-white font-medium mb-2">Процент 1-й уровень (%)</label>
+                <input type="number" id="referral-percentage-level1" step="0.1" min="0" max="100" 
+                       class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none">
+            </div>
+            
+            <div>
+                <label class="block text-white font-medium mb-2">Процент 2-й уровень (%)</label>
+                <input type="number" id="referral-percentage-level2" step="0.1" min="0" max="100" 
+                       class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none">
+            </div>
+            
+            <div>
+                <label class="block text-white font-medium mb-2">Минимальная сумма пополнения</label>
+                <input type="number" id="referral-min-deposit" step="1" min="0" 
+                       class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none">
+            </div>
+            
+            <div>
+                <label class="block text-white font-medium mb-2">Максимум уровней</label>
+                <input type="number" id="referral-max-levels" step="1" min="1" max="5" 
+                       class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none">
+            </div>
+            
+            <div>
+                <label class="block text-white font-medium mb-2">День выплат (число месяца)</label>
+                <input type="number" id="referral-payout-day" step="1" min="1" max="31" 
+                       class="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none">
+            </div>
+        </div>
+        
+        <div class="flex gap-3">
+            <button id="save-settings" class="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
+                💾 Сохранить настройки
+            </button>
+            <button id="process-payouts" class="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+                💰 Обработать выплаты
+            </button>
+        </div>
+    </div>
+
+    <!-- Топ рефереров -->
+    <div class="card mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-white">🏆 Топ рефереров</h2>
+            <button id="refresh-stats" class="bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors">
+                🔄 Обновить
+            </button>
+        </div>
+        
+        <div id="top-referrers" class="space-y-3">
+            <!-- Топ рефереров будет загружен здесь -->
+        </div>
+    </div>
+
+    <!-- Выплаты рефералов -->
+    <div class="card">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-white">💰 Выплаты рефералов</h2>
+            <div class="flex gap-2">
+                <select id="payment-status-filter" class="bg-gray-800 text-white p-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none">
+                    <option value="all">Все статусы</option>
+                    <option value="pending">Ожидают</option>
+                    <option value="paid">Выплачены</option>
+                </select>
+                <button id="refresh-payments" class="bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors">
+                    🔄 Обновить
+                </button>
+            </div>
+        </div>
+        
+        <div id="payments-list" class="space-y-3">
+            <!-- Выплаты будут загружены здесь -->
+        </div>
+        
+        <div id="loading-payments" class="text-center py-8 hidden">
+            <div class="text-white/70">Загрузка выплат...</div>
+        </div>
+        
+        <div id="no-payments" class="text-center py-8 hidden">
+            <div class="text-white/70">Выплаты не найдены</div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadReferralStats();
+    loadTopReferrers();
+    loadPayments();
+    
+    // Обработчики событий
+    document.getElementById('save-settings').addEventListener('click', saveSettings);
+    document.getElementById('process-payouts').addEventListener('click', processPayouts);
+    document.getElementById('refresh-stats').addEventListener('click', loadReferralStats);
+    document.getElementById('refresh-payments').addEventListener('click', loadPayments);
+    document.getElementById('payment-status-filter').addEventListener('change', loadPayments);
+});
+
+async function loadReferralStats() {
+    try {
+        const response = await fetch('/bot/referral/api/stats/');
+        const data = await response.json();
+        
+        if (data.success) {
+            updateGeneralStats(data.general_stats);
+            updateSettings(data.settings);
+        } else {
+            showError('Ошибка загрузки статистики: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error loading referral stats:', error);
+        showError('Ошибка соединения с сервером');
+    }
+}
+
+function updateGeneralStats(stats) {
+    document.getElementById('active-referrers').textContent = stats.active_referrers;
+    document.getElementById('total-referrals').textContent = stats.total_referrals;
+    document.getElementById('total-paid').textContent = stats.total_paid.toFixed(2);
+    document.getElementById('pending-payments').textContent = stats.pending_payments.toFixed(2);
+}
+
+function updateSettings(settings) {
+    document.getElementById('referral-enabled').value = settings.referral_enabled || '1';
+    document.getElementById('referral-percentage-level1').value = settings.referral_percentage_level1 || '5.0';
+    document.getElementById('referral-percentage-level2').value = settings.referral_percentage_level2 || '2.0';
+    document.getElementById('referral-min-deposit').value = settings.referral_min_deposit || '500';
+    document.getElementById('referral-max-levels').value = settings.referral_max_levels || '2';
+    document.getElementById('referral-payout-day').value = settings.referral_payout_day || '1';
+}
+
+async function saveSettings() {
+    const settings = {
+        referral_enabled: document.getElementById('referral-enabled').value,
+        referral_percentage_level1: document.getElementById('referral-percentage-level1').value,
+        referral_percentage_level2: document.getElementById('referral-percentage-level2').value,
+        referral_min_deposit: document.getElementById('referral-min-deposit').value,
+        referral_max_levels: document.getElementById('referral-max-levels').value,
+        referral_payout_day: document.getElementById('referral-payout-day').value
+    };
+    
+    try {
+        const response = await fetch('/bot/referral/api/settings/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess(data.message);
+        } else {
+            showError('Ошибка: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showError('Ошибка сохранения настроек');
+    }
+}
+
+async function processPayouts() {
+    if (!confirm('Вы уверены, что хотите обработать месячные выплаты?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/bot/referral/api/process-payouts/', {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess(`Обработано выплат: ${data.payouts_count}`);
+            loadReferralStats();
+            loadPayments();
+        } else {
+            showError('Ошибка: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error processing payouts:', error);
+        showError('Ошибка обработки выплат');
+    }
+}
+
+async function loadTopReferrers() {
+    try {
+        const response = await fetch('/bot/referral/api/stats/');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayTopReferrers(data.top_referrers);
+        }
+    } catch (error) {
+        console.error('Error loading top referrers:', error);
+    }
+}
+
+function displayTopReferrers(referrers) {
+    const container = document.getElementById('top-referrers');
+    
+    if (referrers.length === 0) {
+        container.innerHTML = '<div class="text-white/70 text-center py-4">Топ рефереров пуст</div>';
+        return;
+    }
+    
+    container.innerHTML = referrers.map((user, index) => {
+        const name = user.first_name || user.username || 'Пользователь';
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+        
+        return `
+            <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg">${medal}</span>
+                    <div>
+                        <div class="text-white font-semibold">${name}</div>
+                        <div class="text-white/70 text-sm">@${user.username || 'N/A'}</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-white font-semibold">${user.referrals_count} рефералов</div>
+                    <div class="text-white/70 text-sm">${user.total_earnings.toFixed(2)} сом</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadPayments() {
+    const status = document.getElementById('payment-status-filter').value;
+    
+    showLoadingPayments();
+    
+    try {
+        const response = await fetch(`/bot/referral/api/payments/?status=${status}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayPayments(data.payments);
+        } else {
+            showError('Ошибка загрузки выплат: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error loading payments:', error);
+        showError('Ошибка загрузки выплат');
+    }
+}
+
+function displayPayments(payments) {
+    const container = document.getElementById('payments-list');
+    const loading = document.getElementById('loading-payments');
+    const noPayments = document.getElementById('no-payments');
+    
+    loading.classList.add('hidden');
+    
+    if (payments.length === 0) {
+        noPayments.classList.remove('hidden');
+        container.innerHTML = '';
+        return;
+    }
+    
+    noPayments.classList.add('hidden');
+    
+    container.innerHTML = payments.map(payment => {
+        const statusColors = {
+            'pending': 'text-yellow-400',
+            'paid': 'text-green-400'
+        };
+        
+        const statusText = {
+            'pending': 'Ожидает',
+            'paid': 'Выплачено'
+        };
+        
+        const referrerName = payment.referrer_first_name || payment.referrer_username || 'Пользователь';
+        const referredName = payment.referred_first_name || payment.referred_username || 'Пользователь';
+        
+        return `
+            <div class="border border-gray-700 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-sm ${statusColors[payment.status]}">${statusText[payment.status]}</span>
+                            <span class="text-sm text-white/70">Уровень ${payment.level}</span>
+                        </div>
+                        <div class="text-sm text-white/70 space-y-1">
+                            <div>Реферер: ${referrerName}</div>
+                            <div>Реферал: ${referredName}</div>
+                            <div>Сумма: ${payment.amount} сом (${payment.percentage}%)</div>
+                            <div>Создана: ${new Date(payment.created_at).toLocaleString()}</div>
+                            ${payment.paid_at ? `<div>Выплачена: ${new Date(payment.paid_at).toLocaleString()}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-bold text-white">${payment.amount} сом</div>
+                        <div class="text-sm text-white/70">${payment.percentage}%</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showLoadingPayments() {
+    document.getElementById('loading-payments').classList.remove('hidden');
+    document.getElementById('no-payments').classList.add('hidden');
+}
+
+function showError(message) {
+    alert('Ошибка: ' + message);
+}
+
+function showSuccess(message) {
+    alert('Успех: ' + message);
+}
+</script>
+{% endblock %}
+

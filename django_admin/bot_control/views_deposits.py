@@ -16,8 +16,7 @@ import sqlite3
 from django.conf import settings
 from .referral_models import ReferralWithdrawalRequest
 
-from .models import BankNotification, AutoDepositRequest, PlayerBalance
-from .auto_deposit_models import BankNotification as BankNotificationModel, AutoDepositRequest
+from .auto_deposit_models import BankNotification, AutoDepositRequest, PlayerBalance
 from .bot_models import BotDepositRequestRaw, BotWithdrawRequestRaw
 
 logger = logging.getLogger(__name__)
@@ -37,12 +36,11 @@ def deposits_list(request):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Base query for deposits (avoid non-existent columns like u.phone_number)
+        # Base query for deposits
         query = '''
-            SELECT r.*, u.username, u.first_name
-            FROM requests r
-            LEFT JOIN users u ON r.user_id = u.user_id
-            WHERE r.request_type = 'deposit'
+            SELECT r.*
+            FROM deposit_requests r
+            WHERE 1=1
         '''
         
         params = []
@@ -54,7 +52,7 @@ def deposits_list(request):
         
         # Search
         if search_query:
-            query += ' AND (r.user_id LIKE ? OR r.amount LIKE ? OR u.username LIKE ? OR u.first_name LIKE ?)'
+            query += ' AND (r.user_id LIKE ? OR r.amount LIKE ? OR r.bookmaker LIKE ? OR r.bank LIKE ?)'
             search_param = f'%{search_query}%'
             params.extend([search_param] * 4)
         
@@ -72,8 +70,7 @@ def deposits_list(request):
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
-            FROM requests
-            WHERE request_type = 'deposit'
+            FROM deposit_requests
         ''')
         
         stats_row = cursor.fetchone()
@@ -229,7 +226,7 @@ def transaction_detail(request, trans_id):
         cursor.execute('''
             SELECT r.*, u.username, u.first_name
             FROM requests r
-            LEFT JOIN users u ON r.user_id = u.user_id
+            LEFT JOIN users u ON r.user_id = u.telegram_id
             WHERE r.id = ?
         ''', (trans_id,))
         row = cursor.fetchone()
@@ -335,6 +332,47 @@ def transaction_detail(request, trans_id):
         logger.error(f"Error in transaction_detail: {str(e)}", exc_info=True)
         return render(request, 'bot_control/error.html', {'error': str(e)})
 
+def request_detail(request, req_id):
+    """Request details from unified requests table"""
+    try:
+        # Подключаемся к общей БД бота
+        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Получаем детали заявки
+        cursor.execute('''
+            SELECT r.*, u.username, u.first_name, u.last_name
+            FROM requests r
+            LEFT JOIN users u ON r.user_id = u.telegram_id
+            WHERE r.id = ? OR r.request_id = ?
+        ''', (req_id, req_id))
+        
+        request_data = cursor.fetchone()
+        if not request_data:
+            conn.close()
+            return render(request, 'bot_control/error.html', {'error': 'Заявка не найдена'})
+        
+        # Получаем историю действий для этой заявки
+        cursor.execute('''
+            SELECT * FROM user_actions
+            WHERE data LIKE ? AND action LIKE '%request%'
+            ORDER BY timestamp DESC
+        ''', (f'%{req_id}%',))
+        
+        actions = cursor.fetchall()
+        
+        conn.close()
+        
+        return render(request, 'bot_control/request_detail.html', {
+            'request': request_data,
+            'actions': actions
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in request_detail: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})
+
 def deposit_detail(request, deposit_id):
     """Deposit request details"""
     try:
@@ -378,8 +416,7 @@ def deposit_detail(request, deposit_id):
 
 def withdrawals_list(request):
     """
-    Withdrawal requests list (Lux minimal). Now sourced from Django model
-    ReferralWithdrawalRequest, so new реферальные заявки отображаются сразу.
+    Withdrawal requests list from bot database
     """
     try:
         # Filters
@@ -387,42 +424,94 @@ def withdrawals_list(request):
         search_query = request.GET.get('search', '').strip()
         page_number = request.GET.get('page', 1)
 
-        qs = ReferralWithdrawalRequest.objects.all().order_by('-created_at')
+        # Connect to bot database
+        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Base query for withdrawals
+        query = '''
+            SELECT id, user_id, amount, bookmaker, bank, phone, site_code, 
+                   qr_photo, request_id, status, created_at, updated_at
+            FROM withdrawals
+            WHERE 1=1
+        '''
+        
+        params = []
+        
+        # Filter by status
         if status_filter != 'all':
-            qs = qs.filter(status=status_filter)
+            query += ' AND status = ?'
+            params.append(status_filter)
+        
+        # Search
         if search_query:
-            # Поиск по user_id, сумме, реквизитам, ID аккаунта
             try:
+                # Try to search by ID
                 uid = int(search_query)
-                qs = qs.filter(user_id=uid)
+                query += ' AND user_id = ?'
+                params.append(uid)
             except ValueError:
-                qs = qs.filter(
-                    Q(wallet_details__icontains=search_query) |
-                    Q(bookmaker_account_id__icontains=search_query) |
-                    Q(amount__icontains=search_query)
-                )
-
-        # Stats
+                # Search by amount, bank, phone, site_code
+                query += ' AND (amount LIKE ? OR bank LIKE ? OR phone LIKE ? OR site_code LIKE ? OR request_id LIKE ?)'
+                search_term = f'%{search_query}%'
+                params.extend([search_term, search_term, search_term, search_term, search_term])
+        
+        query += ' ORDER BY created_at DESC'
+        
+        # Get total count for stats
+        count_query = query.replace('SELECT id, user_id, amount, bookmaker, bank, phone, site_code, qr_photo, request_id, status, created_at, updated_at', 'SELECT COUNT(*)')
+        cursor.execute(count_query, params)
+        total_count = cursor.fetchone()[0]
+        
+        # Get stats
+        cursor.execute('SELECT status, COUNT(*) FROM withdrawals GROUP BY status')
+        status_counts = dict(cursor.fetchall())
+        
         stats = {
-            'total': qs.count(),
-            'pending': qs.filter(status='pending').count(),
-            'completed': qs.filter(status='completed').count(),
-            'rejected': qs.filter(status='rejected').count(),
+            'total': total_count,
+            'pending': status_counts.get('pending', 0),
+            'completed': status_counts.get('completed', 0),
+            'rejected': status_counts.get('rejected', 0),
         }
-
-        paginator = Paginator(qs, 20)
-        page_obj = paginator.get_page(page_number)
-
-        withdrawals_list = [{
-            'id': o.id,
-            'user_id': o.user_id,
-            'amount': float(o.amount),
-            'currency': o.currency,
-            'status': o.status,
-            'created_at': o.created_at,
-            'bookmaker': o.bookmaker,
-            'bookmaker_account_id': o.bookmaker_account_id,
-        } for o in page_obj.object_list]
+        
+        # Pagination
+        cursor.execute(query, params)
+        all_results = cursor.fetchall()
+        
+        # Simple pagination
+        per_page = 20
+        start = (int(page_number) - 1) * per_page
+        end = start + per_page
+        page_results = all_results[start:end]
+        
+        # Convert to list of dicts
+        withdrawals_list = []
+        for row in page_results:
+            withdrawals_list.append({
+                'id': row['id'],
+                'user_id': row['user_id'],
+                'amount': float(row['amount']),
+                'bookmaker': row['bookmaker'],
+                'bank': row['bank'],
+                'phone': row['phone'],
+                'site_code': row['site_code'],
+                'qr_photo': row['qr_photo'],
+                'request_id': row['request_id'],
+                'status': row['status'],
+                'created_at': row['created_at'],
+                'updated_at': row['updated_at'],
+            })
+        
+        # Create pagination object
+        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+        paginator = Paginator(all_results, per_page)
+        try:
+            page_obj = paginator.page(page_number)
+        except (EmptyPage, PageNotAnInteger):
+            page_obj = paginator.page(1)
+        
+        conn.close()
 
         context = {
             'page_obj': page_obj,
@@ -432,8 +521,8 @@ def withdrawals_list(request):
             'search_query': search_query,
         }
 
-        # Render Lux template
-        return render(request, 'bot_control/withdrawals_lux.html', context)
+        # Render template
+        return render(request, 'bot_control/withdrawals_list.html', context)
 
     except Exception as e:
         logger.error(f"Error in withdrawals_list: {str(e)}", exc_info=True)
@@ -534,10 +623,11 @@ def dashboard(request):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT wr.*, u.username, u.first_name
-            FROM withdrawal_requests wr
-            LEFT JOIN users u ON wr.user_id = u.user_id
-            ORDER BY wr.created_at DESC
+            SELECT r.*, u.username, u.first_name
+            FROM requests r
+            LEFT JOIN users u ON r.user_id = u.telegram_id
+            WHERE r.request_type = 'withdraw'
+            ORDER BY r.created_at DESC
             LIMIT 5
         ''')
         
@@ -581,4 +671,14 @@ def dashboard(request):
         
     except Exception as e:
         logger.error(f"Error in dashboard: {str(e)}", exc_info=True)
+        return render(request, 'bot_control/error.html', {'error': str(e)})
+
+def menu(request):
+    """
+    Menu page with navigation options
+    """
+    try:
+        return render(request, 'dashboard/menu_mobile.html')
+    except Exception as e:
+        logger.error(f"Error in menu: {str(e)}", exc_info=True)
         return render(request, 'bot_control/error.html', {'error': str(e)})

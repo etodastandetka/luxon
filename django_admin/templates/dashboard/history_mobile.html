@@ -9,6 +9,62 @@
 
 {% block content %}
 <style>
+/* Modern History Styles */
+.history-header {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 24px;
+    color: white;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.history-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.filter-card {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.filter-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.filter-card.active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.filter-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.filter-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
 .tabs-container {
     display: flex;
     gap: 8px;
@@ -33,9 +89,9 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    background: transparent;
-    border: none;
-    box-shadow: none;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
 }
 
 .tab i {
@@ -44,10 +100,9 @@
 }
 
 .tab.active {
-    background: transparent;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #fff;
-    box-shadow: none;
-    border: none;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .tab:hover:not(.active) {
@@ -111,6 +166,11 @@
     font-size: 16px;
     font-weight: bold;
     margin-bottom: 4px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #ffffff;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-block;
 }
 
 .list-status {
@@ -132,6 +192,7 @@
 .status-completed { background: #999; }
 .status-rejected { background: #ff4444; }
 </style>
+
 
 <!-- Фильтры транзакций -->
 <div class="tabs-container">
@@ -180,11 +241,12 @@ function getBankIconUrl(bankStr){
 
 // Загружаем данные при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    loadTransactions();
+    // Отображаем реальные данные из Django
+    displayRealTransactions();
     
     // Обновляем данные каждые 30 секунд
     setInterval(function() {
-        loadTransactions();
+        location.reload();
     }, 30000);
 });
 
@@ -263,8 +325,8 @@ async function loadTransactions() {
 
                 transactionItem.innerHTML = `
                     <div class="list-icon">
-                        <div style="width:40px;height:40px;border-radius:10px;background:#0f0f0f;border:2px solid #333;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-                            <img src="${mainIcon}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:4px;"
+                        <div style="width:50px;height:50px;border-radius:10px;background:none;border:none;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                            <img src="${mainIcon}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:2px;"
                                  onerror="this.onerror=null;this.src='{% static "images/companion.png" %}';"/>
                         </div>
                     </div>

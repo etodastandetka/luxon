@@ -1,331 +1,312 @@
-{% extends 'base.html' %}
-{% load static %}
+{% extends "base.html" %}
 
-{% block title %}Меню v3 - Темный дизайн{% endblock %}
-
-{% block header_icon %}bars{% endblock %}
-{% block header_title %}Меню{% endblock %}
-{% block header_subtitle %}{% endblock %}
+{% block header_title %}Панель управления{% endblock %}
+{% block header_subtitle %}Административная панель{% endblock %}
 
 {% block content %}
 <style>
-  /* Scoped styles for a prettier dark menu page */
-  :root {
-    --bg: #0b0b0b;
-    --card: #141414;
-    --border: #242424;
-    --muted: #9aa0a6;
-    --muted-2: #6b7280;
-    --white: #ffffff;
-    --accent: #00ff88; /* keep brand accent */
-    --accent-2: #ffc107; /* warning accent */
-  }
+/* Menu Styles */
+.menu-section {
+    margin-bottom: 8px;
+}
 
-  .page-header {
-    padding: 12px 16px 4px;
-    display: flex; align-items: center; gap: 14px;
-  }
-  .page-header .header-avatar {
-    width: 40px; height: 40px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    background: #151515;
-    border: 1px solid var(--border);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25) inset;
-  }
-  .page-header .header-avatar i { color: var(--accent); font-size: 18px; }
-  .page-header .header-content h1 { color: var(--white); font-size: 18px; margin: 0 0 2px; font-weight: 700; }
-  .page-header .header-content p { color: var(--muted); margin: 0; font-size: 12px; opacity: .9; }
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #22c55e;
+    margin-bottom: 4px;
+    padding: 0 4px;
+}
 
-  .stats-cards { display: grid; grid-template-columns: repeat(2, 1fr); padding-top: 8px; margin: 0 16px 8px; gap: 10px !important; }
-  @media (min-width: 720px) { .stats-cards { grid-template-columns: repeat(3, 1fr); } }
-  .stat-card {
-    background: #151515 !important;
-    border: 1px solid var(--border) !important;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-    border-radius: 10px !important;
-    transition: background .2s ease, border-color .2s ease;
-  }
-  .stat-card:hover { background: #181818 !important; border-color: #2a2a2a !important; }
-
-  .menu-section { margin: 0 0 16px; padding: 0 16px; }
-  .menu-section h3 { color: var(--white) !important; opacity: .95; margin: 8px 0 12px !important; }
+.section-icon {
+    font-size: 18px;
+}
 
   .menu-item {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
     position: relative;
-    background: var(--card) !important;
-    border: 1px solid var(--border) !important;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.20);
-    overflow: hidden;
-    border-radius: 10px !important;
-    margin: 0 16px 12px !important;
-    padding: 14px !important;
-  }
-  .menu-item::before {
-    content: "";
-    position: absolute; inset: 0; pointer-events: none;
-    background: transparent;
-    opacity: 0;
-  }
-  .menu-item:hover { border-color: #2a2a2a !important; background: #181818 !important; }
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
 
-  .menu-item .fas { color: var(--muted) !important; transition: color .2s ease; }
-  .menu-item:hover .fas { color: var(--accent) !important; }
+.menu-item:hover {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%);
+    border-color: rgba(34, 197, 94, 0.4);
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3), 0 4px 15px rgba(0, 0, 0, 0.2), 0 0 15px rgba(34, 197, 94, 0.2);
+}
 
-  .menu-status .status-dot { box-shadow: 0 0 10px rgba(0,255,136,0.35); }
-  .menu-status span { font-weight: 600; }
+.menu-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
 
-  /* Make counters pop */
-  .stat-card div[style*="font-size: 24px"] { text-shadow: 0 1px 12px rgba(0,255,136,0.12); }
-  /* Icon wrappers */
-  .icon-circle {
-    width: 52px; height: 52px; border-radius: 14px;
-    background: #222; border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 10px;
-  }
-  .icon-circle i { color: var(--muted); font-size: 18px; }
-  .menu-icon {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: #333; display: flex; align-items: center; justify-content: center;
+.menu-icon.limits { background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%); backdrop-filter: blur(5px); }
+.menu-icon.wallet { background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%); backdrop-filter: blur(5px); }
+.menu-icon.settings { background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%); backdrop-filter: blur(5px); }
+.menu-icon.bot { background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%); backdrop-filter: blur(5px); }
+.menu-icon.broadcast { background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%); backdrop-filter: blur(5px); }
+.menu-icon.stats { background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%); backdrop-filter: blur(5px); }
+.menu-icon.referral { background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%); backdrop-filter: blur(5px); }
+
+.menu-content {
+    flex: 1;
+    min-width: 0;
+    background: transparent !important;
+    padding: 0 0 0 8px;
+    border: none;
+    text-align: left;
+}
+
+.menu-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0;
+    background: transparent !important;
+    padding: 0;
+    border: none;
+    line-height: 1.2;
+}
+
+.menu-subtitle {
+    font-size: 10px;
+    color: #cccccc;
+    margin-bottom: 0;
+    background: transparent !important;
+    padding: 0;
+    border: none;
+    line-height: 1.1;
+}
+
+.menu-arrow {
+    color: #22c55e;
+    font-size: 14px;
     flex-shrink: 0;
   }
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff6b6b;
+}
+
+.status-text {
+    font-size: 12px;
+    color: #ff6b6b;
+    font-weight: 500;
+}
+
+.status-active {
+    background: #00e08a;
+}
+
+.status-active .status-text {
+    color: #00e08a;
+}
 </style>
-<div class="menu-container">
 
-<!-- Главное: Лимиты и Кошелек -->
+<!-- Основные разделы -->
 <div class="menu-section">
-    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">🔧 Главное</h3>
-
-    <div class="menu-item" onclick="window.location.href='{% url 'bot_control:limits_dashboard' %}'" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div class="menu-icon"><i class="fas fa-sliders-h" style="color: #999; font-size: 16px;"></i></div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Лимиты</div>
-                <div style="font-size: 12px; color: #999;">Ограничения и параметры</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
+    <div class="section-title">
+        <div class="section-icon">⚡</div>
+        <span>Основные разделы</span>
     </div>
 
-    <div class="menu-item" onclick="window.location.href='{% url 'dashboard:wallet' %}'" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div class="menu-icon"><i class="fas fa-wallet" style="color: #999; font-size: 16px;"></i></div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Кошелек</div>
-                <div style="font-size: 12px; color: #999;">Банки и QR коды</div>
+    <div class="menu-item" onclick="location.href='/bot/limits/'">
+        <div class="menu-icon limits">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
             </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        <div class="menu-content">
+            <div class="menu-title">Лимиты</div>
+            <div class="menu-subtitle">Ограничения и параметры</div>
         </div>
+        <div class="menu-arrow">›</div>
     </div>
 
+    <div class="menu-item" onclick="location.href='/wallet/'">
+        <div class="menu-icon wallet">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M19 7h-8v6h8V7zm-2 4h-4V9h4v2zm4.5-9H2.5C1.67 2 1 2.67 1 3.5v17C1 21.33 1.67 22 2.5 22h19c.83 0 1.5-.67 1.5-1.5v-17C23 2.67 22.33 2 21.5 2zM21 20H3V4h18v16z"/>
+            </svg>
 </div>
-
-<!-- Настройки бота -->
-<div class="menu-section" style="margin-bottom: 24px;">
-    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">🤖 Настройки бота</h3>
-    
-    <div class="menu-item" onclick="openBotSettings()" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="fas fa-robot" style="color: #999; font-size: 16px;"></i>
+        <div class="menu-content">
+            <div class="menu-title">Кошелёк</div>
+            <div class="menu-subtitle">Банки и QR-коды</div>
             </div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Управление ботом</div>
-                <div style="font-size: 12px; color: #999;">Включить/выключить</div>
-            </div>
-            <div class="menu-status" id="bot-status" style="display: flex; align-items: center; gap: 6px; margin-right: 8px; flex-shrink: 0;">
-                <div class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #00ff88;"></div>
-                <span style="font-size: 12px; color: #00ff88; font-weight: 500;">Активен</span>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
+        <div class="menu-arrow">›</div>
     </div>
     
-    <div class="menu-item" onclick="openBroadcast()" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="fas fa-bullhorn" style="color: #999; font-size: 16px;"></i>
-            </div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Рассылка</div>
-                <div style="font-size: 12px; color: #999;">Отправить сообщение</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
     </div>
     
-    <div class="menu-item" onclick="openStatistics()" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="fas fa-chart-bar" style="color: #999; font-size: 16px;"></i>
-            </div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Статистика</div>
-                <div style="font-size: 12px; color: #999;">Аналитика и отчеты</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
-    </div>
-
-    <!-- Прямой переход на новую страницу настроек бота (/bot/bot-settings/) -->
-    <div class="menu-item" onclick="window.location.href='{% url 'bot_control:bot_settings_page' %}'" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="fas fa-cog" style="color: #999; font-size: 16px;"></i>
-            </div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Настройки (полная страница)</div>
-                <div style="font-size: 12px; color: #999;">Кошельки/реквизиты и прочее</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
-    </div>
-</div>
-
-<!-- Рефералка и лимиты -->
-<div class="menu-section" style="margin-bottom: 24px;">
-    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">👥 Рефералка и лимиты</h3>
-
-    <div class="menu-item" onclick="window.location.href='{% url 'bot_control:referral_history' %}'" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div class="menu-icon"><i class="fas fa-users" style="color: #999; font-size: 16px;"></i></div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Заявки с рефералки</div>
-                <div style="font-size: 12px; color: #999;">Выплаты и история реферальных заявок</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
-    </div>
-
-    <div class="menu-item" onclick="window.location.href='{% url 'bot_control:limits_dashboard' %}'" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div class="menu-icon"><i class="fas fa-sliders-h" style="color: #999; font-size: 16px;"></i></div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Лимиты</div>
-                <div style="font-size: 12px; color: #999;">Ограничения и параметры</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
-    </div>
-</div>
-
-<!-- Системные настройки -->
-<div class="menu-section" style="margin-bottom: 24px;">
-    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">⚙️ Система</h3>
-    
-    
-    <div class="menu-item" onclick="openBankSettings()" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="fas fa-university" style="color: #999; font-size: 16px;"></i>
-            </div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">Настройки банков</div>
-                <div style="font-size: 12px; color: #999;">Конфигурация банков</div>
-            </div>
-            <div style="text-align: right; margin-right: 8px; flex-shrink: 0;">
-                <div style="font-size: 12px; color: #10b981;">{{ banks_count }} активных</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
-    </div>
-    
-    <div class="menu-item" onclick="openDatabase()" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="fas fa-database" style="color: #999; font-size: 16px;"></i>
-            </div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">База данных</div>
-                <div style="font-size: 12px; color: #999;">Управление данными</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
-        </div>
-    </div>
-</div>
-
-<!-- Дополнительно -->
+<!-- Операции -->
 <div class="menu-section">
-    <h3 style="color: #fff; font-size: 16px; margin-bottom: 16px; font-weight: 600; padding: 0 20px;">ℹ️ Дополнительно</h3>
-    
-    <div class="menu-item" onclick="openAbout()" style="cursor: pointer; transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 40px; height: 40px; background: #333; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="fas fa-info-circle" style="color: #999; font-size: 16px;"></i>
+    <div class="section-title">
+        <div class="section-icon">⚡</div>
+        <span>Операции</span>
+    </div>
+
+    <div class="menu-item" onclick="location.href='/bot/bot-management/'">
+        <div class="menu-icon bot">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+            </svg>
             </div>
-            <div style="flex: 1;">
-                <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;">О приложении</div>
-                <div style="font-size: 12px; color: #999;">Версия 1.0.0 • Luxon Admin</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color: #666; font-size: 12px; flex-shrink: 0;"></i>
+        <div class="menu-content">
+            <div class="menu-title">Управление ботом</div>
+            <div class="menu-subtitle">Настройки системы</div>
         </div>
+        <div class="menu-arrow">›</div>
+    </div>
+
+    <div class="menu-item" onclick="location.href='/bot/broadcast/'">
+        <div class="menu-icon broadcast">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+            </svg>
+            </div>
+        <div class="menu-content">
+            <div class="menu-title">Рассылка</div>
+            <div class="menu-subtitle">Отправить сообщение</div>
+        </div>
+        <div class="menu-arrow">›</div>
+    </div>
+
+    <div class="menu-item" onclick="location.href='/bot/statistics/'">
+        <div class="menu-icon stats">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/>
+            </svg>
+            </div>
+        <div class="menu-content">
+            <div class="menu-title">Статистика</div>
+            <div class="menu-subtitle">Аналитика и отчёты</div>
+        </div>
+        <div class="menu-arrow">›</div>
+</div>
+
+    <div class="menu-item" onclick="location.href='/bot/referral/'">
+        <div class="menu-icon referral">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.5-1.84 1.25L13.5 15H16v7h4zM12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-7H9.5L8.34 9.25A1.5 1.5 0 0 0 6.5 8H5.46c-.8 0-1.54.5-1.84 1.25L1.5 15H4v7h3.5z"/>
+            </svg>
+        </div>
+        <div class="menu-content">
+            <div class="menu-title">Заявки с рефералки</div>
+            <div class="menu-subtitle">История и выплаты</div>
+            </div>
+        <div class="menu-arrow">›</div>
+            </div>
+    
+    <div class="menu-item" onclick="location.href='/users/'">
+        <div class="menu-icon users">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01.99L14 10h-2l1.5-4h-2L11 8H9l1.5-4H8L6.5 8H4.5L2 10h2l-.99-1.01A2.5 2.5 0 0 0 1.46 8H.04A1.5 1.5 0 0 0-.5 9.37L2 17v5h2v-6h2.5l2.5 7h2l-2.5-7H10v6h2v-5h2.5l2.5 7h2l-2.5-7H18v5h2z"/>
+            </svg>
+            </div>
+        <div class="menu-content">
+            <div class="menu-title">Пользователи</div>
+            <div class="menu-subtitle">Управление пользователями</div>
+        </div>
+        <div class="menu-arrow">›</div>
+    </div>
+    
+    <div class="menu-item" onclick="location.href='/referrals/'">
+        <div class="menu-icon referrals">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.5-1.84 1.25L13.5 15H16v7h4zM12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-7H9.5L8.34 9.25A1.5 1.5 0 0 0 6.5 8H5.46c-.8 0-1.54.5-1.84 1.25L1.5 15H4v7h3.5z"/>
+            </svg>
+            </div>
+        <div class="menu-content">
+            <div class="menu-title">Рефералы</div>
+            <div class="menu-subtitle">Реферальная система</div>
+            </div>
+        <div class="menu-arrow">›</div>
+</div>
+
+    <div class="menu-item" onclick="location.href='/logs/'">
+        <div class="menu-icon logs">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            </svg>
+        </div>
+        <div class="menu-content">
+            <div class="menu-title">Логи</div>
+            <div class="menu-subtitle">Отслеживание событий</div>
+        </div>
+        <div class="menu-arrow">›</div>
+    </div>
+    
+    <div class="menu-item" onclick="location.href='/bot/referral/'">
+        <div class="menu-icon referral">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M16,4C18.2,4 20,5.8 20,8C20,10.2 18.2,12 16,12C13.8,12 12,10.2 12,8C12,5.8 13.8,4 16,4M16,6C14.9,6 14,6.9 14,8C14,9.1 14.9,10 16,10C17.1,10 18,9.1 18,8C18,6.9 17.1,6 16,6M8,4C10.2,4 12,5.8 12,8C12,10.2 10.2,12 8,12C5.8,12 4,10.2 4,8C4,5.8 5.8,4 8,4M8,6C6.9,6 6,6.9 6,8C6,9.1 6.9,10 8,10C9.1,10 10,9.1 10,8C10,6.9 9.1,6 8,6M16,14C18.2,14 20,15.8 20,18C20,20.2 18.2,22 16,22C13.8,22 12,20.2 12,18C12,15.8 13.8,14 16,14M8,14C10.2,14 12,15.8 12,18C12,20.2 10.2,22 8,22C5.8,22 4,20.2 4,18C4,15.8 5.8,14 8,14M16,16C14.9,16 14,16.9 14,18C14,19.1 14.9,20 16,20C17.1,20 18,19.1 18,18C18,16.9 17.1,16 16,16M8,16C6.9,16 6,16.9 6,18C6,19.1 6.9,20 8,20C9.1,20 10,19.1 10,18C10,16.9 9.1,16 8,16Z"/>
+            </svg>
+        </div>
+        <div class="menu-content">
+            <div class="menu-title">Рефералы</div>
+            <div class="menu-subtitle">Реферальная система</div>
+        </div>
+        <div class="menu-arrow">›</div>
+    </div>
+    
+    <div class="menu-item" onclick="location.href='/bot/autodeposit/'">
+        <div class="menu-icon autodeposit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/>
+            </svg>
+        </div>
+        <div class="menu-content">
+            <div class="menu-title">Автопополнение</div>
+            <div class="menu-subtitle">IMAP мониторинг</div>
+        </div>
+        <div class="menu-arrow">›</div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Загружаем статус бота
-    loadBotStatus();
-});
-
-function loadBotStatus() {
-    // Используем корректный API статуса бота
-    fetch('/bot/api/bot-status/')
-        .then(response => response.json())
-        .then(data => {
-            const statusElement = document.getElementById('bot-status');
-            const dot = statusElement.querySelector('.status-dot');
-            const text = statusElement.querySelector('span');
-            
-            if (data.is_active) {
-                dot.style.background = '#00ff88';
-                text.textContent = 'Активен';
-                text.style.color = '#00ff88';
+function toggleBotStatus() {
+    // Логика переключения статуса бота
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.status-text');
+    
+    if (statusDot.classList.contains('status-active')) {
+        statusDot.classList.remove('status-active');
+        statusText.textContent = 'Неактивен';
+        statusText.style.color = '#f87171';
             } else {
-                dot.style.background = '#ff4444';
-                text.textContent = 'Неактивен';
-                text.style.color = '#ff4444';
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка загрузки статуса бота:', error);
-        });
-}
-
-function openBotSettings() {
-    // Страница настроек бота
-    window.location.href = '{% url "dashboard:settings" %}';
-}
-
-function openBroadcast() {
-    // Страница рассылки
-    window.location.href = '{% url "dashboard:broadcast" %}';
-}
-
-function openStatistics() {
-    // Страница статистики
-    window.location.href = '{% url "dashboard:statistics" %}';
-}
-
-
-function openBankSettings() {
-    // Страница кошелька (банки и QR)
-    window.location.href = '{% url "dashboard:wallet" %}';
-}
-
-function openDatabase() {
-    // Страница управления базой данных (заглушка)
-    window.location.href = '{% url "dashboard:database" %}';
-}
-
-function openHelp() {
-    // Открываем страницу помощи
-    alert('Функция помощи будет добавлена');
-}
-
-function openAbout() {
-    // Открываем страницу о приложении
-    alert('Luxon Admin Panel v1.0.0\nРазработано для управления Telegram ботом');
+        statusDot.classList.add('status-active');
+        statusText.textContent = 'Активен';
+        statusText.style.color = '#4ade80';
+    }
 }
 </script>
 {% endblock %}
