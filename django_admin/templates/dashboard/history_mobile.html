@@ -239,6 +239,82 @@ function getBankIconUrl(bankStr){
     return '{% static "images/companion.png" %}';
 }
 
+// Функция для загрузки реальных транзакций
+function displayRealTransactions() {
+    // Получаем данные из Django view
+    fetch('/api/transaction-history/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.transactions) {
+                // Очищаем контейнер
+                const container = document.getElementById('transactions-container');
+                if (container) {
+                    container.innerHTML = '';
+                    
+                    // Отображаем транзакции
+                    data.transactions.forEach(transaction => {
+                        const transactionElement = createTransactionElement(transaction);
+                        container.appendChild(transactionElement);
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки транзакций:', error);
+        });
+}
+
+// Функция для создания элемента транзакции
+function createTransactionElement(transaction) {
+    const div = document.createElement('div');
+    div.className = 'transaction-item';
+    
+    const statusClass = transaction.status === 'completed' ? 'status-completed' : 
+                       transaction.status === 'pending' ? 'status-pending' : 'status-failed';
+    
+    div.innerHTML = `
+        <div class="transaction-icon">
+            <i class="fas fa-${transaction.type === 'deposit' ? 'arrow-down' : 'arrow-up'}"></i>
+        </div>
+        <div class="transaction-details">
+            <div class="transaction-info">
+                <span class="transaction-type">${transaction.type === 'deposit' ? 'Пополнение' : 'Вывод'}</span>
+                <span class="transaction-bookmaker">${transaction.bookmaker || 'Не указан'}</span>
+            </div>
+            <div class="transaction-meta">
+                <span class="transaction-amount">${transaction.amount} сом</span>
+                <span class="transaction-status ${statusClass}">${getStatusText(transaction.status)}</span>
+            </div>
+            <div class="transaction-date">${formatDate(transaction.created_at)}</div>
+        </div>
+    `;
+    
+    return div;
+}
+
+// Функция для получения текста статуса
+function getStatusText(status) {
+    switch(status) {
+        case 'completed': return 'Завершено';
+        case 'pending': return 'Ожидает';
+        case 'rejected': return 'Отклонено';
+        case 'approved': return 'Одобрено';
+        default: return status;
+    }
+}
+
+// Функция для форматирования даты
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 // Загружаем данные при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     // Отображаем реальные данные из Django
@@ -246,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Обновляем данные каждые 30 секунд
     setInterval(function() {
-        location.reload();
+        displayRealTransactions();
     }, 30000);
 });
 
