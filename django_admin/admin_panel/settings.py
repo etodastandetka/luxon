@@ -135,7 +135,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 # Каталог для collectstatic (поднимайте Nginx/услугу на этот путь)
-STATIC_ROOT = '/var/www/lux/django_admin/staticfiles'
+STATIC_ROOT = '/var/www/luxon/django_admin/staticfiles'
 # Serve both app static and repo-level images/ as static
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
@@ -143,6 +143,15 @@ STATICFILES_DIRS = [
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Настройки аутентификации и редиректа
+LOGIN_REDIRECT_URL = '/'
+LOGIN_URL = '/admin/login/'
+LOGOUT_REDIRECT_URL = '/admin/login/'
+
+# Настройки 2FA
+TWO_FACTOR_ENABLED = True
+TWO_FACTOR_REMEMBER_DAYS = 30
 
 BOT_TOKEN = '7489617815:AAFt-qZwXCHZYdjWDiihq9slYxg1c8UCzCg'
 # Единый путь к базе бота. Бот пишет в bot/universal_bot.db в корне репозитория на сервере.

@@ -12,6 +12,12 @@ def dashboard(request):
     """Главная страница дашборда"""
     return render(request, 'dashboard/dashboard_mobile.html')
 
+@login_required
+def main_dashboard(request):
+    """Главная страница с заявками после входа в админку"""
+    # Перенаправляем на существующую страницу с заявками
+    return redirect('/bot/requests/')
+
 def history(request):
     """Страница истории транзакций"""
     from bot_control.auto_deposit_models import AutoDepositRequest
