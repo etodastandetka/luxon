@@ -37,7 +37,7 @@ class AuthMiddleware:
         
         # Если пользователь не аутентифицирован, перенаправляем на логин
         if not request.user.is_authenticated:
-            return redirect('/admin/login/')
+            return redirect('/login/')
         
         # Проверяем 2FA для аутентифицированных пользователей
         if hasattr(request.user, 'profile') and request.user.profile.is_2fa_enabled:
