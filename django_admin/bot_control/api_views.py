@@ -266,7 +266,7 @@ def update_transaction(request, transaction_id):
             if cursor.fetchone():
                 table_name = 'withdrawals'
             else:
-            conn.close()
+                conn.close()
                 return Response({
                     'error': 'Transaction not found'
                 }, status=status.HTTP_404_NOT_FOUND)
