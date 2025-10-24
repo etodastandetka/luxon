@@ -655,12 +655,12 @@ def _read_platform_stats(conn, bookmaker_key: str, start_d: date = None, end_d: 
     
     where_sql = " WHERE " + " AND ".join(where_conditions)
     
-    # Получаем данные по депозитам из таблицы deposit_requests
-    cur.execute(f"SELECT COALESCE(SUM(amount),0), COUNT(*) FROM deposit_requests{where_sql}", params)
+    # Получаем данные по депозитам из таблицы requests
+    cur.execute(f"SELECT COALESCE(SUM(amount),0), COUNT(*) FROM requests WHERE request_type='deposit'{where_sql}", params)
     dep_sum, dep_cnt = cur.fetchone() or (0, 0)
     
-    # Получаем данные по выводам из таблицы withdrawals
-    cur.execute(f"SELECT COALESCE(SUM(amount),0), COUNT(*) FROM withdrawals{where_sql}", params)
+    # Получаем данные по выводам из таблицы requests
+    cur.execute(f"SELECT COALESCE(SUM(amount),0), COUNT(*) FROM requests WHERE request_type='withdraw'{where_sql}", params)
     w_sum, w_cnt = cur.fetchone() or (0, 0)
     
     return {
