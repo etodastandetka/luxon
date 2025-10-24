@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev -p 3030",
     "build": "next build",
-    "start": "next start -p 3030"
+    "start": "next start -p 3030",
+    "start:prod": "NODE_ENV=production next start -p 3030",
+    "start:custom": "node start_nextjs_production.js"
   },
   "dependencies": {
     "next": "14.2.5",
