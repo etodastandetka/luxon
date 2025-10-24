@@ -1,12 +1,12 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 import sqlite3
 import json
 import os
 from datetime import datetime, timedelta
 from django.conf import settings
-from django.views.decorators.csrf import csrf_exempt
 
 def dashboard(request):
     """Главная страница дашборда"""
