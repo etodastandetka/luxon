@@ -25,17 +25,11 @@ def login_view(request):
         
         if user is not None:
             if user.is_active:
-                # Проверяем, включен ли 2FA
-                if hasattr(user, 'profile') and user.profile.is_2fa_enabled:
-                    # Сохраняем пользователя в сессии для 2FA
-                    request.session['temp_user_id'] = user.id
-                    # НЕ меняем время жизни сессии - оставляем 30 дней
-                    return redirect('/2fa-verify/')
-                else:
-                    # Обычный вход без 2FA
-                    login(request, user)
-                    request.session['2fa_verified'] = True
-                    return redirect('/admin/')
+                # ВСЕГДА требуем 2FA для всех пользователей
+                # Сохраняем пользователя в сессии для 2FA
+                request.session['temp_user_id'] = user.id
+                # НЕ меняем время жизни сессии - оставляем 30 дней
+                return redirect('/2fa-verify/')
             else:
                 messages.error(request, 'Аккаунт неактивен')
         else:
