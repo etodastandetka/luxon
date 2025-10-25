@@ -50,13 +50,16 @@ export default function LoadingScreen({
           {/* Прогресс бар */}
           {showProgress && (
             <div className="w-64 mx-auto">
-              <div className="bg-gray-700 rounded-full h-2 overflow-hidden">
+              <div className="bg-gray-700 rounded-full h-3 overflow-hidden relative">
                 <div 
-                  className="bg-gradient-to-r from-green-500 to-green-400 h-full transition-all duration-300 ease-out"
+                  className="bg-gradient-to-r from-red-500 via-yellow-500 via-blue-500 via-purple-500 to-green-500 h-full transition-all duration-300 ease-out relative"
                   style={{ width: `${progress}%` }}
-                />
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
               </div>
-              <p className="text-sm text-gray-400 mt-2">{progress}%</p>
+              <p className="text-sm text-gray-400 mt-2 font-mono">{Math.round(progress)}%</p>
             </div>
           )}
         </div>

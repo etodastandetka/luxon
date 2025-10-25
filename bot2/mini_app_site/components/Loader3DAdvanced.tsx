@@ -87,11 +87,11 @@ export default function Loader3DAdvanced({ size = 200, color = '#22c55e', classN
     const style = document.createElement('style')
     style.textContent = `
       @keyframes rotate3d {
-        0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-        25% { transform: rotateX(0deg) rotateY(90deg) rotateZ(0deg); }
-        50% { transform: rotateX(0deg) rotateY(180deg) rotateZ(0deg); }
-        75% { transform: rotateX(90deg) rotateY(180deg) rotateZ(0deg); }
-        100% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+        0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
+        25% { transform: rotateX(0deg) rotateY(90deg) rotateZ(0deg) scale(1.1); }
+        50% { transform: rotateX(0deg) rotateY(180deg) rotateZ(0deg) scale(1.2); }
+        75% { transform: rotateX(90deg) rotateY(180deg) rotateZ(0deg) scale(1.1); }
+        100% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
       }
       
       @keyframes pulse3d {
@@ -106,6 +106,24 @@ export default function Loader3DAdvanced({ size = 200, color = '#22c55e', classN
           box-shadow: 0 0 30px #ef444440;
           text-shadow: 0 0 10px #ef4444;
         }
+        25% { 
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          border-color: #f59e0b;
+          box-shadow: 0 0 30px #f59e0b40;
+          text-shadow: 0 0 10px #f59e0b;
+        }
+        50% { 
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          border-color: #3b82f6;
+          box-shadow: 0 0 30px #3b82f640;
+          text-shadow: 0 0 10px #3b82f6;
+        }
+        75% { 
+          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+          border-color: #8b5cf6;
+          box-shadow: 0 0 30px #8b5cf640;
+          text-shadow: 0 0 10px #8b5cf6;
+        }
         100% { 
           background: linear-gradient(135deg, #22c55e, #16a34a);
           border-color: #22c55e;
@@ -114,8 +132,17 @@ export default function Loader3DAdvanced({ size = 200, color = '#22c55e', classN
         }
       }
       
+      @keyframes glow {
+        0%, 100% { 
+          filter: drop-shadow(0 0 20px rgba(34, 197, 94, 0.5));
+        }
+        50% { 
+          filter: drop-shadow(0 0 40px rgba(34, 197, 94, 0.8));
+        }
+      }
+      
       .luxon-3d-logo {
-        animation: rotate3d 3s linear infinite, pulse3d 2s ease-in-out infinite;
+        animation: rotate3d 3s linear infinite, pulse3d 2s ease-in-out infinite, glow 2s ease-in-out infinite;
       }
       
       .luxon-3d-logo:hover {
