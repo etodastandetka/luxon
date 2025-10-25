@@ -22,6 +22,7 @@ class AuthMiddleware:
             '/auth/2fa-verify/',
             '/auth/2fa-setup/',
             '/auth/login/',
+            '/auth/logout/',
             '/logout/',
             '/static/',
             '/media/',
@@ -46,7 +47,10 @@ class AuthMiddleware:
             # нужно сохранить его ID в сессии для 2FA процесса
             if not request.session.get('temp_user_id'):
                 request.session['temp_user_id'] = request.user.id
-            return redirect('/auth/2fa-verify/')
+            
+            # Проверяем, что пользователь не уже на странице 2FA
+            if not request.path.startswith('/auth/2fa-verify/'):
+                return redirect('/auth/2fa-verify/')
         
         response = self.get_response(request)
         return response

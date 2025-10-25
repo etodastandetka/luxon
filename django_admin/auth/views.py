@@ -118,8 +118,8 @@ def setup_2fa(request):
 
 def verify_2fa(request):
     """Проверка 2FA кода"""
-    # Если пользователь уже авторизован, перенаправляем на главную
-    if request.user.is_authenticated:
+    # Если пользователь уже авторизован И прошел 2FA, перенаправляем на главную
+    if request.user.is_authenticated and request.session.get('2fa_verified', False):
         return redirect('/dashboard/')
     
     if request.method == 'POST':
@@ -160,6 +160,8 @@ def verify_2fa(request):
                     # Успешная аутентификация
                     login(request, user)
                     del request.session['temp_user_id']
+                    # Устанавливаем флаг прохождения 2FA
+                    request.session['2fa_verified'] = True
                     messages.success(request, f'Добро пожаловать, {user.username}!')
                     print(f"DEBUG: Успешный вход для {user.username}")
                     return redirect('/dashboard/')
