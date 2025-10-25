@@ -53,17 +53,18 @@ async function deleteBank(bankId) {
 input[type="text"],
 input[type="email"],
 input[type="password"],
-select {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%);
-    backdrop-filter: blur(10px);
-    border: 1px solid #333;
-    border-radius: 10px;
-    color: #fff;
-    font-size: 14px;
-    box-sizing: border-box;
-    transition: all 0.3s ease;
+select,
+input {
+    width: 100% !important;
+    padding: 14px !important;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid #333 !important;
+    border-radius: 10px !important;
+    color: #fff !important;
+    font-size: 14px !important;
+    box-sizing: border-box !important;
+    transition: all 0.3s ease !important;
 }
 
 .form-field input:focus,
@@ -71,11 +72,12 @@ select {
 input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus,
-select:focus {
-    outline: none;
-    border-color: #00ff88;
-    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 100%);
+select:focus,
+input:focus {
+    outline: none !important;
+    border-color: #00ff88 !important;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2) !important;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 100%) !important;
 }
 
 /* Стилизация чекбоксов */
@@ -125,6 +127,24 @@ label {
 
 label:hover {
     color: #00ff88;
+}
+
+/* Принудительное переопределение всех inline стилей полей ввода */
+input[style*="background"],
+input[style*="color"],
+input[style*="border"] {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
+    color: #fff !important;
+    border: 1px solid #333 !important;
+}
+
+/* Специально для полей с белым фоном */
+input[style*="background: white"],
+input[style*="background-color: white"],
+input[style*="background: #fff"],
+input[style*="background-color: #fff"] {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
+    color: #fff !important;
 }
 
 .wallet-header {
@@ -557,19 +577,19 @@ async function deleteQR(qrId) {
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
       <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
         <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Название аккаунта</label>
-        <input id="rq_name" type="text" placeholder="Например: Демирбанк Акк 1" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
+        <input id="rq_name" type="text" placeholder="Например: Демирбанк Акк 1" style="flex: 1;">
       </div>
       <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
         <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Реквизит Demirbank (16 цифр)</label>
-        <input id="rq_value" type="text" placeholder="1180000353932089" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
+        <input id="rq_value" type="text" placeholder="1180000353932089" style="flex: 1;">
       </div>
       <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
         <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Email (для Demirbank уведомлений)</label>
-        <input id="rq_email" type="email" placeholder="you@example.com" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
+        <input id="rq_email" type="email" placeholder="you@example.com" style="flex: 1;">
       </div>
       <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
         <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Пароль (для Demirbank уведомлений)</label>
-        <input id="rq_password" type="password" placeholder="Пароль" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
+        <input id="rq_password" type="password" placeholder="Пароль" style="flex: 1;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
         <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
@@ -590,7 +610,7 @@ async function deleteQR(qrId) {
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
       <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
         <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Банк</label>
-        <select id="bw_bank" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
+        <select id="bw_bank" style="flex: 1;">
           <option value="mbank">MBank</option>
           <option value="optima">Optima</option>
           <option value="bakai">Bakai</option>
@@ -598,11 +618,11 @@ async function deleteQR(qrId) {
       </div>
       <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
         <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Название</label>
-        <input id="bw_name" type="text" placeholder="Например: MBank Акк 1" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
+        <input id="bw_name" type="text" placeholder="Например: MBank Акк 1" style="flex: 1;">
       </div>
       <div style="grid-column: 1 / span 2; display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
         <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Hash/Реквизит</label>
-        <input id="bw_hash" type="text" placeholder="Вставьте hash" style="width:100%; padding:14px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%); backdrop-filter: blur(10px); border:1px solid #333; border-radius:10px; color:#fff; font-size: 14px; box-sizing: border-box; flex: 1;">
+        <input id="bw_hash" type="text" placeholder="Вставьте hash" style="flex: 1;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
         <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
