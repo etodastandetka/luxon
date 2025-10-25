@@ -27,7 +27,9 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
 
       // Создаем камеру
       const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000)
-      camera.position.z = 3
+      camera.position.z = 4
+      camera.position.y = 0
+      camera.position.x = 0
 
       // Создаем рендерер
       const renderer = new THREE.WebGLRenderer({ 
@@ -69,14 +71,16 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
 
         // Масштабируем объект (делаем еще больше)
         object.scale.setScalar(1.5)
+        // Центрируем объект
+        object.position.set(0, 0, 0)
         scene.add(object)
 
         // Добавляем освещение
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.6)
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8)
         scene.add(ambientLight)
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-        directionalLight.position.set(5, 5, 5)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2)
+        directionalLight.position.set(0, 5, 5)
         directionalLight.castShadow = true
         directionalLight.shadow.mapSize.width = 2048
         directionalLight.shadow.mapSize.height = 2048
@@ -89,8 +93,8 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
         const animate = () => {
           animationRef.current = requestAnimationFrame(animate)
           
-          // Простое вращение по Y оси (медленнее)
-          object.rotation.y += 0.01
+          // Простое вращение по Y оси (очень медленно)
+          object.rotation.y += 0.005
 
           // Анимация цвета
           const time = Date.now() * 0.001
@@ -149,8 +153,8 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
         const animate = () => {
           animationRef.current = requestAnimationFrame(animate)
           
-          // Простое вращение по Y оси (медленнее)
-          cube.rotation.y += 0.01
+          // Простое вращение по Y оси (очень медленно)
+          cube.rotation.y += 0.005
 
           const time = Date.now() * 0.001
           const hue = (time * 0.1) % 1
