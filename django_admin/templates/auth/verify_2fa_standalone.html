@@ -202,19 +202,9 @@
         </form>
         
         <div style="margin-top: 20px;">
-            <a href="/login/" class="back-link">← Вернуться к входу</a>
-            <br><br>
-            <button type="button" onclick="goBack()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
-                🔙 Назад к входу
+            <button type="button" onclick="window.location.href='/login/'" style="background: linear-gradient(45deg, #00ff88, #00d4aa); border: none; color: white; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;">
+                🔙 Вернуться к входу
             </button>
-            <br><br>
-            <button type="button" onclick="goToLogin()" style="background: linear-gradient(45deg, #ff6b6b, #ee5a52); border: none; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
-                🚪 Принудительный возврат
-            </button>
-            <br><br>
-            <a href="/login/" style="color: #00ff88; text-decoration: underline; font-size: 14px;">
-                🔗 Прямая ссылка на вход (без JavaScript)
-            </a>
         </div>
     </div>
     
@@ -242,41 +232,8 @@
                 }
             });
             
-            // Функции для возврата к входу
-            window.goToLogin = function() {
-                console.log('Переход к странице входа...');
-                try {
-                    window.location.href = '/login/';
-                } catch(e) {
-                    console.error('Ошибка перехода:', e);
-                    window.location.replace('/login/');
-                }
-            };
-            
-            window.goBack = function() {
-                console.log('Возврат назад...');
-                try {
-                    window.history.back();
-                } catch(e) {
-                    console.error('Ошибка возврата:', e);
-                    window.location.href = '/login/';
-                }
-            };
-            
-            // Принудительный переход
-            window.forceLogin = function() {
-                console.log('Принудительный переход к входу...');
-                window.location.replace('/login/');
-            };
-            
-            // Добавляем обработчики для всех ссылок и кнопок
-            document.querySelectorAll('a[href="/login/"]').forEach(function(element) {
-                element.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('Клик по ссылке возврата');
-                    goToLogin();
-                });
-            });
+            // Простая функция для возврата
+            console.log('Страница 2FA загружена');
         });
     </script>
 </body>
