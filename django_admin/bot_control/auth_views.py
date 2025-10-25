@@ -28,7 +28,7 @@ def login_view(request):
                 # ВРЕМЕННО ОТКЛЮЧАЕМ 2FA для тестирования
                 login(request, user)
                 request.session['2fa_verified'] = True
-                return redirect('/')
+                return redirect('/dashboard/')
             else:
                 messages.error(request, 'Аккаунт неактивен')
         else:
@@ -52,7 +52,7 @@ def verify_2fa(request):
                     login(request, user)
                     request.session['2fa_verified'] = True
                     request.session['temp_user_id'] = None  # Не удаляем, а обнуляем
-                    return redirect('/')
+                    return redirect('/dashboard/')
                 else:
                     messages.error(request, 'Неверный код аутентификатора')
             except User.DoesNotExist:

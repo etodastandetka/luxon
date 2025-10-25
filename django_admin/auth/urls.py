@@ -10,4 +10,6 @@ urlpatterns = [
     # CSRF тестирование
     path('csrf-test/', views.csrf_test, name='csrf_test'),
     path('csrf-test-api/', views.csrf_api_test, name='csrf_api_test'),
+    # Главная страница - редирект на логин если не авторизован
+    path('', views.custom_login, name='home'),
 ]
