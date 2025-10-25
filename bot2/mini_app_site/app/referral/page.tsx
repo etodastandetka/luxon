@@ -34,7 +34,7 @@ export default function ReferralPage() {
       console.log('initDataUnsafe:', tg?.initDataUnsafe)
       console.log('initData:', tg?.initData)
       console.log('user:', tg?.initDataUnsafe?.user)
-      console.log('=====================================)
+      console.log('=====================================')
       
       // Правильный способ получения user ID из Telegram WebApp
       if (tg?.initDataUnsafe?.user?.id) {
