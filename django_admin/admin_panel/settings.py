@@ -60,9 +60,29 @@ MIDDLEWARE = [
 ]
 
 # CORS настройки для API
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Отключаем для админки
+CORS_ALLOW_CREDENTIALS = False
 DJANGO_ADMIN_API_TOKEN = "dastan10dz"
+
+# CSRF настройки
+CSRF_TRUSTED_ORIGINS = [
+    'https://xendro.pro',
+    'https://www.xendro.pro',
+    'http://xendro.pro',
+    'http://www.xendro.pro',
+    'http://localhost:8081',
+    'http://127.0.0.1:8081',
+]
+
+# Настройки сессий
+SESSION_COOKIE_SECURE = False  # Для HTTP
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 86400  # 24 часа
+
+# CSRF настройки
+CSRF_COOKIE_SECURE = False  # Для HTTP
+CSRF_COOKIE_HTTPONLY = True
+CSRF_USE_SESSIONS = True
 
 # Добавляем CORS middleware
 class CORSMiddleware:
