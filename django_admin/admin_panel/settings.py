@@ -78,11 +78,16 @@ CSRF_TRUSTED_ORIGINS = [
 SESSION_COOKIE_SECURE = False  # Для HTTP
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 86400  # 24 часа
+SESSION_COOKIE_DOMAIN = None  # Не ограничиваем домен
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 # CSRF настройки
 CSRF_COOKIE_SECURE = False  # Для HTTP
-CSRF_COOKIE_HTTPONLY = True
-CSRF_USE_SESSIONS = True
+CSRF_COOKIE_HTTPONLY = False  # Должен быть False для JavaScript
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_DOMAIN = None  # Не ограничиваем домен
+CSRF_USE_SESSIONS = False  # Используем cookies, не сессии
+CSRF_COOKIE_NAME = 'csrftoken'
 
 # Добавляем CORS middleware
 class CORSMiddleware:
