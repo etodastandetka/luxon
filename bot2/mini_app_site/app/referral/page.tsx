@@ -29,26 +29,35 @@ export default function ReferralPage() {
       const tg = (window as any).Telegram?.WebApp
       let userId = null
       
+      console.log('=== DEBUG: Telegram WebApp Data ===')
+      console.log('Telegram object:', tg)
+      console.log('initDataUnsafe:', tg?.initDataUnsafe)
+      console.log('initData:', tg?.initData)
+      console.log('user:', tg?.initDataUnsafe?.user)
+      console.log('=====================================')
+      
       // Проверяем разные способы получения user ID
       if (tg?.initDataUnsafe?.user?.id) {
         userId = tg.initDataUnsafe.user.id
         setIsFromBot(true)
-        console.log('User ID from initDataUnsafe:', userId)
+        console.log('✅ User ID from initDataUnsafe:', userId)
         console.log('Full user data:', tg.initDataUnsafe.user)
       } else if (tg?.initData) {
         // Парсим initData если он есть
         try {
+          console.log('Parsing initData:', tg.initData)
           const params = new URLSearchParams(tg.initData)
           const userParam = params.get('user')
+          console.log('User param from initData:', userParam)
           if (userParam) {
             const userData = JSON.parse(decodeURIComponent(userParam))
             userId = userData.id
             setIsFromBot(true)
-            console.log('User ID from initData:', userId)
+            console.log('✅ User ID from initData:', userId)
             console.log('Full user data from initData:', userData)
           }
         } catch (e) {
-          console.log('Error parsing initData:', e)
+          console.log('❌ Error parsing initData:', e)
         }
       }
       
@@ -59,13 +68,13 @@ export default function ReferralPage() {
         if (tgUserId) {
           userId = tgUserId
           setIsFromBot(true)
-          console.log('User ID from URL params:', userId)
+          console.log('✅ User ID from URL params:', userId)
         }
       }
       
       // Если не из бота, используем тестовый ID
       if (!userId) {
-        console.log('Not opened from Telegram bot, using test user ID')
+        console.log('❌ Not opened from Telegram bot, using test user ID')
         userId = 'test_user_123'
         setIsFromBot(false)
       }
