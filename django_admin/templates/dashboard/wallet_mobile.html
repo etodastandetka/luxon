@@ -47,14 +47,19 @@ async function deleteBank(bankId) {
     margin-bottom: 4px;
 }
 
+/* Унифицированные стили для всех полей ввода */
 .form-field input,
-.form-field select {
+.form-field select,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%);
     backdrop-filter: blur(10px);
     border: 1px solid #333;
-    border-radius: 8px;
+    border-radius: 10px;
     color: #fff;
     font-size: 14px;
     box-sizing: border-box;
@@ -62,10 +67,64 @@ async function deleteBank(bankId) {
 }
 
 .form-field input:focus,
-.form-field select:focus {
+.form-field select:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+select:focus {
     outline: none;
-    border-color: #4CAF50;
-    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+    border-color: #00ff88;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+/* Стилизация чекбоксов */
+input[type="checkbox"] {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #00ff88;
+    border-radius: 4px;
+    background: transparent;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+input[type="checkbox"]:checked {
+    background: #00ff88;
+    border-color: #00ff88;
+}
+
+input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #000;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+input[type="checkbox"]:hover {
+    border-color: #00d4aa;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.1);
+}
+
+/* Стилизация лейблов чекбоксов */
+label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #fff;
+    transition: color 0.3s ease;
+}
+
+label:hover {
+    color: #00ff88;
 }
 
 .wallet-header {
@@ -161,6 +220,60 @@ async function deleteBank(bankId) {
     font-size: 10px;
     font-weight: 600;
     border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+/* Улучшенные стили кнопок */
+.btn-primary {
+    background: linear-gradient(135deg, #00ff88 0%, #00d4aa 100%);
+    border: none;
+    color: #000;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.2);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 255, 136, 0.4);
+    background: linear-gradient(135deg, #00d4aa 0%, #00ff88 100%);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%);
+    border: none;
+    color: #000;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
 }
 
 .delete-btn {
@@ -462,7 +575,7 @@ async function deleteQR(qrId) {
         <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
           <input id="rq_active" type="checkbox"> Активный
         </label>
-        <button onclick="addRequisite()" style="margin-left:auto; padding:10px 14px; background:#4CAF50; color:#fff; border:none; border-radius:8px; cursor:pointer;">Добавить реквизит</button>
+        <button onclick="addRequisite()" class="btn-primary" style="margin-left:auto;">Добавить реквизит</button>
       </div>
     </div>
   </div>
@@ -496,7 +609,7 @@ async function deleteQR(qrId) {
           <input id="bw_active" type="checkbox" checked> Активный
         </label>
         <!-- Убран чекбокс 'Основной' -->
-        <button onclick="createBankWallet()" style="margin-left:auto; padding:10px 14px; background:#4CAF50; color:#fff; border:none; border-radius:8px; cursor:pointer;">Добавить</button>
+        <button onclick="createBankWallet()" class="btn-primary" style="margin-left:auto;">Добавить</button>
       </div>
     </div>
   </div>
@@ -513,8 +626,8 @@ async function deleteQR(qrId) {
             <div style="color:#888; font-size:10px;">{% if w.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}</div>
           </div>
           <div style="display:flex; gap:8px;">
-            <button onclick="toggleBankWallet({{ w.id }})" style="background:{% if w.is_active %}#ef4444{% else %}#00ff88{% endif %}; border:none; color:#000; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
-            <button onclick="deleteBankWallet({{ w.id }})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">Удалить</button>
+            <button onclick="toggleBankWallet({{ w.id }})" class="{% if w.is_active %}btn-secondary{% else %}btn-primary{% endif %}" style="font-size:12px; padding:6px 10px;">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
+            <button onclick="deleteBankWallet({{ w.id }})" class="btn-secondary" style="font-size:12px; padding:6px 10px;">Удалить</button>
           </div>
         </div>
         {% endfor %}
@@ -539,9 +652,9 @@ async function deleteQR(qrId) {
           </div>
           <div style="display:flex; gap:8px;">
             {% if not r.is_active %}
-            <button onclick="setActiveRequisite({{ r.id }})" style="background:#ffc107; color:#000; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Сделать активным</button>
+            <button onclick="setActiveRequisite({{ r.id }})" class="btn-warning" style="font-size:12px; padding:6px 10px;">Сделать активным</button>
             {% endif %}
-            <button onclick="deleteRequisite({{ r.id }})" style="background:#ef4444; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Удалить</button>
+            <button onclick="deleteRequisite({{ r.id }})" class="btn-secondary" style="font-size:12px; padding:6px 10px;">Удалить</button>
           </div>
         </div>
         {% endfor %}
