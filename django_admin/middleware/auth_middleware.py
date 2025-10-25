@@ -21,7 +21,7 @@ class AuthMiddleware:
             '/admin/2fa-verify/',
             '/2fa-verify/',
             '/2fa-setup/',
-            '/login/',
+            '/auth/login/',
             '/logout/',
             '/static/',
             '/media/',
@@ -37,7 +37,7 @@ class AuthMiddleware:
         
         # Если пользователь не аутентифицирован, перенаправляем на логин
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect('/auth/login/')
         
         # ВСЕГДА требуем 2FA для всех аутентифицированных пользователей
         # Проверяем, прошел ли пользователь 2FA в этой сессии

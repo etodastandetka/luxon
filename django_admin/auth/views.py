@@ -13,6 +13,13 @@ import qrcode.image.svg
 from io import BytesIO
 import base64
 
+def home_redirect(request):
+    """Главная страница - редирект на логин или дашборд"""
+    if request.user.is_authenticated:
+        return redirect('/dashboard/')
+    else:
+        return redirect('/auth/login/')
+
 def custom_login(request):
     """Кастомная страница входа"""
     if request.user.is_authenticated:
@@ -56,7 +63,7 @@ def custom_logout(request):
     """Кастомный выход"""
     logout(request)
     messages.success(request, 'Вы успешно вышли из системы')
-    return redirect('/login/')
+        return redirect('/auth/login/')
 
 @login_required
 def setup_2fa(request):
@@ -124,7 +131,7 @@ def verify_2fa(request):
         
         if not user_id:
             messages.error(request, 'Сессия истекла. Пожалуйста, войдите снова.')
-            return redirect('/login/')
+            return redirect('/auth/login/')
         
         try:
             user = User.objects.get(id=user_id)
@@ -164,15 +171,15 @@ def verify_2fa(request):
             else:
                 messages.error(request, '2FA не настроена для этого пользователя')
                 print(f"DEBUG: 2FA не настроена")
-                return redirect('/login/')
+                return redirect('/auth/login/')
         except User.DoesNotExist:
             messages.error(request, 'Пользователь не найден')
             print(f"DEBUG: Пользователь не найден")
-            return redirect('/login/')
+            return redirect('/auth/login/')
         except UserProfile.DoesNotExist:
             messages.error(request, 'Профиль пользователя не найден')
             print(f"DEBUG: Профиль не найден")
-            return redirect('/login/')
+            return redirect('/auth/login/')
         except Exception as e:
             messages.error(request, f'Ошибка: {str(e)}')
             print(f"DEBUG: Ошибка: {e}")
