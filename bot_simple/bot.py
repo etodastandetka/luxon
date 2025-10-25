@@ -68,7 +68,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Проверяем наличие видео файла
     video_path = "luxon.mp4"
     if os.path.exists(video_path):
-        # Отправляем видео с текстом и кнопками
+        # Отправляем видео с текстом и кнопками в одном сообщении
         with open(video_path, 'rb') as video_file:
             await update.message.reply_video(
                 video=InputFile(video_file),
@@ -77,7 +77,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 parse_mode='HTML'
             )
     else:
-        # Если видео нет, отправляем только текст
+        # Если видео нет, отправляем только текст с кнопками
         await update.message.reply_text(
             welcome_text,
             reply_markup=reply_markup,
