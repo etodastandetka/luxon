@@ -14,8 +14,8 @@ export default function TelegramInit() {
       tg.enableClosingConfirmation()
       
       // Настраиваем тему
-      tg.setHeaderColor('#1f2937')
-      tg.setBackgroundColor('#111827')
+      tg.headerColor = '#1f2937'
+      tg.backgroundColor = '#111827'
       
       console.log('Telegram WebApp initialized')
       console.log('User data:', tg.initDataUnsafe)
