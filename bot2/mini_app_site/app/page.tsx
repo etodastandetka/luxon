@@ -11,6 +11,7 @@ import { initTelegramWebApp, getTelegramUser, syncWithBot, TelegramUser } from '
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadingProgress, setLoadingProgress] = useState(0)
   const { language } = useLanguage()
   const { settings, loading: settingsLoading, error: settingsError } = useBotSettings()
 
@@ -27,12 +28,19 @@ export default function HomePage() {
       })
     }
 
-    // Автоматически скрываем лоадер через 3 секунды
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 3000)
+    // Анимация прогресса загрузки от 0 до 100
+    const progressInterval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval)
+          setIsLoading(false)
+          return 100
+        }
+        return prev + 2 // Увеличиваем на 2% каждые 50мс
+      })
+    }, 50)
 
-    return () => clearTimeout(timer)
+    return () => clearInterval(progressInterval)
   }, [language])
 
   const handleLoaderComplete = () => {
@@ -82,7 +90,7 @@ export default function HomePage() {
         message="Загрузка LUX ON"
         variant="advanced"
         showProgress={true}
-        progress={85}
+        progress={loadingProgress}
       />
     )
   }
