@@ -6,7 +6,7 @@ from dashboard import views as dashboard_views
 urlpatterns = [
     path('admin/', admin.site.urls),
     # Кастомная аутентификация
-    path('', include('auth.urls')),
+    path('auth/', include('auth.urls')),
     # API для интеграции с сайтом
     path('api/', include('bot_control.api_urls')),
     # ВАЖНО: ставим алиас ДО include('dashboard.urls'), чтобы он не перекрывался.

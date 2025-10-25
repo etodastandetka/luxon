@@ -57,22 +57,22 @@ def verify_2fa(request):
                     messages.error(request, 'Неверный код аутентификатора')
             except User.DoesNotExist:
                 messages.error(request, 'Пользователь не найден, войдите заново')
-                return redirect('/login/')
+                return redirect('/auth/login/')
         else:
             messages.error(request, 'Сессия истекла, войдите заново')
-            return redirect('/login/')
+            return redirect('/auth/login/')
     
     # Проверяем, есть ли temp_user_id в сессии
     if not request.session.get('temp_user_id'):
         messages.error(request, 'Сессия истекла, войдите заново')
-        return redirect('/login/')
+        return redirect('/auth/login/')
     
     return render(request, 'auth/2fa_verify.html')
 
 def setup_2fa(request):
     """Настройка 2FA"""
     if not request.user.is_authenticated:
-        return redirect('/login/')
+        return redirect('/auth/login/')
     
     if request.method == 'POST':
         token = request.POST.get('token')
