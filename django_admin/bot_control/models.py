@@ -126,6 +126,33 @@ class BotConfiguration(models.Model):
     def __str__(self):
         return f"{self.key}: {self.value}"
 
+class Request(models.Model):
+    """Заявки пользователей (пополнение/вывод)"""
+    user_id = models.BigIntegerField()
+    username = models.CharField(max_length=255, blank=True, null=True)
+    first_name = models.CharField(max_length=255, blank=True, null=True)
+    last_name = models.CharField(max_length=255, blank=True, null=True)
+    bookmaker = models.CharField(max_length=100, blank=True, null=True)
+    account_id = models.CharField(max_length=255, blank=True, null=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    request_type = models.CharField(max_length=20)  # deposit/withdraw
+    status = models.CharField(max_length=20, default='pending')
+    withdrawal_code = models.CharField(max_length=255, blank=True, null=True)
+    photo_file_id = models.CharField(max_length=255, blank=True, null=True)
+    photo_file_url = models.TextField(blank=True, null=True)
+    bank = models.CharField(max_length=100, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    processed_at = models.DateTimeField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'requests'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Request {self.user_id}: {self.request_type} {self.amount}"
+
 class TransactionLog(models.Model):
     """Логи транзакций"""
     user_id = models.IntegerField()
