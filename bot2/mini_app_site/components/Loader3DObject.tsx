@@ -67,8 +67,8 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
           }
         })
 
-        // Масштабируем объект (делаем больше)
-        object.scale.setScalar(1.2)
+        // Масштабируем объект (делаем еще больше)
+        object.scale.setScalar(1.5)
         scene.add(object)
 
         // Добавляем освещение
@@ -89,8 +89,8 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
         const animate = () => {
           animationRef.current = requestAnimationFrame(animate)
           
-          // Простое вращение по Y оси (360 градусов)
-          object.rotation.y += 0.02
+          // Простое вращение по Y оси (медленнее)
+          object.rotation.y += 0.01
 
           // Анимация цвета
           const time = Date.now() * 0.001
@@ -149,8 +149,8 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
         const animate = () => {
           animationRef.current = requestAnimationFrame(animate)
           
-          // Простое вращение по Y оси (360 градусов)
-          cube.rotation.y += 0.02
+          // Простое вращение по Y оси (медленнее)
+          cube.rotation.y += 0.01
 
           const time = Date.now() * 0.001
           const hue = (time * 0.1) % 1
