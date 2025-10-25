@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react'
 import Loader3D from './Loader3D'
 import Loader3DAdvanced from './Loader3DAdvanced'
+import Loader3DObject from './Loader3DObject'
 
 interface LoadingScreenProps {
   message?: string
   showProgress?: boolean
   progress?: number
-  variant?: 'simple' | 'advanced'
+  variant?: 'simple' | 'advanced' | 'object'
 }
 
 export default function LoadingScreen({ 
@@ -34,7 +35,9 @@ export default function LoadingScreen({
       <div className="text-center space-y-8">
         {/* 3D Лоадер */}
         <div className="relative">
-          {variant === 'advanced' ? (
+          {variant === 'object' ? (
+            <Loader3DObject size={200} />
+          ) : variant === 'advanced' ? (
             <Loader3DAdvanced size={150} color="#22c55e" />
           ) : (
             <Loader3D size={120} color="#22c55e" />

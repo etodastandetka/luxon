@@ -88,7 +88,7 @@ export default function HomePage() {
     return (
       <LoadingScreen 
         message="Загрузка LUX ON"
-        variant="advanced"
+        variant="object"
         showProgress={true}
         progress={loadingProgress}
       />

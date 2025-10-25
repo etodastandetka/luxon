@@ -10,9 +10,11 @@
     "start:custom": "node start_nextjs_production.js"
   },
   "dependencies": {
+    "@types/three": "^0.180.0",
     "next": "14.2.5",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "@types/node": "24.7.2",
