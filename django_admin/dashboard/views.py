@@ -478,67 +478,44 @@ def api_pending_requests(request):
     """API для получения ожидающих заявок"""
     if request.method == 'GET':
         try:
-            # Подключаемся к общей БД бота
-            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-            cursor = conn.cursor()
-
+            from bot_control.models import Request
+            from django.utils import timezone
+            from datetime import timedelta
+            
             # Авто-перенос в "оставленные":
             # если заявка в pending/processing, ей больше 10 минут и она не обработана — переводим в awaiting_manual
             try:
-                cursor.execute('''
-                    UPDATE requests
-                    SET status = 'awaiting_manual', updated_at = CURRENT_TIMESTAMP
-                    WHERE status IN ('pending','processing')
-                      AND (processed_at IS NULL OR processed_at = '')
-                      AND created_at IS NOT NULL
-                      AND datetime(created_at) <= datetime('now','-10 minutes')
-                ''')
-                conn.commit()
+                ten_minutes_ago = timezone.now() - timedelta(minutes=10)
+                Request.objects.filter(
+                    status__in=['pending', 'processing'],
+                    processed_at__isnull=True,
+                    created_at__lte=ten_minutes_ago
+                ).update(status='awaiting_manual', updated_at=timezone.now())
             except Exception:
                 # Не мешаем основному ответу API
                 pass
 
-            # Единая таблица requests: показываем только ожидающие (pending/processing/awaiting_manual)
-            try:
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='requests'")
-                if cursor.fetchone() is None:
-                    conn.close()
-                    return JsonResponse({'success': True, 'requests': []})
-            except Exception:
-                conn.close()
-                return JsonResponse({'success': True, 'requests': []})
-
-            cursor.execute('''
-                SELECT 
-                    r.id, r.user_id, COALESCE(r.bookmaker,''), COALESCE(r.request_type,''),
-                    COALESCE(r.amount,0), COALESCE(r.status,'pending'), COALESCE(r.created_at,''),
-                    COALESCE(u.username,''), COALESCE(u.first_name,''), COALESCE(u.last_name,''),
-                    COALESCE(r.account_id,''), COALESCE(r.bank,''), COALESCE(r.photo_file_url,'')
-                FROM requests r
-                LEFT JOIN users u ON r.user_id = u.telegram_id
-                WHERE r.status IN ('pending','processing','awaiting_manual')
-                ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
-                LIMIT 50
-            ''')
+            # Получаем ожидающие заявки через Django ORM
+            pending_requests = Request.objects.filter(
+                status__in=['pending', 'processing', 'awaiting_manual']
+            ).order_by('-created_at')[:50]
 
             requests_list = []
-            for row in cursor.fetchall():
-                rid, user_id, bookmaker, rtype, amount, status, created_at, username, first_name, last_name, account_id, bank, photo_url = row
+            for req in pending_requests:
                 requests_list.append({
-                    'id': rid,
-                    'user_id': user_id,
-                    'username': username or f"{first_name or ''} {last_name or ''}".strip() or 'Unknown',
-                    'bookmaker': bookmaker,
-                    'type': (rtype or 'deposit'),
-                    'amount': amount,
-                    'status': status,
-                    'created_at': created_at,
-                    'account_id': account_id,
-                    'bank': bank,
-                    'photo_url': photo_url
+                    'id': req.id,
+                    'user_id': req.user_id,
+                    'username': req.username or f"{req.first_name or ''} {req.last_name or ''}".strip() or 'Unknown',
+                    'bookmaker': req.bookmaker or '',
+                    'type': req.request_type or 'deposit',
+                    'amount': float(req.amount or 0),
+                    'status': req.status or 'pending',
+                    'created_at': req.created_at.isoformat() if req.created_at else '',
+                    'account_id': req.account_id or '',
+                    'bank': req.bank or '',
+                    'photo_url': req.photo_file_url or ''
                 })
 
-            conn.close()
             return JsonResponse({'success': True, 'requests': requests_list})
             
         except Exception as e:
@@ -554,20 +531,23 @@ def api_update_amount(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     try:
+        from bot_control.models import Request
+        from django.utils import timezone
+        
         data = json.loads(request.body or '{}')
         req_id = int(data.get('request_id') or 0)
         amount = float(data.get('amount') or 0)
         if not req_id:
             return JsonResponse({'success': False, 'error': 'request_id required'}, status=400)
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        cur.execute('UPDATE requests SET amount=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', (amount, req_id))
-        if cur.rowcount == 0:
-            conn.close()
+        
+        try:
+            req = Request.objects.get(id=req_id)
+            req.amount = amount
+            req.updated_at = timezone.now()
+            req.save()
+            return JsonResponse({'success': True})
+        except Request.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Заявка не найдена'}, status=404)
-        conn.commit()
-        conn.close()
-        return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
@@ -741,6 +721,9 @@ def api_handle_request(request):
     """API для обработки заявки (подтвердить/отклонить)"""
     if request.method == 'POST':
         try:
+            from bot_control.models import Request
+            from django.utils import timezone
+            
             data = json.loads(request.body)
             request_id = data.get('request_id')
             action = data.get('action')  # 'approve' или 'reject'
@@ -748,32 +731,25 @@ def api_handle_request(request):
             if not request_id or not action:
                 return JsonResponse({'success': False, 'error': 'Неверные параметры'}, status=400)
             
-            # Подключаемся к общей БД бота
-            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-            cursor = conn.cursor()
-            
-            # Обновляем статус в единой таблице requests (transactions может быть вью и не модифицироваться)
-            new_status = 'completed' if action == 'approve' else 'rejected'
-            cursor.execute('''
-                UPDATE requests
-                SET status = ?,
-                    updated_at = CURRENT_TIMESTAMP,
-                    processed_at = CASE WHEN ? IN ('completed','rejected','approved','auto_completed') THEN CURRENT_TIMESTAMP ELSE processed_at END
-                WHERE id = ?
-            ''', (new_status, new_status, request_id))
-            if cursor.rowcount == 0:
-                # Нет строки в requests — вернём 404
-                conn.close()
+            try:
+                req = Request.objects.get(id=request_id)
+                new_status = 'completed' if action == 'approve' else 'rejected'
+                req.status = new_status
+                req.updated_at = timezone.now()
+                
+                if new_status in ['completed', 'rejected', 'approved', 'auto_completed']:
+                    req.processed_at = timezone.now()
+                
+                req.save()
+                
+                action_text = 'подтверждена' if action == 'approve' else 'отклонена'
+                return JsonResponse({
+                    'success': True, 
+                    'message': f'Заявка {action_text} успешно'
+                })
+                
+            except Request.DoesNotExist:
                 return JsonResponse({'success': False, 'error': 'Заявка не найдена'}, status=404)
-            
-            conn.commit()
-            conn.close()
-            
-            action_text = 'подтверждена' if action == 'approve' else 'отклонена'
-            return JsonResponse({
-                'success': True, 
-                'message': f'Заявка {action_text} успешно'
-            })
             
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -785,60 +761,43 @@ def api_transaction_history(request):
     """API для получения истории транзакций из БД бота"""
     if request.method == 'GET':
         try:
-            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-            cursor = conn.cursor()
-
+            from bot_control.models import Request
+            
             tx_type = request.GET.get('type', 'all')  # all | deposits | withdrawals
             user_id = request.GET.get('user_id')  # ID пользователя для фильтрации
 
-            # Новая единая таблица requests
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='requests'")
-            if cursor.fetchone() is None:
-                conn.close()
-                return JsonResponse({'success': True, 'transactions': []})
-
             # История = завершённые/отклонённые. Учитываем также 'approved' и 'auto_completed'.
-            where = ["r.status IN ('completed','rejected','approved','auto_completed')"]
-            params = []
+            queryset = Request.objects.filter(
+                status__in=['completed', 'rejected', 'approved', 'auto_completed']
+            )
             
             # Фильтр по пользователю
             if user_id:
-                where.append("r.user_id = ?")
-                params.append(user_id)
+                queryset = queryset.filter(user_id=user_id)
             
             if tx_type == 'deposits':
-                where.append("r.request_type='deposit'")
+                queryset = queryset.filter(request_type='deposit')
             elif tx_type == 'withdrawals':
-                where.append("r.request_type='withdraw'")
+                queryset = queryset.filter(request_type='withdraw')
 
-            where_sql = ' WHERE ' + ' AND '.join(where)
-            sql = f'''
-                SELECT r.id, r.user_id, COALESCE(r.bookmaker,''), COALESCE(r.request_type,''),
-                       COALESCE(r.amount,0), COALESCE(r.status,'pending'), COALESCE(r.created_at,''),
-                       COALESCE(u.username,''), COALESCE(u.first_name,''), COALESCE(u.last_name,'')
-                FROM requests r
-                LEFT JOIN users u ON r.user_id = u.telegram_id
-                {where_sql}
-                ORDER BY datetime(COALESCE(r.created_at,'1970-01-01')) DESC
-                LIMIT 200
-            '''
-            cursor.execute(sql, params)
+            # Получаем последние 200 записей
+            requests = queryset.order_by('-created_at')[:200]
+            
             transactions = []
-            for rid, user_id, bookmaker, rtype, amount, status, created_at, username, first_name, last_name in cursor.fetchall():
-                user_name = username or f"{first_name or ''} {last_name or ''}".strip() or f"Пользователь {user_id}"
+            for req in requests:
+                user_name = req.username or f"{req.first_name or ''} {req.last_name or ''}".strip() or f"Пользователь {req.user_id}"
                 transactions.append({
-                    'id': rid,
-                    'user_id': user_id,
+                    'id': req.id,
+                    'user_id': req.user_id,
                     'user_name': user_name,
-                    'bookmaker': bookmaker,
-                    'type': 'deposit' if rtype == 'deposit' else 'withdrawal',
-                    'amount': float(amount) if amount is not None else 0.0,
-                    'status': status,
-                    'created_at': created_at,
-                    'description': bookmaker
+                    'bookmaker': req.bookmaker or '',
+                    'type': 'deposit' if req.request_type == 'deposit' else 'withdrawal',
+                    'amount': float(req.amount) if req.amount is not None else 0.0,
+                    'status': req.status,
+                    'created_at': req.created_at.isoformat() if req.created_at else '',
+                    'description': req.bookmaker or ''
                 })
 
-            conn.close()
             return JsonResponse({'success': True, 'transactions': transactions})
             
         except Exception as e:
