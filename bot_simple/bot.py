@@ -5,8 +5,9 @@
 """
 
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, InputFile
 from telegram.ext import Application, CommandHandler, ContextTypes
+import os
 
 # Настройка логирования
 logging.basicConfig(
@@ -64,11 +65,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 Выберите действие:
     """
     
-    await update.message.reply_text(
-        welcome_text,
-        reply_markup=reply_markup,
-        parse_mode='HTML'
-    )
+    # Проверяем наличие видео файла
+    video_path = "luxon.mp4"
+    if os.path.exists(video_path):
+        # Отправляем видео с текстом и кнопками
+        with open(video_path, 'rb') as video_file:
+            await update.message.reply_video(
+                video=InputFile(video_file),
+                caption=welcome_text,
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+    else:
+        # Если видео нет, отправляем только текст
+        await update.message.reply_text(
+            welcome_text,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик ошибок"""
