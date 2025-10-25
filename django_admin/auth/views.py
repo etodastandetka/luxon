@@ -111,6 +111,10 @@ def setup_2fa(request):
 
 def verify_2fa(request):
     """Проверка 2FA кода"""
+    # Если пользователь уже авторизован, перенаправляем на главную
+    if request.user.is_authenticated:
+        return redirect('/')
+    
     if request.method == 'POST':
         code = request.POST.get('code')
         user_id = request.session.get('temp_user_id')
@@ -155,6 +159,8 @@ def verify_2fa(request):
                 else:
                     messages.error(request, f'Неверный код аутентификации. Текущий код: {current_code}')
                     print(f"DEBUG: Неверный код")
+                    # НЕ возвращаем страницу 2FA, а показываем ошибку
+                    return render(request, 'auth/verify_2fa_standalone.html')
             else:
                 messages.error(request, '2FA не настроена для этого пользователя')
                 print(f"DEBUG: 2FA не настроена")
