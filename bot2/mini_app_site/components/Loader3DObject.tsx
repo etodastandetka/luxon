@@ -67,8 +67,8 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
           }
         })
 
-        // Масштабируем объект
-        object.scale.setScalar(0.5)
+        // Масштабируем объект (делаем больше)
+        object.scale.setScalar(1.2)
         scene.add(object)
 
         // Добавляем освещение
@@ -85,23 +85,17 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
         // Добавляем рендерер в контейнер
         container.appendChild(renderer.domElement)
 
-        // Анимация
+        // Анимация - простое вращение на 360 градусов
         const animate = () => {
           animationRef.current = requestAnimationFrame(animate)
           
-          // Вращение объекта
-          object.rotation.x += 0.01
+          // Простое вращение по Y оси (360 градусов)
           object.rotation.y += 0.02
-          object.rotation.z += 0.005
 
           // Анимация цвета
           const time = Date.now() * 0.001
           const hue = (time * 0.1) % 1
           material.color.setHSL(hue, 0.8, 0.6)
-
-          // Пульсация
-          const scale = 0.5 + Math.sin(time * 2) * 0.1
-          object.scale.setScalar(scale)
 
           renderer.render(scene, camera)
         }
@@ -154,16 +148,13 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
 
         const animate = () => {
           animationRef.current = requestAnimationFrame(animate)
-          cube.rotation.x += 0.01
+          
+          // Простое вращение по Y оси (360 градусов)
           cube.rotation.y += 0.02
-          cube.rotation.z += 0.005
 
           const time = Date.now() * 0.001
           const hue = (time * 0.1) % 1
           material.color.setHSL(hue, 0.8, 0.6)
-
-          const scale = 0.5 + Math.sin(time * 2) * 0.1
-          cube.scale.setScalar(scale)
 
           renderer.render(scene, camera)
         }
