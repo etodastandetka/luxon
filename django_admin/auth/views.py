@@ -115,6 +115,9 @@ def verify_2fa(request):
         code = request.POST.get('code')
         user_id = request.session.get('temp_user_id')
         
+        print(f"DEBUG: Код получен: {code}")
+        print(f"DEBUG: User ID в сессии: {user_id}")
+        
         if not user_id:
             messages.error(request, 'Сессия истекла. Пожалуйста, войдите снова.')
             return redirect('/login/')
@@ -123,25 +126,50 @@ def verify_2fa(request):
             user = User.objects.get(id=user_id)
             profile = UserProfile.objects.get(user=user)
             
+            print(f"DEBUG: Пользователь: {user.username}")
+            print(f"DEBUG: 2FA включена: {profile.is_2fa_enabled}")
+            print(f"DEBUG: Secret key: {profile.secret_key[:10] if profile.secret_key else 'НЕТ'}...")
+            
             if profile.is_2fa_enabled and profile.secret_key:
                 totp = pyotp.TOTP(profile.secret_key)
-                if totp.verify(code, valid_window=1):
+                current_code = totp.now()
+                print(f"DEBUG: Текущий код: {current_code}")
+                print(f"DEBUG: Введенный код: {code}")
+                
+                # Проверяем с разными окнами
+                is_valid_0 = totp.verify(code, valid_window=0)
+                is_valid_1 = totp.verify(code, valid_window=1)
+                is_valid_2 = totp.verify(code, valid_window=2)
+                
+                print(f"DEBUG: Валидность (окно 0): {is_valid_0}")
+                print(f"DEBUG: Валидность (окно 1): {is_valid_1}")
+                print(f"DEBUG: Валидность (окно 2): {is_valid_2}")
+                
+                if is_valid_1:
                     # Успешная аутентификация
                     login(request, user)
                     del request.session['temp_user_id']
                     messages.success(request, f'Добро пожаловать, {user.username}!')
+                    print(f"DEBUG: Успешный вход для {user.username}")
                     return redirect('/')
                 else:
-                    messages.error(request, 'Неверный код аутентификации')
+                    messages.error(request, f'Неверный код аутентификации. Текущий код: {current_code}')
+                    print(f"DEBUG: Неверный код")
             else:
                 messages.error(request, '2FA не настроена для этого пользователя')
+                print(f"DEBUG: 2FA не настроена")
                 return redirect('/login/')
         except User.DoesNotExist:
             messages.error(request, 'Пользователь не найден')
+            print(f"DEBUG: Пользователь не найден")
             return redirect('/login/')
         except UserProfile.DoesNotExist:
             messages.error(request, 'Профиль пользователя не найден')
+            print(f"DEBUG: Профиль не найден")
             return redirect('/login/')
+        except Exception as e:
+            messages.error(request, f'Ошибка: {str(e)}')
+            print(f"DEBUG: Ошибка: {e}")
     
     return render(request, 'auth/verify_2fa_standalone.html')
 
