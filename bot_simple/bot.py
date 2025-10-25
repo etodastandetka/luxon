@@ -5,7 +5,7 @@
 """
 
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Настройка логирования
@@ -28,47 +28,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Создаем кнопки как полноэкранные мини-приложения
     keyboard = [
         [
-            InlineKeyboardButton("💰 Пополнить", web_app={
-                "url": f"{WEBSITE_URL}/deposit",
-                "title": "Пополнение",
-                "description": "Пополнить счет в букмекерской конторе"
-            }),
-            InlineKeyboardButton("💸 Вывести", web_app={
-                "url": f"{WEBSITE_URL}/withdraw",
-                "title": "Вывод средств",
-                "description": "Вывести средства с букмекерской конторы"
-            })
+            InlineKeyboardButton("💰 Пополнить", web_app=WebAppInfo(url=f"{WEBSITE_URL}/deposit")),
+            InlineKeyboardButton("💸 Вывести", web_app=WebAppInfo(url=f"{WEBSITE_URL}/withdraw"))
         ],
         [
-            InlineKeyboardButton("📊 История", web_app={
-                "url": f"{WEBSITE_URL}/history",
-                "title": "История операций",
-                "description": "Просмотр истории транзакций"
-            }),
-            InlineKeyboardButton("👥 Рефералы", web_app={
-                "url": f"{WEBSITE_URL}/referral",
-                "title": "Реферальная программа",
-                "description": "Приглашайте друзей и получайте бонусы"
-            })
+            InlineKeyboardButton("📊 История", web_app=WebAppInfo(url=f"{WEBSITE_URL}/history")),
+            InlineKeyboardButton("👥 Рефералы", web_app=WebAppInfo(url=f"{WEBSITE_URL}/referral"))
         ],
         [
-            InlineKeyboardButton("ℹ️ Инструкция", web_app={
-                "url": f"{WEBSITE_URL}/instruction",
-                "title": "Инструкция",
-                "description": "Как пользоваться платформой"
-            }),
-            InlineKeyboardButton("🆘 Поддержка", web_app={
-                "url": f"{WEBSITE_URL}/support",
-                "title": "Техническая поддержка",
-                "description": "Свяжитесь с нами"
-            })
+            InlineKeyboardButton("ℹ️ Инструкция", web_app=WebAppInfo(url=f"{WEBSITE_URL}/instruction")),
+            InlineKeyboardButton("🆘 Поддержка", web_app=WebAppInfo(url=f"{WEBSITE_URL}/support"))
         ],
         [
-            InlineKeyboardButton("🚀 Открыть приложение", web_app={
-                "url": WEBSITE_URL,
-                "title": "LUXON Platform",
-                "description": "Полная платформа для работы с букмекерами"
-            })
+            InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url=WEBSITE_URL))
         ]
     ]
     

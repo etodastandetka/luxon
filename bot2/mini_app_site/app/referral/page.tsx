@@ -34,6 +34,7 @@ export default function ReferralPage() {
         userId = tg.initDataUnsafe.user.id
         setIsFromBot(true)
         console.log('User ID from initDataUnsafe:', userId)
+        console.log('Full user data:', tg.initDataUnsafe.user)
       } else if (tg?.initData) {
         // Парсим initData если он есть
         try {
@@ -44,9 +45,21 @@ export default function ReferralPage() {
             userId = userData.id
             setIsFromBot(true)
             console.log('User ID from initData:', userId)
+            console.log('Full user data from initData:', userData)
           }
         } catch (e) {
           console.log('Error parsing initData:', e)
+        }
+      }
+      
+      // Дополнительная проверка через query параметры
+      if (!userId && typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        const tgUserId = urlParams.get('tg_user_id')
+        if (tgUserId) {
+          userId = tgUserId
+          setIsFromBot(true)
+          console.log('User ID from URL params:', userId)
         }
       }
       
