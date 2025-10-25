@@ -8,9 +8,9 @@ interface Loader3DObjectProps {
 
 export default function Loader3DObject({ size = 200, className = '' }: Loader3DObjectProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const sceneRef = useRef<THREE.Scene>()
-  const rendererRef = useRef<THREE.WebGLRenderer>()
-  const animationRef = useRef<number>()
+  const sceneRef = useRef<any>(null)
+  const rendererRef = useRef<any>(null)
+  const animationRef = useRef<number | null>(null)
 
   useEffect(() => {
     const initThreeJS = async () => {
@@ -46,7 +46,7 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
         const loader = new OBJLoader()
       
       try {
-        const object = await new Promise<THREE.Group>((resolve, reject) => {
+        const object = await new Promise<any>((resolve, reject) => {
           loader.load('/base.obj', resolve, undefined, reject)
         })
 
@@ -59,7 +59,7 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
         })
 
         // Применяем материал ко всем мешам
-        object.traverse((child) => {
+        object.traverse((child: any) => {
           if (child instanceof THREE.Mesh) {
             child.material = material
             child.castShadow = true
@@ -121,7 +121,7 @@ export default function Loader3DObject({ size = 200, className = '' }: Loader3DO
         // Очистка при размонтировании
         return () => {
           window.removeEventListener('resize', handleResize)
-          if (animationRef.current) {
+          if (animationRef.current !== null) {
             cancelAnimationFrame(animationRef.current)
           }
           if (renderer.domElement.parentNode) {
