@@ -42,7 +42,7 @@ def custom_login(request):
                 if profile.is_2fa_enabled:
                     # Сохраняем ID пользователя в сессии для 2FA
                     request.session['temp_user_id'] = user.id
-                    return redirect('/2fa-verify/')
+                    return redirect('/auth/2fa-verify/')
                 else:
                     # Если 2FA отключена, сразу логиним
                     login(request, user)
