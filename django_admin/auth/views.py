@@ -63,7 +63,7 @@ def custom_logout(request):
     """Кастомный выход"""
     logout(request)
     messages.success(request, 'Вы успешно вышли из системы')
-        return redirect('/auth/login/')
+    return redirect('/auth/login/')
 
 @login_required
 def setup_2fa(request):
