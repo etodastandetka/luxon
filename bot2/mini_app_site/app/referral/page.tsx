@@ -27,18 +27,38 @@ export default function ReferralPage() {
     try {
       // Получаем ID пользователя из Telegram WebApp
       const tg = (window as any).Telegram?.WebApp
-      let userId = tg?.initDataUnsafe?.user?.id || tg?.initData?.user?.id
+      let userId = null
+      
+      // Проверяем разные способы получения user ID
+      if (tg?.initDataUnsafe?.user?.id) {
+        userId = tg.initDataUnsafe.user.id
+        setIsFromBot(true)
+        console.log('User ID from initDataUnsafe:', userId)
+      } else if (tg?.initData) {
+        // Парсим initData если он есть
+        try {
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          if (userParam) {
+            const userData = JSON.parse(decodeURIComponent(userParam))
+            userId = userData.id
+            setIsFromBot(true)
+            console.log('User ID from initData:', userId)
+          }
+        } catch (e) {
+          console.log('Error parsing initData:', e)
+        }
+      }
       
       // Если не из бота, используем тестовый ID
       if (!userId) {
         console.log('Not opened from Telegram bot, using test user ID')
         userId = 'test_user_123'
         setIsFromBot(false)
-      } else {
-        setIsFromBot(true)
       }
 
-      // Генерируем реферальную ссылку
+      // Генерируем реферальную ссылку с правильным именем бота
+      // TODO: Обновить имя бота на актуальное после создания бота
       const link = `https://t.me/lux_on_bot?start=ref${userId}`
       setReferralLink(link)
 
@@ -159,6 +179,17 @@ export default function ReferralPage() {
           <div className="text-yellow-400 font-semibold text-sm">⚠️ Внимание</div>
           <div className="text-white/80 text-sm mt-1">
             Для полной функциональности откройте приложение через Telegram бота
+          </div>
+        </div>
+      )}
+
+      {/* Отладочная информация */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-gray-800/50 border border-gray-600 rounded-lg p-3 mb-4">
+          <div className="text-gray-400 text-xs">
+            <div>Debug: isFromBot = {isFromBot.toString()}</div>
+            <div>Debug: referralLink = {referralLink}</div>
+            <div>Debug: Telegram WebApp = {typeof window !== 'undefined' && window.Telegram?.WebApp ? 'Available' : 'Not available'}</div>
           </div>
         </div>
       )}
@@ -288,6 +319,11 @@ export default function ReferralPage() {
         >
           {t.backToMain}
         </a>
+      </div>
+
+      {/* Footer с именем бота */}
+      <div className="text-center text-white/60 text-sm mt-4">
+        @lux_on_bot
       </div>
     </main>
   )

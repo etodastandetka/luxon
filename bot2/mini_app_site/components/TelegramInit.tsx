@@ -1,21 +1,27 @@
 "use client"
 import { useEffect } from 'react'
-import { initTelegramWebApp, getTelegramUser, syncWithBot } from '../utils/telegram'
 
 export default function TelegramInit() {
   useEffect(() => {
-    // Инициализируем Telegram WebApp при загрузке приложения
-    const telegramUser = initTelegramWebApp()
-    
-    if (telegramUser) {
-      // Синхронизируем с ботом при инициализации
-      syncWithBot(telegramUser, 'app_initialized', {
-        userAgent: navigator.userAgent,
-        language: navigator.language,
-        platform: navigator.platform
-      })
+    // Инициализация Telegram WebApp
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp
+      
+      // Расширяем WebApp на весь экран
+      tg.expand()
+      
+      // Включаем кнопку закрытия
+      tg.enableClosingConfirmation()
+      
+      // Настраиваем тему
+      tg.setHeaderColor('#1f2937')
+      tg.setBackgroundColor('#111827')
+      
+      console.log('Telegram WebApp initialized')
+      console.log('User data:', tg.initDataUnsafe)
+      console.log('User ID:', tg.initDataUnsafe?.user?.id)
     }
   }, [])
 
-  return null // Этот компонент не рендерит ничего видимого
+  return null
 }
