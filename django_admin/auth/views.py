@@ -105,7 +105,7 @@ def setup_2fa(request):
             return redirect('/')
     
     return render(request, 'auth/setup_2fa.html', {
-        'two_factor_enabled': profile.is_2fa_enabled
+        'is_2fa_enabled': profile.is_2fa_enabled
     })
 
 def verify_2fa(request):

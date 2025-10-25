@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUXON ADMIN - Настройка 2FA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00ff88, #00d4aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .qr-code {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .qr-code img {
+            max-width: 200px;
+            border-radius: 10px;
+        }
+        
+        .secret-key {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px 0;
+        }
+        
+        .btn-enable {
+            background: linear-gradient(45deg, #00ff88, #00d4aa);
+            color: #ffffff;
+        }
+        
+        .btn-disable {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: #ffffff;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .back-link a {
+            color: #00ff88;
+            text-decoration: none;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>LUXON ADMIN</h1>
+            <p>Настройка двухфакторной аутентификации</p>
+        </div>
+        
+        <div class="status">
+            {% if is_2fa_enabled %}
+                <strong>✅ 2FA включена</strong>
+            {% else %}
+                <strong>❌ 2FA отключена</strong>
+            {% endif %}
+        </div>
+        
+        {% if qr_code %}
+            <div class="qr-code">
+                <h3>Отсканируйте QR-код в приложении аутентификатора:</h3>
+                <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code">
+            </div>
+            
+            <div class="secret-key">
+                <strong>Секретный ключ:</strong><br>
+                {{ secret_key }}
+            </div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            {% if is_2fa_enabled %}
+                <button type="submit" name="action" value="disable" class="btn btn-disable">
+                    Отключить 2FA
+                </button>
+            {% else %}
+                <button type="submit" name="action" value="enable" class="btn btn-enable">
+                    Включить 2FA
+                </button>
+            {% endif %}
+        </form>
+        
+        <div class="back-link">
+            <a href="/">← Вернуться в админку</a>
+        </div>
+    </div>
+</body>
+</html>
