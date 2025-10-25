@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from bot_control.models import UserProfile
+from django.middleware.csrf import get_token
 import pyotp
 import qrcode
 import qrcode.image.svg
@@ -174,3 +175,18 @@ def api_verify_2fa(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Неверный метод запроса'})
+
+def csrf_test(request):
+    """Тестовая страница для проверки CSRF"""
+    csrf_token = get_token(request)
+    
+    return render(request, 'auth/csrf_test.html', {
+        'csrf_token': csrf_token
+    })
+
+@csrf_exempt
+def csrf_api_test(request):
+    """API для тестирования CSRF (без защиты)"""
+    if request.method == 'POST':
+        return JsonResponse({'status': 'success', 'message': 'CSRF bypassed'})
+    return JsonResponse({'status': 'error', 'message': 'Only POST allowed'})

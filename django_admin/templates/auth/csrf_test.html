@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSRF Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .info { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>CSRF Test Page</h1>
+    
+    <div class="info">
+        <h3>CSRF Token Info:</h3>
+        <p><strong>Token:</strong> {{ csrf_token }}</p>
+        <p><strong>Cookie:</strong> <span id="cookie-info">Loading...</span></p>
+    </div>
+    
+    <div>
+        <h3>Test Forms:</h3>
+        
+        <form method="post" action="/csrf-test-api/">
+            {% csrf_token %}
+            <button type="submit">Test CSRF Protected Form</button>
+        </form>
+        
+        <form method="post" action="/csrf-test-api/" id="js-form">
+            <button type="submit">Test JavaScript CSRF</button>
+        </form>
+        
+        <button onclick="testAjax()">Test AJAX CSRF</button>
+    </div>
+    
+    <div id="result"></div>
+    
+    <script>
+        // Показать cookies
+        document.getElementById('cookie-info').textContent = document.cookie;
+        
+        // JavaScript CSRF
+        document.getElementById('js-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            
+            fetch('/csrf-test-api/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerHTML = 
+                    '<div class="success">AJAX Success: ' + JSON.stringify(data) + '</div>';
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = 
+                    '<div class="error">AJAX Error: ' + error + '</div>';
+            });
+        });
+        
+        function testAjax() {
+            fetch('/csrf-test-api/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({test: 'data'})
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerHTML = 
+                    '<div class="success">AJAX Success: ' + JSON.stringify(data) + '</div>';
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = 
+                    '<div class="error">AJAX Error: ' + error + '</div>';
+            });
+        }
+    </script>
+</body>
+</html>
