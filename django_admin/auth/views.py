@@ -143,7 +143,7 @@ def verify_2fa(request):
             messages.error(request, 'Профиль пользователя не найден')
             return redirect('/login/')
     
-    return render(request, 'auth/verify_2fa.html')
+    return render(request, 'auth/verify_2fa_standalone.html')
 
 @csrf_exempt
 def api_verify_2fa(request):
