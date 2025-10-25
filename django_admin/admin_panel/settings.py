@@ -64,7 +64,7 @@ CORS_ALLOW_ALL_ORIGINS = False  # Отключаем для админки
 CORS_ALLOW_CREDENTIALS = False
 DJANGO_ADMIN_API_TOKEN = "dastan10dz"
 
-# CSRF настройки
+# CSRF настройки - более мягкие для отладки
 CSRF_TRUSTED_ORIGINS = [
     'https://xendro.pro',
     'https://www.xendro.pro',
@@ -72,6 +72,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://www.xendro.pro',
     'http://localhost:8081',
     'http://127.0.0.1:8081',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
 ]
 
 # Настройки сессий
@@ -81,13 +83,16 @@ SESSION_COOKIE_AGE = 86400  # 24 часа
 SESSION_COOKIE_DOMAIN = None  # Не ограничиваем домен
 SESSION_COOKIE_SAMESITE = 'Lax'
 
-# CSRF настройки
+# CSRF настройки - отладочные
 CSRF_COOKIE_SECURE = False  # Для HTTP
 CSRF_COOKIE_HTTPONLY = False  # Должен быть False для JavaScript
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_DOMAIN = None  # Не ограничиваем домен
 CSRF_USE_SESSIONS = False  # Используем cookies, не сессии
 CSRF_COOKIE_NAME = 'csrftoken'
+
+# Временно отключаем CSRF для отладки
+CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
 
 # Добавляем CORS middleware
 class CORSMiddleware:

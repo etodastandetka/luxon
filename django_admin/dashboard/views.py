@@ -757,6 +757,7 @@ def api_handle_request(request):
     return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
 
 @csrf_exempt
+@csrf_exempt
 def api_transaction_history(request):
     """API для получения истории транзакций из БД бота"""
     if request.method == 'GET':
