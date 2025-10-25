@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useLanguage } from '../../components/LanguageContext'
+import { getTelegramUserId } from '../../utils/telegram'
 
 interface Transaction {
   id: string
@@ -85,21 +86,23 @@ export default function HistoryPage(){
     setLoading(true)
     try {
       // Получаем ID пользователя из Telegram WebApp
-      const tg = (window as any).Telegram?.WebApp
-      const userId = tg?.initDataUnsafe?.user?.id || tg?.initData?.user?.id
+      const userId = getTelegramUserId()
+      
+      console.log('=== DEBUG: History - User ID ===')
+      console.log('User ID:', userId)
+      console.log('================================')
+      
+      const finalUserId = userId || 'test_user_123'
       
       if (!userId) {
-        console.error('User ID not found')
-        setTransactions([])
-        setLoading(false)
-        return
+        console.log('❌ User ID not found, using test user ID')
       }
 
       // Запрашиваем историю транзакций пользователя с Django API
       const apiUrl = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:8081' 
         : 'https://xendro.pro'
-      const response = await fetch(`${apiUrl}/api/transaction-history/?user_id=${userId}`)
+      const response = await fetch(`${apiUrl}/api/transaction-history/?user_id=${finalUserId}`)
       const data = await response.json()
       
       if (data.success && data.transactions) {
