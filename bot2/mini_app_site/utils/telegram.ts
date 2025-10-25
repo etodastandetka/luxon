@@ -128,7 +128,36 @@ export const getTelegramWebApp = (): TelegramWebApp | null => {
 // Получение данных пользователя
 export const getTelegramUser = (): TelegramUser | null => {
   const tg = getTelegramWebApp()
-  return tg?.initDataUnsafe?.user || null
+  
+  // Сначала пробуем получить из initDataUnsafe
+  if (tg?.initDataUnsafe?.user) {
+    console.log('✅ User from initDataUnsafe:', tg.initDataUnsafe.user)
+    return tg.initDataUnsafe.user
+  }
+  
+  // Если нет, пробуем парсить initData
+  if (tg?.initData) {
+    try {
+      const params = new URLSearchParams(tg.initData)
+      const userParam = params.get('user')
+      if (userParam) {
+        const userData = JSON.parse(decodeURIComponent(userParam))
+        console.log('✅ User from initData:', userData)
+        return userData
+      }
+    } catch (e) {
+      console.log('❌ Error parsing initData:', e)
+    }
+  }
+  
+  console.log('❌ No user data found')
+  return null
+}
+
+// Получение user ID
+export const getTelegramUserId = (): number | null => {
+  const user = getTelegramUser()
+  return user?.id || null
 }
 
 // Получение initData для отправки на сервер
