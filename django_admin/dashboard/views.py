@@ -8,6 +8,13 @@ import os
 from datetime import datetime, timedelta
 from django.conf import settings
 
+def home_redirect(request):
+    """Главная страница - редирект на логин или дашборд"""
+    if request.user.is_authenticated:
+        return redirect('/dashboard/')
+    else:
+        return redirect('/auth/login/')
+
 def dashboard(request):
     """Главная страница дашборда"""
     return render(request, 'dashboard/dashboard_mobile.html')

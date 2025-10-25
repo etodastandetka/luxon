@@ -6,6 +6,8 @@ from bot_control import views as bot_views
 app_name = 'dashboard'
 
 urlpatterns = [
+    # Главная страница - редирект на логин или дашборд
+    path('', views.home_redirect, name='home'),
     # Главная теперь — общий дашборд, который показывает и депозиты, и выводы
     path('dashboard/', views.dashboard, name='dashboard'),
     path('request/<int:req_id>/', views.request_detail, name='request_detail'),
