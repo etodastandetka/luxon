@@ -7,7 +7,7 @@ app_name = 'dashboard'
 
 urlpatterns = [
     # Главная теперь — общий дашборд, который показывает и депозиты, и выводы
-    path('', views.dashboard, name='dashboard'),
+    path('dashboard/', views.dashboard, name='dashboard'),
     path('request/<int:req_id>/', views.request_detail, name='request_detail'),
     # Детали транзакции (совместимость со старыми ссылками из истории)
     path('transactions/<int:req_id>/', views.request_detail, name='transaction_detail'),

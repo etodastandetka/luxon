@@ -16,7 +16,5 @@ urlpatterns = [
     path('bot/', include('bot_control.urls')),
     # Публичная страница по типу /history (не в админке)
     path('history/', referral_admin_views.referral_history, name='referral_history_root'),
-    # Главная страница после входа в админку
-    path('', dashboard_views.main_dashboard, name='main_dashboard'),
 ]
 

@@ -16,7 +16,7 @@ import base64
 def custom_login(request):
     """Кастомная страница входа"""
     if request.user.is_authenticated:
-        return redirect('/')
+        return redirect('/dashboard/')
     
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -40,13 +40,13 @@ def custom_login(request):
                     # Если 2FA отключена, сразу логиним
                     login(request, user)
                     messages.success(request, f'Добро пожаловать, {user.username}!')
-                    return redirect('/')
+                    return redirect('/dashboard/')
             except UserProfile.DoesNotExist:
                 # Если профиля нет, создаем его
                 profile = UserProfile.objects.create(user=user)
                 login(request, user)
                 messages.success(request, f'Добро пожаловать, {user.username}!')
-                return redirect('/')
+                return redirect('/dashboard/')
         else:
             messages.error(request, 'Неверное имя пользователя или пароль')
     
@@ -103,7 +103,7 @@ def setup_2fa(request):
             profile.secret_key = ''
             profile.save()
             messages.success(request, '2FA отключена')
-            return redirect('/')
+            return redirect('/dashboard/')
     
     return render(request, 'auth/setup_2fa.html', {
         'is_2fa_enabled': profile.is_2fa_enabled
@@ -113,7 +113,7 @@ def verify_2fa(request):
     """Проверка 2FA кода"""
     # Если пользователь уже авторизован, перенаправляем на главную
     if request.user.is_authenticated:
-        return redirect('/')
+        return redirect('/dashboard/')
     
     if request.method == 'POST':
         code = request.POST.get('code')
@@ -155,7 +155,7 @@ def verify_2fa(request):
                     del request.session['temp_user_id']
                     messages.success(request, f'Добро пожаловать, {user.username}!')
                     print(f"DEBUG: Успешный вход для {user.username}")
-                    return redirect('/')
+                    return redirect('/dashboard/')
                 else:
                     messages.error(request, f'Неверный код аутентификации. Текущий код: {current_code}')
                     print(f"DEBUG: Неверный код")
