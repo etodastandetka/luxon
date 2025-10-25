@@ -136,7 +136,59 @@
     border: none;
 }
 
-.list-item { background:#0f0f0f; border:1px solid #222; border-radius:12px; padding:12px 14px; margin-bottom:10px; display:flex; align-items:center; gap:12px; transition:background .2s ease; cursor:pointer; }
+/* Улучшенные стили для транзакций */
+.transaction-item {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.transaction-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #00ff88, #00d4aa);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.transaction-item:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 0, 0, 0.8) 100%);
+    border-color: rgba(0, 255, 136, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 255, 136, 0.2);
+}
+
+.transaction-item:hover::before {
+    opacity: 1;
+}
+
+.list-item { 
+    background:#0f0f0f; 
+    border:1px solid #222; 
+    border-radius:12px; 
+    padding:12px 14px; 
+    margin-bottom:10px; 
+    display:flex; 
+    align-items:center; 
+    gap:12px; 
+    transition:background .2s ease; 
+    cursor:pointer; 
+}
 .list-item:hover { background:#141414; }
 .list-icon { margin-right: 0; }
 .list-content { flex:1; min-width:0; }
@@ -191,6 +243,96 @@
 .status-pending { background: #ffa500; }
 .status-completed { background: #999; }
 .status-rejected { background: #ff4444; }
+
+/* Стили для элементов транзакции */
+.transaction-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #fff;
+    background: linear-gradient(135deg, #00ff88, #00d4aa);
+    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+    flex-shrink: 0;
+}
+
+.transaction-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.transaction-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.transaction-type {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.transaction-bookmaker {
+    font-size: 14px;
+    color: #00ff88;
+    font-weight: 500;
+}
+
+.transaction-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.transaction-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #00ff88, #00d4aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.transaction-status {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.transaction-status.status-completed {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.transaction-status.status-pending {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+    border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.transaction-status.status-rejected {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+    border: 1px solid rgba(255, 68, 68, 0.3);
+}
+
+.transaction-date {
+    font-size: 12px;
+    color: #999;
+    font-weight: 500;
+}
 </style>
 
 
@@ -270,7 +412,15 @@ function createTransactionElement(transaction) {
     div.className = 'transaction-item';
     
     const statusClass = transaction.status === 'completed' ? 'status-completed' : 
-                       transaction.status === 'pending' ? 'status-pending' : 'status-failed';
+                       transaction.status === 'pending' ? 'status-pending' : 'status-rejected';
+    
+    // Добавляем обработчик клика для перехода к деталям
+    div.onclick = function() {
+        if (transaction.id) {
+            // Переходим к деталям заявки
+            window.location.href = `/request/${transaction.id}/`;
+        }
+    };
     
     div.innerHTML = `
         <div class="transaction-icon">
@@ -286,6 +436,9 @@ function createTransactionElement(transaction) {
                 <span class="transaction-status ${statusClass}">${getStatusText(transaction.status)}</span>
             </div>
             <div class="transaction-date">${formatDate(transaction.created_at)}</div>
+        </div>
+        <div class="transaction-arrow">
+            <i class="fas fa-chevron-right" style="color: #999; font-size: 14px;"></i>
         </div>
     `;
     
@@ -365,63 +518,8 @@ async function loadTransactions() {
             container.innerHTML = '';
             
             data.transactions.forEach(transaction => {
-                const transactionItem = document.createElement('div');
-                transactionItem.className = 'list-item';
-                transactionItem.style.cursor = 'pointer';
-                transactionItem.onclick = function() {
-                    window.location.href = `/bot/transactions/${transaction.id}/`;
-                };
-                
-                // Определяем иконку и цвет в зависимости от типа операции
-                const isDeposit = transaction.type === 'deposit';
-                const amountColor = isDeposit ? '#00ff88' : '#ff4444';
-                const amountSign = isDeposit ? '+' : '-';
-                
-                // Определяем статус
-                let statusText = 'Ожидает';
-                let statusClass = 'status-pending';
-                
-                if (transaction.status === 'completed') {
-                    statusText = 'Успешно';
-                    statusClass = 'status-completed';
-                } else if (transaction.status === 'rejected') {
-                    statusText = 'Отклонено';
-                    statusClass = 'status-rejected';
-                }
-                
-                // Аватар: первая буква имени, цвет по типу; оверлей: ELQR (deposit) или иконка банка (withdraw)
-                const userInitial = (transaction.user_name || 'U').toString().charAt(0).toUpperCase();
-                const iconColor = isDeposit ? '#00c16a' : '#ef4444';
-
-                // Определяем банк для вывода
-                const bankRaw = (transaction.bank || transaction.wallet_details || '').toString();
-                const bankIcon = !isDeposit ? getBankIconUrl(bankRaw) : '';
-                // ELQR для пополнений, иначе иконка банка
-                const mainIcon = isDeposit ? '{% static "images/elqr.svg" %}?v=20251002' : (bankIcon);
-
-                transactionItem.innerHTML = `
-                    <div class="list-icon">
-                        <div style="width:50px;height:50px;border-radius:10px;background:none;border:none;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-                            <img src="${mainIcon}" alt="icon" style="width:100%;height:100%;object-fit:contain;padding:2px;"
-                                 onerror="this.onerror=null;this.src='{% static "images/companion.png" %}';"/>
-                        </div>
-                    </div>
-                    <div class="list-content">
-                        <div class="list-title">${transaction.user_name || 'Пользователь'}</div>
-                        <div class="list-subtitle">${(transaction.bookmaker || 'БУКМЕКЕР').toString().toUpperCase()} • ID: ${transaction.user_id || 'Неизвестно'}</div>
-                    </div>
-                    <div class="list-right">
-                        <div class="list-date">${formatDate(transaction.created_at || new Date())}</div>
-                        <div class="list-amount" style="color: ${amountColor}; font-weight: bold; font-size: 16px;">
-                            ${amountSign}${formatAmount(transaction.amount || 0)}
-                        </div>
-                        <div class="list-status">
-                            <div class="status-dot ${statusClass}"></div>
-                            <span>${statusText}</span>
-                        </div>
-                    </div>`;
-                
-                container.appendChild(transactionItem);
+                const transactionElement = createTransactionElement(transaction);
+                container.appendChild(transactionElement);
             });
         } else {
             container.innerHTML = `
