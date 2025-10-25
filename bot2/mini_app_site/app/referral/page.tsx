@@ -34,16 +34,16 @@ export default function ReferralPage() {
       console.log('initDataUnsafe:', tg?.initDataUnsafe)
       console.log('initData:', tg?.initData)
       console.log('user:', tg?.initDataUnsafe?.user)
-      console.log('=====================================')
+      console.log('=====================================)
       
-      // Проверяем разные способы получения user ID
+      // Правильный способ получения user ID из Telegram WebApp
       if (tg?.initDataUnsafe?.user?.id) {
         userId = tg.initDataUnsafe.user.id
         setIsFromBot(true)
         console.log('✅ User ID from initDataUnsafe:', userId)
         console.log('Full user data:', tg.initDataUnsafe.user)
       } else if (tg?.initData) {
-        // Парсим initData если он есть
+        // Парсим initData если он есть (правильный способ)
         try {
           console.log('Parsing initData:', tg.initData)
           const params = new URLSearchParams(tg.initData)
@@ -58,17 +58,6 @@ export default function ReferralPage() {
           }
         } catch (e) {
           console.log('❌ Error parsing initData:', e)
-        }
-      }
-      
-      // Дополнительная проверка через query параметры
-      if (!userId && typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search)
-        const tgUserId = urlParams.get('tg_user_id')
-        if (tgUserId) {
-          userId = tgUserId
-          setIsFromBot(true)
-          console.log('✅ User ID from URL params:', userId)
         }
       }
       
