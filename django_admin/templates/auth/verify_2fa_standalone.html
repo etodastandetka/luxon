@@ -201,7 +201,13 @@
             </button>
         </form>
         
-        <a href="/login/" class="back-link">← Вернуться к входу</a>
+        <div style="margin-top: 20px;">
+            <a href="/login/" class="back-link" onclick="window.location.href='/login/'; return false;">← Вернуться к входу</a>
+            <br><br>
+            <button type="button" onclick="window.location.href='/login/'" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                🔙 Назад к входу
+            </button>
+        </div>
     </div>
     
     <script>
@@ -226,6 +232,21 @@
                 if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)) {
                     e.preventDefault();
                 }
+            });
+            
+            // Функция для возврата к входу
+            window.goToLogin = function() {
+                console.log('Переход к странице входа...');
+                window.location.href = '/login/';
+            };
+            
+            // Добавляем обработчики для всех ссылок и кнопок
+            document.querySelectorAll('a[href="/login/"], button[onclick*="login"]').forEach(function(element) {
+                element.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Клик по ссылке/кнопке возврата');
+                    window.location.href = '/login/';
+                });
             });
         });
     </script>
