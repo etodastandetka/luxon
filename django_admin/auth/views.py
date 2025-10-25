@@ -31,7 +31,7 @@ def custom_login(request):
             # Проверяем, включена ли 2FA для пользователя
             try:
                 profile = UserProfile.objects.get(user=user)
-                if profile.two_factor_enabled:
+                if profile.is_2fa_enabled:
                     # Сохраняем ID пользователя в сессии для 2FA
                     request.session['temp_user_id'] = user.id
                     return redirect('/2fa-verify/')
@@ -71,8 +71,8 @@ def setup_2fa(request):
         if action == 'enable':
             # Генерируем секретный ключ
             secret_key = pyotp.random_base32()
-            profile.two_factor_secret = secret_key
-            profile.two_factor_enabled = True
+            profile.secret_key = secret_key
+            profile.is_2fa_enabled = True
             profile.save()
             
             # Генерируем QR код
@@ -98,14 +98,14 @@ def setup_2fa(request):
             })
         
         elif action == 'disable':
-            profile.two_factor_enabled = False
-            profile.two_factor_secret = ''
+            profile.is_2fa_enabled = False
+            profile.secret_key = ''
             profile.save()
             messages.success(request, '2FA отключена')
             return redirect('/')
     
     return render(request, 'auth/setup_2fa.html', {
-        'two_factor_enabled': profile.two_factor_enabled
+        'two_factor_enabled': profile.is_2fa_enabled
     })
 
 def verify_2fa(request):
@@ -122,8 +122,8 @@ def verify_2fa(request):
             user = User.objects.get(id=user_id)
             profile = UserProfile.objects.get(user=user)
             
-            if profile.two_factor_enabled and profile.two_factor_secret:
-                totp = pyotp.TOTP(profile.two_factor_secret)
+            if profile.is_2fa_enabled and profile.secret_key:
+                totp = pyotp.TOTP(profile.secret_key)
                 if totp.verify(code, valid_window=1):
                     # Успешная аутентификация
                     login(request, user)
@@ -160,8 +160,8 @@ def api_verify_2fa(request):
             user = User.objects.get(id=user_id)
             profile = UserProfile.objects.get(user=user)
             
-            if profile.two_factor_enabled and profile.two_factor_secret:
-                totp = pyotp.TOTP(profile.two_factor_secret)
+            if profile.is_2fa_enabled and profile.secret_key:
+                totp = pyotp.TOTP(profile.secret_key)
                 if totp.verify(code, valid_window=1):
                     login(request, user)
                     del request.session['temp_user_id']
