@@ -4,6 +4,7 @@ from . import views_deposits
 from . import autodeposit_views_simple as autodeposit_views
 from . import referral_views_simple as referral_views
 from . import api_views_webapp
+from . import api_views
 
 app_name = 'bot_control'
 
@@ -67,6 +68,10 @@ urlpatterns = [
     # API для статистики
     path('api/statistics/', views.api_statistics, name='api_statistics'),
     path('api/export-statistics/', views.api_export_statistics, name='api_export_statistics'),
+    
+    # API для мини-приложения
+    path('api/payment/', api_views.payment_api, name='payment_api'),
+    path('api/generate-qr/', api_views.generate_qr_api, name='generate_qr_api'),
     
     # Унифицированные API endpoints
     path('api/', include('bot_control.unified_urls')),
