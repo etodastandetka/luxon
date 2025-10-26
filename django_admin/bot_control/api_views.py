@@ -14,29 +14,42 @@ def payment_api(request):
     API для создания и обновления заявок на пополнение/вывод
     """
     try:
+        print(f"🔄 Django API: Получен запрос {request.method} на /api/payment/")
+        print(f"🔄 Django API: Headers: {dict(request.headers)}")
+        print(f"🔄 Django API: Body: {request.body}")
+        
         data = json.loads(request.body)
+        print(f"🔄 Django API: Parsed data: {data}")
         
         if request.method == 'POST':
             # Создание новой заявки
+            print("🔄 Django API: Создаем заявку...")
             return create_payment_request(data)
         elif request.method == 'PUT':
             # Обновление статуса заявки
+            print("🔄 Django API: Обновляем заявку...")
             return update_payment_status(data)
             
     except Exception as e:
+        print(f"❌ Django API error: {str(e)}")
         logger.error(f"Error in payment_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 def create_payment_request(data):
     """Создание заявки на пополнение или вывод"""
     try:
+        print(f"🔄 Django API: Начинаем создание заявки с данными: {data}")
+        
         from bot_control.models import Request
         
         # Валидация обязательных полей
         required_fields = ['type', 'amount', 'userId', 'bookmaker']
         for field in required_fields:
             if field not in data:
+                print(f"❌ Django API: Отсутствует обязательное поле: {field}")
                 return JsonResponse({'error': f'Missing required field: {field}'}, status=400)
+        
+        print(f"🔄 Django API: Все обязательные поля присутствуют")
         
         # Создаем заявку через Django ORM
         request_obj = Request.objects.create(
@@ -51,6 +64,8 @@ def create_payment_request(data):
             created_at=timezone.now()
         )
         
+        print(f"✅ Django API: Заявка создана с ID {request_obj.id}")
+        
         return JsonResponse({
             'success': True,
             'id': request_obj.id,
@@ -59,6 +74,7 @@ def create_payment_request(data):
         })
         
     except Exception as e:
+        print(f"❌ Django API: Ошибка создания заявки: {str(e)}")
         logger.error(f"Error creating payment request: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
