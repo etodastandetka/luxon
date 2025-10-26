@@ -30,7 +30,7 @@ def payment_api(request):
             print("🔄 Django API: Обновляем заявку...")
             return update_payment_status(data)
             
-    except Exception as e:
+        except Exception as e:
         print(f"❌ Django API error: {str(e)}")
         logger.error(f"Error in payment_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -43,17 +43,22 @@ def create_payment_request(data):
         from bot_control.models import Request
         
         # Валидация обязательных полей
-        required_fields = ['type', 'amount', 'userId', 'bookmaker']
+        required_fields = ['type', 'amount', 'bookmaker']
         for field in required_fields:
             if field not in data:
                 print(f"❌ Django API: Отсутствует обязательное поле: {field}")
                 return JsonResponse({'error': f'Missing required field: {field}'}, status=400)
         
+        # Проверяем наличие хотя бы одного ID пользователя
+        if not data.get('userId') and not data.get('user_id') and not data.get('telegram_user_id'):
+            print(f"❌ Django API: Отсутствует идентификация пользователя (userId, user_id или telegram_user_id)")
+            return JsonResponse({'error': 'Missing user identification'}, status=400)
+        
         print(f"🔄 Django API: Все обязательные поля присутствуют")
         
         # Получаем ID пользователей
         telegram_user_id = data.get('telegram_user_id')
-        casino_player_id = data.get('userId')  # ID игрока в букмекерской конторе
+        casino_player_id = data.get('userId') or data.get('user_id')  # ID игрока в букмекерской конторе
         
         print(f"🔄 Django API: Telegram ID: {telegram_user_id}, Casino ID: {casino_player_id}")
         
@@ -87,7 +92,7 @@ def create_payment_request(data):
             'message': 'Заявка успешно создана'
         })
         
-    except Exception as e:
+        except Exception as e:
         print(f"❌ Django API: Ошибка создания заявки: {str(e)}")
         logger.error(f"Error creating payment request: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -138,7 +143,7 @@ def update_payment_status(data):
             
             request_obj.save()
         
-        return JsonResponse({
+                return JsonResponse({
             'success': True,
             'message': 'Статус заявки обновлен'
         })
@@ -191,7 +196,7 @@ def generate_qr_api(request):
             'megapay': f"https://megapay.kg/get#{qr_hash}",
             'mbank': f"https://app.mbank.kg/qr/#{qr_hash}"
         }
-        
+
         return JsonResponse({
             'success': True,
             'qr_hash': qr_hash,
@@ -418,7 +423,7 @@ def sync_bot_api(request):
             'message': 'Синхронизация с ботом успешна'
         })
         
-    except Exception as e:
+        except Exception as e:
         print(f"❌ Django API: Ошибка синхронизации с ботом: {str(e)}")
         logger.error(f"Error in sync_bot_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
