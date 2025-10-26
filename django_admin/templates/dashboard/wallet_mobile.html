@@ -690,11 +690,18 @@ async function deleteQR(qrId) {
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Банк</label>
-            <select id="bw_bank" style="height: 48px !important;">
-              <option value="mbank">MBank</option>
-              <option value="optima">Optima</option>
-              <option value="bakai">Bakai</option>
-            </select>
+            <div class="custom-select" style="position: relative; width: 100%;">
+              <div class="select-trigger" id="bw_bank_trigger" style="height: 48px !important; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important; backdrop-filter: blur(10px) !important; border: 1px solid #333 !important; border-radius: 10px !important; color: #fff !important; font-size: 14px !important; padding: 14px 40px 14px 14px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: space-between !important; transition: all 0.3s ease !important;">
+                <span id="bw_bank_text">MBank</span>
+                <span class="select-arrow" style="transition: transform 0.3s ease;">▼</span>
+              </div>
+              <div class="select-options" id="bw_bank_options" style="position: absolute; top: 100%; left: 0; right: 0; background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.8) 100%) !important; backdrop-filter: blur(15px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 10px !important; margin-top: 4px !important; z-index: 1000 !important; display: none !important; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;">
+                <div class="select-option" data-value="mbank" style="padding: 12px 16px !important; color: #fff !important; cursor: pointer !important; transition: all 0.2s ease !important; border-radius: 8px !important; margin: 2px !important;">MBank</div>
+                <div class="select-option" data-value="optima" style="padding: 12px 16px !important; color: #fff !important; cursor: pointer !important; transition: all 0.2s ease !important; border-radius: 8px !important; margin: 2px !important;">Optima</div>
+                <div class="select-option" data-value="bakai" style="padding: 12px 16px !important; color: #fff !important; cursor: pointer !important; transition: all 0.2s ease !important; border-radius: 8px !important; margin: 2px !important;">Bakai</div>
+              </div>
+              <input type="hidden" id="bw_bank" value="mbank">
+            </div>
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Название</label>
@@ -889,4 +896,65 @@ if (typeof window.createBankWallet !== 'function') {
     }
   };
 }
+
+// Кастомный dropdown для выбора банка
+document.addEventListener('DOMContentLoaded', function() {
+  const trigger = document.getElementById('bw_bank_trigger');
+  const options = document.getElementById('bw_bank_options');
+  const hiddenInput = document.getElementById('bw_bank');
+  const textSpan = document.getElementById('bw_bank_text');
+  const arrow = trigger.querySelector('.select-arrow');
+  
+  if (trigger && options && hiddenInput && textSpan) {
+    // Открытие/закрытие dropdown
+    trigger.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const isOpen = options.style.display !== 'none';
+      options.style.display = isOpen ? 'none' : 'block';
+      arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    });
+    
+    // Обработка выбора опции
+    options.addEventListener('click', function(e) {
+      const option = e.target.closest('.select-option');
+      if (option) {
+        const value = option.getAttribute('data-value');
+        const text = option.textContent;
+        
+        hiddenInput.value = value;
+        textSpan.textContent = text;
+        options.style.display = 'none';
+        arrow.style.transform = 'rotate(0deg)';
+        
+        // Добавляем эффект выбора
+        option.style.background = 'linear-gradient(135deg, rgba(0, 255, 136, 0.3) 0%, rgba(0, 255, 136, 0.2) 100%)';
+        option.style.color = '#00ff88';
+        setTimeout(() => {
+          option.style.background = '';
+          option.style.color = '';
+        }, 200);
+      }
+    });
+    
+    // Закрытие при клике вне dropdown
+    document.addEventListener('click', function() {
+      options.style.display = 'none';
+      arrow.style.transform = 'rotate(0deg)';
+    });
+    
+    // Hover эффекты для опций
+    const optionElements = options.querySelectorAll('.select-option');
+    optionElements.forEach(option => {
+      option.addEventListener('mouseenter', function() {
+        this.style.background = 'linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 255, 136, 0.1) 100%)';
+        this.style.color = '#00ff88';
+      });
+      
+      option.addEventListener('mouseleave', function() {
+        this.style.background = '';
+        this.style.color = '';
+      });
+    });
+  }
+});
 </script>
