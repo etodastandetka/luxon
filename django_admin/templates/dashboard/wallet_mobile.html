@@ -660,9 +660,6 @@ async function deleteQR(qrId) {
         <input id="rq_password" type="password" placeholder="Пароль" style="height: 48px;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
-        <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
-          <input id="rq_active" type="checkbox"> Активный
-        </label>
         <button onclick="addRequisite()" class="btn-primary" style="margin-left:auto;">Добавить реквизит</button>
       </div>
     </div>
@@ -755,7 +752,7 @@ async function addRequisite() {
   const name = document.getElementById('rq_name').value.trim();
   const email = document.getElementById('rq_email').value.trim();
   const password = document.getElementById('rq_password').value.trim();
-  const is_active = document.getElementById('rq_active').checked;
+  const is_active = true; // Всегда активный по умолчанию
   if (!/^\d{16}$/.test(value)) {
     alert('Реквизит должен быть 16-значным числом');
     return;
