@@ -185,9 +185,9 @@
         <form method="post" id="verify-form">
             {% csrf_token %}
             <div class="form-group">
-                <label for="code">Код аутентификации</label>
+                <label for="code_standalone">Код аутентификации</label>
                 <input type="text" 
-                       id="code" 
+                       id="code_standalone" 
                        name="code" 
                        placeholder="000000"
                        maxlength="6"
