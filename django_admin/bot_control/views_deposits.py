@@ -253,35 +253,17 @@ def transaction_detail(request, trans_id):
             tx.get('screenshot_url') or
             ''
         )
-        photo_debug = {
-            'photo_file_url': tx.get('photo_file_url') or '',
-            'receipt_photo_url': tx.get('receipt_photo_url') or '',
-            'qr_photo_url': tx.get('qr_photo_url') or '',
-            'photo_url_field': tx.get('photo_url') or '',
-            'screenshot_url': tx.get('screenshot_url') or '',
-            'photo_file_id': tx.get('photo_file_id') or '',
-            'bot_token_present': bool(getattr(settings, 'BOT_TOKEN', '')),
-            'resolved_photo_url': '',
-            'resolved_via': '',
-            'telegram_error': '',
-        }
+        
         try:
             if photo_url:
                 # Если путь относительный (локальный файл), строим абсолютный URL через MEDIA_URL
-                try:
-                    if not (str(photo_url).startswith('http://') or str(photo_url).startswith('https://')):
-                        media_url = getattr(settings, 'MEDIA_URL', '/media/')
-                        # Убираем возможный префикс / если MEDIA_URL уже содержит его
-                        if str(photo_url).startswith('/'):
-                            photo_url = str(photo_url).lstrip('/')
-                        # Строим абсолютный URL
-                        photo_url = request.build_absolute_uri(f"{media_url}{photo_url}")
-                        photo_debug['resolved_via'] = 'relative_media_url'
-                    else:
-                        photo_debug['resolved_via'] = 'direct_field'
-                except Exception:
-                    # В любом сомнительном случае оставляем как есть — возможно, это уже абсолютная ссылка
-                    photo_debug['resolved_via'] = photo_debug.get('resolved_via') or 'direct_field'
+                if not (str(photo_url).startswith('http://') or str(photo_url).startswith('https://')):
+                    media_url = getattr(settings, 'MEDIA_URL', '/media/')
+                    # Убираем возможный префикс / если MEDIA_URL уже содержит его
+                    if str(photo_url).startswith('/'):
+                        photo_url = str(photo_url).lstrip('/')
+                    # Строим абсолютный URL
+                    photo_url = request.build_absolute_uri(f"{media_url}{photo_url}")
             else:
                 file_id = (tx.get('photo_file_id') or '').strip()
                 bot_token = getattr(settings, 'BOT_TOKEN', '')
@@ -293,14 +275,8 @@ def transaction_detail(request, trans_id):
                     fp = (jf.get('result') or {}).get('file_path')
                     if fp:
                         photo_url = f"https://api.telegram.org/file/bot{bot_token}/{fp}"
-                        photo_debug['resolved_via'] = 'telegram_getFile'
-                    else:
-                        photo_debug['telegram_error'] = (jf.get('description') or f"HTTP {rf.status_code}") if not rf.ok else 'no_file_path'
-                else:
-                    photo_debug['resolved_via'] = photo_debug.get('resolved_via') or 'no_source'
         except Exception:
             photo_url = tx.get('photo_file_url') or ''
-        photo_debug['resolved_photo_url'] = photo_url or ''
 
         # Другие заявки пользователя (последние 100)
         user_requests = []
@@ -330,7 +306,6 @@ def transaction_detail(request, trans_id):
             'transaction': tx,
             'photo_url': photo_url,
             'user_requests': user_requests,
-            'photo_debug': photo_debug,
             'api_token': getattr(dj_settings, 'DJANGO_ADMIN_API_TOKEN', '')
         })
         
