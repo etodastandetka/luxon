@@ -146,10 +146,12 @@
     </div>
     {% endif %}
 
+    {% if status == 'pending' or status == 'processing' or status == 'awaiting_manual' %}
     <div class="actions">
       <button class="btn btn-approve" onclick="handleAction('approve')"><i class="fas fa-check"></i> Подтвердить</button>
       <button class="btn btn-reject" onclick="handleAction('reject')"><i class="fas fa-times"></i> Отклонить</button>
     </div>
+    {% endif %}
   </div>
 
   <!-- История пользователя: быстрый поиск по сумме -->
