@@ -343,7 +343,7 @@ def api_transaction_history(request):
                 'bookmaker': tx.bookmaker or '',
                 'bank': tx.bank or '',
                 'phone': tx.phone or '',
-                'date': tx.created_at.isoformat() if tx.created_at else '',
+                'created_at': tx.created_at.isoformat() if tx.created_at else '',
                 'processed_at': tx.processed_at.isoformat() if tx.processed_at else None,
             })
         
