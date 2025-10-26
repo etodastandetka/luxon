@@ -118,10 +118,13 @@ export default function DepositStep4() {
       console.log('🔄 Создаем заявку на пополнение...', {
         type: 'deposit',
         amount,
-        userId: playerId,
+        userId: playerId, // ID игрока в букмекерской конторе
         bookmaker,
         bank,
-        telegramUser
+        telegramUser,
+        telegram_user_id: telegramUser?.id, // Telegram ID
+        telegram_username: telegramUser?.username,
+        telegram_first_name: telegramUser?.first_name
       })
 
       const response = await fetch('/api/payment', {
