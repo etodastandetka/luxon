@@ -375,7 +375,6 @@ function copyText(t) {
 
 {% block extra_body %}
 <!-- Отладка: статус заявки = {{ transaction.status }} -->
-<!-- Условие: pending={{ transaction.status == 'pending' }}, processing={{ transaction.status == 'processing' }}, awaiting_manual={{ transaction.status == 'awaiting_manual' }} -->
 {% if transaction.status == 'pending' or transaction.status == 'processing' or transaction.status == 'awaiting_manual' %}
 <div id="sticky-actions" style="position:sticky; bottom:0; left:0; right:0; background:rgba(10,10,10,.96); border-top:1px solid #222; padding:10px; display:flex; gap:10px; z-index:20;">
   <button class="action-btn action-btn--approve" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('approve')">Принять</button>
