@@ -35,8 +35,9 @@ export default function DepositStep4() {
   // Создаем заявку когда все данные загружены
   useEffect(() => {
     if (bookmaker && playerId && amount > 0) {
+      // Сначала создаем заявку, потом генерируем QR код
+      createDepositRequest()
       generateQRCode()
-      createDepositRequest() // Создаем заявку сразу при загрузке страницы оплаты
     }
   }, [bookmaker, playerId, amount])
 
@@ -112,6 +113,14 @@ export default function DepositStep4() {
   // Создание заявки на пополнение
   const createDepositRequest = async () => {
     try {
+      console.log('🔄 Создаем заявку на пополнение...', {
+        type: 'deposit',
+        amount,
+        userId: playerId,
+        bookmaker,
+        bank
+      })
+
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -123,13 +132,13 @@ export default function DepositStep4() {
           userId: playerId,
           bookmaker: bookmaker,
           bank: bank,
-          siteCode: paymentUrl.split('hash=')[1] || paymentUrl.split('#')[1] // Извлекаем hash из URL
+          playerId: playerId // Добавляем playerId для совместимости
         })
       })
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Заявка создана:', data)
+        console.log('✅ Заявка создана успешно:', data)
         // Сохраняем ID заявки для последующего обновления статуса
         localStorage.setItem('deposit_transaction_id', data.id || data.transactionId)
         
@@ -141,13 +150,15 @@ export default function DepositStep4() {
             bookmaker,
             playerId,
             amount,
-            bank,
-            paymentUrl
+            bank
           })
         }
+      } else {
+        const errorData = await response.json()
+        console.error('❌ Ошибка создания заявки:', errorData)
       }
     } catch (error) {
-      console.error('Ошибка создания заявки:', error)
+      console.error('❌ Ошибка создания заявки:', error)
     }
   }
 
