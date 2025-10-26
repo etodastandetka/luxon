@@ -448,11 +448,14 @@ function createTransactionElement(transaction) {
 // Функция для получения текста статуса
 function getStatusText(status) {
     switch(status) {
-        case 'completed': return 'Завершено';
-        case 'pending': return 'Ожидает';
-        case 'rejected': return 'Отклонено';
-        case 'approved': return 'Одобрено';
-        default: return status;
+        case 'completed': return 'ЗАВЕРШЕНО';
+        case 'pending': return 'ОЖИДАЕТ';
+        case 'rejected': return 'ОТКЛОНЕНО';
+        case 'approved': return 'ОДОБРЕНО';
+        case 'awaiting_manual': return 'ОЖИДАЕТ РУЧНОЙ ОБРАБОТКИ';
+        case 'processing': return 'ОБРАБАТЫВАЕТСЯ';
+        case 'auto_completed': return 'АВТОЗАВЕРШЕНО';
+        default: return status.toUpperCase();
     }
 }
 
