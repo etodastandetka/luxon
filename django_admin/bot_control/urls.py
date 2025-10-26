@@ -44,6 +44,9 @@ urlpatterns = [
     path('api/send-broadcast/', views.api_send_broadcast, name='api_send_broadcast'),
     path('api/broadcast-history/', views.api_broadcast_history, name='api_broadcast_history'),
     
+    # Тестовая страница
+    path('test-settings/', views.test_settings, name='test_settings'),
+    
     # API для настроек
     path('api/bank-settings/', views.api_get_bank_settings, name='api_get_bank_settings'),
     path('api/bank-settings/save/', views.api_save_bank_settings, name='api_save_bank_settings'),
