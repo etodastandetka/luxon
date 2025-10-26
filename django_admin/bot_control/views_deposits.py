@@ -106,13 +106,26 @@ def deposits_list(request):
 def user_chat(request, user_id: int):
     """Full-page chat for a given user_id."""
     try:
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute('SELECT user_id, username, first_name, last_name FROM users WHERE user_id=?', (user_id,))
-        row = cur.fetchone()
-        conn.close()
-        user = dict(row) if row else {'user_id': user_id, 'username': '', 'first_name': '', 'last_name': ''}
+        from bot_control.models import UserProfile
+        
+        # Получаем данные пользователя через Django ORM
+        try:
+            profile = UserProfile.objects.get(telegram_id=user_id)
+            user = {
+                'user_id': user_id,
+                'username': profile.username or '',
+                'first_name': profile.first_name or '',
+                'last_name': profile.last_name or ''
+            }
+        except UserProfile.DoesNotExist:
+            # Если профиль не найден, создаем базовую структуру
+            user = {
+                'user_id': user_id,
+                'username': '',
+                'first_name': '',
+                'last_name': ''
+            }
+        
         return render(request, 'bot_control/chat_full.html', {'user': user})
     except Exception as e:
         logger.error(f"Error in user_chat: {str(e)}", exc_info=True)

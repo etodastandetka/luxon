@@ -115,16 +115,14 @@ export default function DepositStep4() {
     try {
       // Получаем данные пользователя Telegram
       const telegramUser = getTelegramUser()
-      console.log('🔄 Создаем заявку на пополнение...', {
-        type: 'deposit',
-        amount,
-        userId: playerId, // ID игрока в букмекерской конторе
-        bookmaker,
-        bank,
+      console.log('🔍 Отладка Telegram данных:', {
         telegramUser,
-        telegram_user_id: telegramUser?.id, // Telegram ID
-        telegram_username: telegramUser?.username,
-        telegram_first_name: telegramUser?.first_name
+        telegramUserId: telegramUser?.id,
+        telegramUsername: telegramUser?.username,
+        telegramFirstName: telegramUser?.first_name,
+        windowTelegram: typeof window !== 'undefined' ? !!window.Telegram : false,
+        initDataUnsafe: typeof window !== 'undefined' && window.Telegram?.WebApp?.initDataUnsafe,
+        initData: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
       })
 
       const response = await fetch('/api/payment', {
