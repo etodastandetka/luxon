@@ -306,19 +306,13 @@ function ruStatus(code) {
 }
 async function handleAction(action) {
   try {
-    // Готовим корректный payload под API: /api/bot/update-status/
+    // Готовим корректный payload под API: /bot/api/requests/{id}/status/
     const status = action === 'approve' ? 'completed' : 'rejected';
-    const requestId = Number('{{ transaction.id }}');
-    const requestType = ('{{ rt }}' === 'withdraw') ? 'withdraw' : 'deposit';
-    const source = '';
     const payload = { 
-      request_type: requestType, 
-      request_id: requestId, 
-      status, 
-      source,
-      user_id: Number('{{ transaction.user_id }}'),
-      amount: Number('{{ transaction.amount }}')
+      status: status
     };
+
+    console.log('🔄 Отправляем запрос на обновление статуса:', payload);
 
     const res = await fetch('/bot/api/requests/{{ transaction.id }}/status/', {
       method: 'POST',
@@ -326,6 +320,8 @@ async function handleAction(action) {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
+    console.log('📥 Ответ от сервера:', { status: res.status, data });
+    
     if (res.ok && data.success) {
       const el = document.getElementById('status-text');
       if (el) el.textContent = ruStatus(status);
@@ -338,7 +334,8 @@ async function handleAction(action) {
       } catch (e) { /* no-op */ }
       alert(data.message || 'Готово');
     } else {
-      alert((data && data.error) || 'Ошибка');
+      console.error('❌ Ошибка обновления статуса:', data);
+      alert((data && data.error) || 'Ошибка обновления статуса');
     }
   } catch (e) {
     console.error(e);
