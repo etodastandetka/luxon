@@ -26,6 +26,11 @@ class AuthMiddleware:
             '/logout/',
             '/static/',
             '/media/',
+            # API endpoints для мини-приложения
+            '/bot_control/api/payment/',
+            '/bot_control/api/generate-qr/',
+            '/api/payment/',
+            '/api/generate-qr/',
         ]
         
         # Проверяем, является ли путь публичным
