@@ -180,10 +180,10 @@
     </div>
     {% endif %}
 
-    {% if status == 'pending' or status == 'processing' or status == 'awaiting_manual' %}
+    {% if status == 'pending' or status == 'processing' or status == 'awaiting_manual' or status == 'approved' %}
     <div class="actions">
-      <button class="btn btn-approve" onclick="handleAction('approve')"><i class="fas fa-check"></i> Подтвердить</button>
-      <button class="btn btn-reject" onclick="handleAction('reject')"><i class="fas fa-times"></i> Отклонить</button>
+      <button class="btn btn-approve" onclick="handleAction('approve')"><i class="fas fa-check"></i> Принять</button>
+      <button class="btn btn-reject" onclick="handleAction('reject')"><i class="fas fa-times"></i> Отказать</button>
     </div>
     {% endif %}
   </div>
@@ -258,20 +258,44 @@
 <script>
 async function handleAction(action) {
   try {
-    const resp = await fetch('/api/handle-request/', {
+    console.log('🔄 Обрабатываем действие:', action);
+    
+    // Определяем статус в зависимости от действия
+    const status = action === 'approve' ? 'completed' : 'rejected';
+    
+    const resp = await fetch('/bot/api/requests/{{ id|default:0 }}/status/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ request_id: {{ id|default:0 }}, action })
+      body: JSON.stringify({ status: status })
     });
+    
     const data = await resp.json();
+    console.log('📥 Ответ от сервера:', data);
+    
     if (!resp.ok || !data.success) {
       alert('Ошибка: ' + (data.error || resp.status + ' ' + resp.statusText));
       return;
     }
+    
     alert(data.message || 'Успешно');
-    // Вернёмся на главную после действия
-    window.location.href = '/';
+    
+    // Обновляем статус на странице
+    const statusElement = document.querySelector('.status');
+    if (statusElement) {
+      statusElement.innerHTML = `
+        <span class="status-dot status-${status === 'completed' ? 'completed' : 'rejected'}"></span>
+        ${status === 'completed' ? 'Завершено' : 'Отклонено'}
+      `;
+    }
+    
+    // Скрываем кнопки действий
+    const actionsElement = document.querySelector('.actions');
+    if (actionsElement) {
+      actionsElement.style.display = 'none';
+    }
+    
   } catch (e) {
+    console.error('❌ Ошибка:', e);
     alert('Ошибка: ' + e);
   }
 }
