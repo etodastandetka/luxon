@@ -27,8 +27,8 @@ class AuthMiddleware:
             '/static/',
             '/media/',
             # API endpoints для мини-приложения
-            '/bot_control/api/payment/',
-            '/bot_control/api/generate-qr/',
+            '/bot/api/payment/',
+            '/bot/api/generate-qr/',
             '/api/payment/',
             '/api/generate-qr/',
         ]
