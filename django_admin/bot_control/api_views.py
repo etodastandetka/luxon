@@ -153,3 +153,121 @@ def generate_qr_api(request):
     except Exception as e:
         logger.error(f"Error generating QR code: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_bot_settings(request):
+    """API для получения настроек бота"""
+    try:
+        from bot_control.models import BotConfiguration
+        
+        settings = {}
+        configs = BotConfiguration.objects.all()
+        
+        for config in configs:
+            settings[config.key] = config.value
+        
+        return JsonResponse({
+            'success': True,
+            'settings': settings
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting bot settings: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_requisites_list(request):
+    """API для получения списка реквизитов"""
+    try:
+        from bot_control.models import BotConfiguration
+        
+        requisites = []
+        configs = BotConfiguration.objects.filter(key__startswith='requisite_')
+        
+        for config in configs:
+            requisites.append({
+                'id': config.id,
+                'name': config.key.replace('requisite_', ''),
+                'value': config.value,
+                'is_active': config.key == 'active_requisite'
+            })
+        
+        # Получаем активный реквизит
+        try:
+            active_config = BotConfiguration.objects.get(key='active_requisite')
+            active_id = active_config.id
+        except BotConfiguration.DoesNotExist:
+            active_id = None
+        
+        return JsonResponse({
+            'success': True,
+            'requisites': requisites,
+            'active_id': active_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting requisites: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_referral_data(request):
+    """API для получения данных рефералов"""
+    try:
+        user_id = request.GET.get('user_id')
+        
+        if not user_id:
+            return JsonResponse({'error': 'user_id is required'}, status=400)
+        
+        # Здесь должна быть логика получения реферальных данных
+        # Пока возвращаем заглушку
+        return JsonResponse({
+            'success': True,
+            'referral_data': {
+                'user_id': user_id,
+                'referral_code': f'REF{user_id}',
+                'total_referrals': 0,
+                'total_earnings': 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting referral data: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_transaction_history(request):
+    """API для получения истории транзакций"""
+    try:
+        from bot_control.models import Request
+        
+        user_id = request.GET.get('user_id')
+        
+        if not user_id:
+            return JsonResponse({'error': 'user_id is required'}, status=400)
+        
+        # Получаем транзакции пользователя
+        transactions = Request.objects.filter(user_id=user_id).order_by('-created_at')[:50]
+        
+        transaction_list = []
+        for tx in transactions:
+            transaction_list.append({
+                'id': tx.id,
+                'type': tx.request_type,
+                'amount': float(tx.amount) if tx.amount else 0,
+                'status': tx.status,
+                'bookmaker': tx.bookmaker or '',
+                'date': tx.created_at.isoformat() if tx.created_at else '',
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'transactions': transaction_list
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting transaction history: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
