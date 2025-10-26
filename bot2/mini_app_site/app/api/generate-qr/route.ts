@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     console.log('🔄 Next.js API: Получен запрос на генерацию QR кода:', body)
     
     // Проксируем запрос к Django API
-    const response = await fetch(`${DJANGO_API_URL}/bot_control/api/generate-qr/`, {
+    const response = await fetch(`${DJANGO_API_URL}/bot/api/generate-qr/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
