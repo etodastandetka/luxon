@@ -128,47 +128,46 @@ def user_chat(request, user_id: int):
         return render(request, 'bot_control/error.html', {'error': str(e)})
 
 def user_profile(request, user_id: int):
-    """User profile: aggregates and all requests for a given user_id (from bot DB)."""
+    """User profile: aggregates and all requests for a given user_id (from Django DB)."""
     try:
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
+        from bot_control.models import Request
+        from django.db.models import Sum, Count
+        
+        # User info (упрощенно, так как нет таблицы users в Django)
+        user = {
+            'user_id': user_id, 
+            'username': '', 
+            'first_name': '', 
+            'last_name': ''
+        }
 
-        # User info (if present in users)
-        cur.execute('SELECT user_id, username, first_name, last_name FROM users WHERE user_id=?', (user_id,))
-        urow = cur.fetchone()
-        user = dict(urow) if urow else {'user_id': user_id, 'username': '', 'first_name': '', 'last_name': ''}
-
-        # Aggregates
+        # Aggregates через Django ORM
         def _agg(req_type):
-            cur.execute('''
-                SELECT COALESCE(SUM(COALESCE(amount,0)),0), COUNT(1)
-                FROM requests
-                WHERE user_id=? AND request_type=? AND status IN ('completed','approved','auto_completed')
-            ''', (user_id, req_type))
-            s, c = cur.fetchone() or (0,0)
-            return float(s or 0), int(c or 0)
+            stats = Request.objects.filter(
+                user_id=user_id,
+                request_type=req_type,
+                status__in=['completed', 'approved', 'auto_completed']
+            ).aggregate(
+                total_amount=Sum('amount'),
+                count=Count('id')
+            )
+            return float(stats['total_amount'] or 0), int(stats['count'] or 0)
 
         total_dep, dep_cnt = _agg('deposit')
         total_wdr, wdr_cnt = _agg('withdraw')
 
-        # Requests list (last 300)
-        cur.execute('''
-            SELECT id, COALESCE(request_type,''), COALESCE(amount,0), COALESCE(status,'pending'), COALESCE(created_at,''), COALESCE(bookmaker,'')
-            FROM requests
-            WHERE user_id = ?
-            ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
-            LIMIT 300
-        ''', (user_id,))
+        # Requests list (last 300) через Django ORM
+        requests_queryset = Request.objects.filter(user_id=user_id).order_by('-created_at')[:300]
+        
         items = []
-        for rid, rtype, amount, status, created_at, bookmaker in cur.fetchall():
+        for req in requests_queryset:
             items.append({
-                'id': rid,
-                'type': rtype or 'deposit',
-                'amount': float(amount or 0),
-                'status': status,
-                'created_at': created_at,
-                'bookmaker': bookmaker,
+                'id': req.id,
+                'type': req.request_type or 'deposit',
+                'amount': float(req.amount or 0),
+                'status': req.status,
+                'created_at': req.created_at.isoformat() if req.created_at else '',
+                'bookmaker': req.bookmaker or '',
             })
 
         # Try to resolve Telegram avatar URL (optional)
@@ -196,8 +195,6 @@ def user_profile(request, user_id: int):
         except Exception:
             avatar_url = ''
 
-        conn.close()
-
         ctx = {
             'user': user,
             'stats': {
@@ -218,23 +215,34 @@ def user_profile(request, user_id: int):
 def transaction_detail(request, trans_id):
     """Transaction details from requests table"""
     try:
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        # Основная транзакция
-        cursor.execute('''
-            SELECT r.*, u.username, u.first_name
-            FROM requests r
-            LEFT JOIN users u ON r.user_id = u.telegram_id
-            WHERE r.id = ?
-        ''', (trans_id,))
-        row = cursor.fetchone()
-        if not row:
-            conn.close()
+        from bot_control.models import Request
+        
+        # Основная транзакция через Django ORM
+        try:
+            req = Request.objects.get(id=trans_id)
+        except Request.DoesNotExist:
             return render(request, 'bot_control/404.html')
 
-        tx = dict(row)
+        tx = {
+            'id': req.id,
+            'user_id': req.user_id,
+            'username': req.username or '',
+            'first_name': req.first_name or '',
+            'last_name': req.last_name or '',
+            'request_type': req.request_type,
+            'amount': req.amount,
+            'status': req.status,
+            'bookmaker': req.bookmaker,
+            'account_id': req.account_id,
+            'bank': req.bank,
+            'phone': req.phone,
+            'created_at': req.created_at,
+            'updated_at': req.updated_at,
+            'processed_at': req.processed_at,
+            'withdrawal_code': req.withdrawal_code,
+            'photo_file_id': req.photo_file_id,
+            'photo_file_url': req.photo_file_url,
+        }
 
         # Пытаемся восстановить URL фото (разные пайплайны пишут в разные поля)
         photo_url = (
@@ -316,8 +324,6 @@ def transaction_detail(request, trans_id):
                     })
         except Exception:
             user_requests = []
-
-        conn.close()
 
         from django.conf import settings as dj_settings
         return render(request, 'bot_control/transaction_detail.html', {
