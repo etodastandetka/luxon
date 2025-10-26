@@ -171,12 +171,12 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <button class="btn btn-success btn-lg w-100" onclick="approveRequest({{ request.id }})">
+                                    <button class="btn btn-success btn-sm w-100 mb-2" onclick="approveRequest({{ request.id }})">
                                         <i class="fas fa-check"></i> Подтвердить заявку
                                     </button>
                                 </div>
                                 <div class="col-md-6">
-                                    <button class="btn btn-danger btn-lg w-100" onclick="rejectRequest({{ request.id }})">
+                                    <button class="btn btn-danger btn-sm w-100 mb-2" onclick="rejectRequest({{ request.id }})">
                                         <i class="fas fa-times"></i> Отклонить заявку
                                     </button>
                                 </div>
@@ -187,6 +187,8 @@
                                     <textarea class="form-control" id="admin-comment" rows="3" placeholder="Введите комментарий (необязательно)"></textarea>
                                 </div>
                             </div>
+                            <!-- Отступ для мобильного меню -->
+                            <div style="height: 100px;"></div>
                         </div>
                     </div>
                     {% endif %}

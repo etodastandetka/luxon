@@ -414,15 +414,14 @@ function copyText(t) {
 {% block extra_body %}
 <!-- Отладка: статус заявки = {{ transaction.status }} -->
 {% if transaction.status == 'pending' or transaction.status == 'processing' or transaction.status == 'awaiting_manual' %}
-<div id="sticky-actions" style="position:sticky; bottom:0; left:0; right:0; background:rgba(10,10,10,.96); border-top:1px solid #222; padding:10px; display:flex; gap:10px; z-index:20;">
-  <button class="action-btn action-btn--approve" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('approve')">Принять</button>
-  <button class="action-btn action-btn--reject" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('reject')">Отказать</button>
-  <a class="action-btn action-btn--neutral" style="flex:0 0 auto;" href="{% url 'dashboard:deposits_list' %}">Назад</a>
-  
+<div id="sticky-actions" style="position:fixed; bottom:80px; left:10px; right:10px; background:rgba(10,10,10,.96); border:1px solid #333; border-radius:12px; padding:12px; display:flex; gap:8px; z-index:20; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+  <button class="action-btn action-btn--approve" style="flex:1; padding:8px 12px; font-size:14px; border-radius:8px;" onclick="handleAction('approve')">Принять</button>
+  <button class="action-btn action-btn--reject" style="flex:1; padding:8px 12px; font-size:14px; border-radius:8px;" onclick="handleAction('reject')">Отказать</button>
+  <a class="action-btn action-btn--neutral" style="flex:0 0 auto; padding:8px 12px; font-size:14px; border-radius:8px;" href="{% url 'dashboard:deposits_list' %}">Назад</a>
 </div>
 {% else %}
 <!-- Кнопки не показываются, статус: {{ transaction.status }} -->
-<div style="position:sticky; bottom:0; left:0; right:0; background:rgba(255,0,0,.1); border-top:1px solid #ff0000; padding:10px; color:#ff0000; text-align:center;">
+<div style="position:fixed; bottom:80px; left:10px; right:10px; background:rgba(255,0,0,.1); border:1px solid #ff0000; border-radius:8px; padding:8px; color:#ff0000; text-align:center; font-size:12px;">
   ОТЛАДКА: Статус заявки = "{{ transaction.status }}" - кнопки скрыты
 </div>
 {% endif %}
