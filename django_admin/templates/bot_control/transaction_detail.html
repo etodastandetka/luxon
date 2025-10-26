@@ -414,9 +414,9 @@ function copyText(t) {
 {% block extra_body %}
 <!-- Отладка: статус заявки = {{ transaction.status }} -->
 {% if transaction.status == 'pending' or transaction.status == 'processing' or transaction.status == 'awaiting_manual' %}
-<div id="sticky-actions" style="position:fixed; bottom:80px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:20;">
-  <button class="action-btn action-btn--approve" style="padding:6px 20px; font-size:12px; border-radius:6px; width:120px;" onclick="handleAction('approve')">Принять</button>
-  <button class="action-btn action-btn--reject" style="padding:6px 20px; font-size:12px; border-radius:6px; width:120px;" onclick="handleAction('reject')">Отказать</button>
+<div id="sticky-actions" style="position:fixed; bottom:80px; left:10px; right:10px; display:flex; gap:8px; z-index:20;">
+  <button class="action-btn action-btn--approve" style="flex:1; padding:10px 16px; font-size:14px; border-radius:8px;" onclick="handleAction('approve')">Принять</button>
+  <button class="action-btn action-btn--reject" style="flex:1; padding:10px 16px; font-size:14px; border-radius:8px;" onclick="handleAction('reject')">Отказать</button>
 </div>
 {% else %}
 <!-- Кнопки не показываются, статус: {{ transaction.status }} -->
