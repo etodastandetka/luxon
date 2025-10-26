@@ -2282,10 +2282,9 @@ def api_save_bank_settings(request):
 def api_get_deposit_settings(request):
     """API для получения настроек депозитов"""
     try:
-        settings = BotConfiguration.get_setting('deposits', {
-            'enabled': True,
-            'banks': ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay']
-        })
+        import json
+        settings_str = BotConfiguration.get_setting('deposits', '{"enabled": true, "banks": ["mbank", "bakai", "balance", "demir", "omoney", "megapay"]}')
+        settings = json.loads(settings_str) if isinstance(settings_str, str) else settings_str
         return JsonResponse(settings)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -2304,7 +2303,7 @@ def api_save_deposit_settings(request):
             'banks': data.get('banks', [])
         }
         
-        BotConfiguration.set_setting('deposits', settings, 'Настройки депозитов')
+        BotConfiguration.set_setting('deposits', json.dumps(settings), 'Настройки депозитов')
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -2313,10 +2312,9 @@ def api_save_deposit_settings(request):
 def api_get_withdrawal_settings(request):
     """API для получения настроек выводов"""
     try:
-        settings = BotConfiguration.get_setting('withdrawals', {
-            'enabled': True,
-            'banks': ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
-        })
+        import json
+        settings_str = BotConfiguration.get_setting('withdrawals', '{"enabled": true, "banks": ["kompanion", "odengi", "bakai", "balance", "megapay", "mbank"]}')
+        settings = json.loads(settings_str) if isinstance(settings_str, str) else settings_str
         return JsonResponse(settings)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -2335,7 +2333,7 @@ def api_save_withdrawal_settings(request):
             'banks': data.get('banks', [])
         }
         
-        BotConfiguration.set_setting('withdrawals', settings, 'Настройки выводов')
+        BotConfiguration.set_setting('withdrawals', json.dumps(settings), 'Настройки выводов')
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -2372,11 +2370,9 @@ def api_save_bot_control(request):
 def api_get_channel_settings(request):
     """API для получения настроек канала"""
     try:
-        settings = BotConfiguration.get_setting('channel', {
-            'enabled': False,
-            'name': '@bingokg_news',
-            'welcome_message': 'Добро пожаловать! Подпишитесь на наш канал для получения уведомлений.'
-        })
+        import json
+        settings_str = BotConfiguration.get_setting('channel', '{"enabled": false, "name": "@bingokg_news", "welcome_message": "Добро пожаловать! Подпишитесь на наш канал для получения уведомлений."}')
+        settings = json.loads(settings_str) if isinstance(settings_str, str) else settings_str
         return JsonResponse(settings)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -2396,7 +2392,7 @@ def api_save_channel_settings(request):
             'welcome_message': data.get('welcome_message', 'Добро пожаловать! Подпишитесь на наш канал для получения уведомлений.')
         }
         
-        BotConfiguration.set_setting('channel', settings, 'Настройки канала')
+        BotConfiguration.set_setting('channel', json.dumps(settings), 'Настройки канала')
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

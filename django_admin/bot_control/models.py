@@ -125,6 +125,31 @@ class BotConfiguration(models.Model):
     
     def __str__(self):
         return f"{self.key}: {self.value}"
+    
+    @classmethod
+    def get_setting(cls, key, default=None):
+        """Получить настройку по ключу"""
+        try:
+            config = cls.objects.get(key=key)
+            # Пытаемся преобразовать в boolean если значение 'true'/'false'
+            if config.value.lower() in ['true', 'false']:
+                return config.value.lower() == 'true'
+            return config.value
+        except cls.DoesNotExist:
+            return default
+    
+    @classmethod
+    def set_setting(cls, key, value, description=''):
+        """Установить настройку"""
+        config, created = cls.objects.get_or_create(
+            key=key,
+            defaults={'value': str(value), 'description': description}
+        )
+        if not created:
+            config.value = str(value)
+            config.description = description
+            config.save()
+        return config
 
 class Request(models.Model):
     """Заявки пользователей (пополнение/вывод)"""
