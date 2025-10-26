@@ -441,7 +441,7 @@ window.createBankWallet = async function() {
   const bank_code = document.getElementById('bw_bank').value;
   const account_name = document.getElementById('bw_name').value.trim();
   const hash_value = document.getElementById('bw_hash').value.trim();
-  const is_active = document.getElementById('bw_active').checked;
+  const is_active = true; // Всегда активный по умолчанию
   if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
   try {
     const res = await fetch('/dashboard/api/bank-wallets/create/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ bank_code, account_name, hash_value, is_active }) });
@@ -693,10 +693,6 @@ async function deleteQR(qrId) {
         <input id="bw_hash" type="text" placeholder="Вставьте hash" style="height: 48px;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
-        <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
-          <input id="bw_active" type="checkbox" checked> Активный
-        </label>
-        <!-- Убран чекбокс 'Основной' -->
         <button onclick="createBankWallet()" class="btn-primary" style="margin-left:auto;">Добавить</button>
       </div>
     </div>
@@ -825,13 +821,12 @@ if (typeof window.createBankWallet !== 'function') {
       const bank_code = bankEl.value;
       const account_name = nameEl.value.trim();
       const hash_value = hashEl.value.trim();
-      const is_active = activeEl.checked;
-      const is_main = mainEl.checked;
+      const is_active = true; // Всегда активный по умолчанию
       if (!account_name || !hash_value) { alert('Укажите название и hash'); return; }
       const res = await fetch('/api/bank-wallets/create/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bank_code, account_name, hash_value, is_active, is_main })
+        body: JSON.stringify({ bank_code, account_name, hash_value, is_active })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
