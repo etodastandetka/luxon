@@ -228,6 +228,14 @@
     </div>
   </div>
   
+  <!-- Кнопки действий внутри карточки деталей -->
+  {% if transaction.status == 'pending' or transaction.status == 'processing' or transaction.status == 'awaiting_manual' %}
+  <div style="margin-top:20px; display:flex; gap:10px;">
+    <button class="action-btn action-btn--approve" style="flex:1; padding:12px 0; font-size:14px; border-radius:8px;" onclick="handleAction('approve')">Принять</button>
+    <button class="action-btn action-btn--reject" style="flex:1; padding:12px 0; font-size:14px; border-radius:8px;" onclick="handleAction('reject')">Отказать</button>
+  </div>
+  {% endif %}
+  
 </div>
 
 <!-- Все заявки пользователя (последние 100) -->
@@ -412,16 +420,4 @@ function copyText(t) {
 {% endblock %}
 
 {% block extra_body %}
-<!-- Отладка: статус заявки = {{ transaction.status }} -->
-{% if transaction.status == 'pending' or transaction.status == 'processing' or transaction.status == 'awaiting_manual' %}
-<div id="sticky-actions" style="position:fixed; bottom:80px; left:10px; right:10px; display:flex; gap:8px; z-index:20;">
-  <button class="action-btn action-btn--approve" style="padding:12px 0; font-size:16px; border-radius:8px; flex:1; max-width:800px;" onclick="handleAction('approve')">Принять</button>
-  <button class="action-btn action-btn--reject" style="padding:12px 0; font-size:16px; border-radius:8px; flex:1; max-width:800px;" onclick="handleAction('reject')">Отказать</button>
-</div>
-{% else %}
-<!-- Кнопки не показываются, статус: {{ transaction.status }} -->
-<div style="position:fixed; bottom:80px; left:10px; right:10px; background:rgba(255,0,0,.1); border:1px solid #ff0000; border-radius:8px; padding:8px; color:#ff0000; text-align:center; font-size:12px;">
-  ОТЛАДКА: Статус заявки = "{{ transaction.status }}" - кнопки скрыты
-</div>
-{% endif %}
 {% endblock %}
