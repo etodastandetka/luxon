@@ -30,7 +30,7 @@ def payment_api(request):
             print("🔄 Django API: Обновляем заявку...")
             return update_payment_status(data)
             
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Django API error: {str(e)}")
         logger.error(f"Error in payment_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -92,7 +92,7 @@ def create_payment_request(data):
             'message': 'Заявка успешно создана'
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Django API: Ошибка создания заявки: {str(e)}")
         logger.error(f"Error creating payment request: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
