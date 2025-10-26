@@ -43,8 +43,38 @@ export default function WithdrawConfirm() {
       const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
       const amount = localStorage.getItem('withdraw_amount') || '0'
       
-      // Получаем данные пользователя Telegram
-      const telegramUser = getTelegramUser()
+      // Получаем данные пользователя Telegram (как в рефералке)
+      const tg = (window as any).Telegram?.WebApp
+      let telegramUser = null
+      
+      console.log('=== DEBUG: Telegram WebApp Data ===')
+      console.log('Telegram object:', tg)
+      console.log('initDataUnsafe:', tg?.initDataUnsafe)
+      console.log('initData:', tg?.initData)
+      console.log('user:', tg?.initDataUnsafe?.user)
+      console.log('=====================================')
+      
+      // Правильный способ получения user ID из Telegram WebApp (как в рефералке)
+      if (tg?.initDataUnsafe?.user) {
+        telegramUser = tg.initDataUnsafe.user
+        console.log('✅ User from initDataUnsafe:', telegramUser)
+      } else if (tg?.initData) {
+        // Парсим initData если он есть (правильный способ)
+        try {
+          console.log('Parsing initData:', tg.initData)
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          console.log('User param from initData:', userParam)
+          if (userParam) {
+            telegramUser = JSON.parse(decodeURIComponent(userParam))
+            console.log('✅ User from initData:', telegramUser)
+          }
+        } catch (e) {
+          console.log('❌ Error parsing initData:', e)
+        }
+      }
+      
+      console.log('🔍 Итоговые данные пользователя:', telegramUser)
       
       console.log('🔄 Создаем заявку на вывод...', {
         type: 'withdraw',

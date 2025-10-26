@@ -127,7 +127,22 @@ export const getTelegramWebApp = (): TelegramWebApp | null => {
 
 // Получение данных пользователя
 export const getTelegramUser = (): TelegramUser | null => {
+  console.log('🔍 getTelegramUser: Начинаем получение данных пользователя')
+  
   const tg = getTelegramWebApp()
+  console.log('🔍 getTelegramWebApp result:', tg)
+  
+  if (!tg) {
+    console.log('❌ Telegram WebApp не доступен')
+    return null
+  }
+  
+  console.log('🔍 Telegram WebApp доступен:', {
+    initData: tg.initData,
+    initDataUnsafe: tg.initDataUnsafe,
+    version: tg.version,
+    platform: tg.platform
+  })
   
   // Сначала пробуем получить из initDataUnsafe
   if (tg?.initDataUnsafe?.user) {
@@ -138,8 +153,11 @@ export const getTelegramUser = (): TelegramUser | null => {
   // Если нет, пробуем парсить initData
   if (tg?.initData) {
     try {
+      console.log('🔍 Парсим initData:', tg.initData)
       const params = new URLSearchParams(tg.initData)
       const userParam = params.get('user')
+      console.log('🔍 userParam из initData:', userParam)
+      
       if (userParam) {
         const userData = JSON.parse(decodeURIComponent(userParam))
         console.log('✅ User from initData:', userData)
@@ -148,6 +166,52 @@ export const getTelegramUser = (): TelegramUser | null => {
     } catch (e) {
       console.log('❌ Error parsing initData:', e)
     }
+  }
+  
+  // Пробуем получить из window.Telegram напрямую
+  if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initDataUnsafe?.user) {
+    console.log('✅ User from window.Telegram.WebApp.initDataUnsafe:', window.Telegram.WebApp.initDataUnsafe.user)
+    return window.Telegram.WebApp.initDataUnsafe.user
+  }
+  
+  // Пробуем получить из localStorage (если данные были сохранены ранее)
+  try {
+    const savedUser = localStorage.getItem('telegram_user')
+    if (savedUser) {
+      const userData = JSON.parse(savedUser)
+      console.log('✅ User from localStorage:', userData)
+      return userData
+    }
+  } catch (e) {
+    console.log('❌ Error parsing localStorage user:', e)
+  }
+  
+  // Пробуем получить из cookies как последний fallback
+  try {
+    const cookies = document.cookie.split(';')
+    const cookieData: any = {}
+    
+    cookies.forEach(cookie => {
+      const [name, value] = cookie.trim().split('=')
+      if (name.startsWith('telegram_')) {
+        cookieData[name.replace('telegram_', '')] = decodeURIComponent(value)
+      }
+    })
+    
+    if (cookieData.user_id) {
+      const userData = {
+        id: parseInt(cookieData.user_id),
+        username: cookieData.username || '',
+        first_name: cookieData.first_name || '',
+        last_name: cookieData.last_name || '',
+        language_code: cookieData.language_code || 'ru',
+        is_premium: false
+      }
+      console.log('✅ User from cookies:', userData)
+      return userData
+    }
+  } catch (e) {
+    console.log('❌ Error parsing cookies:', e)
   }
   
   console.log('❌ No user data found')
