@@ -240,10 +240,18 @@ function loadStats() {
     fetch('/api/stats/')
         .then(response => response.json())
         .then(data => {
-            document.getElementById('total-requests').textContent = data.total_requests || '0';
-            document.getElementById('pending-requests').textContent = data.pending_requests || '0';
-            document.getElementById('completed-requests').textContent = data.completed_requests || '0';
-            document.getElementById('total-amount').textContent = (data.total_amount || '0') + ' сом';
+            // Безопасно обновляем элементы, если они существуют
+            const totalRequestsEl = document.getElementById('total-requests');
+            if (totalRequestsEl) totalRequestsEl.textContent = data.total_requests || '0';
+            
+            const pendingRequestsEl = document.getElementById('pending-requests');
+            if (pendingRequestsEl) pendingRequestsEl.textContent = data.pending_requests || '0';
+            
+            const completedRequestsEl = document.getElementById('completed-requests');
+            if (completedRequestsEl) completedRequestsEl.textContent = data.completed_requests || '0';
+            
+            const totalAmountEl = document.getElementById('total-amount');
+            if (totalAmountEl) totalAmountEl.textContent = (data.total_amount || '0') + ' сом';
         })
         .catch(error => {
             console.error('Error loading stats:', error);
