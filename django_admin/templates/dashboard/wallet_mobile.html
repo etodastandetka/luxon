@@ -668,83 +668,127 @@ async function deleteQR(qrId) {
   <!-- Список реквизитов перенесён вниз под список кошельков -->
 </div>
 
-<!-- Кошельки банков (MBank / Optima / Bakai) -->
+<!-- Объединенная секция: Платежные реквизиты -->
 <div class="requisites-section" style="margin-top: 24px;">
-  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px;">
-    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Добавить кошелёк</h3>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Банк</label>
-        <select id="bw_bank" style="height: 48px;">
-          <option value="mbank">MBank</option>
-          <option value="optima">Optima</option>
-          <option value="bakai">Bakai</option>
-        </select>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Название</label>
-        <input id="bw_name" type="text" placeholder="MBank Акк 1" style="height: 48px;">
-      </div>
-      <div style="grid-column: 1 / span 2; display: flex; flex-direction: column; gap: 6px;">
-        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Hash/Реквизит</label>
-        <input id="bw_hash" type="text" placeholder="Вставьте hash" style="height: 48px;">
-      </div>
-      <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
-        <button onclick="createBankWallet()" class="btn-primary" style="margin-left:auto;">Добавить</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(15px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius:12px; padding: 16px; border:1px solid rgba(255, 255, 255, 0.1);">
-    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Кошельки банков</h3>
-    <div id="bw_list" style="display:flex; flex-direction:column; gap:10px;">
-      {% if bank_wallets %}
-        {% for w in bank_wallets %}
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px; border:1px solid rgba(255, 255, 255, 0.1); border-radius:10px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); backdrop-filter: blur(10px);">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <div style="color:#fff; font-weight:600; font-size:13px;">{{ w.bank_name|upper }} • {{ w.wallet_address|slice:":20" }}</div>
-            <div style="color:#9aa4b2; font-size:11px;" title="{{ w.wallet_address }}">{{ w.wallet_address|slice:":18" }}…{{ w.wallet_address|slice:"-10:" }}</div>
-            <div style="color:#888; font-size:10px;">{% if w.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}</div>
+  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(15px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius:12px; padding: 20px; border:1px solid rgba(255, 255, 255, 0.1);">
+    <h3 style="color:#fff; font-size:18px; font-weight:600; margin-bottom: 20px;">💳 Платежные реквизиты</h3>
+    
+    <!-- Кошельки банков -->
+    <div style="margin-bottom: 24px;">
+      <h4 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px; display:flex; align-items:center; gap:8px;">
+        🏦 Кошельки банков 
+        <span style="background: rgba(255, 255, 255, 0.1); padding: 2px 8px; border-radius: 12px; font-size: 12px; color: #9aa4b2;">
+          {% if bank_wallets %}{{ bank_wallets|length }}{% else %}0{% endif %}
+        </span>
+      </h4>
+      
+      <!-- Форма добавления кошелька -->
+      <div style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); border-radius: 10px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.05);">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Банк</label>
+            <select id="bw_bank" style="height: 48px;">
+              <option value="mbank">MBank</option>
+              <option value="optima">Optima</option>
+              <option value="bakai">Bakai</option>
+            </select>
           </div>
-          <div style="display:flex; gap:8px;">
-            <button onclick="toggleBankWallet({{ w.id }})" class="{% if w.is_active %}btn-secondary{% else %}btn-primary{% endif %}" style="font-size:12px; padding:6px 10px;">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
-            <button onclick="deleteBankWallet({{ w.id }})" class="btn-secondary" style="font-size:12px; padding:6px 10px;">Удалить</button>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Название</label>
+            <input id="bw_name" type="text" placeholder="MBank Акк 1" style="height: 48px;">
+          </div>
+          <div style="grid-column: 1 / span 2; display: flex; flex-direction: column; gap: 6px;">
+            <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Hash/Реквизит</label>
+            <input id="bw_hash" type="text" placeholder="Вставьте hash" style="height: 48px;">
+          </div>
+          <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
+            <button onclick="createBankWallet()" class="btn-primary" style="margin-left:auto;">Добавить кошелёк</button>
           </div>
         </div>
-        {% endfor %}
-      {% endif %}
-    </div>
-  </div>
-</div>
-
-<!-- Перенесённый вниз список реквизитов Demirbank -->
-<div class="requisites-section" style="margin-top: 16px;">
-  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(15px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius:12px; padding: 16px; border:1px solid rgba(255, 255, 255, 0.1);">
-    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Реквизиты ({{ requisites_count }})</h3>
-    <div id="rq_list">
-      {% if requisites %}
-        {% for r in requisites %}
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255, 255, 255, 0.1);">
-          <div style="flex:1;">
-            <div style="color:#fff; font-weight:600; font-size:13px;">
-              {{ r.value }} {% if r.is_active %}<span style="background:#00ff88; color:#000; border-radius:4px; padding:2px 6px; font-size:10px; margin-left:6px;">АКТИВНЫЙ</span>{% endif %}
+      </div>
+      
+      <!-- Список кошельков -->
+      <div id="bw_list" style="display:flex; flex-direction:column; gap:10px;">
+        {% if bank_wallets %}
+          {% for w in bank_wallets %}
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; border:1px solid rgba(255, 255, 255, 0.1); border-radius:10px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); backdrop-filter: blur(10px);">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="color:#fff; font-weight:600; font-size:13px;">{{ w.bank_name|upper }} • {{ w.wallet_address|slice:":20" }}</div>
+              <div style="color:#9aa4b2; font-size:11px;" title="{{ w.wallet_address }}">{{ w.wallet_address|slice:":18" }}…{{ w.wallet_address|slice:"-10:" }}</div>
+              <div style="color:#888; font-size:10px;">{% if w.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}</div>
             </div>
-            <div style="color:#888; font-size:11px; margin-top:2px;">{{ r.created_at }}</div>
+            <div style="display:flex; gap:8px;">
+              <button onclick="toggleBankWallet({{ w.id }})" class="{% if w.is_active %}btn-secondary{% else %}btn-primary{% endif %}" style="font-size:12px; padding:6px 10px;">{% if w.is_active %}Выключить{% else %}Включить{% endif %}</button>
+              <button onclick="deleteBankWallet({{ w.id }})" class="btn-secondary" style="font-size:12px; padding:6px 10px;">Удалить</button>
+            </div>
           </div>
-          <div style="display:flex; gap:8px;">
-            {% if not r.is_active %}
-            <button onclick="setActiveRequisite({{ r.id }})" class="btn-warning" style="font-size:12px; padding:6px 10px;">Сделать активным</button>
-            {% endif %}
-            <button onclick="deleteRequisite({{ r.id }})" class="btn-secondary" style="font-size:12px; padding:6px 10px;">Удалить</button>
+          {% endfor %}
+        {% else %}
+          <div style="color:#9aa4b2; font-size:12px; text-align:center; padding:20px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05);">Кошельки не добавлены</div>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- Реквизиты Demirbank -->
+    <div>
+      <h4 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px; display:flex; align-items:center; gap:8px;">
+        🏛️ Реквизиты Demirbank
+        <span style="background: rgba(255, 255, 255, 0.1); padding: 2px 8px; border-radius: 12px; font-size: 12px; color: #9aa4b2;">
+          {{ requisites_count }}
+        </span>
+      </h4>
+      
+      <!-- Форма добавления реквизита -->
+      <div style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); border-radius: 10px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.05);">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Название</label>
+            <input id="rq_name" type="text" placeholder="Основной" style="height: 48px;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Реквизит (16 цифр)</label>
+            <input id="rq_value" type="text" placeholder="1234567890123456" style="height: 48px;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Email</label>
+            <input id="rq_email" type="email" placeholder="email@example.com" style="height: 48px;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Пароль</label>
+            <input id="rq_password" type="password" placeholder="Пароль" style="height: 48px;">
+          </div>
+          <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
+            <button onclick="addRequisite()" class="btn-primary" style="margin-left:auto;">Добавить реквизит</button>
           </div>
         </div>
-        {% endfor %}
-      {% else %}
-        <div style="text-align:center; color:#cccccc; padding:20px; background: transparent;">Реквизиты не добавлены</div>
-      {% endif %}
+      </div>
+      
+      <!-- Список реквизитов -->
+      <div id="rq_list">
+        {% if requisites %}
+          {% for r in requisites %}
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; border:1px solid rgba(255, 255, 255, 0.1); border-radius:10px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); backdrop-filter: blur(10px); margin-bottom: 8px;">
+            <div style="flex:1;">
+              <div style="color:#fff; font-weight:600; font-size:13px;">
+                {{ r.name|default:"Без названия" }} • {{ r.value|slice:":4" }}****{{ r.value|slice:"-4:" }}
+              </div>
+              <div style="color:#9aa4b2; font-size:11px;">{{ r.email|default:"Без email" }}</div>
+              <div style="color:#888; font-size:10px;">{% if r.is_active %}✅ Активен{% else %}❌ Неактивен{% endif %}</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button onclick="setActiveRequisite({{ r.id }})" class="{% if r.is_active %}btn-secondary{% else %}btn-primary{% endif %}" style="font-size:12px; padding:6px 10px;">{% if r.is_active %}Выключить{% else %}Включить{% endif %}</button>
+              <button onclick="deleteRequisite({{ r.id }})" class="btn-secondary" style="font-size:12px; padding:6px 10px;">Удалить</button>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="color:#9aa4b2; font-size:12px; text-align:center; padding:20px; background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05);">Реквизиты не добавлены</div>
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>
+
 
 <script>
 async function addRequisite() {
