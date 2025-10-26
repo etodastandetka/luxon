@@ -129,22 +129,68 @@ label:hover {
     color: #00ff88;
 }
 
-/* Принудительное переопределение всех inline стилей полей ввода */
+/* Принудительное переопределение ВСЕХ полей ввода */
+input, select, textarea {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
+    color: #fff !important;
+    border: 1px solid #333 !important;
+    width: 100% !important;
+    padding: 14px !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
+    box-sizing: border-box !important;
+}
+
+/* Переопределение всех возможных inline стилей */
 input[style*="background"],
 input[style*="color"],
-input[style*="border"] {
+input[style*="border"],
+input[style*="width"],
+input[style*="padding"] {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
+    color: #fff !important;
+    border: 1px solid #333 !important;
+    width: 100% !important;
+    padding: 14px !important;
+}
+
+/* Специально для полей с белым/светлым фоном */
+input[style*="white"],
+input[style*="#fff"],
+input[style*="#ffffff"],
+input[style*="background-color: white"],
+input[style*="background: white"] {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
+    color: #fff !important;
+}
+
+/* Переопределение для всех типов полей */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+select {
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
     color: #fff !important;
     border: 1px solid #333 !important;
 }
 
-/* Специально для полей с белым фоном */
-input[style*="background: white"],
-input[style*="background-color: white"],
-input[style*="background: #fff"],
-input[style*="background-color: #fff"] {
+/* Максимальная специфичность для переопределения любых стилей */
+body div input,
+body div select,
+body div textarea,
+html body div input,
+html body div select,
+html body div textarea {
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
     color: #fff !important;
+    border: 1px solid #333 !important;
+    width: 100% !important;
+    padding: 14px !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
+    box-sizing: border-box !important;
 }
 
 .wallet-header {
@@ -430,6 +476,26 @@ async function deleteBankWallet(id) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Принудительно применяем стили ко всем полям ввода
+    function forceInputStyles() {
+        const inputs = document.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.style.background = 'linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%)';
+            input.style.color = '#fff';
+            input.style.border = '1px solid #333';
+            input.style.width = '100%';
+            input.style.padding = '14px';
+            input.style.borderRadius = '10px';
+            input.style.fontSize = '14px';
+            input.style.boxSizing = 'border-box';
+        });
+    }
+    
+    // Применяем стили сразу и через небольшую задержку
+    forceInputStyles();
+    setTimeout(forceInputStyles, 100);
+    setTimeout(forceInputStyles, 500);
+    
     try { fetchBankWallets(); } catch(e) { console.warn('init wallets failed', e); }
     try { refreshRequisites(); } catch(e) { console.warn('init requisites failed', e); }
 });
