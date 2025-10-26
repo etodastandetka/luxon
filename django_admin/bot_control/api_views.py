@@ -51,9 +51,21 @@ def create_payment_request(data):
         
         print(f"🔄 Django API: Все обязательные поля присутствуют")
         
+        # Определяем правильный user_id
+        telegram_user_id = data.get('telegram_user_id')
+        player_id = data.get('userId')  # ID игрока в букмекерской конторе
+        
+        # Используем Telegram ID как основной user_id, если он есть
+        if telegram_user_id:
+            user_id = telegram_user_id
+            print(f"🔄 Django API: Используем Telegram ID {telegram_user_id} как user_id")
+        else:
+            user_id = player_id
+            print(f"🔄 Django API: Используем Player ID {player_id} как user_id (fallback)")
+        
         # Создаем заявку через Django ORM
         request_obj = Request.objects.create(
-            user_id=data['userId'],
+            user_id=user_id,
             request_type=data['type'],  # 'deposit' или 'withdraw'
             amount=data['amount'],
             bookmaker=data['bookmaker'],
