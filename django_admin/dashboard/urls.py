@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from bot_control.views_deposits import deposits_list, deposit_detail, withdrawals_list
 from bot_control import views as bot_views
+from bot_control import api_views
 
 app_name = 'dashboard'
 
@@ -29,7 +30,7 @@ urlpatterns = [
     path('api/transactions/', views.api_transactions, name='api_transactions'),
     path('api/pending-requests/', views.api_pending_requests, name='api_pending_requests'),
     path('api/handle-request/', views.api_handle_request, name='api_handle_request'),
-    path('api/transaction-history/', views.api_transaction_history, name='api_transaction_history'),
+    path('api/transaction-history/', api_views.api_transaction_history, name='api_transaction_history'),
     path('api/referral-data/', views.api_referral_data, name='api_referral_data'),
     # Requisites API
     path('api/requisites/', views.api_requisites, name='api_requisites'),
