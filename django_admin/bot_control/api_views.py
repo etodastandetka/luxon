@@ -99,13 +99,25 @@ def update_payment_status(data):
     try:
         from bot_control.models import Request
         
-        if 'id' not in data:
-            return JsonResponse({'error': 'Missing request ID'}, status=400)
+        print(f"🔄 Django API: Обновляем заявку с данными: {data}")
         
-        try:
-            request_obj = Request.objects.get(id=data['id'])
-        except Request.DoesNotExist:
-            return JsonResponse({'error': 'Request not found'}, status=404)
+        # Если ID не указан или null, ищем последнюю заявку пользователя
+        if 'id' not in data or data['id'] is None:
+            print("🔄 Django API: ID не указан, ищем последнюю заявку пользователя")
+            # Получаем последнюю заявку данного типа
+            request_obj = Request.objects.filter(
+                request_type=data.get('type', 'deposit')
+            ).order_by('-created_at').first()
+            
+            if not request_obj:
+                return JsonResponse({'error': 'No requests found'}, status=404)
+            
+            print(f"🔄 Django API: Найдена заявка ID {request_obj.id}")
+        else:
+            try:
+                request_obj = Request.objects.get(id=data['id'])
+            except Request.DoesNotExist:
+                return JsonResponse({'error': 'Request not found'}, status=404)
         
         # Обновляем статус
         if 'status' in data:
