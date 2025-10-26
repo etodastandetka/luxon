@@ -31,8 +31,56 @@ export default function WithdrawConfirm() {
     // Проверяем, что все данные есть
     if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone || !savedUserId || !savedSiteCode) {
       router.push('/withdraw/step0')
+    } else {
+      // Создаем заявку на вывод сразу при загрузке страницы
+      createWithdrawRequest()
     }
   }, [router])
+
+  // Создание заявки на вывод
+  const createWithdrawRequest = async () => {
+    try {
+      const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
+      const amount = localStorage.getItem('withdraw_amount') || '0'
+      
+      console.log('🔄 Создаем заявку на вывод...', {
+        type: 'withdraw',
+        bookmaker,
+        userId: parseInt(userId),
+        phone,
+        amount: parseFloat(amount),
+        bank
+      })
+
+      const response = await fetch('/api/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'withdraw',
+          bookmaker: bookmaker,
+          userId: parseInt(userId),
+          phone: phone,
+          amount: parseFloat(amount),
+          bank: bank,
+          playerId: userId // Добавляем playerId для совместимости
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Заявка на вывод создана успешно:', data)
+        // Сохраняем ID заявки
+        localStorage.setItem('withdraw_transaction_id', data.id || data.transactionId)
+      } else {
+        const errorData = await response.json()
+        console.error('❌ Ошибка создания заявки на вывод:', errorData)
+      }
+    } catch (error) {
+      console.error('❌ Ошибка создания заявки на вывод:', error)
+    }
+  }
 
   const handleConfirm = async () => {
     try {
