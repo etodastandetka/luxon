@@ -715,6 +715,13 @@ async function deleteQR(qrId) {
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Банк</label>
+            <!-- Fallback: обычный select если модальное окно не работает -->
+            <select id="bw_bank_fallback" style="height: 48px !important; display: none;">
+              <option value="mbank">MBank</option>
+              <option value="optima">Optima</option>
+              <option value="bakai">Bakai</option>
+            </select>
+            
             <div class="custom-select" style="position: relative; width: 100%;">
               <div class="select-trigger" id="bw_bank_trigger" style="height: 48px !important; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important; backdrop-filter: blur(10px) !important; border: 1px solid #333 !important; border-radius: 10px !important; color: #fff !important; font-size: 14px !important; padding: 14px 40px 14px 14px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: space-between !important; transition: all 0.3s ease !important;">
                 <span id="bw_bank_text">MBank</span>
@@ -957,32 +964,80 @@ if (typeof window.createBankWallet !== 'function') {
   };
 }
 
+// Fallback функция для показа обычного select
+function showFallbackSelect() {
+  console.log('Switching to fallback select...');
+  const customSelect = document.querySelector('.custom-select');
+  const fallbackSelect = document.getElementById('bw_bank_fallback');
+  const hiddenInput = document.getElementById('bw_bank');
+  
+  if (customSelect && fallbackSelect) {
+    customSelect.style.display = 'none';
+    fallbackSelect.style.display = 'block';
+    
+    // Синхронизируем значения
+    fallbackSelect.addEventListener('change', function() {
+      hiddenInput.value = this.value;
+    });
+  }
+}
+
 // Модальное окно для выбора банка
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded, initializing bank modal...');
+  
   const trigger = document.getElementById('bw_bank_trigger');
   const modal = document.getElementById('bank_modal');
   const hiddenInput = document.getElementById('bw_bank');
   const textSpan = document.getElementById('bw_bank_text');
-  const arrow = trigger.querySelector('.select-arrow');
   const closeBtn = document.getElementById('close_modal');
   
+  console.log('Elements found:', {
+    trigger: !!trigger,
+    modal: !!modal,
+    hiddenInput: !!hiddenInput,
+    textSpan: !!textSpan,
+    closeBtn: !!closeBtn
+  });
+  
   if (trigger && modal && hiddenInput && textSpan) {
+    console.log('All elements found, setting up event listeners...');
+    
     // Открытие модального окна
     trigger.addEventListener('click', function(e) {
+      console.log('Trigger clicked!');
+      e.preventDefault();
       e.stopPropagation();
-      modal.style.display = 'flex';
-      arrow.style.transform = 'rotate(180deg)';
-      document.body.style.overflow = 'hidden'; // Блокируем скролл
+      
+      // Проверяем, работает ли модальное окно
+      try {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        console.log('Modal should be open now');
+        
+        // Если через 100ms модальное окно не видно, переключаемся на fallback
+        setTimeout(() => {
+          if (modal.style.display === 'flex' && modal.offsetHeight === 0) {
+            console.log('Modal not working, switching to fallback select');
+            showFallbackSelect();
+          }
+        }, 100);
+      } catch (error) {
+        console.error('Error opening modal:', error);
+        showFallbackSelect();
+      }
     });
     
     // Закрытие модального окна
     function closeModal() {
+      console.log('Closing modal...');
       modal.style.display = 'none';
-      arrow.style.transform = 'rotate(0deg)';
-      document.body.style.overflow = ''; // Восстанавливаем скролл
+      document.body.style.overflow = '';
     }
     
-    closeBtn.addEventListener('click', closeModal);
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeModal);
+    }
     
     // Закрытие при клике на фон
     modal.addEventListener('click', function(e) {
@@ -1000,10 +1055,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Обработка выбора банка
     const bankOptions = modal.querySelectorAll('.bank-option');
-    bankOptions.forEach(option => {
+    console.log('Bank options found:', bankOptions.length);
+    
+    bankOptions.forEach((option, index) => {
       option.addEventListener('click', function() {
+        console.log('Bank option clicked:', index);
         const value = this.getAttribute('data-value');
         const text = this.querySelector('div:last-child div:first-child').textContent;
+        
+        console.log('Selected bank:', value, text);
         
         hiddenInput.value = value;
         textSpan.textContent = text;
@@ -1021,6 +1081,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 150);
       });
     });
+    
+    console.log('Bank modal initialization complete!');
+  } else {
+    console.error('Some elements not found for bank modal!');
   }
 });
 </script>
