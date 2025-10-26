@@ -108,12 +108,22 @@ def update_payment_status(data):
             ).order_by('-created_at').first()
             
             if not request_obj:
-                return JsonResponse({'error': 'No requests found'}, status=404)
-            
-            print(f"🔄 Django API: Найдена заявка ID {request_obj.id}")
+                print("🔄 Django API: Заявки не найдены, создаем новую")
+                # Если заявки не найдены, создаем новую с базовыми данными
+                request_obj = Request.objects.create(
+                    user_id=1,  # Временный ID
+                    request_type=data.get('type', 'deposit'),
+                    amount=0,
+                    status=data.get('status', 'pending'),
+                    created_at=timezone.now()
+                )
+                print(f"🔄 Django API: Создана новая заявка ID {request_obj.id}")
+            else:
+                print(f"🔄 Django API: Найдена заявка ID {request_obj.id}")
         else:
             try:
                 request_obj = Request.objects.get(id=data['id'])
+                print(f"🔄 Django API: Найдена заявка по ID {request_obj.id}")
             except Request.DoesNotExist:
                 return JsonResponse({'error': 'Request not found'}, status=404)
         
