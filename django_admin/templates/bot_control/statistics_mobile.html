@@ -136,13 +136,13 @@ select.form-control:focus {
     <div class="form-group">
         <label class="form-label">Период</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <input type="date" id="date-from" class="form-control" placeholder="От">
-            <input type="date" id="date-to" class="form-control" placeholder="До">
+            <input type="date" id="date-from" class="form-control" placeholder="От" aria-label="Дата от">
+            <input type="date" id="date-to" class="form-control" placeholder="До" aria-label="Дата до">
         </div>
     </div>
     
     <div class="form-group">
-        <label class="form-label">Букмекер</label>
+        <label for="bookmaker-filter" class="form-label">Букмекер</label>
         <select id="bookmaker-filter" class="form-control">
             <option value="">Все букмекеры</option>
             <option value="1xbet">1XBET</option>
