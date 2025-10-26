@@ -2670,15 +2670,3 @@ def api_restart_bot(request):
                 'error': str(e)
             }, status=500)
     return JsonResponse({'error': 'Method not allowed'}, status=405)
-
- 
- d e f   t e s t _ s e t t i n g s ( r e q u e s t ) : 
-         \  
- \ \ "5AB>20O 
- AB@0=8F0 
- 4;O 
- ?@>25@:8 
- A P I  
- =0AB@>5:\ \ \ 
-         r e t u r n   r e n d e r ( r e q u e s t ,   ' b o t _ c o n t r o l / t e s t _ s e t t i n g s . h t m l ' )  
- 
