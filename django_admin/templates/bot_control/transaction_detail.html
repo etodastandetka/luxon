@@ -249,23 +249,6 @@
 </div>
 {% endif %}
 
-<!-- Debug photo info (only rendered when no photo and debug available) -->
-{% if not photo_url and photo_debug %}
-<details class="card" style="background:#111; border:1px solid #333; border-radius:12px; padding:16px; margin-top:12px;">
-  <summary style="cursor:pointer; color:#aaa;">Отладка фото (почему не отображается)</summary>
-  <div style="margin-top:10px; font-family:monospace; font-size:12px; color:#bbb;">
-    <div>photo_file_url: {{ photo_debug.photo_file_url|default:"" }}</div>
-    <div>receipt_photo_url: {{ photo_debug.receipt_photo_url|default:"" }}</div>
-    <div>qr_photo_url: {{ photo_debug.qr_photo_url|default:"" }}</div>
-    <div>photo_url_field: {{ photo_debug.photo_url_field|default:"" }}</div>
-    <div>screenshot_url: {{ photo_debug.screenshot_url|default:"" }}</div>
-    <div>photo_file_id: {{ photo_debug.photo_file_id|default:"" }}</div>
-    <div>BOT_TOKEN задан: {{ photo_debug.bot_token_present }}</div>
-    <div>resolved_via: {{ photo_debug.resolved_via|default:"" }}</div>
-    <div>resolved_photo_url: {{ photo_debug.resolved_photo_url|default:"" }}</div>
-  </div>
-</details>
-{% endif %}
 
 {% endblock %}
 
