@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     console.log('🔄 Next.js API: Получен запрос на создание заявки:', body)
     
     // Проксируем запрос к Django API
-    const response = await fetch(`${DJANGO_API_URL}/bot_control/api/payment/`, {
+    const response = await fetch(`${DJANGO_API_URL}/bot/api/payment/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -47,7 +47,7 @@ export async function PUT(request: NextRequest) {
     console.log('🔄 Next.js API: Получен запрос на обновление заявки:', body)
     
     // Проксируем запрос к Django API
-    const response = await fetch(`${DJANGO_API_URL}/bot_control/api/payment/`, {
+    const response = await fetch(`${DJANGO_API_URL}/bot/api/payment/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
