@@ -179,13 +179,11 @@
     {% endif %}
     <div>
       <div style="color:#9aa4b2; font-size:12px;">Дата создания заявки</div>
-      {% firstof transaction.created_at transaction.created transaction.timestamp transaction.date '' as dcreated %}
-      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{% if dcreated %}{{ dcreated|date:'d.m.Y • H:i' }}{% else %}—{% endif %}</div>
+      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{% if transaction.created_at %}{{ transaction.created_at|date:'d.m.Y • H:i' }}{% else %}—{% endif %}</div>
     </div>
     <div>
       <div style="color:#9aa4b2; font-size:12px;">Дата закрытия заявки</div>
-      {% firstof transaction.closed_at transaction.finished_at transaction.processed_at transaction.completed_at transaction.updated_at '' as dclosed %}
-      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{% if dclosed %}{{ dclosed|date:'d.m.Y • H:i' }}{% else %}—{% endif %}</div>
+      <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{% if transaction.processed_at %}{{ transaction.processed_at|date:'d.m.Y • H:i' }}{% else %}—{% endif %}</div>
     </div>
   </div>
   
