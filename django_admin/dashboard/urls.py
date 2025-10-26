@@ -74,8 +74,3 @@ urlpatterns = [
     path('api/mostbet-deposit/', bot_views.api_mostbet_deposit, name='api_mostbet_deposit'),
     path('api/mostbet-withdrawal/', bot_views.api_mostbet_withdrawal, name='api_mostbet_withdrawal'),
 ]
-
-
-
-
-
