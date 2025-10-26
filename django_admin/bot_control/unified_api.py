@@ -47,10 +47,7 @@ def unified_requests_api(request):
 def get_requests(request):
     """Получение списка заявок с фильтрацией"""
     try:
-        from django.conf import settings
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        from bot_control.models import Request
         
         # Параметры фильтрации
         status = request.GET.get('status', '')
@@ -58,65 +55,38 @@ def get_requests(request):
         limit = int(request.GET.get('limit', 50))
         offset = int(request.GET.get('offset', 0))
         
-        # Построение WHERE условий
-        where_conditions = []
-        params = []
-        
+        # Построение фильтров для Django ORM
+        filters = {}
         if status:
-            where_conditions.append("r.status = ?")
-            params.append(status)
-        
+            filters['status'] = status
         if request_type:
-            where_conditions.append("r.request_type = ?")
-            params.append(request_type)
+            filters['request_type'] = request_type
         
-        where_sql = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
-        
-        # SQL запрос
-        sql = f"""
-            SELECT 
-                r.id, r.user_id, r.request_type, r.amount, r.status, r.created_at,
-                r.bookmaker, r.bank, r.account_id, r.phone,
-                u.username, u.first_name, u.last_name
-            FROM requests r
-            LEFT JOIN users u ON r.user_id = u.telegram_id
-            {where_sql}
-            ORDER BY r.created_at DESC
-            LIMIT ? OFFSET ?
-        """
-        
-        params.extend([limit, offset])
-        cursor.execute(sql, params)
+        # Получаем заявки через Django ORM
+        requests_queryset = Request.objects.filter(**filters).order_by('-created_at')[offset:offset+limit]
         
         requests_list = []
-        for row in cursor.fetchall():
+        for req in requests_queryset:
             requests_list.append({
-                'id': row['id'],
-                'user_id': row['user_id'],
-                'type': row['request_type'],
-                'amount': row['amount'],
-                'status': row['status'],
-                'created_at': row['created_at'],
-                'bookmaker': row['bookmaker'],
-                'bank': row['bank'],
-                'account_id': row['account_id'],
-                'phone': row['phone'],
+                'id': req.id,
+                'user_id': req.user_id,
+                'type': req.request_type,
+                'amount': float(req.amount) if req.amount else 0,
+                'status': req.status,
+                'created_at': req.created_at.isoformat() if req.created_at else '',
+                'bookmaker': req.bookmaker or '',
+                'bank': req.bank or '',
+                'account_id': req.account_id or '',
+                'phone': req.phone or '',
                 'user': {
-                    'username': row['username'],
-                    'first_name': row['first_name'],
-                    'last_name': row['last_name']
+                    'username': req.username or '',
+                    'first_name': req.first_name or '',
+                    'last_name': req.last_name or ''
                 }
             })
         
-        # Получаем общее количество
-        count_sql = f"""
-            SELECT COUNT(*) FROM requests r
-            {where_sql}
-        """
-        cursor.execute(count_sql, params[:-2])  # Убираем limit и offset
-        total_count = cursor.fetchone()[0]
-        
-        conn.close()
+        # Получаем общее количество через Django ORM
+        total_count = Request.objects.filter(**filters).count()
         
         return JsonResponse({
             'success': True,
@@ -294,39 +264,31 @@ def get_statistics(request):
     Получение статистики
     """
     try:
-        from django.conf import settings
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cursor = conn.cursor()
+        from bot_control.models import Request
+        from django.db.models import Sum, Count
         
-        # Общая статистика
-        cursor.execute('SELECT COUNT(*) FROM requests')
-        total_requests = cursor.fetchone()[0]
+        # Общая статистика через Django ORM
+        total_requests = Request.objects.count()
+        completed_requests = Request.objects.filter(status='completed').count()
+        pending_requests = Request.objects.filter(status='pending').count()
+        total_amount = Request.objects.filter(status='completed').aggregate(
+            total=Sum('amount')
+        )['total'] or 0
         
-        cursor.execute("SELECT COUNT(*) FROM requests WHERE status = 'completed'")
-        completed_requests = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM requests WHERE status = 'pending'")
-        pending_requests = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT SUM(amount) FROM requests WHERE status = 'completed'")
-        total_amount = cursor.fetchone()[0] or 0
-        
-        # Статистика по типам
-        cursor.execute("""
-            SELECT request_type, COUNT(*) as count, SUM(amount) as total
-            FROM requests 
-            WHERE status = 'completed'
-            GROUP BY request_type
-        """)
-        
+        # Статистика по типам через Django ORM
         type_stats = {}
-        for row in cursor.fetchall():
-            type_stats[row[0]] = {
-                'count': row[1],
-                'total': row[2] or 0
+        for request_type in ['deposit', 'withdraw']:
+            stats = Request.objects.filter(
+                status='completed',
+                request_type=request_type
+            ).aggregate(
+                count=Count('id'),
+                total=Sum('amount')
+            )
+            type_stats[request_type] = {
+                'count': stats['count'] or 0,
+                'total': stats['total'] or 0
             }
-        
-        conn.close()
         
         return JsonResponse({
             'success': True,
