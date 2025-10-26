@@ -169,28 +169,28 @@ def update_request_status(request, request_id):
         if new_status not in REQUEST_STATUSES:
             return JsonResponse({'error': 'Invalid status'}, status=400)
         
-        from django.conf import settings
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cursor = conn.cursor()
+        from bot_control.models import Request
+        from django.utils import timezone
         
-        # Обновляем статус
-        cursor.execute('''
-            UPDATE requests 
-            SET status = ?, updated_at = ?
-            WHERE id = ?
-        ''', (new_status, datetime.now().isoformat(), request_id))
-        
-        if cursor.rowcount == 0:
-            conn.close()
+        # Обновляем статус через Django ORM
+        try:
+            req = Request.objects.get(id=request_id)
+            req.status = new_status
+            req.updated_at = timezone.now()
+            
+            # Если статус завершающий, устанавливаем processed_at
+            if new_status in ['completed', 'rejected', 'approved', 'auto_completed']:
+                req.processed_at = timezone.now()
+            
+            req.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Request status updated to {new_status}'
+            })
+            
+        except Request.DoesNotExist:
             return JsonResponse({'error': 'Request not found'}, status=404)
-        
-        conn.commit()
-        conn.close()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Request status updated to {new_status}'
-        })
         
     except Exception as e:
         logger.error(f"Error in update_request_status: {str(e)}")
