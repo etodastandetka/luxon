@@ -51,26 +51,24 @@ def create_payment_request(data):
         
         print(f"🔄 Django API: Все обязательные поля присутствуют")
         
-        # Определяем правильный user_id
+        # Получаем ID пользователей
         telegram_user_id = data.get('telegram_user_id')
-        player_id = data.get('userId')  # ID игрока в букмекерской конторе
+        casino_player_id = data.get('userId')  # ID игрока в букмекерской конторе
         
-        # Используем Telegram ID как основной user_id, если он есть
-        if telegram_user_id:
-            user_id = telegram_user_id
-            print(f"🔄 Django API: Используем Telegram ID {telegram_user_id} как user_id")
-        else:
-            user_id = player_id
-            print(f"🔄 Django API: Используем Player ID {player_id} как user_id (fallback)")
+        print(f"🔄 Django API: Telegram ID: {telegram_user_id}, Casino ID: {casino_player_id}")
+        
+        # Проверяем, что у нас есть хотя бы один ID
+        if not telegram_user_id and not casino_player_id:
+            return JsonResponse({'error': 'Missing user identification'}, status=400)
         
         # Создаем заявку через Django ORM
         request_obj = Request.objects.create(
-            user_id=user_id,
+            user_id=telegram_user_id or casino_player_id,  # Telegram ID приоритетен, но можно использовать Casino ID как fallback
             request_type=data['type'],  # 'deposit' или 'withdraw'
             amount=data['amount'],
             bookmaker=data['bookmaker'],
             bank=data.get('bank', ''),
-            account_id=data.get('playerId', ''),
+            account_id=casino_player_id or '',  # Casino ID игрока в букмекерской конторе
             phone=data.get('phone', ''),
             status='pending',
             created_at=timezone.now(),
@@ -318,7 +316,8 @@ def api_transaction_history(request):
             
             transaction_list.append({
                 'id': tx.id,
-                'user_id': tx.user_id,
+                'user_id': tx.user_id,  # Telegram ID
+                'account_id': tx.account_id or '',  # Casino ID
                 'user_display_name': user_display_name,
                 'username': tx.username or '',
                 'first_name': tx.first_name or '',
@@ -328,7 +327,6 @@ def api_transaction_history(request):
                 'status': tx.status,
                 'bookmaker': tx.bookmaker or '',
                 'bank': tx.bank or '',
-                'account_id': tx.account_id or '',
                 'phone': tx.phone or '',
                 'date': tx.created_at.isoformat() if tx.created_at else '',
                 'processed_at': tx.processed_at.isoformat() if tx.processed_at else None,
