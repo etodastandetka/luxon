@@ -78,7 +78,23 @@
             {# Убрали маленькую иконку под заголовком #}
         </div>
     </div>
-    <div style="display:flex; gap:8px;">
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div style="margin-right:8px; text-align:right;">
+        {% if transaction.first_name or transaction.last_name %}
+          <div style="color:#e5e7eb; font-size:14px; font-weight:600;">
+            {% if transaction.first_name and transaction.last_name %}
+              {{ transaction.first_name }} {{ transaction.last_name }}
+            {% elif transaction.first_name %}
+              {{ transaction.first_name }}
+            {% elif transaction.last_name %}
+              {{ transaction.last_name }}
+            {% endif %}
+          </div>
+        {% elif transaction.username %}
+          <div style="color:#e5e7eb; font-size:14px; font-weight:600;">@{{ transaction.username }}</div>
+        {% endif %}
+        <div style="color:#9aa4b2; font-size:12px;">ID: {{ transaction.user_id }}</div>
+      </div>
       <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}">
         <i class="fas fa-user"></i>
         <span>Профиль</span>
@@ -114,8 +130,26 @@
         {% endwith %}
       {% endif %}
       <div>
-        {% firstof transaction.account_id transaction.user_id transaction.telegram_id '-' as did %}
-        <button type="button" onclick="copyText('{{ did }}')" title="Скопировать ID" style="font-weight:700; color:#e5e7eb; padding:4px 8px; border-radius:8px; border:1px solid #2a2a2a; background:#151515; cursor:pointer;">{{ did }}</button>
+        {% comment %} Показываем имя пользователя вместо ID {% endcomment %}
+        {% if transaction.first_name or transaction.last_name %}
+          <div style="font-weight:700; color:#e5e7eb; padding:4px 8px; border-radius:8px; border:1px solid #2a2a2a; background:#151515;">
+            {% if transaction.first_name and transaction.last_name %}
+              {{ transaction.first_name }} {{ transaction.last_name }}
+            {% elif transaction.first_name %}
+              {{ transaction.first_name }}
+            {% elif transaction.last_name %}
+              {{ transaction.last_name }}
+            {% endif %}
+          </div>
+        {% elif transaction.username %}
+          <div style="font-weight:700; color:#e5e7eb; padding:4px 8px; border-radius:8px; border:1px solid #2a2a2a; background:#151515;">
+            @{{ transaction.username }}
+          </div>
+        {% else %}
+          <div style="font-weight:700; color:#e5e7eb; padding:4px 8px; border-radius:8px; border:1px solid #2a2a2a; background:#151515;">
+            Пользователь #{{ transaction.user_id }}
+          </div>
+        {% endif %}
         <div style="color:#9aa4b2; font-size:12px; margin-top:4px;">{{ transaction.created_at|date:'d.m.Y • H:i' }}</div>
       </div>
     </div>
@@ -164,12 +198,19 @@
       <div style="color:#e5e7eb; font-size:14px; font-weight:700;">{{ transaction.bookmaker|upper }}</div>
     </div>
     <div>
-      <div style="color:#9aa4b2; font-size:12px; margin-bottom:6px;">ID</div>
-      {% firstof transaction.account_id transaction.user_id transaction.telegram_id '-' as did %}
-      <button type="button" onclick="copyText('{{ did }}')" title="Скопировать ID" style="padding:6px 10px; border-radius:8px; border:1px solid #2a2a2a; background:#151515; color:#e5e7eb; cursor:pointer; font-size:14px; font-weight:700; transition:all .2s;">
-        {{ did }}
+      <div style="color:#9aa4b2; font-size:12px; margin-bottom:6px;">ID Telegram</div>
+      <button type="button" onclick="copyText('{{ transaction.user_id }}')" title="Скопировать Telegram ID" style="padding:6px 10px; border-radius:8px; border:1px solid #2a2a2a; background:#151515; color:#e5e7eb; cursor:pointer; font-size:14px; font-weight:700; transition:all .2s;">
+        {{ transaction.user_id }}
       </button>
     </div>
+    {% if transaction.account_id %}
+    <div>
+      <div style="color:#9aa4b2; font-size:12px; margin-bottom:6px;">ID Casino</div>
+      <button type="button" onclick="copyText('{{ transaction.account_id }}')" title="Скопировать Casino ID" style="padding:6px 10px; border-radius:8px; border:1px solid #2a2a2a; background:#151515; color:#e5e7eb; cursor:pointer; font-size:14px; font-weight:700; transition:all .2s;">
+        {{ transaction.account_id }}
+      </button>
+    </div>
+    {% endif %}
     {% firstof transaction.withdraw_code transaction.code '' as vcode %}
     {% if transaction.request_type == 'withdraw' and vcode %}
       <div>
