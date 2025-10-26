@@ -26,76 +26,68 @@ def deposits_list(request):
     Main page with deposit requests
     """
     try:
+        from bot_control.models import Request
+        from django.db.models import Q, Count
+        from django.core.paginator import Paginator
+        
         # Get filters
         status_filter = request.GET.get('status', 'all')
         search_query = request.GET.get('search', '')
         page_number = request.GET.get('page', 1)
         
-        # Connect to the database
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Base query for deposits
-        query = '''
-            SELECT r.*
-            FROM deposit_requests r
-            WHERE 1=1
-        '''
-        
-        params = []
+        # Base queryset for deposits using Django ORM
+        queryset = Request.objects.filter(request_type='deposit')
         
         # Filter by status
         if status_filter != 'all':
-            query += ' AND r.status = ?'
-            params.append(status_filter)
+            queryset = queryset.filter(status=status_filter)
         
         # Search
         if search_query:
-            query += ' AND (r.user_id LIKE ? OR r.amount LIKE ? OR r.bookmaker LIKE ? OR r.bank LIKE ?)'
-            search_param = f'%{search_query}%'
-            params.extend([search_param] * 4)
+            queryset = queryset.filter(
+                Q(user_id__icontains=search_query) |
+                Q(amount__icontains=search_query) |
+                Q(bookmaker__icontains=search_query) |
+                Q(bank__icontains=search_query)
+            )
         
         # Sorting
-        query += ' ORDER BY r.created_at DESC'
+        queryset = queryset.order_by('-created_at')
         
-        # Execute query
-        cursor.execute(query, params)
-        all_deposits = cursor.fetchall()
-        
-        # Get statistics
-        cursor.execute('''
-            SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
-            FROM deposit_requests
-        ''')
-        
-        stats_row = cursor.fetchone()
-        stats = {
-            'total': stats_row['total'] or 0,
-            'pending': stats_row['pending'] or 0,
-            'completed': stats_row['completed'] or 0,
-            'rejected': stats_row['rejected'] or 0,
-        }
+        # Get statistics using Django ORM
+        stats = Request.objects.filter(request_type='deposit').aggregate(
+            total=Count('id'),
+            pending=Count('id', filter=Q(status='pending')),
+            completed=Count('id', filter=Q(status='completed')),
+            rejected=Count('id', filter=Q(status='rejected'))
+        )
         
         # Pagination
-        paginator = Paginator(all_deposits, 20)
+        paginator = Paginator(queryset, 20)
         page_obj = paginator.get_page(page_number)
         
-        # Convert rows to dictionaries
+        # Convert to list of dictionaries for template compatibility
         deposits_list = []
-        for row in page_obj.object_list:
-            item = dict(row)
-            # Если в таблице requests есть флаг auto_completed=1 — помечаем статус для отображения
-            try:
-                if ('auto_completed' in item and (item['auto_completed'] == 1 or item['auto_completed'] == '1')):
-                    item['status'] = 'auto_completed'
-            except Exception:
-                pass
-            deposits_list.append(item)
+        for req in page_obj.object_list:
+            deposits_list.append({
+                'id': req.id,
+                'user_id': req.user_id,
+                'username': req.username,
+                'first_name': req.first_name,
+                'last_name': req.last_name,
+                'bookmaker': req.bookmaker,
+                'account_id': req.account_id,
+                'amount': req.amount,
+                'status': req.status,
+                'bank': req.bank,
+                'phone': req.phone,
+                'created_at': req.created_at,
+                'updated_at': req.updated_at,
+                'processed_at': req.processed_at,
+                'withdrawal_code': req.withdrawal_code,
+                'photo_file_id': req.photo_file_id,
+                'photo_file_url': req.photo_file_url,
+            })
         
         context = {
             'page_obj': page_obj,
@@ -105,7 +97,6 @@ def deposits_list(request):
             'search_query': search_query,
         }
         
-        conn.close()
         return render(request, 'bot_control/deposits_list.html', context)
         
     except Exception as e:
@@ -397,102 +388,74 @@ def deposit_detail(request, deposit_id):
 
 def withdrawals_list(request):
     """
-    Withdrawal requests list from bot database
+    Withdrawal requests list from Django database
     """
     try:
+        from bot_control.models import Request
+        from django.db.models import Q, Count
+        from django.core.paginator import Paginator
+        
         # Filters
         status_filter = request.GET.get('status', 'all')
         search_query = request.GET.get('search', '').strip()
         page_number = request.GET.get('page', 1)
 
-        # Connect to bot database
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        # Base query for withdrawals
-        query = '''
-            SELECT id, user_id, amount, bookmaker, bank, phone, site_code, 
-                   qr_photo, request_id, status, created_at, updated_at
-            FROM withdrawals
-            WHERE 1=1
-        '''
-        
-        params = []
+        # Base queryset for withdrawals using Django ORM
+        queryset = Request.objects.filter(request_type='withdraw')
         
         # Filter by status
         if status_filter != 'all':
-            query += ' AND status = ?'
-            params.append(status_filter)
+            queryset = queryset.filter(status=status_filter)
         
         # Search
         if search_query:
             try:
                 # Try to search by ID
                 uid = int(search_query)
-                query += ' AND user_id = ?'
-                params.append(uid)
+                queryset = queryset.filter(user_id=uid)
             except ValueError:
-                # Search by amount, bank, phone, site_code
-                query += ' AND (amount LIKE ? OR bank LIKE ? OR phone LIKE ? OR site_code LIKE ? OR request_id LIKE ?)'
-                search_term = f'%{search_query}%'
-                params.extend([search_term, search_term, search_term, search_term, search_term])
+                # Search by amount, bank, phone, bookmaker
+                queryset = queryset.filter(
+                    Q(amount__icontains=search_query) |
+                    Q(bank__icontains=search_query) |
+                    Q(phone__icontains=search_query) |
+                    Q(bookmaker__icontains=search_query) |
+                    Q(account_id__icontains=search_query)
+                )
         
-        query += ' ORDER BY created_at DESC'
+        # Sorting
+        queryset = queryset.order_by('-created_at')
         
-        # Get total count for stats
-        count_query = query.replace('SELECT id, user_id, amount, bookmaker, bank, phone, site_code, qr_photo, request_id, status, created_at, updated_at', 'SELECT COUNT(*)')
-        cursor.execute(count_query, params)
-        total_count = cursor.fetchone()[0]
-        
-        # Get stats
-        cursor.execute('SELECT status, COUNT(*) FROM withdrawals GROUP BY status')
-        status_counts = dict(cursor.fetchall())
-        
-        stats = {
-            'total': total_count,
-            'pending': status_counts.get('pending', 0),
-            'completed': status_counts.get('completed', 0),
-            'rejected': status_counts.get('rejected', 0),
-        }
+        # Get statistics using Django ORM
+        stats = Request.objects.filter(request_type='withdraw').aggregate(
+            total=Count('id'),
+            pending=Count('id', filter=Q(status='pending')),
+            completed=Count('id', filter=Q(status='completed')),
+            rejected=Count('id', filter=Q(status='rejected'))
+        )
         
         # Pagination
-        cursor.execute(query, params)
-        all_results = cursor.fetchall()
+        paginator = Paginator(queryset, 20)
+        page_obj = paginator.get_page(page_number)
         
-        # Simple pagination
-        per_page = 20
-        start = (int(page_number) - 1) * per_page
-        end = start + per_page
-        page_results = all_results[start:end]
-        
-        # Convert to list of dicts
+        # Convert to list of dictionaries for template compatibility
         withdrawals_list = []
-        for row in page_results:
+        for req in page_obj.object_list:
             withdrawals_list.append({
-                'id': row['id'],
-                'user_id': row['user_id'],
-                'amount': float(row['amount']),
-                'bookmaker': row['bookmaker'],
-                'bank': row['bank'],
-                'phone': row['phone'],
-                'site_code': row['site_code'],
-                'qr_photo': row['qr_photo'],
-                'request_id': row['request_id'],
-                'status': row['status'],
-                'created_at': row['created_at'],
-                'updated_at': row['updated_at'],
+                'id': req.id,
+                'user_id': req.user_id,
+                'amount': float(req.amount) if req.amount else 0,
+                'bookmaker': req.bookmaker,
+                'bank': req.bank,
+                'phone': req.phone,
+                'account_id': req.account_id,
+                'withdrawal_code': req.withdrawal_code,
+                'photo_file_id': req.photo_file_id,
+                'photo_file_url': req.photo_file_url,
+                'status': req.status,
+                'created_at': req.created_at,
+                'updated_at': req.updated_at,
             })
-        
-        # Create pagination object
-        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-        paginator = Paginator(all_results, per_page)
-        try:
-            page_obj = paginator.page(page_number)
-        except (EmptyPage, PageNotAnInteger):
-            page_obj = paginator.page(1)
-        
-        conn.close()
 
         context = {
             'page_obj': page_obj,
