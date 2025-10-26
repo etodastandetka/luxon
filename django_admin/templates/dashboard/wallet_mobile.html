@@ -637,36 +637,6 @@ async function deleteQR(qrId) {
 }
 </script>
 
-<!-- Реквизиты для QR (Новый блок) -->
-<div class="requisites-section" style="margin-top: 24px;">
-  <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px;">
-    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Demirbank — добавить реквизит</h3>
-
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Название</label>
-        <input id="rq_name" type="text" placeholder="Демирбанк Акк 1" style="height: 48px;">
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Реквизит (16 цифр)</label>
-        <input id="rq_value" type="text" placeholder="1180000353932089" style="height: 48px;">
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Email</label>
-        <input id="rq_email" type="email" placeholder="you@example.com" style="height: 48px;">
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Пароль</label>
-        <input id="rq_password" type="password" placeholder="Пароль" style="height: 48px;">
-      </div>
-      <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
-        <button onclick="addRequisite()" class="btn-primary" style="margin-left:auto;">Добавить реквизит</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Список реквизитов перенесён вниз под список кошельков -->
-</div>
 
 <!-- Объединенная секция: Платежные реквизиты -->
 <div class="requisites-section" style="margin-top: 24px;">
