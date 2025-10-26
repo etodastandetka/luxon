@@ -235,6 +235,7 @@ input:checked + .slider:before {
 
 {% block content %}
     <div class="content">
+        {% csrf_token %}
         <div id="save-status" style="display:none;position:fixed;top:12px;right:12px;background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%); color:#fff; padding:10px 14px; border-radius:8px; z-index:1000; border:1px solid rgba(34, 197, 94, 0.3); font-size:13px; backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);">Сохранение…</div>
         
         <!-- Общие настройки бота -->
@@ -918,15 +919,20 @@ async function saveAllSettings() {
         showSaveStatus();
         
         // Сохранение общих настроек бота
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfToken) {
+            throw new Error('CSRF token not found');
+        }
+        
         await fetch('{% url "bot_control:api_save_bot_control" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': csrfToken.value
             },
             body: JSON.stringify({
-                pause: document.getElementById('bot-pause').checked,
-                maintenance_message: document.getElementById('maintenance-message').value
+                pause: document.getElementById('bot-pause')?.checked || false,
+                maintenance_message: document.getElementById('maintenance-message')?.value || ''
             })
         });
 
@@ -941,10 +947,10 @@ async function saveAllSettings() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': csrfToken.value
             },
             body: JSON.stringify({
-                enabled: document.getElementById('deposits-enabled').checked,
+                enabled: document.getElementById('deposits-enabled')?.checked || false,
                 banks: depositBanks
             })
         });
@@ -960,10 +966,10 @@ async function saveAllSettings() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': csrfToken.value
             },
             body: JSON.stringify({
-                enabled: document.getElementById('withdrawals-enabled').checked,
+                enabled: document.getElementById('withdrawals-enabled')?.checked || false,
                 banks: withdrawalBanks
             })
         });
@@ -973,12 +979,12 @@ async function saveAllSettings() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': csrfToken.value
             },
             body: JSON.stringify({
-                enabled: document.getElementById('channel-enabled').checked,
-                name: document.getElementById('channel-name').value,
-                welcome_message: document.getElementById('channel-welcome').value
+                enabled: document.getElementById('channel-enabled')?.checked || false,
+                name: document.getElementById('channel-name')?.value || '',
+                welcome_message: document.getElementById('channel-welcome')?.value || ''
             })
         });
         
