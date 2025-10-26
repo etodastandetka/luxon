@@ -72,6 +72,7 @@ urlpatterns = [
     # API для мини-приложения
     path('api/payment/', api_views.payment_api, name='payment_api'),
     path('api/generate-qr/', api_views.generate_qr_api, name='generate_qr_api'),
+    path('api/sync-bot/', api_views.sync_bot_api, name='sync_bot_api'),
     
     # Унифицированные API endpoints
     path('api/', include('bot_control.unified_urls')),

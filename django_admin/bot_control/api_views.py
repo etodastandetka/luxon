@@ -61,7 +61,11 @@ def create_payment_request(data):
             account_id=data.get('playerId', ''),
             phone=data.get('phone', ''),
             status='pending',
-            created_at=timezone.now()
+            created_at=timezone.now(),
+            # Данные пользователя Telegram
+            username=data.get('telegram_username', ''),
+            first_name=data.get('telegram_first_name', ''),
+            last_name=data.get('telegram_last_name', '')
         )
         
         print(f"✅ Django API: Заявка создана с ID {request_obj.id}")
@@ -286,4 +290,73 @@ def api_transaction_history(request):
         
     except Exception as e:
         logger.error(f"Error getting transaction history: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def sync_bot_api(request):
+    """
+    API для синхронизации с Telegram ботом
+    """
+    try:
+        print(f"🔄 Django API: Получен запрос на синхронизацию с ботом")
+        
+        data = json.loads(request.body)
+        print(f"🔄 Django API: Данные синхронизации: {data}")
+        
+        user_data = data.get('user', {})
+        action = data.get('action', '')
+        additional_data = data.get('data', {})
+        init_data = data.get('initData', '')
+        
+        # Сохраняем данные пользователя в базе данных
+        if user_data:
+            from bot_control.models import UserProfile
+            
+            user_id = user_data.get('id')
+            if user_id:
+                # Создаем или обновляем профиль пользователя
+                profile, created = UserProfile.objects.get_or_create(
+                    telegram_id=user_id,
+                    defaults={
+                        'username': user_data.get('username', ''),
+                        'first_name': user_data.get('first_name', ''),
+                        'last_name': user_data.get('last_name', ''),
+                        'language_code': user_data.get('language_code', 'ru'),
+                        'is_premium': user_data.get('is_premium', False),
+                        'init_data': init_data,
+                        'last_activity': timezone.now()
+                    }
+                )
+                
+                if not created:
+                    # Обновляем существующий профиль
+                    profile.username = user_data.get('username', profile.username)
+                    profile.first_name = user_data.get('first_name', profile.first_name)
+                    profile.last_name = user_data.get('last_name', profile.last_name)
+                    profile.language_code = user_data.get('language_code', profile.language_code)
+                    profile.is_premium = user_data.get('is_premium', profile.is_premium)
+                    profile.init_data = init_data
+                    profile.last_activity = timezone.now()
+                    profile.save()
+                
+                print(f"✅ Django API: Профиль пользователя {user_id} {'создан' if created else 'обновлен'}")
+        
+        # Обрабатываем различные действия
+        if action == 'deposit_request_created':
+            print(f"🔄 Django API: Обработка создания заявки на пополнение")
+            # Здесь можно добавить дополнительную логику
+            
+        elif action == 'withdraw_request_created':
+            print(f"🔄 Django API: Обработка создания заявки на вывод")
+            # Здесь можно добавить дополнительную логику
+            
+        return JsonResponse({
+            'success': True,
+            'message': 'Синхронизация с ботом успешна'
+        })
+        
+    except Exception as e:
+        print(f"❌ Django API: Ошибка синхронизации с ботом: {str(e)}")
+        logger.error(f"Error in sync_bot_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
