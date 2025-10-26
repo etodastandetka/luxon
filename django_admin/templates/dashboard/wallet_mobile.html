@@ -135,6 +135,7 @@ input, select, textarea {
     color: #fff !important;
     border: 1px solid #333 !important;
     width: 100% !important;
+    height: 48px !important;
     padding: 14px !important;
     border-radius: 10px !important;
     font-size: 14px !important;
@@ -484,6 +485,7 @@ document.addEventListener('DOMContentLoaded', function() {
             input.style.color = '#fff';
             input.style.border = '1px solid #333';
             input.style.width = '100%';
+            input.style.height = '48px';
             input.style.padding = '14px';
             input.style.borderRadius = '10px';
             input.style.fontSize = '14px';
@@ -640,22 +642,22 @@ async function deleteQR(qrId) {
   <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px;">
     <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Demirbank — добавить реквизит</h3>
 
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
-      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
-        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Название аккаунта</label>
-        <input id="rq_name" type="text" placeholder="Например: Демирбанк Акк 1" style="flex: 1;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Название</label>
+        <input id="rq_name" type="text" placeholder="Демирбанк Акк 1" style="height: 48px;">
       </div>
-      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
-        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Реквизит Demirbank (16 цифр)</label>
-        <input id="rq_value" type="text" placeholder="1180000353932089" style="flex: 1;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Реквизит (16 цифр)</label>
+        <input id="rq_value" type="text" placeholder="1180000353932089" style="height: 48px;">
       </div>
-      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
-        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Email (для Demirbank уведомлений)</label>
-        <input id="rq_email" type="email" placeholder="you@example.com" style="flex: 1;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Email</label>
+        <input id="rq_email" type="email" placeholder="you@example.com" style="height: 48px;">
       </div>
-      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
-        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Пароль (для Demirbank уведомлений)</label>
-        <input id="rq_password" type="password" placeholder="Пароль" style="flex: 1;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Пароль</label>
+        <input id="rq_password" type="password" placeholder="Пароль" style="height: 48px;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
         <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
@@ -672,23 +674,23 @@ async function deleteQR(qrId) {
 <!-- Кошельки банков (MBank / Optima / Bakai) -->
 <div class="requisites-section" style="margin-top: 24px;">
   <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%); backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px;">
-    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Добавить кошелёк (MBank / Optima / Bakai)</h3>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
-      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
-        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Банк</label>
-        <select id="bw_bank" style="flex: 1;">
+    <h3 style="color:#fff; font-size:16px; font-weight:600; margin-bottom: 12px;">Добавить кошелёк</h3>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Банк</label>
+        <select id="bw_bank" style="height: 48px;">
           <option value="mbank">MBank</option>
           <option value="optima">Optima</option>
           <option value="bakai">Bakai</option>
         </select>
       </div>
-      <div style="display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
-        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Название</label>
-        <input id="bw_name" type="text" placeholder="Например: MBank Акк 1" style="flex: 1;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Название</label>
+        <input id="bw_name" type="text" placeholder="MBank Акк 1" style="height: 48px;">
       </div>
-      <div style="grid-column: 1 / span 2; display: flex; flex-direction: column; gap: 8px; min-height: 80px;">
-        <label style="color:#fff; font-size:13px; font-weight: 600; margin-bottom: 6px; line-height: 1.2;">Hash/Реквизит</label>
-        <input id="bw_hash" type="text" placeholder="Вставьте hash" style="flex: 1;">
+      <div style="grid-column: 1 / span 2; display: flex; flex-direction: column; gap: 6px;">
+        <label style="color:#fff; font-size:12px; font-weight: 600; margin-bottom: 4px;">Hash/Реквизит</label>
+        <input id="bw_hash" type="text" placeholder="Вставьте hash" style="height: 48px;">
       </div>
       <div style="grid-column: 1 / span 2; display:flex; align-items:center; gap: 12px;">
         <label style="color:#fff; font-size:12px; display:flex; align-items:center; gap:6px;">
