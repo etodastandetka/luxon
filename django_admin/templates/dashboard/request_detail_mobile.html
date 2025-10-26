@@ -101,8 +101,22 @@
         {% endif %}
       </div>
       <div class="profile-main">
-        <div class="profile-name">{{ username|default:'Unknown' }}</div>
-        <div class="profile-sub">ID: {{ user_id }}</div>
+        {% if first_name or last_name %}
+          <div class="profile-name">
+            {% if first_name and last_name %}
+              {{ first_name }} {{ last_name }}
+            {% elif first_name %}
+              {{ first_name }}
+            {% elif last_name %}
+              {{ last_name }}
+            {% endif %}
+          </div>
+        {% elif username %}
+          <div class="profile-name">@{{ username }}</div>
+        {% else %}
+          <div class="profile-name">Пользователь #{{ user_id }}</div>
+        {% endif %}
+        <div class="profile-sub">Telegram ID: {{ user_id }}</div>
       </div>
     </div>
     <div class="stats">
@@ -124,7 +138,27 @@
         {% if type == 'deposit' %}<span class="badge badge-deposit">Пополнение</span>{% else %}<span class="badge badge-withdraw">Вывод</span>{% endif %}
       </div>
     </div>
-    <div class="row"><div class="label">Пользователь</div><div class="value">{{ username|default:'Unknown' }} ({{ user_id }})</div></div>
+    <div class="row"><div class="label">Пользователь</div>
+      <div class="value">
+        {% if first_name or last_name %}
+          {% if first_name and last_name %}
+            {{ first_name }} {{ last_name }}
+          {% elif first_name %}
+            {{ first_name }}
+          {% elif last_name %}
+            {{ last_name }}
+          {% endif %}
+        {% elif username %}
+          @{{ username }}
+        {% else %}
+          Пользователь #{{ user_id }}
+        {% endif %}
+        <br><small style="color: var(--muted);">Telegram ID: {{ user_id }}</small>
+        {% if account_id %}
+          <br><small style="color: var(--muted);">Casino ID: {{ account_id }}</small>
+        {% endif %}
+      </div>
+    </div>
     <div class="row"><div class="label">Букмекер</div><div class="value">{{ bookmaker|upper }}</div></div>
     <div class="row"><div class="label">Аккаунт</div><div class="value">{{ account_id }}</div></div>
     <div class="row"><div class="label">Банк</div><div class="value">{{ bank|default:'—' }}</div></div>
