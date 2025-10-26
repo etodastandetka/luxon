@@ -374,7 +374,7 @@ function copyText(t) {
 {% endblock %}
 
 {% block extra_body %}
-{% if transaction.status != 'completed' and transaction.status != 'rejected' %}
+{% if transaction.status == 'pending' or transaction.status == 'processing' or transaction.status == 'awaiting_manual' %}
 <div id="sticky-actions" style="position:sticky; bottom:0; left:0; right:0; background:rgba(10,10,10,.96); border-top:1px solid #222; padding:10px; display:flex; gap:10px; z-index:20;">
   <button class="action-btn action-btn--approve" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('approve')">Принять</button>
   <button class="action-btn action-btn--reject" style="flex:1 1 50%; justify-content:center;" onclick="handleAction('reject')">Отказать</button>
