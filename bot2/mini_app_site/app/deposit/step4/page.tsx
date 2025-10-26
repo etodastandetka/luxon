@@ -113,12 +113,15 @@ export default function DepositStep4() {
   // Создание заявки на пополнение
   const createDepositRequest = async () => {
     try {
+      // Получаем данные пользователя Telegram
+      const telegramUser = getTelegramUser()
       console.log('🔄 Создаем заявку на пополнение...', {
         type: 'deposit',
         amount,
         userId: playerId,
         bookmaker,
-        bank
+        bank,
+        telegramUser
       })
 
       const response = await fetch('/api/payment', {
@@ -132,7 +135,13 @@ export default function DepositStep4() {
           userId: playerId,
           bookmaker: bookmaker,
           bank: bank,
-          playerId: playerId // Добавляем playerId для совместимости
+          playerId: playerId, // Добавляем playerId для совместимости
+          // Данные пользователя Telegram
+          telegram_user_id: telegramUser?.id,
+          telegram_username: telegramUser?.username,
+          telegram_first_name: telegramUser?.first_name,
+          telegram_last_name: telegramUser?.last_name,
+          telegram_language_code: telegramUser?.language_code
         })
       })
       

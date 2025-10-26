@@ -43,13 +43,17 @@ export default function WithdrawConfirm() {
       const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
       const amount = localStorage.getItem('withdraw_amount') || '0'
       
+      // Получаем данные пользователя Telegram
+      const telegramUser = getTelegramUser()
+      
       console.log('🔄 Создаем заявку на вывод...', {
         type: 'withdraw',
         bookmaker,
         userId: parseInt(userId),
         phone,
         amount: parseFloat(amount),
-        bank
+        bank,
+        telegramUser
       })
 
       const response = await fetch('/api/payment', {
@@ -64,7 +68,13 @@ export default function WithdrawConfirm() {
           phone: phone,
           amount: parseFloat(amount),
           bank: bank,
-          playerId: userId // Добавляем playerId для совместимости
+          playerId: userId, // Добавляем playerId для совместимости
+          // Данные пользователя Telegram
+          telegram_user_id: telegramUser?.id,
+          telegram_username: telegramUser?.username,
+          telegram_first_name: telegramUser?.first_name,
+          telegram_last_name: telegramUser?.last_name,
+          telegram_language_code: telegramUser?.language_code
         })
       })
       
