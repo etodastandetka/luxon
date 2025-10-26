@@ -265,23 +265,52 @@ def api_transaction_history(request):
         from bot_control.models import Request
         
         user_id = request.GET.get('user_id')
+        request_type = request.GET.get('type', '')  # deposit, withdraw, или пустая строка для всех
         
+        print(f"🔄 Django API: Получен запрос истории транзакций, user_id={user_id}, type={request_type}")
+        
+        # Если user_id не указан, возвращаем все транзакции
         if not user_id:
-            return JsonResponse({'error': 'user_id is required'}, status=400)
+            print("🔄 Django API: user_id не указан, возвращаем все транзакции")
+            transactions = Request.objects.all().order_by('-created_at')[:100]
+        else:
+            print(f"🔄 Django API: Фильтруем по user_id={user_id}")
+            transactions = Request.objects.filter(user_id=user_id).order_by('-created_at')[:50]
         
-        # Получаем транзакции пользователя
-        transactions = Request.objects.filter(user_id=user_id).order_by('-created_at')[:50]
+        # Дополнительная фильтрация по типу
+        if request_type:
+            transactions = transactions.filter(request_type=request_type)
         
         transaction_list = []
         for tx in transactions:
+            # Формируем имя пользователя
+            user_display_name = 'Unknown'
+            if tx.username:
+                user_display_name = f"@{tx.username}"
+            elif tx.first_name and tx.last_name:
+                user_display_name = f"{tx.first_name} {tx.last_name}"
+            elif tx.first_name:
+                user_display_name = tx.first_name
+            
             transaction_list.append({
                 'id': tx.id,
+                'user_id': tx.user_id,
+                'user_display_name': user_display_name,
+                'username': tx.username or '',
+                'first_name': tx.first_name or '',
+                'last_name': tx.last_name or '',
                 'type': tx.request_type,
                 'amount': float(tx.amount) if tx.amount else 0,
                 'status': tx.status,
                 'bookmaker': tx.bookmaker or '',
+                'bank': tx.bank or '',
+                'account_id': tx.account_id or '',
+                'phone': tx.phone or '',
                 'date': tx.created_at.isoformat() if tx.created_at else '',
+                'processed_at': tx.processed_at.isoformat() if tx.processed_at else None,
             })
+        
+        print(f"✅ Django API: Возвращаем {len(transaction_list)} транзакций")
         
         return JsonResponse({
             'success': True,
@@ -289,6 +318,7 @@ def api_transaction_history(request):
         })
         
     except Exception as e:
+        print(f"❌ Django API: Ошибка получения истории транзакций: {str(e)}")
         logger.error(f"Error getting transaction history: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
