@@ -639,3 +639,75 @@ def menu(request):
     except Exception as e:
         logger.error(f"Error in menu: {str(e)}", exc_info=True)
         return render(request, 'bot_control/error.html', {'error': str(e)})
+
+
+# Функции для чата
+@csrf_exempt
+@require_http_methods(["GET"])
+def chat_history(request, user_id: int):
+    """
+    API для получения истории чата с пользователем
+    """
+    try:
+        # TODO: Implement actual chat history retrieval
+        # For now, return empty history
+        return JsonResponse({
+            'success': True,
+            'messages': []
+        })
+    except Exception as e:
+        logger.error(f"Error getting chat history for user {user_id}: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_send_from_admin(request):
+    """
+    API для отправки сообщения от админа пользователю
+    """
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        message = data.get('message')
+        
+        # TODO: Implement actual message sending
+        # For now, just return success
+        return JsonResponse({
+            'success': True,
+            'message': 'Message sent successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error sending message from admin: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_typing_from_admin(request):
+    """
+    API для отправки индикатора печатания от админа
+    """
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        is_typing = data.get('is_typing', True)
+        
+        # TODO: Implement actual typing indicator
+        # For now, just return success
+        return JsonResponse({
+            'success': True,
+            'message': 'Typing indicator sent'
+        })
+    except Exception as e:
+        logger.error(f"Error sending typing indicator: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

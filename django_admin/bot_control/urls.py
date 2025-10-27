@@ -30,6 +30,11 @@ urlpatterns = [
     path('user/<int:user_id>/profile/', views_deposits.user_profile, name='user_profile'),
     path('user/<int:user_id>/chat/', views_deposits.user_chat, name='user_chat'),
     
+    # API для чата
+    path('user/<int:user_id>/chat/history/', views_deposits.chat_history, name='chat_history'),
+    path('chat/send/', views_deposits.chat_send_from_admin, name='chat_send_from_admin'),
+    path('chat/typing/', views_deposits.chat_typing_from_admin, name='chat_typing_from_admin'),
+    
     # Новые страницы
     path('referral/', referral_views.referral_management, name='referral_management'),
     path('autodeposit/', autodeposit_views.autodeposit_settings, name='autodeposit_settings'),
