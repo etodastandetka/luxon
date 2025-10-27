@@ -2,7 +2,7 @@
 Обработчик для логирования всех входящих сообщений в чат
 """
 import logging
-import requests
+import aiohttp
 from aiogram import Router, F
 from aiogram.types import Message
 from typing import Optional
@@ -54,20 +54,21 @@ async def save_message_to_db(message: Message):
             data['message_type'] = 'sticker'
             data['media_url'] = message.sticker.file_id
         
-        # Отправляем в Django API
-        response = requests.post(
-            f'{api_url}/bot/api/save-chat-message/',
-            json=data,
-            timeout=5
-        )
-        
-        if response.ok:
-            logger.info(f"Message from user {message.from_user.id} saved to DB")
-        else:
-            logger.warning(f"Failed to save message: {response.status_code}")
+        # Отправляем в Django API асинхронно
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f'{api_url}/bot/api/save-chat-message/',
+                json=data,
+                timeout=aiohttp.ClientTimeout(total=5)
+            ) as response:
+                if response.status == 200:
+                    logger.info(f"✅ Message from user {message.from_user.id} saved to DB")
+                else:
+                    text = await response.text()
+                    logger.warning(f"⚠️ Failed to save message: {response.status} - {text}")
             
     except Exception as e:
-        logger.error(f"Error saving message to DB: {e}", exc_info=True)
+        logger.error(f"❌ Error saving message to DB: {e}", exc_info=True)
 
 
 @router.message()
