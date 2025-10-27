@@ -777,6 +777,8 @@ def save_chat_message(request):
             telegram_message_id=data.get('telegram_message_id')
         )
         
+        logger.info(f"✅ Chat message saved: user={data.get('user_id')}, text={data.get('message_text')[:30]}, direction={data.get('direction')}")
+        
         return JsonResponse({
             'success': True,
             'message': 'Message saved'
