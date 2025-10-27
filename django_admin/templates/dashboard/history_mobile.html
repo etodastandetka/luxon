@@ -138,43 +138,24 @@
 
 /* Улучшенные стили для транзакций */
 .transaction-item {
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 12px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
-    gap: 16px;
-    transition: all 0.3s ease;
+    gap: 12px;
+    transition: all 0.2s ease;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    position: relative;
-    overflow: hidden;
-}
-
-.transaction-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #00ff88, #00d4aa);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .transaction-item:hover {
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 0, 0, 0.8) 100%);
-    border-color: rgba(0, 255, 136, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0, 255, 136, 0.2);
-}
-
-.transaction-item:hover::before {
-    opacity: 1;
+    background: #151515;
+    border-color: #333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .list-item { 
@@ -246,16 +227,15 @@
 
 /* Стили для элементов транзакции */
 .transaction-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 18px;
     color: #fff;
-    background: linear-gradient(135deg, #00ff88, #00d4aa);
-    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+    background: linear-gradient(135deg, #22c55e, #16a34a);
     flex-shrink: 0;
 }
 
@@ -272,7 +252,7 @@
 }
 
 .transaction-type {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     color: #fff;
     line-height: 1.2;
@@ -292,46 +272,37 @@
 }
 
 .transaction-amount {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
-    color: #fff;
-    background: linear-gradient(135deg, #00ff88, #00d4aa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #22c55e;
 }
 
 .transaction-status {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     padding: 4px 8px;
-    border-radius: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    border-radius: 6px;
 }
 
 .transaction-status.status-completed {
-    background: rgba(0, 255, 136, 0.2);
-    color: #00ff88;
-    border: 1px solid rgba(0, 255, 136, 0.3);
+    background: #22c55e;
+    color: #fff;
 }
 
 .transaction-status.status-pending {
-    background: rgba(255, 165, 0, 0.2);
-    color: #ffa500;
-    border: 1px solid rgba(255, 165, 0, 0.3);
+    background: #f59e0b;
+    color: #fff;
 }
 
 .transaction-status.status-rejected {
-    background: rgba(255, 68, 68, 0.2);
-    color: #ff4444;
-    border: 1px solid rgba(255, 68, 68, 0.3);
+    background: #ef4444;
+    color: #fff;
 }
 
 .transaction-date {
-    font-size: 12px;
+    font-size: 11px;
     color: #999;
-    font-weight: 500;
+    font-weight: 400;
 }
 </style>
 
