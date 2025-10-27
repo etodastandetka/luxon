@@ -649,11 +649,25 @@ def chat_history(request, user_id: int):
     API для получения истории чата с пользователем
     """
     try:
-        # TODO: Implement actual chat history retrieval
-        # For now, return empty history
+        from .models import ChatMessage
+        
+        # Получаем последние 100 сообщений
+        messages = ChatMessage.objects.filter(user_id=user_id).order_by('created_at')[:100]
+        
+        items = []
+        for msg in messages:
+            item = {
+                'direction': msg.direction,
+                'message': msg.message_text or '',
+                'kind': msg.message_type,
+                'media_url': msg.media_url or '',
+                'created_at': msg.created_at.isoformat() if msg.created_at else None
+            }
+            items.append(item)
+        
         return JsonResponse({
             'success': True,
-            'messages': []
+            'items': items
         })
     except Exception as e:
         logger.error(f"Error getting chat history for user {user_id}: {str(e)}", exc_info=True)
@@ -705,6 +719,16 @@ def chat_send_from_admin(request):
         result = response.json()
         
         if response.ok and result.get('ok'):
+            # Сохраняем сообщение в историю
+            from .models import ChatMessage
+            ChatMessage.objects.create(
+                user_id=user_id,
+                message_text=message,
+                message_type='text',
+                direction='out',
+                telegram_message_id=result.get('result', {}).get('message_id')
+            )
+            
             logger.info(f"Message sent successfully to user {user_id}")
             return JsonResponse({
                 'success': True,
@@ -811,6 +835,29 @@ def chat_send_media_from_admin(request):
         result = response.json()
         
         if response.ok and result.get('ok'):
+            # Сохраняем медиа в историю
+            from .models import ChatMessage
+            
+            # Пытаемся получить URL файла из ответа
+            file_info = result.get('result', {})
+            media_url = ''
+            if media_type == 'photo' and 'photo' in file_info:
+                # Берем самое большое фото
+                photos = file_info['photo']
+                if photos:
+                    media_url = photos[-1].get('file_id', '')
+            elif media_type == 'video' and 'video' in file_info:
+                media_url = file_info['video'].get('file_id', '')
+            
+            ChatMessage.objects.create(
+                user_id=user_id,
+                message_text=caption,
+                message_type=media_type,
+                media_url=media_url,
+                direction='out',
+                telegram_message_id=file_info.get('message_id')
+            )
+            
             logger.info(f"Media sent successfully to user {user_id}")
             return JsonResponse({
                 'success': True,

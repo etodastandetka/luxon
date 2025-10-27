@@ -200,3 +200,24 @@ class BankWallet(models.Model):
     
     def __str__(self):
         return f"{self.bank_name}: {self.wallet_address}"
+
+
+class ChatMessage(models.Model):
+    """Сообщения чата между админом и пользователем"""
+    user_id = models.BigIntegerField(db_index=True)  # Telegram user ID
+    message_text = models.TextField(blank=True, null=True)
+    message_type = models.CharField(max_length=20, default='text')  # text, photo, video, document
+    media_url = models.TextField(blank=True, null=True)
+    direction = models.CharField(max_length=10, default='in')  # 'in' - от пользователя, 'out' - от админа
+    telegram_message_id = models.BigIntegerField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        db_table = 'chat_messages'
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['user_id', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.direction} - User {self.user_id}: {self.message_text[:50] if self.message_text else 'media'}"
