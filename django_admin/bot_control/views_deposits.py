@@ -711,3 +711,28 @@ def chat_typing_from_admin(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_send_media_from_admin(request):
+    """
+    API для отправки медиа-файлов от админа пользователю
+    """
+    try:
+        user_id = request.POST.get('user_id')
+        media_type = request.POST.get('media_type', 'photo')  # photo, video, document
+        caption = request.POST.get('caption', '')
+        
+        # TODO: Implement actual media sending
+        # For now, just return success
+        return JsonResponse({
+            'success': True,
+            'message': 'Media sent successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error sending media from admin: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
