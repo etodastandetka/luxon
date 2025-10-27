@@ -110,7 +110,7 @@ def user_chat(request, user_id: int):
         
         # Получаем данные пользователя через Django ORM
         try:
-            profile = UserProfile.objects.get(telegram_id=user_id)
+            profile = UserProfile.objects.get(user_id=user_id)
             user = {
                 'user_id': user_id,
                 'username': profile.username or '',
@@ -329,7 +329,7 @@ def request_detail(request, req_id):
         cursor.execute('''
             SELECT r.*, u.username, u.first_name, u.last_name
             FROM requests r
-            LEFT JOIN users u ON r.user_id = u.telegram_id
+            LEFT JOIN users u ON r.user_id = u.user_id
             WHERE r.id = ? OR r.request_id = ?
         ''', (req_id, req_id))
         
@@ -582,7 +582,7 @@ def dashboard(request):
         cursor.execute('''
             SELECT r.*, u.username, u.first_name
             FROM requests r
-            LEFT JOIN users u ON r.user_id = u.telegram_id
+            LEFT JOIN users u ON r.user_id = u.user_id
             WHERE r.request_type = 'withdraw'
             ORDER BY r.created_at DESC
             LIMIT 5
