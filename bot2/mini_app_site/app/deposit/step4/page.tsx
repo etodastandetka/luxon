@@ -507,6 +507,19 @@ export default function DepositStep4() {
         </div>
       )}
 
+      {/* Большая кнопка "Я оплатил" */}
+      {!isPaid && (
+        <button
+          onClick={handleIPaid}
+          className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {t.iPaid}
+        </button>
+      )}
+
       {/* Инструкция */}
       <div className="card space-y-4">
         <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>
@@ -522,19 +535,13 @@ export default function DepositStep4() {
         </div>
       </div>
 
-      {/* Навигация */}
+      {/* Навигация - только кнопка "Назад" */}
       <div className="flex gap-3">
         <button
           onClick={handleBack}
-          className="btn btn-ghost flex-1"
+          className="btn btn-ghost w-full"
         >
-          {t.back}
-        </button>
-        <button
-          onClick={handleIPaid}
-          className="btn btn-primary flex-1 font-semibold"
-        >
-          ✅ {t.iPaid}
+          ← {t.back}
         </button>
       </div>
 
