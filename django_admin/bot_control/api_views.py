@@ -156,13 +156,12 @@ def update_payment_status(data):
 @require_http_methods(["POST"])
 def generate_qr_api(request):
     """
-    API для генерации QR кода
+    API для генерации QR кода для всех банков
     """
     try:
         data = json.loads(request.body)
         
         amount = data.get('amount', 0)
-        bank = data.get('bank', 'DEMIRBANK')
         player_id = data.get('playerId', '')
         
         # Получаем активный реквизит из админки
@@ -175,40 +174,63 @@ def generate_qr_api(request):
             # Fallback реквизит
             requisite = '1234567890123456'
         
+        logger.info(f"Generating QR for amount={amount}, requisite={requisite}")
+        
         # Генерируем QR код
         amount_cents = int(amount * 100)
-        amount_str = str(amount_cents).zfill(5)
+        amount_str = str(amount_cents)
+        amount_length = str(len(amount_str)).zfill(2)  # Длина суммы (например, "05" для 10053)
         
-        # Создаем TLV структуру
-        payload = f"00020101021232990015qr.demirbank.kg0108ib_andro10{requisite}1109202111302112021213021211328454d5b3ee5d47c7b61c0a0b07bb939a5204482953034175405{amount_str}5909DEMIRBANK6304"
+        requisite_length = str(len(requisite)).zfill(2)  # Длина реквизита
+        
+        # Создаем TLV структуру до контрольной суммы
+        # Формат: 00020101021232990015qr.demirbank.kg0108ib_andro10{LENGTH}{REQUISITE}...54{LENGTH}{AMOUNT}5909DEMIRBANK6304
+        payload = (
+            f"00020101021232990015qr.demirbank.kg0108ib_andro"
+            f"10{requisite_length}{requisite}"
+            f"1202111302112021213021211328454d5b3ee5d47c7b61c0a0b07bb939a5204482953034175"
+            f"4{amount_length}{amount_str}"
+            f"5909DEMIRBANK6304"
+        )
+        
+        logger.info(f"Payload before checksum: {payload}")
         
         # Вычисляем SHA256 контрольную сумму
         import hashlib
-        checksum = hashlib.sha256(payload.encode()).hexdigest()
+        checksum_full = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+        # Берем последние 4 символа
+        checksum = checksum_full[-4:].upper()
+        
+        # Полный QR хеш
         qr_hash = payload + checksum
+        
+        logger.info(f"Generated QR hash: {qr_hash}")
+        logger.info(f"Checksum: {checksum}")
         
         # Создаем ссылки для всех банков
         bank_links = {
-            'demirbank': f"https://retail.demirbank.kg/#{qr_hash}",
-            'omoney': f"https://api.dengi.o.kg/ru/qr/#{qr_hash}",
-            'balance': f"https://balance.kg/#{qr_hash}",
-            'bakai': f"https://bakai24.app/#{qr_hash}",
-            'megapay': f"https://megapay.kg/get#{qr_hash}",
-            'mbank': f"https://app.mbank.kg/qr/#{qr_hash}"
+            'DemirBank': f"https://retail.demirbank.kg/#{qr_hash}",
+            'O!Money': f"https://api.dengi.o.kg/ru/qr/#{qr_hash}",
+            'Balance.kg': f"https://balance.kg/#{qr_hash}",
+            'Bakai': f"https://bakai24.app/#{qr_hash}",
+            'MegaPay': f"https://megapay.kg/get#{qr_hash}",
+            'MBank': f"https://app.mbank.kg/qr/#{qr_hash}",
+            'Optima': f"https://optima.kg/qr/#{qr_hash}",
+            'Компаньон': f"https://kompanion.kg/qr/#{qr_hash}"
         }
 
         return JsonResponse({
             'success': True,
             'qr_hash': qr_hash,
-            'primary_url': bank_links.get(bank.lower(), bank_links['demirbank']),
+            'primary_url': bank_links['DemirBank'],
             'all_bank_urls': bank_links,
             'settings': {
-                'enabled_banks': ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank']
+                'enabled_banks': ['demir', 'omoney', 'balance', 'bakai', 'megapay', 'mbank', 'optima', 'kompanion']
             }
         })
         
     except Exception as e:
-        logger.error(f"Error generating QR code: {str(e)}")
+        logger.error(f"Error generating QR code: {str(e)}", exc_info=True)
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
