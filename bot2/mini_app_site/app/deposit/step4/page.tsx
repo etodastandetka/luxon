@@ -6,6 +6,7 @@ import LanguageSelector from '../../../components/LanguageSelector'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getTelegramUser, syncWithBot, notifyUser } from '../../../utils/telegram'
+import { useAlert } from '../../../components/useAlert'
 
 export default function DepositStep4() {
   const [bank, setBank] = useState('omoney') // По умолчанию O!Money
@@ -14,6 +15,7 @@ export default function DepositStep4() {
   const [timeLeft, setTimeLeft] = useState(300) // 5 минут в секундах
   const [isPaid, setIsPaid] = useState(false)
   const router = useRouter()
+  const { showAlert, AlertComponent } = useAlert()
 
   // Получаем данные из предыдущих шагов
   const [bookmaker, setBookmaker] = useState('')
@@ -86,8 +88,18 @@ export default function DepositStep4() {
       localStorage.removeItem('deposit_amount')
       localStorage.removeItem('deposit_transaction_id')
       
-      alert('⏰ Время на оплату истекло. Заявка отклонена.')
-      router.push('/')
+      showAlert({
+        type: 'warning',
+        title: language === 'ru' ? 'Время истекло' : 'Time expired',
+        message: language === 'ru' 
+          ? 'Время на оплату истекло. Заявка отклонена.' 
+          : 'Payment time has expired. Request rejected.',
+        autoClose: 3000
+      })
+      
+      setTimeout(() => {
+        router.push('/')
+      }, 3000)
     } catch (error) {
       console.error('Ошибка при отклонении заявки:', error)
       router.push('/')
@@ -224,23 +236,28 @@ export default function DepositStep4() {
       await createDepositRequest()
       
       // Уведомляем пользователя
-      if (language === 'ru') {
-        alert('✅ Заявка отправлена!\n\nМы проверим вашу оплату и зачислим средства в течение 5-10 минут.\n\nВы получите уведомление, когда пополнение будет выполнено.')
-      } else {
-        alert('✅ Request submitted!\n\nWe will verify your payment and credit funds within 5-10 minutes.\n\nYou will receive a notification when the deposit is completed.')
-      }
+      showAlert({
+        type: 'success',
+        title: language === 'ru' ? 'Заявка отправлена!' : 'Request submitted!',
+        message: language === 'ru'
+          ? 'Мы проверим вашу оплату и зачислим средства в течение 5-10 минут.\n\nВы получите уведомление, когда пополнение будет выполнено.'
+          : 'We will verify your payment and credit funds within 5-10 minutes.\n\nYou will receive a notification when the deposit is completed.',
+        autoClose: 3000
+      })
       
       // Перенаправляем на главную страницу
       setTimeout(() => {
         router.push('/')
-      }, 1000)
+      }, 3000)
     } catch (e) {
       console.error(e)
-      if (language === 'ru') {
-        alert('❌ Ошибка при отправке заявки.\n\nПожалуйста, попробуйте ещё раз или обратитесь в поддержку.')
-      } else {
-        alert('❌ Error submitting request.\n\nPlease try again or contact support.')
-      }
+      showAlert({
+        type: 'error',
+        title: language === 'ru' ? 'Ошибка' : 'Error',
+        message: language === 'ru'
+          ? 'Ошибка при отправке заявки.\n\nПожалуйста, попробуйте ещё раз или обратитесь в поддержку.'
+          : 'Error submitting request.\n\nPlease try again or contact support.'
+      })
     }
   }
 
@@ -520,6 +537,9 @@ export default function DepositStep4() {
           ✅ {t.iPaid}
         </button>
       </div>
+
+      {/* Кастомный алерт */}
+      {AlertComponent}
     </main>
     </PageTransition>
   )
