@@ -27,27 +27,41 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     // Определяем ссылку для банка
     let bankUrl = paymentUrl // По умолчанию используем общую ссылку
     
+    console.log('🏦 Bank clicked:', bankCode)
+    console.log('📦 All bank URLs:', allBankUrls)
+    console.log('🔗 Default payment URL:', paymentUrl)
+    
     if (allBankUrls) {
       // Маппинг кодов банков на названия в API
       const bankMapping: Record<string, string> = {
         'demirbank': 'DemirBank',
-        'omoney': 'O! bank',
+        'omoney': 'O!Money',
         'balance': 'Balance.kg',
         'bakai': 'Bakai',
         'megapay': 'MegaPay',
         'mbank': 'MBank',
+        'optima': 'Optima',
         'kompanion': 'Компаньон'
       }
       
       const apiBankName = bankMapping[bankCode]
+      console.log('🔍 Looking for bank:', apiBankName)
+      
       if (apiBankName && allBankUrls[apiBankName]) {
         bankUrl = allBankUrls[apiBankName]
+        console.log('✅ Found bank URL:', bankUrl)
+      } else {
+        console.warn('⚠️ Bank URL not found for:', apiBankName)
       }
     }
     
     // Если есть ссылка для оплаты, открываем её
     if (bankUrl) {
-      window.open(bankUrl, '_blank')
+      console.log('🚀 Opening URL:', bankUrl)
+      // Используем window.location.href для совместимости с Telegram WebApp
+      window.location.href = bankUrl
+    } else {
+      console.error('❌ No payment URL available!')
     }
   }
 
