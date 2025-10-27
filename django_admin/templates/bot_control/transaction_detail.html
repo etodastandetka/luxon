@@ -95,11 +95,11 @@
         {% endif %}
         <div style="color:#9aa4b2; font-size:12px;">ID: {{ transaction.user_id }}</div>
       </div>
-      <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}">
+      <a class="action-btn action-btn--neutral" href="{% url 'bot_control:user_profile' transaction.user_id %}" style="padding:8px 12px; font-size:13px; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
         <i class="fas fa-user"></i>
         <span>Профиль</span>
       </a>
-      <a class="action-btn action-btn--approve" href="{% url 'bot_control:user_chat' transaction.user_id %}">
+      <a class="action-btn action-btn--approve" href="{% url 'bot_control:user_chat' transaction.user_id %}" style="padding:8px 12px; font-size:13px; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
         <i class="fas fa-comments"></i>
         <span>Чат</span>
       </a>
