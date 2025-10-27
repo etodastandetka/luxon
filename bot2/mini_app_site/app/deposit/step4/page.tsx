@@ -222,10 +222,25 @@ export default function DepositStep4() {
   const handleIPaid = async () => {
     try {
       await createDepositRequest()
-      alert('Заявка отправлена. Мы проверим оплату и уведомим вас.')
+      
+      // Уведомляем пользователя
+      if (language === 'ru') {
+        alert('✅ Заявка отправлена!\n\nМы проверим вашу оплату и зачислим средства в течение 5-10 минут.\n\nВы получите уведомление, когда пополнение будет выполнено.')
+      } else {
+        alert('✅ Request submitted!\n\nWe will verify your payment and credit funds within 5-10 minutes.\n\nYou will receive a notification when the deposit is completed.')
+      }
+      
+      // Перенаправляем на главную страницу
+      setTimeout(() => {
+        router.push('/')
+      }, 1000)
     } catch (e) {
       console.error(e)
-      alert('Ошибка при отправке заявки. Попробуйте ещё раз.')
+      if (language === 'ru') {
+        alert('❌ Ошибка при отправке заявки.\n\nПожалуйста, попробуйте ещё раз или обратитесь в поддержку.')
+      } else {
+        alert('❌ Error submitting request.\n\nPlease try again or contact support.')
+      }
     }
   }
 
@@ -368,15 +383,18 @@ export default function DepositStep4() {
       bookmaker: 'Букмекер',
       playerId: 'ID игрока',
       bank: 'Банк',
-      selectBank: 'Выберите банк',
+      selectBank: 'Выберите банк для оплаты',
       paymentComplete: 'Оплата завершена',
       back: 'Назад',
-      instructions: 'Инструкция по оплате',
+      iPaid: 'Я оплатил',
+      instructions: 'Как оплатить:',
       instructionSteps: [
-        'Выберите банк для оплаты',
-        'Нажмите на кнопку банка для перехода к оплате',
-        'Оплатите указанную сумму',
-        'Дождитесь автоматического пополнения'
+        'Выберите ваш банк из списка ниже',
+        'Нажмите на кнопку выбранного банка',
+        'Вы будете перенаправлены в приложение банка',
+        'Подтвердите оплату указанной суммы в приложении',
+        'Вернитесь сюда и нажмите "Я оплатил"',
+        'Мы проверим оплату и зачислим средства автоматически'
       ]
     },
     en: {
@@ -387,15 +405,18 @@ export default function DepositStep4() {
       bookmaker: 'Bookmaker',
       playerId: 'Player ID',
       bank: 'Bank',
-      selectBank: 'Select bank',
+      selectBank: 'Select your bank for payment',
       paymentComplete: 'Payment completed',
       back: 'Back',
-      instructions: 'Payment instructions',
+      iPaid: 'I paid',
+      instructions: 'How to pay:',
       instructionSteps: [
-        'Select bank for payment',
-        'Click on bank button to go to payment',
-        'Pay the specified amount',
-        'Wait for automatic deposit'
+        'Select your bank from the list below',
+        'Click on the selected bank button',
+        'You will be redirected to the bank app',
+        'Confirm payment of the specified amount in the app',
+        'Return here and click "I paid"',
+        'We will verify payment and credit funds automatically'
       ]
     }
   }
@@ -494,9 +515,9 @@ export default function DepositStep4() {
         </button>
         <button
           onClick={handleIPaid}
-          className="btn btn-primary flex-1"
+          className="btn btn-primary flex-1 font-semibold"
         >
-          Я оплатил
+          ✅ {t.iPaid}
         </button>
       </div>
     </main>
