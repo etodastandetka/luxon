@@ -21,6 +21,7 @@ from handlers import (
     language_handlers,
     faq_handlers,
     history_handlers,
+    chat_logger,
 )
 
 from database import Database
@@ -66,6 +67,9 @@ class UniversalBot:
         # Регистрируем API обработчики
         import handlers.api_handlers as api_handlers
         api_handlers.register_handlers(self.dp, self.db, BOOKMAKERS, self.api_manager)
+        
+        # Регистрируем логирование чата (должно быть последним!)
+        chat_logger.register_handlers(self.dp, self.db, BOOKMAKERS, self.api_manager, self.bot)
         
     def _get_enabled_sites(self):
         """Reads enabled bookmaker site keys from SQLite bot_settings (key='sites').
