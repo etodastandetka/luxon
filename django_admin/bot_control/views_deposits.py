@@ -667,19 +667,64 @@ def chat_history(request, user_id: int):
 @require_http_methods(["POST"])
 def chat_send_from_admin(request):
     """
-    API для отправки сообщения от админа пользователю
+    API для отправки сообщения от админа пользователю через Telegram
     """
     try:
+        import requests
+        from .models import BotConfiguration
+        
         data = json.loads(request.body)
         user_id = data.get('user_id')
         message = data.get('message')
         
-        # TODO: Implement actual message sending
-        # For now, just return success
+        if not user_id or not message:
+            return JsonResponse({
+                'success': False,
+                'error': 'user_id и message обязательны'
+            }, status=400)
+        
+        # Получаем токен бота из настроек
+        bot_token = BotConfiguration.get_setting('bot_token', '')
+        
+        if not bot_token:
+            logger.error("Bot token not configured")
+            return JsonResponse({
+                'success': False,
+                'error': 'Токен бота не настроен'
+            }, status=500)
+        
+        # Отправляем сообщение через Telegram Bot API
+        telegram_url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+        payload = {
+            'chat_id': user_id,
+            'text': message,
+            'parse_mode': 'HTML'
+        }
+        
+        response = requests.post(telegram_url, json=payload, timeout=10)
+        result = response.json()
+        
+        if response.ok and result.get('ok'):
+            logger.info(f"Message sent successfully to user {user_id}")
+            return JsonResponse({
+                'success': True,
+                'message': 'Сообщение отправлено',
+                'telegram_response': result
+            })
+        else:
+            error_description = result.get('description', 'Unknown error')
+            logger.error(f"Telegram API error: {error_description}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Ошибка Telegram API: {error_description}'
+            }, status=500)
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error sending message: {str(e)}", exc_info=True)
         return JsonResponse({
-            'success': True,
-            'message': 'Message sent successfully'
-        })
+            'success': False,
+            'error': f'Ошибка сети: {str(e)}'
+        }, status=500)
     except Exception as e:
         logger.error(f"Error sending message from admin: {str(e)}", exc_info=True)
         return JsonResponse({
@@ -717,19 +762,75 @@ def chat_typing_from_admin(request):
 @require_http_methods(["POST"])
 def chat_send_media_from_admin(request):
     """
-    API для отправки медиа-файлов от админа пользователю
+    API для отправки медиа-файлов от админа пользователю через Telegram
     """
     try:
+        import requests
+        from .models import BotConfiguration
+        
         user_id = request.POST.get('user_id')
         media_type = request.POST.get('media_type', 'photo')  # photo, video, document
         caption = request.POST.get('caption', '')
+        file = request.FILES.get('file')
         
-        # TODO: Implement actual media sending
-        # For now, just return success
+        if not user_id or not file:
+            return JsonResponse({
+                'success': False,
+                'error': 'user_id и file обязательны'
+            }, status=400)
+        
+        # Получаем токен бота из настроек
+        bot_token = BotConfiguration.get_setting('bot_token', '')
+        
+        if not bot_token:
+            logger.error("Bot token not configured")
+            return JsonResponse({
+                'success': False,
+                'error': 'Токен бота не настроен'
+            }, status=500)
+        
+        # Определяем метод API в зависимости от типа медиа
+        if media_type == 'photo':
+            telegram_url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
+            file_key = 'photo'
+        elif media_type == 'video':
+            telegram_url = f'https://api.telegram.org/bot{bot_token}/sendVideo'
+            file_key = 'video'
+        else:
+            telegram_url = f'https://api.telegram.org/bot{bot_token}/sendDocument'
+            file_key = 'document'
+        
+        # Подготавливаем данные для отправки
+        files = {file_key: (file.name, file.read(), file.content_type)}
+        data = {'chat_id': user_id}
+        if caption:
+            data['caption'] = caption
+        
+        # Отправляем через Telegram Bot API
+        response = requests.post(telegram_url, data=data, files=files, timeout=30)
+        result = response.json()
+        
+        if response.ok and result.get('ok'):
+            logger.info(f"Media sent successfully to user {user_id}")
+            return JsonResponse({
+                'success': True,
+                'message': 'Медиа отправлено',
+                'telegram_response': result
+            })
+        else:
+            error_description = result.get('description', 'Unknown error')
+            logger.error(f"Telegram API error: {error_description}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Ошибка Telegram API: {error_description}'
+            }, status=500)
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error sending media: {str(e)}", exc_info=True)
         return JsonResponse({
-            'success': True,
-            'message': 'Media sent successfully'
-        })
+            'success': False,
+            'error': f'Ошибка сети: {str(e)}'
+        }, status=500)
     except Exception as e:
         logger.error(f"Error sending media from admin: {str(e)}", exc_info=True)
         return JsonResponse({
