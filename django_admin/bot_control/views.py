@@ -2342,13 +2342,31 @@ def api_save_withdrawal_settings(request):
 def api_get_bot_control(request):
     """API для получения настроек управления ботом"""
     try:
+        # Получаем настройки депозитов
+        deposit_settings = BotConfiguration.get_setting('deposit_settings', {})
+        if isinstance(deposit_settings, str):
+            import json
+            deposit_settings = json.loads(deposit_settings)
+        
+        # Получаем настройки выводов
+        withdrawal_settings = BotConfiguration.get_setting('withdrawal_settings', {})
+        if isinstance(withdrawal_settings, str):
+            import json
+            withdrawal_settings = json.loads(withdrawal_settings)
+        
         settings = {
-            'pause': BotConfiguration.get_setting('pause', False),
-            'maintenance_message': BotConfiguration.get_setting('maintenance_message', 'Технические работы. Попробуйте позже.')
+            'success': True,
+            'data': {
+                'pause': BotConfiguration.get_setting('pause', False),
+                'maintenance_message': BotConfiguration.get_setting('maintenance_message', 'Технические работы. Попробуйте позже.'),
+                'deposits_enabled': deposit_settings.get('enabled', True),
+                'withdrawals_enabled': withdrawal_settings.get('enabled', True),
+                'enabled_deposit_banks': deposit_settings.get('enabled_banks', ['DemirBank', 'O!bank', 'Balance.kg', 'Bakai', 'MegaPay', 'MBank'])
+            }
         }
         return JsonResponse(settings)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': str(e), 'success': False}, status=500)
 
 @csrf_exempt
 def api_save_bot_control(request):
