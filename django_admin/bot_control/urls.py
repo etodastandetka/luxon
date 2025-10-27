@@ -35,6 +35,7 @@ urlpatterns = [
     path('chat/send/', views_deposits.chat_send_from_admin, name='chat_send_from_admin'),
     path('chat/send-media/', views_deposits.chat_send_media_from_admin, name='chat_send_media_from_admin'),
     path('chat/typing/', views_deposits.chat_typing_from_admin, name='chat_typing_from_admin'),
+    path('api/save-chat-message/', views_deposits.save_chat_message, name='save_chat_message'),
     
     # Новые страницы
     path('referral/', referral_views.referral_management, name='referral_management'),

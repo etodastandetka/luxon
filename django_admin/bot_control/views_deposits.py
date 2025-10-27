@@ -759,6 +759,38 @@ def chat_send_from_admin(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def save_chat_message(request):
+    """
+    API для сохранения входящего сообщения от бота
+    """
+    try:
+        data = json.loads(request.body)
+        from .models import ChatMessage
+        
+        # Создаем запись о сообщении
+        ChatMessage.objects.create(
+            user_id=data.get('user_id'),
+            message_text=data.get('message_text', ''),
+            message_type=data.get('message_type', 'text'),
+            media_url=data.get('media_url', ''),
+            direction=data.get('direction', 'in'),
+            telegram_message_id=data.get('telegram_message_id')
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Message saved'
+        })
+    except Exception as e:
+        logger.error(f"Error saving chat message: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def chat_typing_from_admin(request):
     """
     API для отправки индикатора печатания от админа
