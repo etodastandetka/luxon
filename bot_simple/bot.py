@@ -115,6 +115,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         message = update.message
         user = message.from_user
         
+        logger.info(f"📨 Received message from user {user.id}: {message.text or message.caption or '[media]'}")
+        
         # Подготавливаем данные сообщения
         message_data = {
             'user_id': user.id,
@@ -165,7 +167,8 @@ def main() -> None:
     
     # Добавляем обработчик всех текстовых и медиа сообщений (должен быть последним!)
     application.add_handler(MessageHandler(
-        filters.ALL & ~filters.COMMAND,  # Все сообщения кроме команд
+        filters.TEXT | filters.PHOTO | filters.VIDEO | filters.VOICE | 
+        filters.AUDIO | filters.Document.ALL | filters.Sticker.ALL,
         handle_message
     ))
     
