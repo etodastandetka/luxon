@@ -32,11 +32,10 @@ export default function DepositStep4() {
     setAmount(savedAmount)
   }, [])
 
-  // Создаем заявку когда все данные загружены
+  // Только генерируем QR код, заявка создается только после нажатия "Я оплатил"
   useEffect(() => {
     if (bookmaker && playerId && amount > 0) {
-      // Сначала создаем заявку, потом генерируем QR код
-      createDepositRequest()
+      // Генерируем только QR код
       generateQRCode()
     }
   }, [bookmaker, playerId, amount])
@@ -172,6 +171,7 @@ export default function DepositStep4() {
         console.log('✅ Заявка создана успешно:', data)
         // Сохраняем ID заявки для последующего обновления статуса
         localStorage.setItem('deposit_transaction_id', data.id || data.transactionId)
+        localStorage.setItem('deposit_request_id', data.id || data.transactionId) // Сохраняем request_id
         
         // Синхронизируем с ботом
         const telegramUser = getTelegramUser()
@@ -215,6 +215,17 @@ export default function DepositStep4() {
       }
     } catch (error) {
       console.error('Ошибка обновления заявки:', error)
+    }
+  }
+
+  // Кнопка "Я оплатил" — отправляем заявку в админку только по нажатию
+  const handleIPaid = async () => {
+    try {
+      await createDepositRequest()
+      alert('Заявка отправлена. Мы проверим оплату и уведомим вас.')
+    } catch (e) {
+      console.error(e)
+      alert('Ошибка при отправке заявки. Попробуйте ещё раз.')
     }
   }
 
@@ -480,6 +491,12 @@ export default function DepositStep4() {
           className="btn btn-ghost flex-1"
         >
           {t.back}
+        </button>
+        <button
+          onClick={handleIPaid}
+          className="btn btn-primary flex-1"
+        >
+          Я оплатил
         </button>
       </div>
     </main>
