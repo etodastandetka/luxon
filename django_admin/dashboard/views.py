@@ -292,15 +292,19 @@ def wallet(request):
         ''')
         # Читаем список
         cur.execute('''
-            SELECT id, value, COALESCE(is_active,0), COALESCE(created_at,'')
+            SELECT id, value, COALESCE(is_active,0), COALESCE(name,''), 
+                   COALESCE(email,''), COALESCE(password,''), COALESCE(created_at,'')
             FROM requisites
             ORDER BY id DESC
         ''')
-        for rid, value, is_active, created_at in cur.fetchall():
+        for rid, value, is_active, name, email, password, created_at in cur.fetchall():
             requisites.append({
                 'id': rid,
                 'value': value,
                 'is_active': bool(is_active),
+                'name': name,
+                'email': email,
+                'password': password,
                 'created_at': created_at,
             })
         conn.close()
