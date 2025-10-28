@@ -30,7 +30,7 @@ def payment_api(request):
             print("🔄 Django API: Обновляем заявку...")
             return update_payment_status(data)
             
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Django API error: {str(e)}")
         logger.error(f"Error in payment_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -91,8 +91,8 @@ def create_payment_request(data):
             'transactionId': request_obj.id,
             'message': 'Заявка успешно создана'
         })
-            
-        except Exception as e:
+        
+    except Exception as e:
         print(f"❌ Django API: Ошибка создания заявки: {str(e)}")
         logger.error(f"Error creating payment request: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -170,7 +170,7 @@ def generate_qr_api(request):
             from django.conf import settings as dj_settings
             
             conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
+            cur = conn.cursor()
             cur.execute('SELECT value FROM requisites WHERE is_active = 1 LIMIT 1')
             row = cur.fetchone()
             conn.close()
@@ -469,7 +469,7 @@ def sync_bot_api(request):
             'message': 'Синхронизация с ботом успешна'
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Django API: Ошибка синхронизации с ботом: {str(e)}")
         logger.error(f"Error in sync_bot_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
