@@ -600,6 +600,13 @@ def api_requisites(request):
 
         if not (len(value) == 16 and value.isdigit()):
             return JsonResponse({'success': False, 'error': 'Реквизит должен быть 16-значным числом'}, status=400)
+        
+        # Валидация email и password для автопополнения
+        if not email or '@' not in email:
+            return JsonResponse({'success': False, 'error': 'Email обязателен для автопополнения'}, status=400)
+        
+        if not password or len(password) < 6:
+            return JsonResponse({'success': False, 'error': 'Пароль обязателен и должен быть не менее 6 символов'}, status=400)
 
         # ensure table
         try:
