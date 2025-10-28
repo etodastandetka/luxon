@@ -30,7 +30,7 @@ def payment_api(request):
             print("🔄 Django API: Обновляем заявку...")
             return update_payment_status(data)
             
-    except Exception as e:
+        except Exception as e:
         print(f"❌ Django API error: {str(e)}")
         logger.error(f"Error in payment_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -92,7 +92,7 @@ def create_payment_request(data):
             'message': 'Заявка успешно создана'
         })
         
-    except Exception as e:
+        except Exception as e:
         print(f"❌ Django API: Ошибка создания заявки: {str(e)}")
         logger.error(f"Error creating payment request: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -143,7 +143,7 @@ def update_payment_status(data):
             
             request_obj.save()
         
-        return JsonResponse({
+                return JsonResponse({
             'success': True,
             'message': 'Статус заявки обновлен'
         })
@@ -184,11 +184,11 @@ def generate_qr_api(request):
         requisite_length = str(len(requisite)).zfill(2)  # Длина реквизита
         
         # Создаем TLV структуру до контрольной суммы
-        # Формат: 00020101021232990015qr.demirbank.kg0108ib_andro10{LENGTH}{REQUISITE}...54{LENGTH}{AMOUNT}5909DEMIRBANK6304
+        # Формат из примера: 00020101021232990015qr.demirbank.kg0108ib_andro10{LENGTH}{REQUISITE}12021213021211328454d5b3ee5d47c7b61c0a0b07bb939a5204482953034175{LENGTH_ID}{AMOUNT}5909DEMIRBANK6304
         payload = (
             f"00020101021232990015qr.demirbank.kg0108ib_andro"
             f"10{requisite_length}{requisite}"
-            f"1202111302112021213021211328454d5b3ee5d47c7b61c0a0b07bb939a5204482953034175"
+            f"12021213021211328454d5b3ee5d47c7b61c0a0b07bb939a5204482953034175"
             f"4{amount_length}{amount_str}"
             f"5909DEMIRBANK6304"
         )
@@ -445,7 +445,7 @@ def sync_bot_api(request):
             'message': 'Синхронизация с ботом успешна'
         })
         
-    except Exception as e:
+        except Exception as e:
         print(f"❌ Django API: Ошибка синхронизации с ботом: {str(e)}")
         logger.error(f"Error in sync_bot_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
