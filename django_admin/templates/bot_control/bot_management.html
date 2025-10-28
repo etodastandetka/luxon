@@ -6,6 +6,12 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<script>
+// Предотвращаем бесконечное обновление
+if (window.location.search.includes('refresh')) {
+    window.location.replace(window.location.pathname);
+}
+</script>
 {% endblock %}
 {% block header_icon %}cog{% endblock %}
 {% block header_title %}⚙️ Управление ботом{% endblock %}
@@ -655,16 +661,30 @@ input:checked + .slider:before {
 <script>
 async function loadAllSettings() {
     try {
+        console.log('🔄 Загрузка настроек...');
+        
         // Загрузка общих настроек бота
         const botResponse = await fetch('{% url "bot_control:api_get_bot_control" %}');
+        if (!botResponse.ok) {
+            throw new Error(`HTTP error! status: ${botResponse.status}`);
+        }
         const botData = await botResponse.json();
-        document.getElementById('bot-pause').checked = botData.pause;
-        document.getElementById('maintenance-message').value = botData.maintenance_message || '';
+        
+        const pauseElement = document.getElementById('bot-pause');
+        const messageElement = document.getElementById('maintenance-message');
+        
+        if (pauseElement) pauseElement.checked = botData.pause;
+        if (messageElement) messageElement.value = botData.maintenance_message || '';
 
         // Загрузка настроек депозитов
         const depositResponse = await fetch('{% url "bot_control:api_get_deposit_settings" %}');
+        if (!depositResponse.ok) {
+            throw new Error(`Deposit settings HTTP error! status: ${depositResponse.status}`);
+        }
         const depositData = await depositResponse.json();
-        document.getElementById('deposits-enabled').checked = depositData.enabled;
+        
+        const depositsEnabledElement = document.getElementById('deposits-enabled');
+        if (depositsEnabledElement) depositsEnabledElement.checked = depositData.enabled;
         
         // Сброс чекбоксов депозитов
         document.querySelectorAll('input[id^="deposit-"]').forEach(checkbox => {
@@ -679,8 +699,13 @@ async function loadAllSettings() {
 
         // Загрузка настроек выводов
         const withdrawalResponse = await fetch('{% url "bot_control:api_get_withdrawal_settings" %}');
+        if (!withdrawalResponse.ok) {
+            throw new Error(`Withdrawal settings HTTP error! status: ${withdrawalResponse.status}`);
+        }
         const withdrawalData = await withdrawalResponse.json();
-        document.getElementById('withdrawals-enabled').checked = withdrawalData.enabled;
+        
+        const withdrawalsEnabledElement = document.getElementById('withdrawals-enabled');
+        if (withdrawalsEnabledElement) withdrawalsEnabledElement.checked = withdrawalData.enabled;
         
         // Сброс чекбоксов выводов
         document.querySelectorAll('input[id^="withdrawal-"]').forEach(checkbox => {
@@ -695,19 +720,28 @@ async function loadAllSettings() {
 
         // Загрузка настроек канала
         const channelResponse = await fetch('{% url "bot_control:api_get_channel_settings" %}');
+        if (!channelResponse.ok) {
+            throw new Error(`Channel settings HTTP error! status: ${channelResponse.status}`);
+        }
         const channelData = await channelResponse.json();
-        document.getElementById('channel-enabled').checked = channelData.enabled;
+        
+        const channelEnabledElement = document.getElementById('channel-enabled');
+        if (channelEnabledElement) channelEnabledElement.checked = channelData.enabled;
         document.getElementById('channel-name').value = channelData.name || '';
         document.getElementById('channel-welcome').value = channelData.welcome_message || '';
         
+        console.log('✅ Настройки загружены успешно');
+        
     } catch (error) {
-        console.error('Ошибка загрузки настроек:', error);
-        alert('Ошибка загрузки настроек');
+        console.error('❌ Ошибка загрузки настроек:', error);
+        // Не перезагружаем страницу при ошибке
+        alert('Ошибка загрузки настроек: ' + error.message);
     }
 }
 
 async function saveAllSettings() {
     try {
+        console.log('💾 Сохранение настроек...');
         showSaveStatus();
         
         // Сохранение общих настроек бота
@@ -781,10 +815,12 @@ async function saveAllSettings() {
         });
         
         showSaveStatus('Все настройки сохранены!', 'success');
+        console.log('✅ Настройки сохранены успешно');
         
     } catch (error) {
-        console.error('Ошибка сохранения:', error);
-        showSaveStatus('Ошибка сохранения!', 'error');
+        console.error('❌ Ошибка сохранения:', error);
+        showSaveStatus('Ошибка сохранения: ' + error.message, 'error');
+        // Не перезагружаем страницу при ошибке
     }
 }
 
@@ -809,15 +845,23 @@ function showSaveStatus(message = 'Сохранение…', type = 'loading') {
 }
 
 // Принудительное обновление кэша
-if (performance.navigation.type === 1) {
-    console.log('Страница обновлена - принудительное обновление кэша');
-    location.reload(true);
-}
+// Удален проблемный код принудительного обновления
 
 // Загрузка настроек при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Версия 4.0 - Только названия банков без кодов');
-    loadAllSettings();
+    console.log('🚀 Инициализация страницы управления ботом');
+    
+    // Предотвращаем множественную инициализацию
+    if (window.botManagementInitialized) {
+        console.log('⚠️ Страница уже инициализирована');
+        return;
+    }
+    window.botManagementInitialized = true;
+    
+    // Загружаем настройки с задержкой для стабильности
+    setTimeout(() => {
+        loadAllSettings();
+    }, 100);
     
     // Добавляем автоматическое сохранение при изменении элементов
     const autoSaveElements = [
