@@ -58,8 +58,14 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     // Если есть ссылка для оплаты, открываем её
     if (bankUrl) {
       console.log('🚀 Opening URL:', bankUrl)
-      // Используем window.location.href для совместимости с Telegram WebApp
-      window.location.href = bankUrl
+      // Используем Telegram WebApp API для открытия ссылки вне мини-приложения
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        console.log('✅ Opening with Telegram WebApp API')
+        window.Telegram.WebApp.openLink(bankUrl)
+      } else {
+        console.log('⚠️ Telegram WebApp not available, using fallback')
+        window.open(bankUrl, '_blank')
+      }
     } else {
       console.error('❌ No payment URL available!')
     }
