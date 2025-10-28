@@ -282,7 +282,14 @@
 .transaction-amount {
     font-size: 13px;
     font-weight: 600;
-    color: #22c55e;
+}
+
+.transaction-amount.amount-deposit {
+    color: #22c55e; /* Зеленый для пополнений */
+}
+
+.transaction-amount.amount-withdraw {
+    color: #ef4444; /* Красный для выводов */
 }
 
 .transaction-status {
@@ -424,7 +431,7 @@ function createTransactionElement(transaction) {
                 <span class="transaction-bookmaker">${transaction.bookmaker || 'Не указан'}</span>
             </div>
             <div class="transaction-meta">
-                <span class="transaction-amount">${transaction.amount} сом</span>
+                <span class="transaction-amount ${transaction.type === 'deposit' ? 'amount-deposit' : 'amount-withdraw'}">${transaction.type === 'deposit' ? '+' : '-'}${transaction.amount} сом</span>
                 <span class="transaction-status ${statusClass}">${getStatusText(transaction.status)}</span>
             </div>
             <div class="transaction-date">${formatDate(transaction.created_at)}</div>
