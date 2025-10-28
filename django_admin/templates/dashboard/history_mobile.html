@@ -407,7 +407,7 @@ function createTransactionElement(transaction) {
     let bankIconHtml = '';
     if (transaction.type === 'deposit') {
         // Для пополнений показываем ELQR иконку
-        bankIconHtml = '<img src="{% static \'images/elqr.svg\' %}" alt="ELQR">';
+        bankIconHtml = '<img src="{% static "images/elqr.svg" %}" alt="ELQR">';
     } else {
         // Для выводов показываем иконку банка
         const bankIconUrl = getBankIconUrl(transaction.bank || transaction.bookmaker || '');
