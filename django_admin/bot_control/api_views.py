@@ -191,29 +191,29 @@ def generate_qr_api(request):
         
         # Генерируем QR код
         amount_cents = int(amount * 100)
-        amount_str = str(amount_cents)
-        amount_length = str(len(amount_str)).zfill(2)  # Длина суммы (например, "05" для 10053)
+        # Паддим сумму до 5 символов (например: 200.74 -> 20074)
+        amount_str = str(amount_cents).zfill(5)
+        amount_length = "05"  # Всегда 5 символов для совместимости
         
         requisite_length = str(len(requisite)).zfill(2)  # Длина реквизита
         
         # Создаем TLV структуру до контрольной суммы (без 6304)
-        # Поле 32 - это вложенный TLV-блок с под-тегами
+        # Упрощенная структура для совместимости со всеми банками (особенно MBank)
         merchant_account_value = (
             f"0015qr.demirbank.kg"  # Под-тег 00: домен
-            f"0108ib_andro"          # Под-тег 01: тип
+            f"01047001"              # Под-тег 01: короткий тип (7001)
             f"10{requisite_length}{requisite}"  # Под-тег 10: реквизит (16 цифр)
-            f"1202"                  # Под-тег 12
-            f"1213021211328454d5b3ee5d47c7b61c0a0b07bb939a"  # Под-теги 13, 28
+            f"120211130212"          # Под-теги 12, 13: дополнительные поля (упрощенные)
         )
         merchant_account_length = str(len(merchant_account_value)).zfill(2)
         
         payload = (
             f"000201"  # 00 - Payload Format Indicator
-            f"010212"  # 01 - Point of Initiation Method (динамический QR)
+            f"010211"  # 01 - Point of Initiation Method (статический QR)
             f"32{merchant_account_length}{merchant_account_value}"  # 32 - Merchant Account
             f"52044829"  # 52 - Merchant Category Code
             f"5303417"   # 53 - Transaction Currency
-            f"54{amount_length}{amount_str}"  # 54 - Amount
+            f"54{amount_length}{amount_str}"  # 54 - Amount (5 цифр с паддингом)
             f"5909DEMIRBANK"  # 59 - Merchant Name
         )
         
