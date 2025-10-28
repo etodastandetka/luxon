@@ -183,26 +183,37 @@ def generate_qr_api(request):
         
         requisite_length = str(len(requisite)).zfill(2)  # Длина реквизита
         
-        # Создаем TLV структуру до контрольной суммы
-        # Формат из примера: 00020101021232990015qr.demirbank.kg0108ib_andro10{LENGTH}{REQUISITE}12021213021211328454d5b3ee5d47c7b61c0a0b07bb939a5204482953034175{LENGTH_ID}{AMOUNT}5909DEMIRBANK6304
+        # Создаем TLV структуру до контрольной суммы (без 6304)
+        # Поле 32 - это вложенный TLV-блок с под-тегами
+        merchant_account_value = (
+            f"0015qr.demirbank.kg"  # Под-тег 00: домен
+            f"0108ib_andro"          # Под-тег 01: тип
+            f"10{requisite_length}{requisite}"  # Под-тег 10: реквизит (16 цифр)
+            f"1202"                  # Под-тег 12
+            f"1213021211328454d5b3ee5d47c7b61c0a0b07bb939a"  # Под-теги 13, 28
+        )
+        merchant_account_length = str(len(merchant_account_value)).zfill(2)
+        
         payload = (
-            f"00020101021232990015qr.demirbank.kg0108ib_andro"
-            f"10{requisite_length}{requisite}"
-            f"12021213021211328454d5b3ee5d47c7b61c0a0b07bb939a5204482953034175"
-            f"4{amount_length}{amount_str}"
-            f"5909DEMIRBANK6304"
+            f"000201"  # 00 - Payload Format Indicator
+            f"010212"  # 01 - Point of Initiation Method (динамический QR)
+            f"32{merchant_account_length}{merchant_account_value}"  # 32 - Merchant Account
+            f"52044829"  # 52 - Merchant Category Code
+            f"5303417"   # 53 - Transaction Currency
+            f"54{amount_length}{amount_str}"  # 54 - Amount
+            f"5909DEMIRBANK"  # 59 - Merchant Name
         )
         
         logger.info(f"Payload before checksum: {payload}")
         
-        # Вычисляем SHA256 контрольную сумму
+        # Вычисляем SHA256 контрольную сумму (по документации - от payload БЕЗ '6304')
         import hashlib
         checksum_full = hashlib.sha256(payload.encode('utf-8')).hexdigest()
-        # Берем последние 4 символа
-        checksum = checksum_full[-4:].upper()
+        # Берем последние 4 символа в нижнем регистре (как в примере: 283f)
+        checksum = checksum_full[-4:].lower()
         
-        # Полный QR хеш
-        qr_hash = payload + checksum
+        # Полный QR хеш: payload + '6304' + checksum
+        qr_hash = payload + "6304" + checksum
         
         logger.info(f"Generated QR hash: {qr_hash}")
         logger.info(f"Checksum: {checksum}")
