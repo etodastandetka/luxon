@@ -445,7 +445,7 @@ def sync_bot_api(request):
             'message': 'Синхронизация с ботом успешна'
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Django API: Ошибка синхронизации с ботом: {str(e)}")
         logger.error(f"Error in sync_bot_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
