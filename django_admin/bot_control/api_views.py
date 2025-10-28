@@ -164,13 +164,26 @@ def generate_qr_api(request):
         amount = data.get('amount', 0)
         player_id = data.get('playerId', '')
         
-        # Получаем активный реквизит из админки
-        from bot_control.models import BotConfiguration
-        
+        # Получаем активный реквизит из таблицы requisites в SQLite
         try:
-            requisite_config = BotConfiguration.objects.get(key='active_requisite')
-            requisite = requisite_config.value
-        except BotConfiguration.DoesNotExist:
+            import sqlite3
+            from django.conf import settings as dj_settings
+            
+            conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
+            cur = conn.cursor()
+            cur.execute('SELECT value FROM requisites WHERE is_active = 1 LIMIT 1')
+            row = cur.fetchone()
+            conn.close()
+            
+            if row:
+                requisite = row[0]
+                logger.info(f"Using active requisite from DB: {requisite}")
+            else:
+                # Fallback реквизит
+                requisite = '1234567890123456'
+                logger.warning("No active requisite found, using fallback")
+        except Exception as e:
+            logger.error(f"Error fetching requisite: {str(e)}")
             # Fallback реквизит
             requisite = '1234567890123456'
         
