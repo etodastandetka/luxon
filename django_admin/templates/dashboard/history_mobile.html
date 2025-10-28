@@ -451,9 +451,9 @@ function getStatusText(status) {
         case 'pending': return 'ОЖИДАЕТ';
         case 'rejected': return 'ОТКЛОНЕНО';
         case 'approved': return 'ОДОБРЕНО';
-        case 'awaiting_manual': return 'ОЖИДАЕТ РУЧНОЙ ОБРАБОТКИ';
-        case 'processing': return 'ОБРАБАТЫВАЕТСЯ';
-        case 'auto_completed': return 'АВТОЗАВЕРШЕНО';
+        case 'awaiting_manual': return 'РУЧНАЯ';
+        case 'processing': return 'ОБРАБОТКА';
+        case 'auto_completed': return 'АВТО';
         default: return status.toUpperCase();
     }
 }
