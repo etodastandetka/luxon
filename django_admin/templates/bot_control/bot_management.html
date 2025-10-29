@@ -1298,10 +1298,12 @@ if (window.financialInterfaceInitialized) {
             });
             
             // Установка банков для депозитов
-            depositData.banks.forEach(bank => {
-                const checkbox = document.getElementById(`deposit-${bank}`);
-                if (checkbox) checkbox.checked = true;
-            });
+            if (depositData.banks && Array.isArray(depositData.banks)) {
+                depositData.banks.forEach(bank => {
+                    const checkbox = document.getElementById(`deposit-${bank}`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
 
             // Загрузка настроек выводов
             const withdrawalResponse = await fetch('{% url "bot_control:api_get_withdrawal_settings" %}');
@@ -1317,10 +1319,12 @@ if (window.financialInterfaceInitialized) {
             });
             
             // Установка банков для выводов
-            withdrawalData.banks.forEach(bank => {
-                const checkbox = document.getElementById(`withdrawal-${bank}`);
-                if (checkbox) checkbox.checked = true;
-            });
+            if (withdrawalData.banks && Array.isArray(withdrawalData.banks)) {
+                withdrawalData.banks.forEach(bank => {
+                    const checkbox = document.getElementById(`withdrawal-${bank}`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
 
             // Загрузка настроек канала
             const channelResponse = await fetch('{% url "bot_control:api_get_channel_settings" %}');
