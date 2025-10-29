@@ -53,14 +53,13 @@
             margin: 0 auto;
             background: rgba(30, 30, 46, 0.3);
             backdrop-filter: blur(20px);
-            height: 100vh !important;
-            max-height: 100vh !important;
+            min-height: 100vh !important;
             position: relative;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
             border-radius: 0;
             border: 1px solid rgba(138, 43, 226, 0.1);
-            padding-bottom: 0 !important;
-            overflow: hidden !important; /* Убираем скролл у контейнера */
+            padding-bottom: 70px !important; /* Отступ для нижнего меню */
+            overflow-x: hidden !important;
             display: flex !important;
             flex-direction: column !important;
         }
@@ -84,19 +83,22 @@
             display: flex !important;
             justify-content: space-around !important;
             align-items: center !important;
-            padding: 8px 4px 10px 4px !important;
-            z-index: 99999 !important;
+            padding: 8px 4px 12px 4px !important;
+            z-index: 999999 !important;
             box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
             gap: 2px;
-            min-height: 58px !important;
+            min-height: 60px !important;
             box-sizing: border-box !important;
+            margin: 0 !important;
         }
         
         /* Принудительная фиксация */
         html, body {
             height: 100% !important;
             overflow-x: hidden !important;
-            overflow-y: hidden !important; /* Убираем скролл у body */
+            overflow-y: auto !important; /* Разрешаем скролл для body */
+            margin: 0 !important;
+            padding: 0 !important;
         }
         
         /* Красивый скролл для всего body */
