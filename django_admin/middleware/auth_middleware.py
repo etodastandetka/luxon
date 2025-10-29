@@ -29,6 +29,7 @@ class AuthMiddleware:
             # API endpoints для мини-приложения
             '/bot/api/payment/',
             '/bot/api/generate-qr/',
+            '/bot/api/payment-settings/',  # Публичное API для получения настроек платежей
             '/bot/api/save-chat-message/',  # Для сохранения сообщений от бота
             '/api/payment/',
             '/api/generate-qr/',
