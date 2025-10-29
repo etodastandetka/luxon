@@ -943,9 +943,6 @@
         window.addEventListener('load', fixBottomNav);
         // Принудительная проверка каждые 2 секунды (на случай динамического контента)
         setInterval(fixBottomNav, 2000);
-        
-        // Дополнительная проверка каждые 100мс
-        setInterval(fixBottomNav, 100);
     </script>
 
     {% block extra_js %}{% endblock %}
