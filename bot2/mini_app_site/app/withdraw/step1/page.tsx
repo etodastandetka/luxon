@@ -20,6 +20,7 @@ export default function WithdrawStep1() {
           : 'https://xendro.pro'
         const res = await fetch(`${base}/bot/api/payment-settings/`, { cache: 'no-store' })
         const data = await res.json()
+        console.log('📋 Withdrawal settings from API:', data)
         if (data && data.withdrawals && data.withdrawals.banks) {
           // Маппим коды банков из API в коды для BankButtons
           const bankCodeMapping: Record<string, string> = {
@@ -35,10 +36,16 @@ export default function WithdrawStep1() {
           const mappedBanks = data.withdrawals.banks
             .map((b: any) => {
               const code = b.code || b
-              return bankCodeMapping[code] || code
+              const mapped = bankCodeMapping[code] || code
+              console.log(`  Mapping: ${code} -> ${mapped}`)
+              return mapped
             })
             .filter(Boolean)
+          console.log('✅ Mapped enabled banks for withdrawals:', mappedBanks)
           setEnabledBanks(mappedBanks)
+        } else {
+          console.warn('⚠️ No withdrawal banks in settings, will show all banks')
+          setEnabledBanks([]) // Пустой массив = фильтровать строго, не показывать ничего
         }
       } catch (error) {
         console.error('Ошибка загрузки настроек выводов:', error)
@@ -122,7 +129,7 @@ export default function WithdrawStep1() {
         <BankButtons 
           onPick={setBank} 
           selected={bank} 
-          enabledBanks={enabledBanks.length > 0 ? enabledBanks : undefined}
+          enabledBanks={enabledBanks.length > 0 ? enabledBanks : []}
         />
         
         <div className="flex gap-2">
