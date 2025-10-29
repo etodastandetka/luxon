@@ -92,15 +92,27 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     'odengi': 'omoney' // O!Money для выводов
   }
 
+  // Фильтруем банки согласно настройкам
+  // Если enabledBanks не передан (undefined), показываем все банки
+  // Если enabledBanks передан (даже пустой массив), фильтруем строго
   const filteredBanks = BANKS.filter(bank => {
-    if (!enabledBanks || enabledBanks.length === 0) return true
+    // Если enabledBanks не передан вообще - показываем все
+    if (enabledBanks === undefined) {
+      return true
+    }
+    
+    // Если enabledBanks передан, даже пустой - фильтруем строго
     // Проверяем, есть ли банк в списке разрешенных (учитываем оба маппинга)
     const adminCode = bankMappingToAdmin[bank.code]
     const componentCode = bankMappingFromAdmin[bank.code] || bank.code
+    
     return enabledBanks.includes(adminCode) || 
            enabledBanks.includes(componentCode) || 
            enabledBanks.includes(bank.code)
   })
+  
+  console.log('🏦 BankButtons - enabledBanks:', enabledBanks)
+  console.log('🏦 BankButtons - filteredBanks:', filteredBanks.map(b => b.code))
 
   return (
     <div className="grid grid-cols-2 gap-1">
