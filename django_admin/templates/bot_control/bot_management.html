@@ -321,6 +321,71 @@
         </div>
     </div>
 
+    <!-- Настройки казино -->
+    <div class="control-panel">
+        <div class="panel-header">
+            <div class="panel-icon"><i class="fas fa-dice"></i></div>
+            <div class="panel-info">
+                <h2>Настройки казино</h2>
+                <p>Управление доступностью казино для пользователей</p>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <div class="control-item">
+                <div class="control-label">
+                    <span class="label-title">1XBET</span>
+                    <span class="label-desc">Разрешить использование 1XBET</span>
+                </div>
+                <div class="control-switch">
+                    <input type="checkbox" id="casino-1xbet" class="financial-switch">
+                    <label for="casino-1xbet" class="switch-label">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span class="label-title">1WIN</span>
+                    <span class="label-desc">Разрешить использование 1WIN</span>
+                </div>
+                <div class="control-switch">
+                    <input type="checkbox" id="casino-1win" class="financial-switch">
+                    <label for="casino-1win" class="switch-label">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span class="label-title">MELBET</span>
+                    <span class="label-desc">Разрешить использование MELBET</span>
+                </div>
+                <div class="control-switch">
+                    <input type="checkbox" id="casino-melbet" class="financial-switch">
+                    <label for="casino-melbet" class="switch-label">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span class="label-title">MOSTBET</span>
+                    <span class="label-desc">Разрешить использование MOSTBET</span>
+                </div>
+                <div class="control-switch">
+                    <input type="checkbox" id="casino-mostbet" class="financial-switch">
+                    <label for="casino-mostbet" class="switch-label">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Настройки канала -->
     <div class="control-panel">
         <div class="panel-header">
@@ -1357,6 +1422,21 @@ if (window.financialInterfaceInitialized) {
                 console.warn('⚠️ withdrawalData.banks не является массивом:', withdrawalData.banks);
             }
 
+            // Загрузка настроек казино
+            const casinoResponse = await fetch('{% url "bot_control:api_get_casino_settings" %}');
+            if (casinoResponse.ok) {
+                const casinoData = await casinoResponse.json();
+                const casino1xbet = document.getElementById('casino-1xbet');
+                const casino1win = document.getElementById('casino-1win');
+                const casinoMelbet = document.getElementById('casino-melbet');
+                const casinoMostbet = document.getElementById('casino-mostbet');
+                
+                if (casino1xbet) casino1xbet.checked = casinoData['1xbet'] !== false;
+                if (casino1win) casino1win.checked = casinoData['1win'] !== false;
+                if (casinoMelbet) casinoMelbet.checked = casinoData['melbet'] !== false;
+                if (casinoMostbet) casinoMostbet.checked = casinoData['mostbet'] !== false;
+            }
+
             // Загрузка настроек канала
             const channelResponse = await fetch('{% url "bot_control:api_get_channel_settings" %}');
             if (!channelResponse.ok) throw new Error(`Channel settings HTTP error! status: ${channelResponse.status}`);
@@ -1500,6 +1580,21 @@ if (window.financialInterfaceInitialized) {
             }
             console.log('✅ Выводы успешно сохранены:', withdrawalResult);
 
+            // Сохранение настроек казино
+            await fetch('{% url "bot_control:api_save_casino_settings" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken.value
+                },
+                body: JSON.stringify({
+                    '1xbet': document.getElementById('casino-1xbet')?.checked || false,
+                    '1win': document.getElementById('casino-1win')?.checked || false,
+                    'melbet': document.getElementById('casino-melbet')?.checked || false,
+                    'mostbet': document.getElementById('casino-mostbet')?.checked || false
+                })
+            });
+
             // Сохранение настроек канала
             await fetch('{% url "bot_control:api_save_channel_settings" %}', {
                 method: 'POST',
@@ -1587,7 +1682,8 @@ if (window.financialInterfaceInitialized) {
         // Автоматическое сохранение при изменении (с debounce)
         const autoSaveElements = [
             'bot-pause', 'maintenance-message', 'deposits-enabled', 'withdrawals-enabled', 
-            'channel-enabled', 'channel-name', 'channel-id', 'channel-username'
+            'channel-enabled', 'channel-name', 'channel-id', 'channel-username',
+            'casino-1xbet', 'casino-1win', 'casino-melbet', 'casino-mostbet'
         ];
         
         autoSaveElements.forEach(id => {

@@ -2243,6 +2243,10 @@ def api_get_payment_settings(request):
         withdrawals_str = BotConfiguration.get_setting('withdrawals', '{"enabled": true, "banks": ["kompanion", "odengi", "bakai", "balance", "megapay", "mbank"]}')
         withdrawals = json.loads(withdrawals_str) if isinstance(withdrawals_str, str) else withdrawals_str
         
+        # Получаем настройки казино
+        casinos_str = BotConfiguration.get_setting('casinos', '{"1xbet": true, "1win": true, "melbet": true, "mostbet": true}')
+        casinos = json.loads(casinos_str) if isinstance(casinos_str, str) else casinos_str
+        
         # Маппинг банков для клиентского сайта
         bank_mapping = {
             'mbank': {'name': 'MBank', 'logo': '/static/images/mbank.png'},
@@ -2264,6 +2268,12 @@ def api_get_payment_settings(request):
             'withdrawals': {
                 'enabled': withdrawals.get('enabled', True),
                 'banks': []
+            },
+            'casinos': {
+                '1xbet': casinos.get('1xbet', True),
+                '1win': casinos.get('1win', True),
+                'melbet': casinos.get('melbet', True),
+                'mostbet': casinos.get('mostbet', True)
             }
         }
         
@@ -2395,10 +2405,43 @@ def api_save_channel_settings(request):
         settings = {
             'enabled': data.get('enabled', False),
             'name': data.get('name', '@bingokg_news'),
-            'welcome_message': data.get('welcome_message', 'Добро пожаловать! Подпишитесь на наш канал для получения уведомлений.')
+            'channel_id': data.get('channel_id', ''),
+            'channel_username': data.get('channel_username', '')
         }
         
         BotConfiguration.set_setting('channel', json.dumps(settings), 'Настройки канала')
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_get_casino_settings(request):
+    """API для получения настроек казино"""
+    try:
+        import json
+        settings_str = BotConfiguration.get_setting('casinos', '{"1xbet": true, "1win": true, "melbet": true, "mostbet": true}')
+        settings = json.loads(settings_str) if isinstance(settings_str, str) else settings_str
+        return JsonResponse(settings)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def api_save_casino_settings(request):
+    """API для сохранения настроек казино"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        settings = {
+            '1xbet': data.get('1xbet', True),
+            '1win': data.get('1win', True),
+            'melbet': data.get('melbet', True),
+            'mostbet': data.get('mostbet', True)
+        }
+        
+        BotConfiguration.set_setting('casinos', json.dumps(settings), 'Настройки казино')
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

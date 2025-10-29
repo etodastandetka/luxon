@@ -9,10 +9,11 @@ export default function WithdrawStep0() {
   const [bookmaker, setBookmaker] = useState<string>('')
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
   const [loadingSettings, setLoadingSettings] = useState(true)
+  const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
 
-  // Проверка настроек выводов
+  // Проверка настроек выводов и казино
   useEffect(() => {
-    async function checkWithdrawalsSettings() {
+    async function checkSettings() {
       try {
         const base = process.env.NODE_ENV === 'development' 
           ? 'http://localhost:8081' 
@@ -22,13 +23,22 @@ export default function WithdrawStep0() {
         if (data && data.withdrawals) {
           setWithdrawalsEnabled(data.withdrawals.enabled !== false)
         }
+        if (data && data.casinos) {
+          // Формируем список отключенных казино
+          const disabled: string[] = []
+          if (data.casinos['1xbet'] === false) disabled.push('1xbet')
+          if (data.casinos['1win'] === false) disabled.push('1win')
+          if (data.casinos['melbet'] === false) disabled.push('melbet')
+          if (data.casinos['mostbet'] === false) disabled.push('mostbet')
+          setDisabledCasinos(disabled)
+        }
       } catch (error) {
-        console.error('Ошибка загрузки настроек выводов:', error)
+        console.error('Ошибка загрузки настроек:', error)
       } finally {
         setLoadingSettings(false)
       }
     }
-    checkWithdrawalsSettings()
+    checkSettings()
   }, [])
 
   useEffect(() => {
@@ -115,7 +125,11 @@ export default function WithdrawStep0() {
         
         <section className="card space-y-3 slide-in-left delay-100">
           <div className="label">Выберите букмекера</div>
-          <BookmakerGrid value={bookmaker} onChange={handleBookmakerChange} />
+          <BookmakerGrid 
+            value={bookmaker} 
+            onChange={handleBookmakerChange}
+            disabledCasinos={disabledCasinos}
+          />
         </section>
 
         <div className="flex gap-3">

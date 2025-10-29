@@ -64,6 +64,8 @@ urlpatterns = [
     path('api/bot-control/save/', views.api_save_bot_control, name='api_save_bot_control'),
     path('api/channel-settings/', views.api_get_channel_settings, name='api_get_channel_settings'),
     path('api/channel-settings/save/', views.api_save_channel_settings, name='api_save_channel_settings'),
+    path('api/casino-settings/', views.api_get_casino_settings, name='api_get_casino_settings'),
+    path('api/casino-settings/save/', views.api_save_casino_settings, name='api_save_casino_settings'),
     
     # API для клиентского сайта
     path('api/payment-settings/', views.api_get_payment_settings, name='api_get_payment_settings'),

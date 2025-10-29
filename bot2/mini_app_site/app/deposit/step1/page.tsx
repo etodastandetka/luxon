@@ -10,12 +10,13 @@ export default function DepositStep1() {
   const [bookmaker, setBookmaker] = useState('')
   const [depositsEnabled, setDepositsEnabled] = useState(true)
   const [loadingSettings, setLoadingSettings] = useState(true)
+  const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
   const { language } = useLanguage()
   const router = useRouter()
 
-  // Проверка настроек депозитов
+  // Проверка настроек депозитов и казино
   useEffect(() => {
-    async function checkDepositsSettings() {
+    async function checkSettings() {
       try {
         const base = process.env.NODE_ENV === 'development' 
           ? 'http://localhost:8081' 
@@ -25,13 +26,22 @@ export default function DepositStep1() {
         if (data && data.deposits) {
           setDepositsEnabled(data.deposits.enabled !== false)
         }
+        if (data && data.casinos) {
+          // Формируем список отключенных казино
+          const disabled: string[] = []
+          if (data.casinos['1xbet'] === false) disabled.push('1xbet')
+          if (data.casinos['1win'] === false) disabled.push('1win')
+          if (data.casinos['melbet'] === false) disabled.push('melbet')
+          if (data.casinos['mostbet'] === false) disabled.push('mostbet')
+          setDisabledCasinos(disabled)
+        }
       } catch (error) {
-        console.error('Ошибка загрузки настроек депозитов:', error)
+        console.error('Ошибка загрузки настроек:', error)
       } finally {
         setLoadingSettings(false)
       }
     }
-    checkDepositsSettings()
+    checkSettings()
   }, [])
 
   const handleNext = () => {
@@ -149,7 +159,11 @@ export default function DepositStep1() {
             <p className="text-sm text-white/70 mt-1">Шаг 1 из 4</p>
           </div>
           
-          <BookmakerGrid value={bookmaker} onChange={setBookmaker} />
+          <BookmakerGrid 
+            value={bookmaker} 
+            onChange={setBookmaker}
+            disabledCasinos={disabledCasinos}
+          />
           
           <div className="flex gap-2 slide-in-right delay-200">
             <button 
