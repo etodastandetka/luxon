@@ -380,6 +380,30 @@ export default function DepositStep4() {
       if (data.settings) {
         setDepositsEnabled(data.settings.deposits_enabled !== false)
       }
+      
+      // Также загружаем актуальные настройки из админки для enabled_banks
+      try {
+        const base = process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:8081' 
+          : 'https://xendro.pro'
+        const settingsRes = await fetch(`${base}/bot/api/payment-settings/`, { cache: 'no-store' })
+        const settingsData = await settingsRes.json()
+        if (settingsData && settingsData.deposits) {
+          setDepositsEnabled(settingsData.deposits.enabled !== false)
+          // Обновляем enabled_banks в qrData
+          if (settingsData.deposits.banks) {
+            setQrData((prev: any) => ({
+              ...prev,
+              settings: {
+                ...prev?.settings,
+                enabled_banks: settingsData.deposits.banks.map((b: any) => b.code || b)
+              }
+            }))
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки настроек платежей:', error)
+      }
     } catch (error) {
       console.error('Ошибка генерации QR кода через API:', error)
       // Fallback: генерируем QR код с реквизитом из админки

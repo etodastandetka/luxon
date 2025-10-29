@@ -7,6 +7,29 @@ import PageTransition from '../../../components/PageTransition'
 export default function WithdrawStep0() {
   const router = useRouter()
   const [bookmaker, setBookmaker] = useState<string>('')
+  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
+  const [loadingSettings, setLoadingSettings] = useState(true)
+
+  // Проверка настроек выводов
+  useEffect(() => {
+    async function checkWithdrawalsSettings() {
+      try {
+        const base = process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:8081' 
+          : 'https://xendro.pro'
+        const res = await fetch(`${base}/bot/api/payment-settings/`, { cache: 'no-store' })
+        const data = await res.json()
+        if (data && data.withdrawals) {
+          setWithdrawalsEnabled(data.withdrawals.enabled !== false)
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки настроек выводов:', error)
+      } finally {
+        setLoadingSettings(false)
+      }
+    }
+    checkWithdrawalsSettings()
+  }, [])
 
   useEffect(() => {
     // Загружаем сохраненный букмекер, если есть
@@ -45,6 +68,44 @@ export default function WithdrawStep0() {
     } else {
       router.push('/')
     }
+  }
+
+  // Если выводы отключены, показываем технические работы
+  if (loadingSettings) {
+    return (
+      <PageTransition direction="backward">
+        <main className="space-y-4">
+          <h1 className="text-xl font-bold fade-in">Вывод средств</h1>
+          <div className="card text-center">
+            <div className="text-white/70">Загрузка...</div>
+          </div>
+        </main>
+      </PageTransition>
+    )
+  }
+
+  if (!withdrawalsEnabled) {
+    return (
+      <PageTransition direction="backward">
+        <main className="space-y-4">
+          <h1 className="text-xl font-bold fade-in">Вывод средств</h1>
+          <div className="card text-center bg-orange-900/20 border-orange-500">
+            <div className="text-orange-300 text-lg font-semibold mb-2">
+              🔧 Технические работы
+            </div>
+            <div className="text-white/70 mb-4">
+              Вывод средств временно недоступен. Попробуйте позже.
+            </div>
+            <button
+              onClick={() => router.push('/')}
+              className="btn btn-ghost"
+            >
+              ← Назад
+            </button>
+          </div>
+        </main>
+      </PageTransition>
+    )
   }
 
   return (

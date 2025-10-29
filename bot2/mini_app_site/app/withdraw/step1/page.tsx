@@ -7,8 +7,45 @@ import { useLanguage } from '../../../components/LanguageContext'
 
 export default function WithdrawStep1() {
   const [bank, setBank] = useState('')
+  const [enabledBanks, setEnabledBanks] = useState<string[]>([])
   const { language } = useLanguage()
-    const router = useRouter()
+  const router = useRouter()
+
+  // Загрузка настроек выводов
+  useEffect(() => {
+    async function loadWithdrawalSettings() {
+      try {
+        const base = process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:8081' 
+          : 'https://xendro.pro'
+        const res = await fetch(`${base}/bot/api/payment-settings/`, { cache: 'no-store' })
+        const data = await res.json()
+        if (data && data.withdrawals && data.withdrawals.banks) {
+          // Маппим коды банков из API в коды для BankButtons
+          const bankCodeMapping: Record<string, string> = {
+            'kompanion': 'kompanion',
+            'odengi': 'omoney',
+            'bakai': 'bakai',
+            'balance': 'balance',
+            'megapay': 'megapay',
+            'mbank': 'mbank',
+            'demir': 'demirbank',
+            'demirbank': 'demirbank'
+          }
+          const mappedBanks = data.withdrawals.banks
+            .map((b: any) => {
+              const code = b.code || b
+              return bankCodeMapping[code] || code
+            })
+            .filter(Boolean)
+          setEnabledBanks(mappedBanks)
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки настроек выводов:', error)
+      }
+    }
+    loadWithdrawalSettings()
+  }, [])
 
   useEffect(() => {
     // Проверяем, что пользователь выбрал букмекера
@@ -82,7 +119,11 @@ export default function WithdrawStep1() {
         
         <p className="text-white/80 text-center">{t.instruction}</p>
         
-        <BankButtons onPick={setBank} selected={bank} />
+        <BankButtons 
+          onPick={setBank} 
+          selected={bank} 
+          enabledBanks={enabledBanks.length > 0 ? enabledBanks : undefined}
+        />
         
         <div className="flex gap-2">
           <button 

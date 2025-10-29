@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import BookmakerGrid from '../../../components/BookmakerGrid'
 import LanguageSelector from '../../../components/LanguageSelector'
@@ -8,8 +8,31 @@ import { useLanguage } from '../../../components/LanguageContext'
 
 export default function DepositStep1() {
   const [bookmaker, setBookmaker] = useState('')
+  const [depositsEnabled, setDepositsEnabled] = useState(true)
+  const [loadingSettings, setLoadingSettings] = useState(true)
   const { language } = useLanguage()
   const router = useRouter()
+
+  // Проверка настроек депозитов
+  useEffect(() => {
+    async function checkDepositsSettings() {
+      try {
+        const base = process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:8081' 
+          : 'https://xendro.pro'
+        const res = await fetch(`${base}/bot/api/payment-settings/`, { cache: 'no-store' })
+        const data = await res.json()
+        if (data && data.deposits) {
+          setDepositsEnabled(data.deposits.enabled !== false)
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки настроек депозитов:', error)
+      } finally {
+        setLoadingSettings(false)
+      }
+    }
+    checkDepositsSettings()
+  }, [])
 
   const handleNext = () => {
     if (!bookmaker) {
@@ -64,6 +87,50 @@ export default function DepositStep1() {
   }
 
   const t = translations[language as keyof typeof translations] || translations.ru
+
+  // Если депозиты отключены, показываем технические работы
+  if (loadingSettings) {
+    return (
+      <PageTransition direction="backward">
+        <main className="space-y-4">
+          <div className="flex justify-between items-center fade-in">
+            <h1 className="text-xl font-bold">{t.title}</h1>
+            <LanguageSelector />
+          </div>
+          <div className="card text-center">
+            <div className="text-white/70">Загрузка...</div>
+          </div>
+        </main>
+      </PageTransition>
+    )
+  }
+
+  if (!depositsEnabled) {
+    return (
+      <PageTransition direction="backward">
+        <main className="space-y-4">
+          <div className="flex justify-between items-center fade-in">
+            <h1 className="text-xl font-bold">{t.title}</h1>
+            <LanguageSelector />
+          </div>
+          <div className="card text-center bg-orange-900/20 border-orange-500">
+            <div className="text-orange-300 text-lg font-semibold mb-2">
+              🔧 Технические работы
+            </div>
+            <div className="text-white/70 mb-4">
+              Пополнения временно недоступны. Попробуйте позже.
+            </div>
+            <button
+              onClick={() => router.push('/')}
+              className="btn btn-ghost"
+            >
+              ← Назад
+            </button>
+          </div>
+        </main>
+      </PageTransition>
+    )
+  }
 
   return (
     <PageTransition direction="backward">

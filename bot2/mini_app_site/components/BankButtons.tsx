@@ -68,19 +68,38 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
   }
 
   // Фильтруем банки согласно настройкам
-  const bankMapping: Record<string, string> = {
+  // Маппинг: код банка в компоненте -> код банка в настройках админки
+  const bankMappingToAdmin: Record<string, string> = {
     'demirbank': 'demir',
     'omoney': 'omoney',
     'balance': 'balance',
     'bakai': 'bakai',
     'megapay': 'megapay',
-    'mbank': 'mbank'
+    'mbank': 'mbank',
+    'kompanion': 'kompanion' // Для выводов
+  }
+  
+  // Обратный маппинг: код из админки -> код в компоненте
+  const bankMappingFromAdmin: Record<string, string> = {
+    'demir': 'demirbank',
+    'demirbank': 'demirbank',
+    'omoney': 'omoney',
+    'balance': 'balance',
+    'bakai': 'bakai',
+    'megapay': 'megapay',
+    'mbank': 'mbank',
+    'kompanion': 'kompanion',
+    'odengi': 'omoney' // O!Money для выводов
   }
 
   const filteredBanks = BANKS.filter(bank => {
     if (!enabledBanks || enabledBanks.length === 0) return true
-    const bankKey = bankMapping[bank.code]
-    return enabledBanks.includes(bankKey)
+    // Проверяем, есть ли банк в списке разрешенных (учитываем оба маппинга)
+    const adminCode = bankMappingToAdmin[bank.code]
+    const componentCode = bankMappingFromAdmin[bank.code] || bank.code
+    return enabledBanks.includes(adminCode) || 
+           enabledBanks.includes(componentCode) || 
+           enabledBanks.includes(bank.code)
   })
 
   return (
