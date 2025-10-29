@@ -7,6 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>{% block title %}Заявки - Управление транзакциями{% endblock %}</title>
+    {% block extra_head %}{% endblock %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -675,6 +676,7 @@
             }
         }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <div class="mobile-container">
