@@ -21,6 +21,7 @@ export default function DepositStep4() {
   const [bookmaker, setBookmaker] = useState('')
   const [playerId, setPlayerId] = useState('')
   const [amount, setAmount] = useState(0)
+  const [depositsEnabled, setDepositsEnabled] = useState(true)
   const { language } = useLanguage()
 
   useEffect(() => {
@@ -339,7 +340,10 @@ export default function DepositStep4() {
       setQrData({
         qr_hash: qrHash,
         all_bank_urls: bankLinks,
-        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank']
+        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
+        settings: {
+          deposits_enabled: true
+        }
       })
       setPaymentUrl(bankLinks[currentBank as keyof typeof bankLinks] || bankLinks['demirbank'])
     } catch (error) {
@@ -371,6 +375,11 @@ export default function DepositStep4() {
       const data = await response.json()
       setQrData(data)
       setPaymentUrl(data.primary_url)
+      
+      // Сохраняем настройки депозитов
+      if (data.settings) {
+        setDepositsEnabled(data.settings.deposits_enabled !== false)
+      }
     } catch (error) {
       console.error('Ошибка генерации QR кода через API:', error)
       // Fallback: генерируем QR код с реквизитом из админки
@@ -439,6 +448,39 @@ export default function DepositStep4() {
   }
 
   const t = translations[language as keyof typeof translations] || translations.ru
+
+  // Если депозиты отключены, показываем сообщение о технических работах
+  if (!depositsEnabled) {
+    return (
+      <PageTransition direction="backward">
+        <main className="space-y-4 min-h-screen flex flex-col">
+          <div className="text-center space-y-2 fade-in">
+            <div className="flex justify-between items-center">
+              <h1 className="text-xl font-bold text-white">{t.title}</h1>
+              <div className="scale-75">
+                <LanguageSelector />
+              </div>
+            </div>
+            <p className="text-sm text-white/70">{t.subtitle}</p>
+          </div>
+
+          <div className="card text-center">
+            <div className="text-orange-300 text-lg font-semibold mb-2">🔧 Технические работы</div>
+            <div className="text-slate-400">Пополнения временно недоступны. Попробуйте позже.</div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleBack}
+              className="btn btn-ghost w-full"
+            >
+              ← {t.back}
+            </button>
+          </div>
+        </main>
+      </PageTransition>
+    )
+  }
 
   return (
     <PageTransition direction="backward">
