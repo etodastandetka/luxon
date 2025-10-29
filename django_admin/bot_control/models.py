@@ -162,6 +162,7 @@ class Request(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     request_type = models.CharField(max_length=20)  # deposit/withdraw
     status = models.CharField(max_length=20, default='pending')
+    status_detail = models.CharField(max_length=50, blank=True, null=True)  # success, api_error, etc.
     withdrawal_code = models.CharField(max_length=255, blank=True, null=True)
     photo_file_id = models.CharField(max_length=255, blank=True, null=True)
     photo_file_url = models.TextField(blank=True, null=True)
