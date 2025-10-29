@@ -1290,7 +1290,12 @@ if (window.financialInterfaceInitialized) {
             const depositData = await depositResponse.json();
             
             const depositsEnabledElement = document.getElementById('deposits-enabled');
-            if (depositsEnabledElement) depositsEnabledElement.checked = depositData.enabled;
+            if (depositsEnabledElement) {
+                // Нормализация значения enabled (может быть строкой "true"/"false" или boolean)
+                const depositsEnabled = depositData.enabled === true || depositData.enabled === 'true' || depositData.enabled === 1 || depositData.enabled === '1';
+                depositsEnabledElement.checked = depositsEnabled;
+                console.log('✅ Депозиты enabled (raw):', depositData.enabled, '-> (normalized):', depositsEnabled);
+            }
             
             // Сброс чекбоксов депозитов
             document.querySelectorAll('input[id^="deposit-"]').forEach(checkbox => {
@@ -1299,19 +1304,36 @@ if (window.financialInterfaceInitialized) {
             
             // Установка банков для депозитов
             if (depositData.banks && Array.isArray(depositData.banks)) {
+                console.log('✅ Банки для депозитов:', depositData.banks);
                 depositData.banks.forEach(bank => {
                     const checkbox = document.getElementById(`deposit-${bank}`);
-                    if (checkbox) checkbox.checked = true;
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        console.log(`✅ Установлен чекбокс: deposit-${bank}`);
+                    } else {
+                        console.warn(`⚠️ Чекбокс не найден: deposit-${bank}`);
+                    }
                 });
+            } else {
+                console.warn('⚠️ depositData.banks не является массивом:', depositData.banks);
             }
 
             // Загрузка настроек выводов
             const withdrawalResponse = await fetch('{% url "bot_control:api_get_withdrawal_settings" %}');
             if (!withdrawalResponse.ok) throw new Error(`Withdrawal settings HTTP error! status: ${withdrawalResponse.status}`);
-            const withdrawalData = await withdrawalResponse.json();
+            const withdrawalResponseData = await withdrawalResponse.json();
+            
+            // API возвращает {'success': True, 'data': {...}} или прямой объект
+            const withdrawalData = withdrawalResponseData.data || withdrawalResponseData;
             
             const withdrawalsEnabledElement = document.getElementById('withdrawals-enabled');
-            if (withdrawalsEnabledElement) withdrawalsEnabledElement.checked = withdrawalData.enabled;
+            if (withdrawalsEnabledElement) {
+                // Нормализация значения enabled (может быть строкой "true"/"false" или boolean)
+                const withdrawalsEnabled = withdrawalData.enabled === true || withdrawalData.enabled === 'true' || withdrawalData.enabled === 1 || withdrawalData.enabled === '1';
+                withdrawalsEnabledElement.checked = withdrawalsEnabled;
+                console.log('✅ Выводы enabled (raw):', withdrawalData.enabled, '-> (normalized):', withdrawalsEnabled);
+                console.log('✅ Выводы banks:', withdrawalData.banks);
+            }
             
             // Сброс чекбоксов выводов
             document.querySelectorAll('input[id^="withdrawal-"]').forEach(checkbox => {
@@ -1320,10 +1342,18 @@ if (window.financialInterfaceInitialized) {
             
             // Установка банков для выводов
             if (withdrawalData.banks && Array.isArray(withdrawalData.banks)) {
+                console.log('✅ Банки для выводов:', withdrawalData.banks);
                 withdrawalData.banks.forEach(bank => {
                     const checkbox = document.getElementById(`withdrawal-${bank}`);
-                    if (checkbox) checkbox.checked = true;
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        console.log(`✅ Установлен чекбокс: withdrawal-${bank}`);
+                    } else {
+                        console.warn(`⚠️ Чекбокс не найден: withdrawal-${bank}`);
+                    }
                 });
+            } else {
+                console.warn('⚠️ withdrawalData.banks не является массивом:', withdrawalData.banks);
             }
 
             // Загрузка настроек канала
@@ -1344,6 +1374,17 @@ if (window.financialInterfaceInitialized) {
             
             // Обновление счетчиков
             updateBankCounters();
+            
+            // Обновляем состояние переключателей визуально
+            const depositsSwitch = document.getElementById('deposits-enabled');
+            if (depositsSwitch) {
+                depositsSwitch.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            
+            const withdrawalsSwitch = document.getElementById('withdrawals-enabled');
+            if (withdrawalsSwitch) {
+                withdrawalsSwitch.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             
             console.log('✅ Настройки системы загружены');
             
@@ -1377,41 +1418,69 @@ if (window.financialInterfaceInitialized) {
 
             // Сбор банков для депозитов
             const depositBanks = [];
-            document.querySelectorAll('input[id^="deposit-"]:checked').forEach(checkbox => {
-                depositBanks.push(checkbox.id.replace('deposit-', ''));
+            const depositCheckboxes = document.querySelectorAll('input[id^="deposit-"]:checked');
+            console.log('📋 Найдено чекбоксов депозитов:', depositCheckboxes.length);
+            depositCheckboxes.forEach(checkbox => {
+                const bankCode = checkbox.id.replace('deposit-', '');
+                depositBanks.push(bankCode);
+                console.log('  - Банк для депозита:', bankCode);
             });
+            
+            const depositsEnabled = document.getElementById('deposits-enabled')?.checked || false;
+            console.log('💾 Сохранение депозитов - enabled:', depositsEnabled, 'banks:', depositBanks);
 
             // Сохранение настроек депозитов
-            await fetch('{% url "bot_control:api_save_deposit_settings" %}', {
+            const depositResponse = await fetch('{% url "bot_control:api_save_deposit_settings" %}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken.value
                 },
                 body: JSON.stringify({
-                    enabled: document.getElementById('deposits-enabled')?.checked || false,
+                    enabled: depositsEnabled,
                     banks: depositBanks
                 })
             });
+            
+            const depositResult = await depositResponse.json().catch(() => ({}));
+            if (!depositResponse.ok || !depositResult.success) {
+                console.error('❌ Ошибка сохранения депозитов:', depositResult);
+                throw new Error(depositResult.error || 'Ошибка сохранения настроек депозитов');
+            }
+            console.log('✅ Депозиты успешно сохранены:', depositResult);
 
             // Сбор банков для выводов
             const withdrawalBanks = [];
-            document.querySelectorAll('input[id^="withdrawal-"]:checked').forEach(checkbox => {
-                withdrawalBanks.push(checkbox.id.replace('withdrawal-', ''));
+            const withdrawalCheckboxes = document.querySelectorAll('input[id^="withdrawal-"]:checked');
+            console.log('📋 Найдено чекбоксов выводов:', withdrawalCheckboxes.length);
+            withdrawalCheckboxes.forEach(checkbox => {
+                const bankCode = checkbox.id.replace('withdrawal-', '');
+                withdrawalBanks.push(bankCode);
+                console.log('  - Банк для вывода:', bankCode);
             });
+            
+            const withdrawalsEnabled = document.getElementById('withdrawals-enabled')?.checked || false;
+            console.log('💾 Сохранение выводов - enabled:', withdrawalsEnabled, 'banks:', withdrawalBanks);
 
             // Сохранение настроек выводов
-            await fetch('{% url "bot_control:api_save_withdrawal_settings" %}', {
+            const withdrawalResponse = await fetch('{% url "bot_control:api_save_withdrawal_settings" %}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken.value
                 },
                 body: JSON.stringify({
-                    enabled: document.getElementById('withdrawals-enabled')?.checked || false,
+                    enabled: withdrawalsEnabled,
                     banks: withdrawalBanks
                 })
             });
+            
+            const withdrawalResult = await withdrawalResponse.json().catch(() => ({}));
+            if (!withdrawalResponse.ok || !withdrawalResult.success) {
+                console.error('❌ Ошибка сохранения выводов:', withdrawalResult);
+                throw new Error(withdrawalResult.error || 'Ошибка сохранения настроек выводов');
+            }
+            console.log('✅ Выводы успешно сохранены:', withdrawalResult);
 
             // Сохранение настроек канала
             await fetch('{% url "bot_control:api_save_channel_settings" %}', {
@@ -1430,6 +1499,12 @@ if (window.financialInterfaceInitialized) {
             
             showStatus('Настройки сохранены', 'success');
             console.log('✅ Настройки системы сохранены');
+            
+            // Перезагружаем настройки для обновления UI
+            setTimeout(() => {
+                loadAllSettings();
+                updateBankCounters();
+            }, 500);
             
         } catch (error) {
             console.error('❌ Ошибка сохранения:', error);
