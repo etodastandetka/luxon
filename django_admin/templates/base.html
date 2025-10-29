@@ -117,9 +117,37 @@
         @media (min-width: 481px) {
             .bottom-nav {
                 left: 50% !important;
+                right: auto !important;
                 transform: translateX(-50%) !important;
                 max-width: 414px !important;
+                width: 414px !important;
+                margin: 0 auto !important;
                 border-radius: 16px 16px 0 0 !important;
+            }
+        }
+        
+        /* Для десктопов и больших экранов */
+        @media (min-width: 1024px) {
+            .bottom-nav {
+                left: 50% !important;
+                right: auto !important;
+                transform: translateX(-50%) !important;
+                max-width: 500px !important;
+                width: 500px !important;
+                margin: 0 auto !important;
+                padding: 12px 8px calc(12px + env(safe-area-inset-bottom)) 8px !important;
+                min-height: 70px !important;
+                border-radius: 20px 20px 0 0 !important;
+            }
+            .nav-item {
+                padding: 8px 4px !important;
+                gap: 6px !important;
+            }
+            .nav-item i {
+                font-size: 22px !important;
+            }
+            .nav-item span {
+                font-size: 12px !important;
             }
         }
         
@@ -892,6 +920,7 @@
                 bottomNav.style.visibility = 'visible';
                 bottomNav.style.opacity = '1';
                 bottomNav.style.pointerEvents = 'auto';
+                bottomNav.style.margin = '0 auto';
                 
                 // Определяем безопасную зону для устройств с вырезом
                 const safeAreaBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('env(safe-area-inset-bottom)') || '0');
@@ -907,13 +936,23 @@
                 } else if (windowWidth <= 768) {
                     // Для средних экранов
                     bottomNav.style.left = '50%';
+                    bottomNav.style.right = 'auto';
                     bottomNav.style.transform = 'translateX(-50%)';
                     bottomNav.style.width = '414px';
                     bottomNav.style.maxWidth = '414px';
                     bottomNav.style.borderRadius = '16px 16px 0 0';
-                } else {
-                    // Для больших экранов
+                } else if (windowWidth >= 1024) {
+                    // Для десктопов
                     bottomNav.style.left = '50%';
+                    bottomNav.style.right = 'auto';
+                    bottomNav.style.transform = 'translateX(-50%)';
+                    bottomNav.style.width = '500px';
+                    bottomNav.style.maxWidth = '500px';
+                    bottomNav.style.borderRadius = '20px 20px 0 0';
+                } else {
+                    // Для больших экранов (планшеты)
+                    bottomNav.style.left = '50%';
+                    bottomNav.style.right = 'auto';
                     bottomNav.style.transform = 'translateX(-50%)';
                     bottomNav.style.width = '414px';
                     bottomNav.style.maxWidth = '414px';
