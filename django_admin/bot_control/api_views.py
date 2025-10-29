@@ -438,27 +438,67 @@ def api_bot_settings(request):
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_requisites_list(request):
-    """API для получения списка реквизитов"""
+    """API для получения списка реквизитов из SQLite базы бота"""
     try:
-        from bot_control.models import BotConfiguration
+        import sqlite3
+        from django.conf import settings as dj_settings
         
-        requisites = []
-        configs = BotConfiguration.objects.filter(key__startswith='requisite_')
+        # Получаем путь к базе данных бота
+        db_path = str(dj_settings.BOT_DATABASE_PATH)
+        if not db_path:
+            logger.error("BOT_DATABASE_PATH не настроен")
+            return JsonResponse({'error': 'BOT_DATABASE_PATH not configured'}, status=500)
         
-        for config in configs:
-            requisites.append({
-                'id': config.id,
-                'name': config.key.replace('requisite_', ''),
-                'value': config.value,
-                'is_active': config.key == 'active_requisite'
+        import os
+        if not os.path.exists(db_path):
+            logger.warning(f"Database file not found: {db_path}")
+            return JsonResponse({
+                'success': True,
+                'requisites': [],
+                'active_id': None
             })
         
-        # Получаем активный реквизит
-        try:
-            active_config = BotConfiguration.objects.get(key='active_requisite')
-            active_id = active_config.id
-        except BotConfiguration.DoesNotExist:
-            active_id = None
+        # Создаем таблицу, если её нет
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS requisites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                value TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 0,
+                name TEXT,
+                email TEXT,
+                password TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Получаем все реквизиты
+        cur.execute('''
+            SELECT id, value, COALESCE(is_active, 0), COALESCE(name, ''), COALESCE(created_at, '')
+            FROM requisites
+            ORDER BY is_active DESC, id DESC
+        ''')
+        
+        requisites = []
+        active_id = None
+        
+        for row in cur.fetchall():
+            rid, value, is_active, name, created_at = row
+            if is_active and active_id is None:
+                active_id = rid
+            
+            requisites.append({
+                'id': rid,
+                'name': name or f'Реквизит {rid}',
+                'value': value,
+                'is_active': bool(is_active),
+                'created_at': created_at
+            })
+        
+        conn.close()
+        
+        logger.info(f"Found {len(requisites)} requisites, active_id: {active_id}")
         
         return JsonResponse({
             'success': True,
@@ -467,7 +507,7 @@ def api_requisites_list(request):
         })
         
     except Exception as e:
-        logger.error(f"Error getting requisites: {str(e)}")
+        logger.error(f"Error getting requisites: {str(e)}", exc_info=True)
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
