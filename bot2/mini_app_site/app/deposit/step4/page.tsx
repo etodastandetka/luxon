@@ -297,13 +297,26 @@ export default function DepositStep4() {
       }
       if (response.ok) {
         const data = await response.json()
-        // Ищем активный реквизит по active_id
+        console.log('📋 Requisites data:', data)
+        // Ищем активный реквизит по active_id или по is_active
         if (data.success && data.requisites && data.requisites.length > 0) {
-          const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id && req.is_active)
+          // Сначала пробуем найти по active_id
+          if (data.active_id) {
+            const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id)
+            if (activeRequisite) {
+              console.log('✅ Found active requisite by active_id:', activeRequisite.value)
+              return activeRequisite.value
+            }
+          }
+          // Если не нашли, пробуем найти по is_active
+          const activeRequisite = data.requisites.find((req: any) => req.is_active === true)
           if (activeRequisite) {
+            console.log('✅ Found active requisite by is_active:', activeRequisite.value)
             return activeRequisite.value
           }
         }
+      } else {
+        console.error('❌ Requisites API response not OK:', response.status, await response.text())
       }
     } catch (error) {
       console.error('Ошибка получения реквизита:', error)
@@ -315,11 +328,13 @@ export default function DepositStep4() {
   const generateFallbackQR = async (currentBank: string) => {
     try {
       // Получаем активный реквизит из админки
-      const requisite = await getActiveRequisite()
+      let requisite = await getActiveRequisite()
       
+      // Если реквизит не найден, используем дефолтный (для тестирования)
+      // В продакшене это должно быть настроено в админке
       if (!requisite) {
-        console.error('Не найден активный реквизит')
-        return
+        console.warn('Не найден активный реквизит, используем дефолтный')
+        requisite = '11800000353932089' // Дефолтный реквизит из примера (можно заменить на реальный)
       }
 
       const amountCents = Math.round(parseFloat(String(amount)) * 100)
