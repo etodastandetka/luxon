@@ -5,6 +5,7 @@ from . import autodeposit_views_simple as autodeposit_views
 from . import referral_views_simple as referral_views
 from . import api_views_webapp
 from . import api_views
+from . import cashdesk_views
 
 app_name = 'bot_control'
 
@@ -87,4 +88,10 @@ urlpatterns = [
     
     # Унифицированные API endpoints
     path('api/', include('bot_control.unified_urls')),
+    
+    # Cashdesk API для Melbet и 1xbet
+    path('api/cashdesk/<str:casino>/balance/', cashdesk_views.api_cashdesk_balance, name='api_cashdesk_balance'),
+    path('api/cashdesk/<str:casino>/search-player/', cashdesk_views.api_cashdesk_search_player, name='api_cashdesk_search_player'),
+    path('api/cashdesk/<str:casino>/deposit/', cashdesk_views.api_cashdesk_deposit, name='api_cashdesk_deposit'),
+    path('api/cashdesk/<str:casino>/payout/', cashdesk_views.api_cashdesk_payout, name='api_cashdesk_payout'),
 ]
