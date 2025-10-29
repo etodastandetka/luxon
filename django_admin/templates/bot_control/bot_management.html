@@ -374,20 +374,43 @@
     --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
+/* Сброс стилей */
 * {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
 }
 
 body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    min-height: 100vh !important;
 }
+
+/* Переопределение базовых стилей */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+}
+
+p {
+    color: var(--text-secondary) !important;
+}
+
+input, textarea, select {
+    color: var(--text-primary) !important;
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-primary) !important;
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* Удален дублирующийся код */
 
 .financial-interface {
     max-width: 480px;
@@ -395,6 +418,32 @@ body {
     padding: 20px;
     background: var(--bg-primary);
     min-height: 100vh;
+    color: var(--text-primary);
+}
+
+/* Улучшенные стили для текста */
+.financial-interface h1,
+.financial-interface h2,
+.financial-interface h3,
+.financial-interface h4,
+.financial-interface h5,
+.financial-interface h6 {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+}
+
+.financial-interface p {
+    color: var(--text-secondary) !important;
+    margin: 0 !important;
+}
+
+.financial-interface span {
+    color: inherit !important;
+}
+
+.financial-interface div {
+    color: inherit !important;
 }
 
 /* Панели управления */
@@ -429,16 +478,16 @@ body {
 }
 
 .panel-info h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0 0 2px 0;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    margin: 0 0 2px 0 !important;
 }
 
 .panel-info p {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin: 0;
+    font-size: 12px !important;
+    color: var(--text-secondary) !important;
+    margin: 0 !important;
 }
 
 /* Группы управления */
@@ -464,18 +513,18 @@ body {
 }
 
 .label-title {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 4px;
+    display: block !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 4px !important;
 }
 
 .label-desc {
-    display: block;
-    font-size: 12px;
-    color: var(--text-secondary);
-    line-height: 1.4;
+    display: block !important;
+    font-size: 12px !important;
+    color: var(--text-secondary) !important;
+    line-height: 1.4 !important;
 }
 
 /* Переключатели */
@@ -573,10 +622,10 @@ body {
 }
 
 .banks-header h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    margin: 0 !important;
 }
 
 .banks-count {
@@ -623,15 +672,15 @@ body {
 }
 
 .bank-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 2px;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 2px !important;
 }
 
 .bank-status {
-    font-size: 11px;
-    color: var(--text-secondary);
+    font-size: 11px !important;
+    color: var(--text-secondary) !important;
 }
 
 .bank-control {
