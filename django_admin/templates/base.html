@@ -92,6 +92,9 @@
             gap: 2px;
             min-height: 60px !important;
             box-sizing: border-box !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
         }
         
         /* Адаптация для разных размеров экранов */
@@ -760,9 +763,8 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <div class="mobile-container">
-        <!-- Нижняя навигация -->
-        <nav class="bottom-nav">
+    <!-- Нижняя навигация - вынесена за пределы контейнера для гарантированного отображения -->
+    <nav class="bottom-nav">
             <a href="{% url 'dashboard:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                 <i class="fas fa-home"></i>
                 <span>Главная</span>
@@ -789,7 +791,7 @@
             </a>
         </nav>
 
-
+    <div class="mobile-container">
         <!-- Хедер -->
         <div class="header">
             <div class="header-icon">
@@ -803,7 +805,6 @@
         <div class="main-content">
             {% block content %}{% endblock %}
         </div>
-
 
         <!-- Меню оверлей -->
         <div id="menu-overlay" class="menu-overlay" style="display: none;">
@@ -888,6 +889,9 @@
                 bottomNav.style.bottom = '0';
                 bottomNav.style.zIndex = '999999';
                 bottomNav.style.display = 'flex';
+                bottomNav.style.visibility = 'visible';
+                bottomNav.style.opacity = '1';
+                bottomNav.style.pointerEvents = 'auto';
                 
                 // Определяем безопасную зону для устройств с вырезом
                 const safeAreaBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('env(safe-area-inset-bottom)') || '0');
@@ -920,13 +924,25 @@
                 if (safeAreaBottom > 0) {
                     bottomNav.style.paddingBottom = (12 + safeAreaBottom) + 'px';
                 }
+                
+                // Принудительно показываем меню
+                bottomNav.removeAttribute('hidden');
+                bottomNav.style.removeProperty('display');
             }
         }
         
         // Фиксируем меню при загрузке и скролле
-        document.addEventListener('DOMContentLoaded', fixBottomNav);
+        document.addEventListener('DOMContentLoaded', function() {
+            fixBottomNav();
+            // Дополнительная проверка после полной загрузки
+            setTimeout(fixBottomNav, 100);
+            setTimeout(fixBottomNav, 500);
+        });
         window.addEventListener('scroll', fixBottomNav);
         window.addEventListener('resize', fixBottomNav);
+        window.addEventListener('load', fixBottomNav);
+        // Принудительная проверка каждые 2 секунды (на случай динамического контента)
+        setInterval(fixBottomNav, 2000);
         
         // Дополнительная проверка каждые 100мс
         setInterval(fixBottomNav, 100);
