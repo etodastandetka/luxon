@@ -8,8 +8,6 @@ const BANKS: Bank[] = [
   { code: 'bakai', name: 'Bakai', emoji: '🏪', image: '/images/bakai.jpg' },
   { code: 'megapay', name: 'MegaPay', emoji: '💳', image: '/images/megapay.jpg' },
   { code: 'mbank', name: 'MBank', emoji: '📱', image: '/images/mbank.png' },
-  { code: 'optima', name: 'Optima', emoji: '💎', image: '/images/optima.jpg' },
-  { code: 'kompanion', name: 'Kompanion', emoji: '🤝', image: '/images/companion.png' },
 ]
 
 export default function BankButtons({ onPick, selected, disabled, paymentUrl, allBankUrls, enabledBanks }: { 
@@ -39,9 +37,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
         'balance': 'Balance.kg',
         'bakai': 'Bakai',
         'megapay': 'MegaPay',
-        'mbank': 'MBank',
-        'optima': 'Optima',
-        'kompanion': 'Компаньон'
+        'mbank': 'MBank'
       }
       
       const apiBankName = bankMapping[bankCode]
@@ -78,8 +74,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     'balance': 'balance',
     'bakai': 'bakai',
     'megapay': 'megapay',
-    'mbank': 'mbank',
-    'kompanion': 'kompanion'
+    'mbank': 'mbank'
   }
 
   const filteredBanks = BANKS.filter(bank => {
