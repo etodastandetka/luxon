@@ -282,34 +282,42 @@ def transaction_detail(request, trans_id):
         except Exception:
             photo_url = tx.get('photo_file_url') or ''
 
-        # Другие заявки пользователя (последние 100)
+        # Другие заявки пользователя (последние 100) - через Django ORM
         user_requests = []
         try:
             uid = tx.get('user_id')
             if uid is not None:
-                cursor.execute('''
-                    SELECT id, request_type, amount, status, created_at
-                    FROM requests
-                    WHERE user_id = ?
-                    ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
-                    LIMIT 100
-                ''', (uid,))
-                for rid, rtype, amount, status, created in cursor.fetchall():
+                from bot_control.models import Request
+                user_reqs = Request.objects.filter(user_id=uid).order_by('-created_at')[:100]
+                for req in user_reqs:
                     user_requests.append({
-                        'id': rid,
-                        'type': (rtype or 'deposit'),
-                        'amount': float(amount or 0),
-                        'status': status or 'pending',
-                        'created_at': created,
+                        'id': req.id,
+                        'type': req.request_type or 'deposit',
+                        'amount': float(req.amount or 0),
+                        'status': req.status or 'pending',
+                        'created_at': req.created_at,
                     })
         except Exception:
             user_requests = []
 
         from django.conf import settings as dj_settings
+        from bot_control.models import IncomingPayment
+        
+        # Получаем связанные поступления для этой заявки
+        linked_payments = []
+        try:
+            req_obj = Request.objects.get(id=trans_id)
+            linked_payments = IncomingPayment.objects.filter(request=req_obj).order_by('-payment_date')
+        except Request.DoesNotExist:
+            pass
+        except Exception as e:
+            logger.warning(f"Error fetching linked payments: {e}")
+        
         return render(request, 'bot_control/transaction_detail.html', {
             'transaction': tx,
             'photo_url': photo_url,
             'user_requests': user_requests,
+            'linked_payments': linked_payments,
             'api_token': getattr(dj_settings, 'DJANGO_ADMIN_API_TOKEN', '')
         })
         

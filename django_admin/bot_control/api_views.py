@@ -512,6 +512,81 @@ def api_requisites_list(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+def api_search_payments(request):
+    """API для поиска поступлений по сумме (игнорируя копейки)"""
+    try:
+        from bot_control.models import IncomingPayment
+        from decimal import Decimal
+        
+        search_amount = request.GET.get('amount', '').strip()
+        exact_match = request.GET.get('exact', 'false').lower() == 'true'
+        processed_only = request.GET.get('processed', 'false').lower() == 'true'
+        request_id = request.GET.get('request_id')
+        
+        payments_queryset = IncomingPayment.objects.all()
+        
+        # Фильтр по заявке, если указан
+        if request_id:
+            try:
+                from bot_control.models import Request
+                req = Request.objects.get(id=int(request_id))
+                payments_queryset = payments_queryset.filter(request=req)
+            except (Request.DoesNotExist, ValueError):
+                payments_queryset = payments_queryset.none()
+        
+        # Фильтр по обработанным
+        if processed_only:
+            payments_queryset = payments_queryset.filter(is_processed=True)
+        
+        # Поиск по сумме
+        if search_amount:
+            try:
+                search_amount_float = float(search_amount)
+                # Если точное совпадение - ищем точную сумму
+                if exact_match:
+                    payments_queryset = payments_queryset.filter(amount=Decimal(str(search_amount_float)))
+                else:
+                    # Ищем по сумме без копеек (округляем до целого)
+                    search_int = int(search_amount_float)
+                    # Находим все суммы, где целая часть равна search_int
+                    # Используем FLOOR для сравнения
+                    from django.db.models import F, Value, IntegerField
+                    from django.db.models.functions import Floor
+                    payments_queryset = payments_queryset.annotate(
+                        amount_int=Floor(F('amount'))
+                    ).filter(amount_int=search_int)
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Некорректная сумма'
+                }, status=400)
+        
+        payments_queryset = payments_queryset.order_by('-payment_date')[:50]  # Максимум 50
+        
+        payments = []
+        for payment in payments_queryset:
+            payments.append({
+                'id': payment.id,
+                'amount': float(payment.amount),
+                'bank': payment.bank or '',
+                'payment_date': payment.payment_date.strftime('%d.%m.%Y • %H:%M'),
+                'is_processed': payment.is_processed,
+                'request_id': payment.request.id if payment.request else None,
+                'notification_text': payment.notification_text[:100] if payment.notification_text else ''
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'payments': payments,
+            'count': len(payments)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching payments: {str(e)}", exc_info=True)
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
 def api_referral_data(request):
     """API для получения данных рефералов"""
     try:

@@ -222,3 +222,31 @@ class ChatMessage(models.Model):
     
     def __str__(self):
         return f"{self.direction} - User {self.user_id}: {self.message_text[:50] if self.message_text else 'media'}"
+
+
+class IncomingPayment(models.Model):
+    """Входящие переводы по QR (сохраняются из email уведомлений банков)"""
+    amount = models.DecimalField(max_digits=10, decimal_places=2, db_index=True)
+    bank = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    payment_date = models.DateTimeField(db_index=True)  # Дата и время поступления из email
+    notification_text = models.TextField(blank=True, null=True)  # Полный текст уведомления
+    request = models.ForeignKey(Request, on_delete=models.SET_NULL, blank=True, null=True, related_name='incoming_payments')
+    is_processed = models.BooleanField(default=False, db_index=True)  # Обработан ли платеж (привязан к заявке)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'incoming_payments'
+        ordering = ['-payment_date', '-created_at']
+        indexes = [
+            models.Index(fields=['amount', 'is_processed']),
+            models.Index(fields=['payment_date']),
+            models.Index(fields=['bank', 'is_processed']),
+        ]
+    
+    def __str__(self):
+        return f"Payment {self.amount} сом from {self.bank} at {self.payment_date}"
+    
+    def amount_without_cents(self):
+        """Возвращает сумму без копеек для поиска"""
+        return int(float(self.amount))

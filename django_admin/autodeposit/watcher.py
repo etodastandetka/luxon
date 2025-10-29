@@ -364,6 +364,41 @@ class AutoDepositWatcher:
 
                     amount, iso_dt = parsed
                     logger.info(f"AutoDepositWatcher parsed email: bank=DEMIRBANK amount={amount} dt={iso_dt}")
+                    
+                    # Сохраняем все поступления в Django БД (IncomingPayment)
+                    try:
+                        from django.apps import apps
+                        from django.utils import timezone
+                        from datetime import datetime
+                        
+                        # Пробуем импортировать модель
+                        try:
+                            IncomingPayment = apps.get_model('bot_control', 'IncomingPayment')
+                            
+                            # Парсим дату из ISO формата
+                            payment_date = timezone.now()
+                            if iso_dt:
+                                try:
+                                    payment_date = datetime.fromisoformat(iso_dt.replace('Z', '+00:00'))
+                                    if timezone.is_naive(payment_date):
+                                        payment_date = timezone.make_aware(payment_date)
+                                except Exception:
+                                    payment_date = timezone.now()
+                            
+                            # Создаем запись о поступлении
+                            IncomingPayment.objects.create(
+                                amount=amount,
+                                bank='demirbank',
+                                payment_date=payment_date,
+                                notification_text=body[:500],  # Первые 500 символов
+                                is_processed=False
+                            )
+                            logger.info(f"✅ Сохранено поступление в БД: {amount} сом от {iso_dt}")
+                        except Exception as e:
+                            logger.warning(f"⚠️ Не удалось сохранить поступление в Django БД: {e}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Ошибка при сохранении поступления: {e}")
+                    
                     # Небольшая задержка, чтобы дать времени хендлерам записать заявку в БД
                     try:
                         import time

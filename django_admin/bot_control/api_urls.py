@@ -15,4 +15,7 @@ urlpatterns = [
     
     # API для истории транзакций
     path('transaction-history/', api_views.api_transaction_history, name='api_transaction_history'),
+    
+    # API для поиска поступлений
+    path('payments/search/', api_views.api_search_payments, name='api_search_payments'),
 ]
