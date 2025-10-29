@@ -735,6 +735,23 @@ async function deleteQR(qrId) {
         </div>
       </div>
       
+      <!-- Выбор активного кошелька -->
+      {% if bank_wallets %}
+      <div style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); border-radius: 10px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.05);">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label for="active_wallet" style="color:#fff; font-size:14px; font-weight: 600;">Активный кошелек</label>
+          <select id="active_wallet" onchange="changeActiveWallet(this.value)" style="height: 48px !important; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important; backdrop-filter: blur(10px) !important; border: 1px solid #333 !important; border-radius: 10px !important; color: #fff !important; font-size: 14px !important; padding: 14px 40px 14px 14px !important; appearance: none !important; -webkit-appearance: none !important; -moz-appearance: none !important; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6,9 12,15 18,9\'%3e%3c/polyline%3e%3c/svg%3e') !important; background-repeat: no-repeat !important; background-position: right 12px center !important; background-size: 16px !important;">
+            <option value="" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%); color: #fff; padding: 12px;">Выберите активный кошелек</option>
+            {% for w in bank_wallets %}
+            <option value="{{ w.id }}" {% if w.is_active %}selected{% endif %} style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%); color: #fff; padding: 12px;">
+              {{ w.bank_name|upper }} - {{ w.wallet_address|slice:":8" }}...{{ w.wallet_address|slice:"-8:" }} {% if w.is_active %}(Активен){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      {% endif %}
+      
       <!-- Список кошельков -->
       <div id="bw_list" style="display:flex; flex-direction:column; gap:10px;">
         {% if bank_wallets %}
@@ -765,6 +782,23 @@ async function deleteQR(qrId) {
           {{ requisites_count }}
         </span>
       </h4>
+      
+      <!-- Выбор активного реквизита -->
+      {% if requisites %}
+      <div style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); border-radius: 10px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.05);">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label for="active_requisite" style="color:#fff; font-size:14px; font-weight: 600;">Активный реквизит</label>
+          <select id="active_requisite" onchange="changeActiveRequisite(this.value)" style="height: 48px !important; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%) !important; backdrop-filter: blur(10px) !important; border: 1px solid #333 !important; border-radius: 10px !important; color: #fff !important; font-size: 14px !important; padding: 14px 40px 14px 14px !important; appearance: none !important; -webkit-appearance: none !important; -moz-appearance: none !important; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6,9 12,15 18,9\'%3e%3c/polyline%3e%3c/svg%3e') !important; background-repeat: no-repeat !important; background-position: right 12px center !important; background-size: 16px !important;">
+            <option value="" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%); color: #fff; padding: 12px;">Выберите активный реквизит</option>
+            {% for r in requisites %}
+            <option value="{{ r.id }}" {% if r.is_active %}selected{% endif %} style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%); color: #fff; padding: 12px;">
+              {{ r.name|default:"Без названия" }} - {{ r.value|slice:":4" }}****{{ r.value|slice:"-4:" }} {% if r.is_active %}(Активен){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      {% endif %}
       
       <!-- Форма добавления реквизита -->
       <div style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%); border-radius: 10px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.05);">
@@ -879,6 +913,60 @@ async function deleteRequisite(id) {
     location.reload();
   } catch(err) {
     alert('Ошибка: ' + err.message);
+  }
+}
+
+async function changeActiveRequisite(requisiteId) {
+  if (!requisiteId) return;
+  
+  if (!confirm('Сделать этот реквизит активным? Все остальные будут отключены.')) {
+    // Сбрасываем выбор в выпадающем списке
+    document.getElementById('active_requisite').value = '';
+    return;
+  }
+  
+  try {
+    const res = await fetch(`{% url "dashboard:api_requisites_set_active" rid=0 %}`.replace('/0/', `/${requisiteId}/`), {
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
+    
+    // Показываем уведомление об успехе
+    alert('Активный реквизит изменен!');
+    location.reload();
+  } catch(err) {
+    alert('Ошибка: ' + err.message);
+    // Сбрасываем выбор в выпадающем списке при ошибке
+    document.getElementById('active_requisite').value = '';
+  }
+}
+
+async function changeActiveWallet(walletId) {
+  if (!walletId) return;
+  
+  if (!confirm('Сделать этот кошелек активным? Все остальные будут отключены.')) {
+    // Сбрасываем выбор в выпадающем списке
+    document.getElementById('active_wallet').value = '';
+    return;
+  }
+  
+  try {
+    const res = await fetch(`/dashboard/api/bank-wallets/${walletId}/toggle/`, {
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) throw new Error('Ошибка изменения статуса кошелька');
+    
+    // Показываем уведомление об успехе
+    alert('Активный кошелек изменен!');
+    location.reload();
+  } catch(err) {
+    alert('Ошибка: ' + err.message);
+    // Сбрасываем выбор в выпадающем списке при ошибке
+    document.getElementById('active_wallet').value = '';
   }
 }
 </script>
