@@ -85,6 +85,83 @@ def create_payment_request(data):
         
         print(f"✅ Django API: Заявка создана с ID {request_obj.id}")
         
+        # Синхронизируем заявку в SQLite базу бота для автопополнения
+        if data['type'] == 'deposit':
+            try:
+                # Создаем заявку в SQLite базе бота
+                from django.conf import settings
+                import sqlite3
+                import os
+                from pathlib import Path
+                
+                # Получаем путь к базе данных бота
+                db_path = getattr(settings, 'BOT_DATABASE_PATH', None)
+                if not db_path:
+                    # Fallback путь
+                    project_root = Path(__file__).resolve().parent.parent.parent
+                    db_path = str(project_root / 'bot' / 'universal_bot.db')
+                
+                if os.path.exists(db_path):
+                    conn = sqlite3.connect(db_path)
+                    cur = conn.cursor()
+                    
+                    # Создаем таблицу requests, если её нет
+                    cur.execute('''
+                        CREATE TABLE IF NOT EXISTS requests (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id INTEGER NOT NULL,
+                            username TEXT,
+                            first_name TEXT,
+                            last_name TEXT,
+                            bookmaker TEXT,
+                            account_id TEXT,
+                            amount REAL NOT NULL DEFAULT 0,
+                            request_type TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'pending',
+                            withdrawal_code TEXT,
+                            photo_file_id TEXT,
+                            photo_file_url TEXT,
+                            bank TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP,
+                            processed_at TIMESTAMP
+                        )
+                    ''')
+                    
+                    # Вставляем заявку в SQLite базу бота
+                    cur.execute('''
+                        INSERT INTO requests 
+                        (user_id, username, first_name, last_name, bookmaker, account_id, amount, request_type, status, bank, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ''', (
+                        request_obj.user_id,
+                        request_obj.username or '',
+                        request_obj.first_name or '',
+                        request_obj.last_name or '',
+                        request_obj.bookmaker or '',
+                        request_obj.account_id or '',
+                        float(request_obj.amount) if request_obj.amount else 0.0,
+                        'deposit',
+                        'pending',
+                        request_obj.bank or '',
+                    ))
+                    
+                    conn.commit()
+                    conn.close()
+                    logger.info(f"✅ Заявка {request_obj.id} синхронизирована в SQLite базу бота")
+                    
+                    # Запускаем немедленную проверку почты для автопополнения
+                    try:
+                        from autodeposit.watcher import trigger_immediate_check
+                        trigger_immediate_check()
+                        logger.info(f"✅ Запущена немедленная проверка почты для заявки {request_obj.id}")
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка запуска проверки почты для заявки {request_obj.id}: {e}")
+                else:
+                    logger.warning(f"⚠️ SQLite база бота не найдена по пути: {db_path}")
+            except Exception as e:
+                logger.error(f"❌ Ошибка синхронизации заявки {request_obj.id} в SQLite базу бота: {e}")
+        
         return JsonResponse({
             'success': True,
             'id': request_obj.id,
