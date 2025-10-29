@@ -331,11 +331,21 @@
             
             <div class="control-item">
                 <div class="control-label">
-                    <span class="label-title">Приветственное сообщение</span>
-                    <span class="label-desc">Сообщение для новых подписчиков</span>
+                    <span class="label-title">ID канала</span>
+                    <span class="label-desc">Уникальный идентификатор канала (@channel_id)</span>
                 </div>
                 <div class="control-input-full">
-                    <textarea id="channel-welcome" class="financial-textarea" placeholder="Введите приветственное сообщение..."></textarea>
+                    <input type="text" id="channel-id" class="financial-input" placeholder="Введите ID канала (например: @mychannel)">
+                </div>
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span class="label-title">Username канала</span>
+                    <span class="label-desc">Имя пользователя канала для ссылок</span>
+                </div>
+                <div class="control-input-full">
+                    <input type="text" id="channel-username" class="financial-input" placeholder="Введите username канала (например: mychannel)">
                 </div>
             </div>
         </div>
@@ -1269,10 +1279,12 @@ if (window.financialInterfaceInitialized) {
             if (channelEnabledElement) channelEnabledElement.checked = channelData.enabled;
             
             const channelNameElement = document.getElementById('channel-name');
-            const channelWelcomeElement = document.getElementById('channel-welcome');
+            const channelIdElement = document.getElementById('channel-id');
+            const channelUsernameElement = document.getElementById('channel-username');
             
             if (channelNameElement) channelNameElement.value = channelData.name || '';
-            if (channelWelcomeElement) channelWelcomeElement.value = channelData.welcome_message || '';
+            if (channelIdElement) channelIdElement.value = channelData.channel_id || '';
+            if (channelUsernameElement) channelUsernameElement.value = channelData.channel_username || '';
             
             // Обновление счетчиков
             updateBankCounters();
@@ -1355,7 +1367,8 @@ if (window.financialInterfaceInitialized) {
                 body: JSON.stringify({
                     enabled: document.getElementById('channel-enabled')?.checked || false,
                     name: document.getElementById('channel-name')?.value || '',
-                    welcome_message: document.getElementById('channel-welcome')?.value || ''
+                    channel_id: document.getElementById('channel-id')?.value || '',
+                    channel_username: document.getElementById('channel-username')?.value || ''
                 })
             });
             
@@ -1411,7 +1424,7 @@ if (window.financialInterfaceInitialized) {
         // Автоматическое сохранение при изменении
         const autoSaveElements = [
             'bot-pause', 'maintenance-message', 'deposits-enabled', 'withdrawals-enabled', 
-            'channel-enabled', 'channel-name', 'channel-welcome'
+            'channel-enabled', 'channel-name', 'channel-id', 'channel-username'
         ];
         
         autoSaveElements.forEach(id => {
