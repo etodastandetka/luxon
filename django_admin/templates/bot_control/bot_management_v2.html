@@ -87,7 +87,9 @@
                 
                 <div class="banks-grid">
                     <div class="bank-card" data-bank="mbank">
-                        <div class="bank-logo">🏦</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/mbank.png' %}" alt="MBank">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">MBank</div>
                             <div class="bank-status">Доступен</div>
@@ -101,7 +103,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="demir">
-                        <div class="bank-logo">🏛️</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/demirbank.jpg' %}" alt="DemirBank">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">DemirBank</div>
                             <div class="bank-status">Доступен</div>
@@ -115,7 +119,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="balance">
-                        <div class="bank-logo">💳</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/balance.jpg' %}" alt="Balance.kg">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">Balance.kg</div>
                             <div class="bank-status">Доступен</div>
@@ -129,7 +135,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="omoney">
-                        <div class="bank-logo">💎</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/omoney.jpg' %}" alt="O!Money">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">O!Money</div>
                             <div class="bank-status">Доступен</div>
@@ -143,7 +151,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="megapay">
-                        <div class="bank-logo">⚡</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/megapay.jpg' %}" alt="MegaPay">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">MegaPay</div>
                             <div class="bank-status">Доступен</div>
@@ -157,7 +167,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="bakai">
-                        <div class="bank-logo">🏪</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/bakai.jpg' %}" alt="Bakai">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">Bakai</div>
                             <div class="bank-status">Доступен</div>
@@ -208,7 +220,9 @@
                 
                 <div class="banks-grid">
                     <div class="bank-card" data-bank="kompanion">
-                        <div class="bank-logo">🏢</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/companion.png' %}" alt="Компаньон">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">Компаньон</div>
                             <div class="bank-status">Доступен</div>
@@ -222,7 +236,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="odengi">
-                        <div class="bank-logo">💎</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/omoney.jpg' %}" alt="O!Money">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">O!Money</div>
                             <div class="bank-status">Доступен</div>
@@ -236,7 +252,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="bakai">
-                        <div class="bank-logo">🏪</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/bakai.jpg' %}" alt="Bakai">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">Bakai</div>
                             <div class="bank-status">Доступен</div>
@@ -250,7 +268,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="balance">
-                        <div class="bank-logo">💳</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/balance.jpg' %}" alt="Balance.kg">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">Balance.kg</div>
                             <div class="bank-status">Доступен</div>
@@ -264,7 +284,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="megapay">
-                        <div class="bank-logo">⚡</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/megapay.jpg' %}" alt="MegaPay">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">MegaPay</div>
                             <div class="bank-status">Доступен</div>
@@ -278,7 +300,9 @@
                     </div>
                     
                     <div class="bank-card" data-bank="mbank">
-                        <div class="bank-logo">🏦</div>
+                        <div class="bank-logo">
+                            <img src="{% static 'images/mbank.png' %}" alt="MBank">
+                        </div>
                         <div class="bank-info">
                             <div class="bank-name">MBank</div>
                             <div class="bank-status">Доступен</div>
@@ -841,8 +865,35 @@ input::placeholder, textarea::placeholder {
 }
 
 .bank-logo {
-    font-size: 16px;
-    margin-bottom: 8px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(22, 163, 74, 0.1);
+    border: 1px solid rgba(22, 163, 74, 0.2);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.bank-logo img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.bank-card:hover .bank-logo {
+    background: rgba(22, 163, 74, 0.2);
+    border-color: rgba(22, 163, 74, 0.4);
+    transform: scale(1.05);
+}
+
+.bank-card:hover .bank-logo img {
+    transform: scale(1.1);
 }
 
 .bank-info {
