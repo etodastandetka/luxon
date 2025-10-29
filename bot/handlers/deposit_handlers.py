@@ -508,7 +508,7 @@ async def send_deposit_request_to_group(bot, user_id: int, amount: float, bookma
         logger.error(f"❌ Ошибка отправки заявки в группу: {e}")
         return False
 
-def sync_to_django_admin(user_id, username, first_name, bookmaker, amount, account_id, photo_file_id, status, photo_file_url=None, request_type: str = 'deposit', auto_completed: int = 0):
+def sync_to_django_admin(user_id, username, first_name, bookmaker, amount, account_id, photo_file_id, status, photo_file_url=None, request_type: str = 'deposit', auto_completed: int = 0, status_detail: str = None):
     """Автоматическая синхронизация заявки с Django админкой"""
     try:
         import requests
@@ -530,7 +530,9 @@ def sync_to_django_admin(user_id, username, first_name, bookmaker, amount, accou
             # Дополнительные подсказки для сайта, чтобы явно классифицировать как пополнение
             'type': 'deposit',
             'direction': 'in',
-            'is_deposit': True
+            'is_deposit': True,
+            'auto_completed': auto_completed,
+            'status_detail': status_detail
         }
         
         # URL админ-панели берём из окружения, fallback на локальный порт 8000
