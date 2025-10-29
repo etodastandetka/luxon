@@ -289,7 +289,8 @@ export default function DepositStep4() {
       const apiUrl = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:8081' 
         : 'https://xendro.pro'
-      const response = await fetch(`${apiUrl}/api/requisites/list/`)
+      // Используем правильный путь к API
+      const response = await fetch(`${apiUrl}/bot/api/requisites/list/`)
       if (response.ok) {
         const data = await response.json()
         // Ищем активный реквизит по active_id
