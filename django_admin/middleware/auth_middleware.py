@@ -32,6 +32,7 @@ class AuthMiddleware:
             '/bot/api/payment-settings/',  # Публичное API для получения настроек платежей
             '/bot/api/save-chat-message/',  # Для сохранения сообщений от бота
             '/bot/api/requisites/',  # API для получения реквизитов
+            '/api/requisites/',  # API для получения реквизитов (альтернативный путь)
             '/api/payment/',
             '/api/generate-qr/',
         ]
