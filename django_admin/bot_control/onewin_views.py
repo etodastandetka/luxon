@@ -4,6 +4,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from bot_control.onewin_api import OnewinAPI
+from bot_control.casino_api_config import ONEWIN_CONFIG
 import json
 import logging
 
@@ -21,12 +22,7 @@ def api_onewin_deposit(request):
             if not user_id or not amount:
                 return JsonResponse({'error': 'userId and amount are required'}, status=400)
             
-            # TODO: Получать из настроек
-            config = {
-                'api_key': 'YOUR_1WIN_API_KEY'
-            }
-            
-            api = OnewinAPI(api_key=config['api_key'])
+            api = OnewinAPI(api_key=ONEWIN_CONFIG['api_key'])
             
             result = api.deposit(int(user_id), float(amount))
             
@@ -56,12 +52,7 @@ def api_onewin_withdrawal(request):
             if not user_id or not code:
                 return JsonResponse({'error': 'userId and code are required'}, status=400)
             
-            # TODO: Получать из настроек
-            config = {
-                'api_key': 'YOUR_1WIN_API_KEY'
-            }
-            
-            api = OnewinAPI(api_key=config['api_key'])
+            api = OnewinAPI(api_key=ONEWIN_CONFIG['api_key'])
             
             result = api.withdrawal(int(user_id), int(code))
             
