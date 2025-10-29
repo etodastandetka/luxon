@@ -4,6 +4,7 @@ Cashdesk API views для Melbet и 1xbet
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from bot_control.cashdesk_api import CashdeskAPI
+from bot_control.casino_api_config import CASHDESK_CONFIG
 import json
 import logging
 
@@ -14,26 +15,10 @@ def api_cashdesk_balance(request, casino: str):
     """API для получения баланса кассы через Cashdesk API"""
     if request.method == 'GET':
         try:
-            # TODO: Получать из настроек
-            configs = {
-                'melbet': {
-                    'hash': 'YOUR_MELBET_HASH',
-                    'cashierpass': 'YOUR_CASHIERPASS',
-                    'login': 'YOUR_LOGIN',
-                    'cashdeskid': 12345
-                },
-                '1xbet': {
-                    'hash': 'YOUR_1XBET_HASH',
-                    'cashierpass': 'YOUR_CASHIERPASS',
-                    'login': 'YOUR_LOGIN',
-                    'cashdeskid': 67890
-                }
-            }
-            
-            if casino not in configs:
+            if casino not in CASHDESK_CONFIG:
                 return JsonResponse({'error': 'Invalid casino'}, status=400)
             
-            config = configs[casino]
+            config = CASHDESK_CONFIG[casino]
             api = CashdeskAPI(
                 casino=casino,
                 hash_key=config['hash'],

@@ -4,6 +4,7 @@ Mostbet Cash API views
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from bot_control.mostbet_api import MostbetAPI
+from bot_control.casino_api_config import MOSTBET_CONFIG
 import json
 import logging
 
@@ -14,17 +15,10 @@ def api_mostbet_balance(request):
     """API для получения баланса кассы через Mostbet Cash API"""
     if request.method == 'GET':
         try:
-            # TODO: Получать из настроек
-            config = {
-                'api_key': 'api-key:YOUR_API_KEY_UUID',
-                'secret': 'YOUR_SECRET_KEY',
-                'cashpoint_id': 12345
-            }
-            
             api = MostbetAPI(
-                api_key=config['api_key'],
-                secret=config['secret'],
-                cashpoint_id=config['cashpoint_id']
+                api_key=MOSTBET_CONFIG['api_key'],
+                secret=MOSTBET_CONFIG['secret'],
+                cashpoint_id=MOSTBET_CONFIG['cashpoint_id']
             )
             
             result = api.get_balance()
@@ -51,17 +45,10 @@ def api_mostbet_deposit(request):
             if not player_id or not amount:
                 return JsonResponse({'error': 'player_id and amount are required'}, status=400)
             
-            # TODO: Получать из настроек
-            config = {
-                'api_key': 'api-key:YOUR_API_KEY_UUID',
-                'secret': 'YOUR_SECRET_KEY',
-                'cashpoint_id': 12345
-            }
-            
             api = MostbetAPI(
-                api_key=config['api_key'],
-                secret=config['secret'],
-                cashpoint_id=config['cashpoint_id']
+                api_key=MOSTBET_CONFIG['api_key'],
+                secret=MOSTBET_CONFIG['secret'],
+                cashpoint_id=MOSTBET_CONFIG['cashpoint_id']
             )
             
             result = api.deposit(str(player_id), float(amount), currency, brand_id)
@@ -83,17 +70,10 @@ def api_mostbet_cashout_list(request):
             size = int(request.GET.get('size', 10))
             search_string = request.GET.get('search_string')
             
-            # TODO: Получать из настроек
-            config = {
-                'api_key': 'api-key:YOUR_API_KEY_UUID',
-                'secret': 'YOUR_SECRET_KEY',
-                'cashpoint_id': 12345
-            }
-            
             api = MostbetAPI(
-                api_key=config['api_key'],
-                secret=config['secret'],
-                cashpoint_id=config['cashpoint_id']
+                api_key=MOSTBET_CONFIG['api_key'],
+                secret=MOSTBET_CONFIG['secret'],
+                cashpoint_id=MOSTBET_CONFIG['cashpoint_id']
             )
             
             result = api.get_cashout_list(page, size, search_string)
@@ -118,17 +98,10 @@ def api_mostbet_confirm_cashout(request):
             if not transaction_id or not code:
                 return JsonResponse({'error': 'transaction_id and code are required'}, status=400)
             
-            # TODO: Получать из настроек
-            config = {
-                'api_key': 'api-key:YOUR_API_KEY_UUID',
-                'secret': 'YOUR_SECRET_KEY',
-                'cashpoint_id': 12345
-            }
-            
             api = MostbetAPI(
-                api_key=config['api_key'],
-                secret=config['secret'],
-                cashpoint_id=config['cashpoint_id']
+                api_key=MOSTBET_CONFIG['api_key'],
+                secret=MOSTBET_CONFIG['secret'],
+                cashpoint_id=MOSTBET_CONFIG['cashpoint_id']
             )
             
             result = api.confirm_cashout(int(transaction_id), code)
@@ -155,17 +128,10 @@ def api_mostbet_transactions(request):
             if not date_start or not date_end:
                 return JsonResponse({'error': 'date_start and date_end are required'}, status=400)
             
-            # TODO: Получать из настроек
-            config = {
-                'api_key': 'api-key:YOUR_API_KEY_UUID',
-                'secret': 'YOUR_SECRET_KEY',
-                'cashpoint_id': 12345
-            }
-            
             api = MostbetAPI(
-                api_key=config['api_key'],
-                secret=config['secret'],
-                cashpoint_id=config['cashpoint_id']
+                api_key=MOSTBET_CONFIG['api_key'],
+                secret=MOSTBET_CONFIG['secret'],
+                cashpoint_id=MOSTBET_CONFIG['cashpoint_id']
             )
             
             result = api.get_transactions(
