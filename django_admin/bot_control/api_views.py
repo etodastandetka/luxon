@@ -250,27 +250,53 @@ def generate_qr_api(request):
         player_id = data.get('playerId', '')
         
         # Получаем активный реквизит из таблицы requisites в SQLite
+        requisite = None
         try:
             import sqlite3
             from django.conf import settings as dj_settings
             
-            conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
-            cur = conn.cursor()
-            cur.execute('SELECT value FROM requisites WHERE is_active = 1 LIMIT 1')
-            row = cur.fetchone()
-            conn.close()
+            db_path = str(dj_settings.BOT_DATABASE_PATH)
+            if not db_path:
+                raise ValueError("BOT_DATABASE_PATH не настроен")
             
-            if row:
-                requisite = row[0]
-                logger.info(f"Using active requisite from DB: {requisite}")
-            else:
-                # Fallback реквизит
-                requisite = '1234567890123456'
-                logger.warning("No active requisite found, using fallback")
+            import os
+            if not os.path.exists(db_path):
+                logger.warning(f"Database file not found: {db_path}")
+                raise FileNotFoundError(f"Database file not found: {db_path}")
+            
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            # Проверяем, есть ли таблица requisites
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='requisites'")
+            if cur.fetchone():
+                cur.execute('SELECT value FROM requisites WHERE is_active = 1 LIMIT 1')
+                row = cur.fetchone()
+                if row:
+                    requisite = row[0]
+                    logger.info(f"Using active requisite from DB: {requisite}")
+            conn.close()
         except Exception as e:
-            logger.error(f"Error fetching requisite: {str(e)}")
-            # Fallback реквизит
+            logger.error(f"Error fetching requisite from SQLite: {str(e)}", exc_info=True)
+        
+        # Если не нашли в SQLite, пробуем получить из BotConfiguration
+        if not requisite:
+            try:
+                from bot_control.models import BotConfiguration
+                active_config = BotConfiguration.objects.filter(key='active_requisite').first()
+                if active_config and active_config.value:
+                    # Ищем реквизит по ID
+                    req_id = active_config.value
+                    req_config = BotConfiguration.objects.filter(id=int(req_id), key__startswith='requisite_').first()
+                    if req_config:
+                        requisite = req_config.value
+                        logger.info(f"Using requisite from BotConfiguration: {requisite}")
+            except Exception as e:
+                logger.error(f"Error fetching requisite from BotConfiguration: {str(e)}", exc_info=True)
+        
+        # Если всё еще нет реквизита, используем fallback
+        if not requisite:
             requisite = '1234567890123456'
+            logger.warning("No active requisite found, using fallback")
         
         logger.info(f"Generating QR for amount={amount}, requisite={requisite}")
         
