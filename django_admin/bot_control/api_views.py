@@ -217,16 +217,8 @@ def update_payment_status(data):
             # Сохраняем status_detail если есть
             if 'status_detail' in data:
                 try:
-                    # Добавляем поле status_detail через JSON в description или отдельным полем
                     if hasattr(request_obj, 'status_detail'):
                         request_obj.status_detail = data['status_detail']
-                    else:
-                        # Fallback: сохраняем в JSON в другом поле или создаем отдельную запись
-                        import json
-                        metadata = json.loads(getattr(request_obj, 'metadata', '{}') or '{}')
-                        metadata['status_detail'] = data['status_detail']
-                        if hasattr(request_obj, 'metadata'):
-                            request_obj.metadata = json.dumps(metadata)
                 except Exception:
                     pass
             
