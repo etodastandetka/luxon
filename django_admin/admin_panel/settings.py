@@ -27,6 +27,14 @@ SECRET_KEY = 'django-insecure-luxservice-online-2025-secure-key-change-in-produc
 
 DEBUG = True
 
+# Отключаем кэширование в development режиме
+if DEBUG:
+    TEMPLATE_DEBUG = True
+    TEMPLATE_LOADERS = (
+        'django.template.loaders.filesystem.Loader',
+        'django.template.loaders.app_directories.Loader',
+    )
+
 ALLOWED_HOSTS = [
     'xendro.pro', 
     'www.xendro.pro',
@@ -58,6 +66,22 @@ MIDDLEWARE = [
     'admin_panel.settings.CORSMiddleware',
     'middleware.auth_middleware.AuthMiddleware',
 ]
+
+# Добавляем middleware для отключения кэширования в DEBUG режиме
+if DEBUG:
+    MIDDLEWARE.insert(0, 'middleware.no_cache_middleware.NoCacheMiddleware')
+
+# Настройки кэширования
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.dummy.DummyCache' if DEBUG else 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
+# Отключаем кэширование в DEBUG режиме
+if DEBUG:
+    CACHE_MIDDLEWARE_SECONDS = 0
+    CACHE_MIDDLEWARE_KEY_PREFIX = ''
 
 # CORS настройки для API
 CORS_ALLOW_ALL_ORIGINS = False  # Отключаем для админки
@@ -144,6 +168,9 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            'debug': DEBUG,
+            'autoescape': True,
+            'builtins': [],
         },
     },
 ]
