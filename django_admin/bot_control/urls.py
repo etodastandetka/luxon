@@ -7,6 +7,7 @@ from . import api_views_webapp
 from . import api_views
 from . import cashdesk_views
 from . import mostbet_views
+from . import onewin_views
 
 app_name = 'bot_control'
 
@@ -102,4 +103,8 @@ urlpatterns = [
     path('api/mostbet/cashout/list/', mostbet_views.api_mostbet_cashout_list, name='api_mostbet_cashout_list'),
     path('api/mostbet/cashout/confirm/', mostbet_views.api_mostbet_confirm_cashout, name='api_mostbet_confirm_cashout'),
     path('api/mostbet/transactions/', mostbet_views.api_mostbet_transactions, name='api_mostbet_transactions'),
+    
+    # 1WIN API
+    path('api/onewin/deposit/', onewin_views.api_onewin_deposit, name='api_onewin_deposit'),
+    path('api/onewin/withdrawal/', onewin_views.api_onewin_withdrawal, name='api_onewin_withdrawal'),
 ]
