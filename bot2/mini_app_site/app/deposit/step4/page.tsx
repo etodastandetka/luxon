@@ -319,13 +319,38 @@ export default function DepositStep4() {
 
       const amountCents = Math.round(parseFloat(String(amount)) * 100)
       const amountStr = amountCents.toString().padStart(5, '0')
+      const amountLen = amountStr.length.toString().padStart(2, '0')
       
-      // Создаем TLV структуру с реквизитом из админки
-      const payload = `00020101021232990015qr.demirbank.kg0108ib_andro10${requisite}1109202111302112021213021211328454d5b3ee5d47c7b61c0a0b07bb939a5204482953034175405${amountStr}5909DEMIRBANK6304`
+      const requisiteLen = requisite.length.toString().padStart(2, '0')
       
-      // Вычисляем SHA256 контрольную сумму
-      const checksum = await calculateSHA256(payload)
-      const qrHash = payload + checksum
+      // Создаем TLV структуру до контрольной суммы (БЕЗ 6304)
+      // Структура как в Django API для совместимости
+      const merchantAccountValue = (
+        `0015qr.demirbank.kg` +  // Под-тег 00: домен
+        `01047001` +              // Под-тег 01: короткий тип (7001)
+        `10${requisiteLen}${requisite}` +  // Под-тег 10: реквизит
+        `120211130212`            // Под-теги 12, 13: дополнительные поля
+      )
+      const merchantAccountLen = merchantAccountValue.length.toString().padStart(2, '0')
+      
+      // Payload БЕЗ контрольной суммы и без 6304
+      const payload = (
+        `000201` +  // 00 - Payload Format Indicator
+        `010211` +  // 01 - Point of Initiation Method (статический QR)
+        `32${merchantAccountLen}${merchantAccountValue}` +  // 32 - Merchant Account
+        `52044829` +  // 52 - Merchant Category Code
+        `5303417` +   // 53 - Transaction Currency
+        `54${amountLen}${amountStr}` +  // 54 - Amount
+        `5909DEMIRBANK`  // 59 - Merchant Name
+      )
+      
+      // Вычисляем SHA256 контрольную сумму от payload (БЕЗ 6304)
+      const checksumFull = await calculateSHA256(payload)
+      // Берем последние 4 символа (как в Django API)
+      const checksum = checksumFull.slice(-4).toLowerCase()
+      
+      // Полный QR хеш: payload + '6304' + checksum
+      const qrHash = payload + '6304' + checksum
       
       // Создаем ссылки для всех банков (с ключами как в Django API для совместимости)
       const bankLinks = {
@@ -390,8 +415,34 @@ export default function DepositStep4() {
       }
 
       const data = await response.json()
+      
+      // Если есть qr_hash, создаем ссылки для всех банков
+      if (data.qr_hash) {
+        const qrHash = data.qr_hash
+        // Создаем ссылки для всех банков с правильным форматом
+        const bankLinks = {
+          'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
+          'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
+          'Balance.kg': `https://balance.kg/#${qrHash}`,
+          'Bakai': `https://bakai24.app/#${qrHash}`,
+          'MegaPay': `https://megapay.kg/get#${qrHash}`,
+          'MBank': `https://app.mbank.kg/qr/#${qrHash}`,
+          // Также добавляем варианты с нижним регистром для совместимости
+          'demirbank': `https://retail.demirbank.kg/#${qrHash}`,
+          'omoney': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
+          'balance': `https://balance.kg/#${qrHash}`,
+          'bakai': `https://bakai24.app/#${qrHash}`,
+          'megapay': `https://megapay.kg/get#${qrHash}`,
+          'mbank': `https://app.mbank.kg/qr/#${qrHash}`
+        }
+        
+        // Обновляем data с правильными ссылками
+        data.all_bank_urls = bankLinks
+        data.primary_url = bankLinks['DemirBank'] || data.primary_url
+      }
+      
       setQrData(data)
-      setPaymentUrl(data.primary_url)
+      setPaymentUrl(data.primary_url || data.all_bank_urls?.['DemirBank'] || data.all_bank_urls?.['demirbank'])
       
       // Сохраняем настройки депозитов
       if (data.settings) {
