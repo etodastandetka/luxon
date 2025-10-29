@@ -30,24 +30,38 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     console.log('🔗 Default payment URL:', paymentUrl)
     
     if (allBankUrls) {
-      // Маппинг кодов банков на названия в API
-      const bankMapping: Record<string, string> = {
-        'demirbank': 'DemirBank',
-        'omoney': 'O!Money',
-        'balance': 'Balance.kg',
-        'bakai': 'Bakai',
-        'megapay': 'MegaPay',
-        'mbank': 'MBank'
+      // Маппинг кодов банков на возможные варианты названий в API
+      // API может вернуть ключи с заглавными буквами ('DemirBank', 'O!Money') 
+      // или в нижнем регистре ('demirbank', 'omoney')
+      const bankMappingVariants: Record<string, string[]> = {
+        'demirbank': ['DemirBank', 'demirbank', 'Demir'],
+        'omoney': ['O!Money', 'omoney', 'O!Money', 'Odengi'],
+        'balance': ['Balance.kg', 'balance', 'Balance'],
+        'bakai': ['Bakai', 'bakai'],
+        'megapay': ['MegaPay', 'megapay'],
+        'mbank': ['MBank', 'mbank', 'MBank']
       }
       
-      const apiBankName = bankMapping[bankCode]
-      console.log('🔍 Looking for bank:', apiBankName)
+      const variants = bankMappingVariants[bankCode] || [bankCode]
+      console.log('🔍 Looking for bank variants:', variants)
       
-      if (apiBankName && allBankUrls[apiBankName]) {
-        bankUrl = allBankUrls[apiBankName]
-        console.log('✅ Found bank URL:', bankUrl)
-      } else {
-        console.warn('⚠️ Bank URL not found for:', apiBankName)
+      // Пробуем найти ссылку по каждому варианту ключа
+      for (const variant of variants) {
+        if (allBankUrls[variant]) {
+          bankUrl = allBankUrls[variant]
+          console.log(`✅ Found bank URL for variant "${variant}":`, bankUrl)
+          break
+        }
+      }
+      
+      // Если не нашли по маппингу, пробуем напрямую по коду банка
+      if (!bankUrl || bankUrl === paymentUrl) {
+        if (allBankUrls[bankCode]) {
+          bankUrl = allBankUrls[bankCode]
+          console.log(`✅ Found bank URL by direct code "${bankCode}":`, bankUrl)
+        } else {
+          console.warn('⚠️ Bank URL not found for any variant of:', bankCode)
+        }
       }
     }
     
@@ -64,6 +78,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
       }
     } else {
       console.error('❌ No payment URL available!')
+      alert('Ссылка для оплаты не найдена. Попробуйте обновить страницу.')
     }
   }
 
