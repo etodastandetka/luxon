@@ -17,6 +17,7 @@
 {% block header_subtitle %}Настройки системы и банков{% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="financial-interface">
     <!-- Основные настройки -->
     <div class="control-panel">
@@ -1401,7 +1402,11 @@ if (window.financialInterfaceInitialized) {
             showStatus('Сохранение...', 'loading');
             
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-            if (!csrfToken) throw new Error('CSRF token not found');
+            if (!csrfToken) {
+                console.error('❌ CSRF token не найден в DOM');
+                console.log('Проверяемые элементы:', document.querySelectorAll('input[type="hidden"]'));
+                throw new Error('CSRF token не найден. Обновите страницу.');
+            }
 
             // Сохранение общих настроек бота
             await fetch('{% url "bot_control:api_save_bot_control" %}', {
