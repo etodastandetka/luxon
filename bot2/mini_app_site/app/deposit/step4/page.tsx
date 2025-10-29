@@ -327,8 +327,15 @@ export default function DepositStep4() {
       const checksum = await calculateSHA256(payload)
       const qrHash = payload + checksum
       
-      // Создаем ссылки для всех банков
+      // Создаем ссылки для всех банков (с ключами как в Django API для совместимости)
       const bankLinks = {
+        'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
+        'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
+        'Balance.kg': `https://balance.kg/#${qrHash}`,
+        'Bakai': `https://bakai24.app/#${qrHash}`,
+        'MegaPay': `https://megapay.kg/get#${qrHash}`,
+        'MBank': `https://app.mbank.kg/qr/#${qrHash}`,
+        // Также добавляем варианты с нижним регистром для совместимости
         'demirbank': `https://retail.demirbank.kg/#${qrHash}`,
         'omoney': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
         'balance': `https://balance.kg/#${qrHash}`,
@@ -345,7 +352,17 @@ export default function DepositStep4() {
           deposits_enabled: true
         }
       })
-      setPaymentUrl(bankLinks[currentBank as keyof typeof bankLinks] || bankLinks['demirbank'])
+      // Используем ключ с заглавными буквами для primary_url
+      const primaryUrlMap: Record<string, string> = {
+        'demirbank': 'DemirBank',
+        'omoney': 'O!Money',
+        'balance': 'Balance.kg',
+        'bakai': 'Bakai',
+        'megapay': 'MegaPay',
+        'mbank': 'MBank'
+      }
+      const primaryKey = primaryUrlMap[currentBank] || 'DemirBank'
+      setPaymentUrl(bankLinks[primaryKey] || bankLinks['DemirBank'])
     } catch (error) {
       console.error('Ошибка fallback генерации:', error)
     }
