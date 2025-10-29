@@ -682,8 +682,9 @@ def _get_cashdesk_balance_melbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return {'balance': 0, 'limit': 0}
 
 def limits_dashboard(request):
-    """Мобильная страница лимитов платформ."""
+    """Мобильная страница лимитов платформ со статистикой."""
     start_d, end_d = _parse_period(request)
+    
     # Загружаем конфиг из casino_api_config
     try:
         from bot_control.casino_api_config import CASHDESK_CONFIG, MOSTBET_CONFIG
@@ -712,10 +713,107 @@ def limits_dashboard(request):
         {'key':'mostbet','name':'Mostbet','limit': float(mb_bal.get('limit') or 0)},
     ]
 
+    # Собираем статистику по заявкам
+    filters = {}
+    if start_d:
+        filters['created_at__date__gte'] = start_d.date()
+    if end_d:
+        filters['created_at__date__lte'] = end_d.date()
+    
+    from bot_control.models import Request
+    from django.db.models import Sum, Count
+    
+    # Статистика пополнений
+    deposit_stats = Request.objects.filter(
+        request_type='deposit',
+        **filters
+    ).aggregate(
+        total_count=Count('id'),
+        total_sum=Sum('amount')
+    )
+    
+    # Статистика выводов
+    withdrawal_stats = Request.objects.filter(
+        request_type='withdraw',
+        **filters
+    ).aggregate(
+        total_count=Count('id'),
+        total_sum=Sum('amount')
+    )
+    
+    total_deposits_count = deposit_stats['total_count'] or 0
+    total_deposits_sum = float(deposit_stats['total_sum'] or 0)
+    total_withdrawals_count = withdrawal_stats['total_count'] or 0
+    total_withdrawals_sum = float(withdrawal_stats['total_sum'] or 0)
+    
+    # Приблизительный доход: 8% от пополнений + 2% от выводов
+    approximate_income = (total_deposits_sum * 0.08) + (total_withdrawals_sum * 0.02)
+    
+    # График по датам (последние 10 дней)
+    from django.db.models.functions import TruncDate
+    from datetime import timedelta
+    
+    # Если период не указан, берем последние 30 дней
+    if not start_d or not end_d:
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=30)
+    else:
+        start_date = start_d.date()
+        end_date = end_d.date()
+    
+    chart_filters = {'created_at__date__gte': start_date, 'created_at__date__lte': end_date}
+    
+    deposits_chart = list(Request.objects.filter(
+        request_type='deposit',
+        **chart_filters
+    ).extra(
+        select={'date': 'DATE(created_at)'}
+    ).values('date').annotate(
+        count=Count('id')
+    ).order_by('date')[-10:])  # Последние 10 записей
+    
+    withdrawals_chart = list(Request.objects.filter(
+        request_type='withdraw',
+        **chart_filters
+    ).extra(
+        select={'date': 'DATE(created_at)'}
+    ).values('date').annotate(
+        count=Count('id')
+    ).order_by('date')[-10:])  # Последние 10 записей
+
+    def format_chart_date(date_str):
+        if isinstance(date_str, str):
+            return timezone.datetime.strptime(date_str, '%Y-%m-%d').strftime('%d.%m')
+        return date_str.strftime('%d.%m') if hasattr(date_str, 'strftime') else str(date_str)
+
+    # Формируем данные для графика
+    deposits_labels = [format_chart_date(row['date']) for row in deposits_chart]
+    deposits_data = [row['count'] for row in deposits_chart]
+    withdrawals_labels = [format_chart_date(row['date']) for row in withdrawals_chart]
+    withdrawals_data = [row['count'] for row in withdrawals_chart]
+    
+    # Объединяем метки (берем уникальные из обоих графиков)
+    all_labels = sorted(list(set(deposits_labels + withdrawals_labels)))
+    
+    # Синхронизируем данные с общими метками
+    deposits_dict = dict(zip(deposits_labels, deposits_data))
+    withdrawals_dict = dict(zip(withdrawals_labels, withdrawals_data))
+    
+    synchronized_deposits = [deposits_dict.get(label, 0) for label in all_labels]
+    synchronized_withdrawals = [withdrawals_dict.get(label, 0) for label in all_labels]
+
     context = {
         'start': start_d.strftime('%Y-%m-%d') if start_d else '',
         'end': end_d.strftime('%Y-%m-%d') if end_d else '',
         'platform_limits': platform_limits,
+        'total_deposits_count': total_deposits_count,
+        'total_deposits_sum': total_deposits_sum,
+        'total_withdrawals_count': total_withdrawals_count,
+        'total_withdrawals_sum': total_withdrawals_sum,
+        'approximate_income': approximate_income,
+        'chart_labels_json': json.dumps(all_labels),
+        'chart_deposits_json': json.dumps(synchronized_deposits),
+        'chart_withdrawals_json': json.dumps(synchronized_withdrawals),
     }
     return render(request, 'bot_control/limits_mobile.html', context)
 
