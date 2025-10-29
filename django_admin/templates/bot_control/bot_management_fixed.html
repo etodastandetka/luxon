@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 <!-- UPDATED: Modern design with gradients and animations - {{ "now"|date:"Y-m-d H:i:s" }} -->
 
-{% block title %}⚙️ Управление ботом - Luxon{% endblock %}
+{% block title %}<i class="fas fa-cog"></i> Управление ботом - Luxon{% endblock %}
 
 {% block extra_head %}
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -12,7 +12,7 @@
 {% endblock %}
 
 {% block header_icon %}settings{% endblock %}
-{% block header_title %}⚙️ Управление ботом{% endblock %}
+{% block header_title %}<i class="fas fa-cog"></i> Управление ботом{% endblock %}
 {% block header_subtitle %}Настройки системы и банков{% endblock %}
 
 {% block content %}
@@ -20,7 +20,7 @@
     <!-- Основные настройки -->
     <div class="control-panel">
         <div class="panel-header">
-            <div class="panel-icon">⚙️</div>
+            <div class="panel-icon"><i class="fas fa-cog"></i></div>
             <div class="panel-info">
                 <h2>Основные настройки</h2>
                 <p>Управление статусом бота и сообщениями</p>
@@ -56,7 +56,7 @@
     <!-- Настройки пополнений -->
     <div class="control-panel">
         <div class="panel-header">
-            <div class="panel-icon">💰</div>
+            <div class="panel-icon"><i class="fas fa-coins"></i></div>
             <div class="panel-info">
                 <h2>Настройки пополнений</h2>
                 <p>Управление депозитами и банками</p>
@@ -177,7 +177,7 @@
     <!-- Настройки выводов -->
     <div class="control-panel">
         <div class="panel-header">
-            <div class="panel-icon">📤</div>
+            <div class="panel-icon"><i class="fas fa-arrow-up"></i></div>
             <div class="panel-info">
                 <h2>Настройки выводов</h2>
                 <p>Управление выводами средств</p>
@@ -298,7 +298,7 @@
     <!-- Настройки канала -->
     <div class="control-panel">
         <div class="panel-header">
-            <div class="panel-icon">📢</div>
+            <div class="panel-icon"><i class="fas fa-bullhorn"></i></div>
             <div class="panel-info">
                 <h2>Настройки канала</h2>
                 <p>Управление информационным каналом</p>
@@ -344,7 +344,7 @@
     <!-- Панель управления -->
     <div class="action-panel">
         <button id="save-settings" class="primary-button">
-            <span class="button-icon">💾</span>
+            <span class="button-icon"><i class="fas fa-save"></i></span>
             <span class="button-text">Сохранить настройки</span>
         </button>
         <div id="save-status" class="status-indicator"></div>
@@ -356,32 +356,32 @@
 <style>
 /* Современный финансовый интерфейс с улучшенным дизайном */
 :root {
-    --bg-primary: #0a0e1a;
-    --bg-secondary: #1a1f2e;
-    --bg-tertiary: #252b3d;
-    --bg-panel: #1e2433;
-    --bg-card: #232937;
+    --bg-primary: #0a1a0a;
+    --bg-secondary: #1e2e1e;
+    --bg-tertiary: #2a3a2a;
+    --bg-panel: #1e2e1e;
+    --bg-card: #233223;
     --text-primary: #ffffff;
-    --text-secondary: #a8b3cf;
-    --text-muted: #7c8db5;
-    --border-primary: #3d4a66;
-    --border-secondary: #2a3441;
-    --accent-green: #00d4aa;
-    --accent-green-hover: #00b894;
-    --accent-blue: #4dabf7;
-    --accent-blue-hover: #339af0;
-    --accent-purple: #9775fa;
-    --accent-purple-hover: #845ef7;
-    --success: #00d4aa;
-    --error: #ff6b6b;
-    --warning: #ffd43b;
-    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-success: linear-gradient(135deg, #00d4aa 0%, #00b894 100%);
-    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    --text-secondary: #a8cfa8;
+    --text-muted: #7db57d;
+    --border-primary: #3d663d;
+    --border-secondary: #2a412a;
+    --accent-green: #16a34a;
+    --accent-green-hover: #22c55e;
+    --accent-blue: #3b82f6;
+    --accent-blue-hover: #2563eb;
+    --accent-purple: #8b5cf6;
+    --accent-purple-hover: #7c3aed;
+    --success: #16a34a;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --gradient-primary: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    --gradient-success: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    --gradient-card: linear-gradient(135deg, rgba(22, 163, 74, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
-    --shadow-glow: 0 0 20px rgba(0, 212, 170, 0.3);
+    --shadow-glow: 0 0 20px rgba(22, 163, 74, 0.3);
 }
 
 /* Сброс стилей */
@@ -505,7 +505,7 @@ input::placeholder, textarea::placeholder {
 }
 
 .panel-icon {
-    font-size: 24px;
+    font-size: 20px;
     width: 48px;
     height: 48px;
     display: flex;
@@ -513,10 +513,17 @@ input::placeholder, textarea::placeholder {
     justify-content: center;
     background: var(--gradient-primary);
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(22, 163, 74, 0.3);
     box-shadow: var(--shadow-sm);
     position: relative;
     overflow: hidden;
+    color: white;
+}
+
+.panel-icon i {
+    font-size: 18px;
+    z-index: 2;
+    position: relative;
 }
 
 .panel-icon::before {
@@ -526,7 +533,7 @@ input::placeholder, textarea::placeholder {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
     pointer-events: none;
 }
 
@@ -659,38 +666,80 @@ input::placeholder, textarea::placeholder {
 
 .financial-input, .financial-textarea {
     width: 100%;
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    padding: 16px 20px;
+    background: rgba(30, 46, 30, 0.6);
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(22, 163, 74, 0.2);
+    border-radius: 16px;
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 15px;
     font-family: inherit;
-    transition: all 0.3s ease;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-weight: 500;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        inset 0 2px 8px rgba(0, 0, 0, 0.1),
+        0 4px 12px rgba(22, 163, 74, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.financial-input::before, .financial-textarea::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.05) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
 .financial-input:focus, .financial-textarea:focus {
     outline: none;
-    border-color: var(--accent-blue);
+    border-color: var(--accent-green);
+    background: rgba(30, 46, 30, 0.8);
     box-shadow: 
-        0 0 0 4px rgba(77, 171, 247, 0.1),
-        inset 0 2px 4px rgba(0, 0, 0, 0.1);
-    background: rgba(255, 255, 255, 0.08);
-    transform: translateY(-1px);
+        0 0 0 4px rgba(22, 163, 74, 0.2),
+        inset 0 2px 8px rgba(0, 0, 0, 0.1),
+        0 8px 24px rgba(22, 163, 74, 0.2);
+    transform: translateY(-2px);
+}
+
+.financial-input:focus::before, .financial-textarea:focus::before {
+    opacity: 1;
 }
 
 .financial-textarea {
-    min-height: 80px;
+    min-height: 100px;
     resize: vertical;
     font-family: inherit;
-    line-height: 1.5;
+    line-height: 1.6;
+    padding-top: 20px;
+    padding-bottom: 20px;
 }
 
 .financial-input::placeholder, .financial-textarea::placeholder {
     color: var(--text-muted);
     opacity: 0.8;
+    font-weight: 400;
+    transition: all 0.3s ease;
+}
+
+.financial-input:focus::placeholder, .financial-textarea:focus::placeholder {
+    opacity: 0.6;
+    transform: translateY(-2px);
+}
+
+/* Улучшенные эффекты при наведении */
+.financial-input:hover:not(:focus), .financial-textarea:hover:not(:focus) {
+    border-color: rgba(22, 163, 74, 0.4);
+    background: rgba(30, 46, 30, 0.7);
+    transform: translateY(-1px);
+    box-shadow: 
+        inset 0 2px 8px rgba(0, 0, 0, 0.1),
+        0 6px 16px rgba(22, 163, 74, 0.15);
 }
 
 /* Панель банков */
@@ -906,8 +955,14 @@ input::placeholder, textarea::placeholder {
 }
 
 .button-icon {
-    font-size: 18px;
+    font-size: 16px;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    z-index: 2;
+    position: relative;
+}
+
+.button-icon i {
+    font-size: 16px;
 }
 
 .status-indicator {
