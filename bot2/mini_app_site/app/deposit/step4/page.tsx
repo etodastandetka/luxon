@@ -378,7 +378,7 @@ export default function DepositStep4() {
         }
       })
       // Используем ключ с заглавными буквами для primary_url
-      const primaryUrlMap: Record<string, string> = {
+      const primaryUrlMap: Record<string, keyof typeof bankLinks> = {
         'demirbank': 'DemirBank',
         'omoney': 'O!Money',
         'balance': 'Balance.kg',
@@ -386,7 +386,7 @@ export default function DepositStep4() {
         'megapay': 'MegaPay',
         'mbank': 'MBank'
       }
-      const primaryKey = primaryUrlMap[currentBank] || 'DemirBank'
+      const primaryKey: keyof typeof bankLinks = primaryUrlMap[currentBank] || 'DemirBank'
       setPaymentUrl(bankLinks[primaryKey] || bankLinks['DemirBank'])
     } catch (error) {
       console.error('Ошибка fallback генерации:', error)
@@ -442,7 +442,11 @@ export default function DepositStep4() {
       }
       
       setQrData(data)
-      setPaymentUrl(data.primary_url || data.all_bank_urls?.['DemirBank'] || data.all_bank_urls?.['demirbank'])
+      // Безопасный доступ к ссылкам
+      const defaultUrl = (data.all_bank_urls as Record<string, string>)?.['DemirBank'] || 
+                        (data.all_bank_urls as Record<string, string>)?.['demirbank'] || 
+                        data.primary_url
+      setPaymentUrl(defaultUrl || '')
       
       // Сохраняем настройки депозитов
       if (data.settings) {
