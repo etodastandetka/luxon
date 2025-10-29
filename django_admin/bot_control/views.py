@@ -2370,6 +2370,23 @@ def api_get_payment_settings(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
+def api_get_withdrawal_settings(request):
+    """API для получения настроек выводов"""
+    try:
+        withdrawals_str = BotConfiguration.get_setting('withdrawals', '{"enabled": true, "banks": ["kompanion", "odengi", "bakai", "balance", "megapay", "mbank"]}')
+        withdrawals = json.loads(withdrawals_str) if isinstance(withdrawals_str, str) else withdrawals_str
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'enabled': withdrawals.get('enabled', True),
+                'banks': withdrawals.get('banks', [])
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
 def api_save_withdrawal_settings(request):
     """API для сохранения настроек выводов"""
     if request.method != 'POST':
