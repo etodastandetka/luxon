@@ -73,7 +73,7 @@
         
         .bottom-nav {
             position: fixed !important;
-            bottom: 0 !important;
+            bottom: 8px !important;
             left: 0 !important;
             right: 0 !important;
             width: 100% !important;
@@ -82,6 +82,7 @@
             background: rgba(30, 30, 46, 0.98) !important;
             backdrop-filter: blur(15px);
             border-top: 1px solid rgba(138, 43, 226, 0.2);
+            border-radius: 16px 16px 0 0 !important;
             display: flex !important;
             justify-content: space-around !important;
             align-items: center !important;
@@ -821,17 +822,17 @@
                 const windowWidth = window.innerWidth;
                 
                 bottomNav.style.position = 'fixed';
-                bottomNav.style.bottom = '0';
+                bottomNav.style.bottom = '8px';
                 bottomNav.style.width = '100%';
                 bottomNav.style.zIndex = '999999';
                 bottomNav.style.display = 'flex';
                 
-                // Для мобильных устройств - на всю ширину
+                // Для мобильных устройств - на всю ширину с небольшими отступами
                 if (windowWidth <= 414) {
-                    bottomNav.style.left = '0';
-                    bottomNav.style.right = '0';
+                    bottomNav.style.left = '4px';
+                    bottomNav.style.right = '4px';
                     bottomNav.style.transform = 'none';
-                    bottomNav.style.maxWidth = '100%';
+                    bottomNav.style.maxWidth = 'calc(100% - 8px)';
                 } else {
                     // Для больших экранов - центрируем
                     bottomNav.style.left = '50%';
