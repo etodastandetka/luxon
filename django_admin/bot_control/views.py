@@ -622,16 +622,16 @@ def _get_cashdesk_balance_xbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
             cashdeskid=int(cfg.get('cashdeskid') or 0)
         )
         result = api.get_balance()
-        if result.get('success'):
-            data = result.get('data', {})
+        # API возвращает напрямую {'Balance': ..., 'Limit': ...} или {'Balance': 0, 'Limit': 0} при ошибке
+        if isinstance(result, dict) and 'Balance' in result:
             return {
-                'balance': float(data.get('Balance') or 0),
-                'limit': float(data.get('Limit') or 0)
+                'balance': float(result.get('Balance') or 0),
+                'limit': float(result.get('Limit') or 0)
             }
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f"Error getting 1xbet balance: {e}")
+        logger.error(f"Error getting 1xbet balance: {e}", exc_info=True)
     return {'balance': 0, 'limit': 0}
 
 def _get_cashdesk_balance_mostbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -644,10 +644,9 @@ def _get_cashdesk_balance_mostbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
             cashpoint_id=int(cfg.get('cashpoint_id') or 0)
         )
         result = api.get_balance()
-        if result.get('success'):
-            data = result.get('data', {})
-            # Mostbet API возвращает только balance и currency, лимита нет
-            balance = float(data.get('balance') or 0)
+        # API возвращает напрямую {'balance': ..., 'currency': ...} или {'balance': 0, 'currency': 'RUB'} при ошибке
+        if isinstance(result, dict) and 'balance' in result:
+            balance = float(result.get('balance') or 0)
             return {
                 'balance': balance,
                 'limit': 0  # Лимит недоступен в Mostbet Cash API
@@ -655,7 +654,7 @@ def _get_cashdesk_balance_mostbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f"Error getting Mostbet balance: {e}")
+        logger.error(f"Error getting Mostbet balance: {e}", exc_info=True)
     return {'balance': 0, 'limit': 0}
 
 def _get_cashdesk_balance_melbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -670,16 +669,16 @@ def _get_cashdesk_balance_melbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
             cashdeskid=int(cfg.get('cashdeskid') or 0)
         )
         result = api.get_balance()
-        if result.get('success'):
-            data = result.get('data', {})
+        # API возвращает напрямую {'Balance': ..., 'Limit': ...} или {'Balance': 0, 'Limit': 0} при ошибке
+        if isinstance(result, dict) and 'Balance' in result:
             return {
-                'balance': float(data.get('Balance') or 0),
-                'limit': float(data.get('Limit') or 0)
+                'balance': float(result.get('Balance') or 0),
+                'limit': float(result.get('Limit') or 0)
             }
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f"Error getting Melbet balance: {e}")
+        logger.error(f"Error getting Melbet balance: {e}", exc_info=True)
     return {'balance': 0, 'limit': 0}
 
 def limits_dashboard(request):

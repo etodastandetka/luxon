@@ -37,6 +37,11 @@ class CashdeskAPI:
         confirm_str = f"{user_id}:{self.hash_key}"
         return hashlib.md5(confirm_str.encode()).hexdigest()
     
+    def _calculate_confirm_balance(self) -> str:
+        """Формирование подтверждающей строки для баланса: confirm = MD5(cashdeskId:hash)"""
+        confirm_str = f"{self.cashdeskid}:{self.hash_key}"
+        return hashlib.md5(confirm_str.encode()).hexdigest()
+    
     def _generate_sign_balance(self, dt: str) -> str:
         """Генерация подписи для получения баланса"""
         # a. SHA256(hash={0}&cashierpass={1}&dt={2})
@@ -109,8 +114,8 @@ class CashdeskAPI:
             {'Balance': float, 'Limit': float}
         """
         try:
-            dt = datetime.now().strftime('%Y.%m.%d %H:%M:%S')
-            confirm = self._calculate_confirm(self.cashdeskid)
+            dt = datetime.utcnow().strftime('%Y.%m.%d %H:%M:%S')  # UTC для Cashdesk API
+            confirm = self._calculate_confirm_balance()  # MD5(cashdeskid:hash)
             sign = self._generate_sign_balance(dt)
             
             url = f"{self.base_url}/Cashdesk/{self.cashdeskid}/Balance?confirm={confirm}&dt={dt}"
