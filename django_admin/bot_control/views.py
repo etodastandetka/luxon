@@ -47,73 +47,6 @@ def statistics(request):
     """Страница статистики"""
     return render(request, 'bot_control/statistics_mobile.html')
 
-@csrf_exempt
-def api_statistics(request):
-    """API для получения статистики"""
-    try:
-        from bot_control.auto_deposit_models import AutoDepositRequest
-        from bot_control.models import BankSettings, QRHash
-        
-        # Получаем параметры фильтрации
-        date_from = request.GET.get('date_from')
-        date_to = request.GET.get('date_to')
-        bookmaker = request.GET.get('bookmaker')
-        
-        # Общая статистика
-        total_requests = AutoDepositRequest.objects.count()
-        pending_requests = AutoDepositRequest.objects.filter(status='pending').count()
-        approved_requests = AutoDepositRequest.objects.filter(status='approved').count()
-        rejected_requests = AutoDepositRequest.objects.filter(status='rejected').count()
-        
-        # Статистика по букмекерам
-        bookmaker_stats = {}
-        if bookmaker:
-            bookmaker_requests = AutoDepositRequest.objects.filter(bookmaker=bookmaker)
-        else:
-            bookmaker_requests = AutoDepositRequest.objects.all()
-            
-        for req in bookmaker_requests:
-            if req.bookmaker not in bookmaker_stats:
-                bookmaker_stats[req.bookmaker] = {
-                    'total': 0,
-                    'pending': 0,
-                    'approved': 0,
-                    'rejected': 0,
-                    'amount': 0
-                }
-            bookmaker_stats[req.bookmaker]['total'] += 1
-            bookmaker_stats[req.bookmaker][req.status] += 1
-            bookmaker_stats[req.bookmaker]['amount'] += float(req.amount or 0)
-        
-        # Данные для графиков
-        charts_data = {
-            'status_distribution': {
-                'pending': pending_requests,
-                'approved': approved_requests,
-                'rejected': rejected_requests
-            },
-            'bookmaker_distribution': bookmaker_stats
-        }
-        
-        return JsonResponse({
-            'success': True,
-            'general': {
-                'total_requests': total_requests,
-                'pending_requests': pending_requests,
-                'approved_requests': approved_requests,
-                'rejected_requests': rejected_requests,
-                'banks_count': BankSettings.objects.count(),
-                'qr_codes_count': QRHash.objects.count()
-            },
-            'bookmakers': bookmaker_stats,
-            'charts': charts_data
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        })
 
 @csrf_exempt
 def api_export_statistics(request):
@@ -1020,124 +953,62 @@ def api_statistics(request):
     """API для получения статистики"""
     if request.method == 'GET':
         try:
+            # Импорты
+            from bot_control.models import Request
+            from django.db.models import Sum, Count, Avg
+            from django.utils import timezone
+            
             # Фильтры
             date_from = request.GET.get('date_from')
             date_to = request.GET.get('date_to')
             bookmaker_filter = request.GET.get('bookmaker')
 
-            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-            cursor = conn.cursor()
-
-            # Общая статистика
-            cursor.execute('SELECT COUNT(*) FROM users')
-            total_users = cursor.fetchone()[0]
-
-            # Таблица requests больше не используется
-            has_requests = False
-
-            # Определяем схему транзакций (старые варианты)
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'")
-            has_transactions = cursor.fetchone() is not None
-            tx_col = None
-            if has_transactions:
-                cursor.execute('PRAGMA table_info(transactions)')
-                cols = [c[1] for c in cursor.fetchall()]
-                tx_col = 'trans_type' if 'trans_type' in cols else ('type' if 'type' in cols else None)
-
-            # Формируем WHERE
-            where_clauses = []
-            params = []
-            if date_from:
-                where_clauses.append("DATE(created_at) >= ?")
-                params.append(date_from)
-            if date_to:
-                where_clauses.append("DATE(created_at) <= ?")
-                params.append(date_to)
-            if bookmaker_filter:
-                where_clauses.append("bookmaker = ?")
-                params.append(bookmaker_filter)
-            where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-
-            # Получаем данные из существующих таблиц
-            total_deposits = 0
-            total_withdrawals = 0
-            total_amount = 0
-            avg_deposit = 0
-            avg_withdrawal = 0
-            users_with_deposits = 0
+            # Общая статистика - считаем уникальных пользователей из заявок
+            total_users = Request.objects.values('user_id').distinct().count()
             
-            if has_transactions and tx_col:
-                cursor.execute(f'SELECT COUNT(*) FROM transactions {where_sql} AND {tx_col} = "deposit"' if where_sql else f'SELECT COUNT(*) FROM transactions WHERE {tx_col} = "deposit"', params)
-                total_deposits = cursor.fetchone()[0] or 0
-                cursor.execute(f'SELECT COUNT(*) FROM transactions {where_sql} AND {tx_col} = "withdrawal"' if where_sql else f'SELECT COUNT(*) FROM transactions WHERE {tx_col} = "withdrawal"', params)
-                total_withdrawals = cursor.fetchone()[0] or 0
-                cursor.execute(f'SELECT COALESCE(SUM(amount),0) FROM transactions {where_sql} AND {tx_col} = "deposit"' if where_sql else f'SELECT COALESCE(SUM(amount),0) FROM transactions WHERE {tx_col} = "deposit"', params)
-                total_amount = cursor.fetchone()[0] or 0
+            # Формируем фильтры для Django ORM
+            filters = {}
+            if date_from:
+                filters['created_at__date__gte'] = date_from
+            if date_to:
+                filters['created_at__date__lte'] = date_to
+            if bookmaker_filter:
+                filters['bookmaker'] = bookmaker_filter
 
-                cursor.execute(f'SELECT COALESCE(AVG(amount),0) FROM transactions {where_sql} AND {tx_col} = "deposit"' if where_sql else f'SELECT COALESCE(AVG(amount),0) FROM transactions WHERE {tx_col} = "deposit"', params)
-                avg_deposit = cursor.fetchone()[0] or 0
-                cursor.execute(f'SELECT COALESCE(AVG(amount),0) FROM transactions {where_sql} AND {tx_col} = "withdrawal"' if where_sql else f'SELECT COALESCE(AVG(amount),0) FROM transactions WHERE {tx_col} = "withdrawal"', params)
-                avg_withdrawal = cursor.fetchone()[0] or 0
+            # Получаем статистику по депозитам через Django ORM
+            deposit_stats = Request.objects.filter(
+                request_type='deposit',
+                **filters
+            ).aggregate(
+                count=Count('id'),
+                total_amount=Sum('amount'),
+                avg_amount=Avg('amount')
+            )
+            
+            # Получаем статистику по выводам через Django ORM
+            withdrawal_stats = Request.objects.filter(
+                request_type='withdraw',
+                **filters
+            ).aggregate(
+                count=Count('id'),
+                avg_amount=Avg('amount')
+            )
+            
+            # Получаем количество уникальных пользователей с депозитами
+            users_with_deposits = Request.objects.filter(
+                request_type='deposit',
+                **filters
+            ).values('user_id').distinct().count()
 
-                cursor.execute(f'''SELECT COUNT(DISTINCT user_id) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} {tx_col} = "deposit"''', params)
-                users_with_deposits = cursor.fetchone()[0] or 0
-            else:
-                # Fallback - используем Django ORM для таблицы requests
-                from bot_control.models import Request
-                from django.db.models import Sum, Count, Avg
-                from django.utils import timezone
-                
-                # Формируем фильтры для Django ORM
-                dep_filters = {}
-                if date_from:
-                    dep_filters['created_at__date__gte'] = date_from
-                if date_to:
-                    dep_filters['created_at__date__lte'] = date_to
-                if bookmaker_filter:
-                    dep_filters['bookmaker'] = bookmaker_filter
-
-                # Получаем статистику по депозитам через Django ORM
-                deposit_stats = Request.objects.filter(
-                    request_type='deposit',
-                    **dep_filters
-                ).aggregate(
-                    count=Count('id'),
-                    total_amount=Sum('amount'),
-                    avg_amount=Avg('amount')
-                )
-                
-                # Получаем статистику по выводам через Django ORM
-                withdrawal_stats = Request.objects.filter(
-                    request_type='withdraw',
-                    **dep_filters
-                ).aggregate(
-                    count=Count('id'),
-                    avg_amount=Avg('amount')
-                )
-                
-                # Получаем количество уникальных пользователей с депозитами
-                users_with_deposits = Request.objects.filter(
-                    request_type='deposit'
-                ).values('user_id').distinct().count()
-
-                total_deposits = deposit_stats['count'] or 0
-                total_withdrawals = withdrawal_stats['count'] or 0
-                total_amount = deposit_stats['total_amount'] or 0
-                avg_deposit = deposit_stats['avg_amount'] or 0
-                avg_withdrawal = withdrawal_stats['avg_amount'] or 0
+            total_deposits = deposit_stats['count'] or 0
+            total_withdrawals = withdrawal_stats['count'] or 0
+            total_amount = deposit_stats['total_amount'] or 0
+            avg_deposit = deposit_stats['avg_amount'] or 0
+            avg_withdrawal = withdrawal_stats['avg_amount'] or 0
 
             conversion_rate = (users_with_deposits / total_users * 100) if total_users > 0 else 0
 
-            # Активные за 30 дней - используем Django ORM
-            active_users = 0
-            if not has_requests:
-                from datetime import timedelta
-                thirty_days_ago = timezone.now() - timedelta(days=30)
-                active_users = Request.objects.filter(
-                    created_at__gte=thirty_days_ago
-                ).values('user_id').distinct().count()
-
-            # Статистика по букмекерам
+            # Статистика по букмекерам через Django ORM
             bookmakers = {}
             bookmaker_names = {
                 '1xbet': '🎰 1XBET',
@@ -1149,33 +1020,28 @@ def api_statistics(request):
             for bookmaker_key, bookmaker_name in bookmaker_names.items():
                 if bookmaker_filter and bookmaker_filter != bookmaker_key:
                     continue
-                # Таблица requests больше не используется
-                d_count, d_sum = 0, 0
-                w_count, w_sum = 0, 0
                 
-                if has_transactions and tx_col:
-                    cursor.execute(f'''SELECT COUNT(*), COALESCE(SUM(amount),0) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} bookmaker = ? AND {tx_col} = 'deposit' ''', params + [bookmaker_key] if where_sql else [bookmaker_key])
-                    d_count, d_sum = cursor.fetchone()
-                    cursor.execute(f'''SELECT COUNT(*), COALESCE(SUM(amount),0) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} bookmaker = ? AND {tx_col} = 'withdrawal' ''', params + [bookmaker_key] if where_sql else [bookmaker_key])
-                    w_count, w_sum = cursor.fetchone()
-                else:
-                    # Используем Django ORM для таблицы requests
-                    dep_stats = Request.objects.filter(
-                        request_type='deposit',
-                        bookmaker=bookmaker_key
-                    ).aggregate(
-                        count=Count('id'),
-                        total_amount=Sum('amount')
-                    )
-                    w_stats = Request.objects.filter(
-                        request_type='withdraw',
-                        bookmaker=bookmaker_key
-                    ).aggregate(
-                        count=Count('id'),
-                        total_amount=Sum('amount')
-                    )
-                    d_count, d_sum = dep_stats['count'] or 0, dep_stats['total_amount'] or 0
-                    w_count, w_sum = w_stats['count'] or 0, w_stats['total_amount'] or 0
+                # Используем Django ORM для получения статистики по букмекеру
+                bookmaker_filters = filters.copy()
+                bookmaker_filters['bookmaker'] = bookmaker_key
+                
+                dep_stats = Request.objects.filter(
+                    request_type='deposit',
+                    **bookmaker_filters
+                ).aggregate(
+                    count=Count('id'),
+                    total_amount=Sum('amount')
+                )
+                w_stats = Request.objects.filter(
+                    request_type='withdraw',
+                    **bookmaker_filters
+                ).aggregate(
+                    count=Count('id'),
+                    total_amount=Sum('amount')
+                )
+                
+                d_count, d_sum = dep_stats['count'] or 0, dep_stats['total_amount'] or 0
+                w_count, w_sum = w_stats['count'] or 0, w_stats['total_amount'] or 0
 
                 bookmakers[bookmaker_key] = {
                     'name': bookmaker_name,
@@ -1185,38 +1051,26 @@ def api_statistics(request):
                     'withdrawals_amount': w_sum or 0
                 }
 
-            # Графики (по датам)
-            # Таблица requests больше не используется
-            deposits_chart = []
-            withdrawals_chart = []
+            # Графики (по датам) через Django ORM
+            from django.db.models.functions import TruncDate
             
-            if has_transactions and tx_col:
-                cursor.execute(f'''SELECT DATE(created_at), COUNT(*) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} {tx_col} = 'deposit' GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10''', params)
-                deposits_chart = cursor.fetchall()
-                cursor.execute(f'''SELECT DATE(created_at), COUNT(*) FROM transactions {(where_sql + ' AND ' if where_sql else ' WHERE ')} {tx_col} = 'withdrawal' GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 10''', params)
-                withdrawals_chart = cursor.fetchall()
-            else:
-                # Используем Django ORM для таблицы requests
-                from django.db.models import Count
-                from django.db.models.functions import TruncDate
-                
-                deposits_chart = list(Request.objects.filter(
-                    request_type='deposit'
-                ).extra(
-                    select={'date': 'DATE(created_at)'}
-                ).values('date').annotate(
-                    count=Count('id')
-                ).order_by('date')[:10])
-                
-                withdrawals_chart = list(Request.objects.filter(
-                    request_type='withdraw'
-                ).extra(
-                    select={'date': 'DATE(created_at)'}
-                ).values('date').annotate(
-                    count=Count('id')
-                ).order_by('date')[:10])
-
-            conn.close()
+            deposits_chart = list(Request.objects.filter(
+                request_type='deposit',
+                **filters
+            ).extra(
+                select={'date': 'DATE(created_at)'}
+            ).values('date').annotate(
+                count=Count('id')
+            ).order_by('date')[:10])
+            
+            withdrawals_chart = list(Request.objects.filter(
+                request_type='withdraw',
+                **filters
+            ).extra(
+                select={'date': 'DATE(created_at)'}
+            ).values('date').annotate(
+                count=Count('id')
+            ).order_by('date')[:10])
 
             return JsonResponse({
                 'success': True,
@@ -1227,18 +1081,17 @@ def api_statistics(request):
                     'total_amount': total_amount,
                     'avg_deposit': round(avg_deposit, 2),
                     'avg_withdrawal': round(avg_withdrawal, 2),
-                    'conversion_rate': round(conversion_rate, 1),
-                    'active_users': active_users
+                    'conversion_rate': round(conversion_rate, 1)
                 },
                 'bookmakers': list(bookmakers.values()),
                 'charts': {
                     'deposits': {
-                        'labels': [format_chart_date(row[0]) for row in deposits_chart],
-                        'data': [row[1] for row in deposits_chart]
+                        'labels': [format_chart_date(row['date']) for row in deposits_chart],
+                        'data': [row['count'] for row in deposits_chart]
                     },
                     'withdrawals': {
-                        'labels': [format_chart_date(row[0]) for row in withdrawals_chart],
-                        'data': [row[1] for row in withdrawals_chart]
+                        'labels': [format_chart_date(row['date']) for row in withdrawals_chart],
+                        'data': [row['count'] for row in withdrawals_chart]
                     }
                 }
             })
