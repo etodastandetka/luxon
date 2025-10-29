@@ -390,13 +390,28 @@ export default function DepositStep4() {
         const settingsData = await settingsRes.json()
         if (settingsData && settingsData.deposits) {
           setDepositsEnabled(settingsData.deposits.enabled !== false)
-          // Обновляем enabled_banks в qrData
+          // Обновляем enabled_banks в qrData (маппим коды банков из админки в коды компонента)
           if (settingsData.deposits.banks) {
+            const bankCodeMapping: Record<string, string> = {
+              'demir': 'demirbank',
+              'demirbank': 'demirbank',
+              'omoney': 'omoney',
+              'balance': 'balance',
+              'bakai': 'bakai',
+              'megapay': 'megapay',
+              'mbank': 'mbank'
+            }
+            const mappedBanks = settingsData.deposits.banks
+              .map((b: any) => {
+                const code = b.code || b
+                return bankCodeMapping[code] || code
+              })
+              .filter(Boolean)
             setQrData((prev: any) => ({
               ...prev,
               settings: {
                 ...prev?.settings,
-                enabled_banks: settingsData.deposits.banks.map((b: any) => b.code || b)
+                enabled_banks: mappedBanks
               }
             }))
           }
