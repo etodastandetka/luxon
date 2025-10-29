@@ -1520,11 +1520,8 @@ if (window.financialInterfaceInitialized) {
             }
             console.log('✅ Настройки системы сохранены');
             
-            // Перезагружаем настройки для обновления UI
-            setTimeout(() => {
-                loadAllSettings();
-                updateBankCounters();
-            }, 500);
+            // Обновляем только счетчики банков (без перезагрузки всех настроек)
+            updateBankCounters();
             
         } catch (error) {
             console.error('❌ Ошибка сохранения:', error);
