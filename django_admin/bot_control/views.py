@@ -682,7 +682,7 @@ def _get_cashdesk_balance_melbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return {'balance': 0, 'limit': 0}
 
 def limits_dashboard(request):
-    """Мобильная страница лимитов/балансов кассы и агрегированных сумм по периодам."""
+    """Мобильная страница лимитов платформ."""
     start_d, end_d = _parse_period(request)
     # Загружаем конфиг из casino_api_config
     try:
@@ -705,14 +705,6 @@ def limits_dashboard(request):
         m_bal = {'balance': 0, 'limit': 0}
         mb_bal = {'balance': 0, 'limit': 0}
 
-    # Агрегаты по заявкам
-    conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-    stats_1xbet = _read_platform_stats(conn, '1xbet', start_d, end_d)
-    stats_melbet = _read_platform_stats(conn, 'melbet', start_d, end_d)
-    stats_onewin = _read_platform_stats(conn, '1win', start_d, end_d)
-    stats_mostbet = _read_platform_stats(conn, 'mostbet', start_d, end_d)
-    conn.close()
-
     platform_limits = [
         {'key':'1xbet', 'name':'1xbet', 'limit': float(x_bal.get('limit') or 0)},
         {'key':'melbet','name':'Melbet','limit': float(m_bal.get('limit') or 0)},
@@ -724,26 +716,6 @@ def limits_dashboard(request):
         'start': start_d.strftime('%Y-%m-%d') if start_d else '',
         'end': end_d.strftime('%Y-%m-%d') if end_d else '',
         'platform_limits': platform_limits,
-        'xbet': {
-            'balance': float(x_bal.get('balance') or 0),
-            'limit': float(x_bal.get('limit') or 0),
-            'stats': stats_1xbet,
-        },
-        'melbet': {
-            'balance': float(m_bal.get('balance') or 0),
-            'limit': float(m_bal.get('limit') or 0),
-            'stats': stats_melbet,
-        },
-        'onewin': {
-            'balance': None,
-            'limit': 0.0,
-            'stats': stats_onewin,
-        },
-        'mostbet': {
-            'balance': float(mb_bal.get('balance') or 0),
-            'limit': float(mb_bal.get('limit') or 0),
-            'stats': stats_mostbet,
-        }
     }
     return render(request, 'bot_control/limits_mobile.html', context)
 

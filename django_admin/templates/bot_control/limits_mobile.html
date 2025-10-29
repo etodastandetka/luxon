@@ -55,60 +55,6 @@
   {% endfor %}
 </div>
 
-<div class="card" style="padding:14px; margin-bottom:12px;">
-  <div class="row" style="margin-bottom:6px;">
-    <div class="name">1xbet</div>
-  </div>
-  <div class="grid-2">
-    <div class="block">
-      <div class="stat-label">Пополнения</div>
-      <div class="stat-value">{{ xbet.stats.deposits_sum|floatformat:2 }} с</div>
-      <div class="small">{{ xbet.stats.deposits_count }} операций</div>
-    </div>
-    <div class="block">
-      <div class="stat-label">Выводы</div>
-      <div class="stat-value">{{ xbet.stats.withdrawals_sum|floatformat:2 }} с</div>
-      <div class="small">{{ xbet.stats.withdrawals_count }} операций</div>
-    </div>
-  </div>
-</div>
-
-<div class="card" style="padding:14px; margin-bottom:12px;">
-  <div class="row" style="margin-bottom:6px;">
-    <div class="name">Melbet</div>
-  </div>
-  <div class="grid-2">
-    <div class="block">
-      <div class="stat-label">Пополнения</div>
-      <div class="stat-value">{{ melbet.stats.deposits_sum|floatformat:2 }} с</div>
-      <div class="small">{{ melbet.stats.deposits_count }} операций</div>
-    </div>
-    <div class="block">
-      <div class="stat-label">Выводы</div>
-      <div class="stat-value">{{ melbet.stats.withdrawals_sum|floatformat:2 }} с</div>
-      <div class="small">{{ melbet.stats.withdrawals_count }} операций</div>
-    </div>
-  </div>
-</div>
-
-<div class="card" style="padding:14px; margin-bottom:12px;">
-  <div class="row" style="margin-bottom:6px;">
-    <div class="name">Mostbet</div>
-  </div>
-  <div class="grid-2">
-    <div class="block">
-      <div class="stat-label">Пополнения</div>
-      <div class="stat-value">{{ mostbet.stats.deposits_sum|floatformat:2 }} с</div>
-      <div class="small">{{ mostbet.stats.deposits_count }} операций</div>
-    </div>
-    <div class="block">
-      <div class="stat-label">Выводы</div>
-      <div class="stat-value">{{ mostbet.stats.withdrawals_sum|floatformat:2 }} с</div>
-      <div class="small">{{ mostbet.stats.withdrawals_count }} операций</div>
-    </div>
-  </div>
-</div>
-
 {% endblock %}
 
 {% block extra_js %}
