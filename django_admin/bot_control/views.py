@@ -611,97 +611,100 @@ def _read_platform_stats(conn, bookmaker_key: str, start_d: date = None, end_d: 
     }
 
 def _get_cashdesk_balance_xbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Получение баланса и лимита кассы 1xbet через CashdeskAPI"""
     try:
-        from bot.api_clients.onexbet_client import OneXBetAPIClient
-        client = OneXBetAPIClient({
-            'hash': cfg.get('hash',''),
-            'cashierpass': cfg.get('cashierpass',''),
-            'login': cfg.get('login',''),
-            'cashdeskid': int(cfg.get('cashdeskid') or 0),
-        })
-        res = client.get_balance()
-        if res.get('success'):
-            data = res.get('data') or {}
+        from bot_control.cashdesk_api import CashdeskAPI
+        api = CashdeskAPI(
+            casino='1xbet',
+            hash_key=cfg.get('hash', ''),
+            cashierpass=cfg.get('cashierpass', ''),
+            login=cfg.get('login', ''),
+            cashdeskid=int(cfg.get('cashdeskid') or 0)
+        )
+        result = api.get_balance()
+        if result.get('success'):
+            data = result.get('data', {})
             return {
-                'balance': data.get('Balance', 0),
-                'limit': data.get('Limit', 0)
+                'balance': float(data.get('Balance') or 0),
+                'limit': float(data.get('Limit') or 0)
             }
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting 1xbet balance: {e}")
     return {'balance': 0, 'limit': 0}
 
 def _get_cashdesk_balance_mostbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Получение баланса кассы Mostbet через MostbetAPI.check_balance()."""
+    """Получение баланса кассы Mostbet через MostbetAPI (лимит недоступен в API)"""
     try:
-        from bot.api_clients.mostbet_client import MostbetAPI
-        client = MostbetAPI({
-            'api_key': cfg.get('api_key',''),
-            'secret': cfg.get('secret',''),
-            'cashpoint_id': cfg.get('cashpoint_id',''),
-        })
-        import asyncio
-        def _run():
-            try:
-                return asyncio.run(client.check_balance())
-            except RuntimeError:
-                # If already in loop, fallback to new loop
-                loop = asyncio.new_event_loop()
-                try:
-                    return loop.run_until_complete(client.check_balance())
-                finally:
-                    loop.close()
-        data = _run() or {}
-        # Попробуем вытащить поле баланса по типичным ключам
-        bal = 0
-        if isinstance(data, dict):
-            bal = data.get('balance') or data.get('Balance') or data.get('amount') or 0
-        return {'balance': float(bal or 0), 'limit': 0}
-    except Exception:
-        pass
+        from bot_control.mostbet_api import MostbetAPI
+        api = MostbetAPI(
+            api_key=cfg.get('api_key', ''),
+            secret=cfg.get('secret', ''),
+            cashpoint_id=int(cfg.get('cashpoint_id') or 0)
+        )
+        result = api.get_balance()
+        if result.get('success'):
+            data = result.get('data', {})
+            # Mostbet API возвращает только balance и currency, лимита нет
+            balance = float(data.get('balance') or 0)
+            return {
+                'balance': balance,
+                'limit': 0  # Лимит недоступен в Mostbet Cash API
+            }
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting Mostbet balance: {e}")
     return {'balance': 0, 'limit': 0}
 
 def _get_cashdesk_balance_melbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Получение баланса и лимита кассы Melbet через CashdeskAPI"""
     try:
-        from bot.api_clients.melbet_client import MelbetAPIClient
-        client = MelbetAPIClient({
-            'hash': cfg.get('hash',''),
-            'cashierpass': cfg.get('cashierpass',''),
-            'login': cfg.get('login',''),
-            'cashdeskid': int(cfg.get('cashdeskid') or 0),
-        })
-        res = client.get_balance()
-        if res.get('success'):
-            data = res.get('data') or {}
+        from bot_control.cashdesk_api import CashdeskAPI
+        api = CashdeskAPI(
+            casino='melbet',
+            hash_key=cfg.get('hash', ''),
+            cashierpass=cfg.get('cashierpass', ''),
+            login=cfg.get('login', ''),
+            cashdeskid=int(cfg.get('cashdeskid') or 0)
+        )
+        result = api.get_balance()
+        if result.get('success'):
+            data = result.get('data', {})
             return {
-                'balance': data.get('Balance', 0),
-                'limit': data.get('Limit', 0)
+                'balance': float(data.get('Balance') or 0),
+                'limit': float(data.get('Limit') or 0)
             }
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting Melbet balance: {e}")
     return {'balance': 0, 'limit': 0}
 
 def limits_dashboard(request):
     """Мобильная страница лимитов/балансов кассы и агрегированных сумм по периодам."""
     start_d, end_d = _parse_period(request)
-    # Загружаем конфиг из bot.config
-    bm_cfg = {}
+    # Загружаем конфиг из casino_api_config
     try:
-        import sys
-        import os
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-        from bot.config import BOOKMAKERS as BOT_BM
-        bm_cfg = BOT_BM
+        from bot_control.casino_api_config import CASHDESK_CONFIG, MOSTBET_CONFIG
+        
+        # Конфиги для API
+        x_cfg = CASHDESK_CONFIG.get('1xbet', {})
+        m_cfg = CASHDESK_CONFIG.get('melbet', {})
+        mb_cfg = MOSTBET_CONFIG.copy()
+        
+        # Получаем балансы и лимиты
+        x_bal = _get_cashdesk_balance_xbet(x_cfg)
+        m_bal = _get_cashdesk_balance_melbet(m_cfg)
+        mb_bal = _get_cashdesk_balance_mostbet(mb_cfg)
     except Exception as e:
-        print(f"Warning: Could not import bot config: {e}")
-        bm_cfg = {}
-
-    # Балансы кассы
-    x_cfg = (bm_cfg.get('1xbet') or {}).get('api_config', {})
-    m_cfg = (bm_cfg.get('melbet') or {}).get('api_config', {})
-    mb_cfg = (bm_cfg.get('mostbet') or {}).get('api_config', {})
-    x_bal = _get_cashdesk_balance_xbet(x_cfg)
-    m_bal = _get_cashdesk_balance_melbet(m_cfg)
-    mb_bal = _get_cashdesk_balance_mostbet(mb_cfg)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error loading casino config: {e}")
+        x_bal = {'balance': 0, 'limit': 0}
+        m_bal = {'balance': 0, 'limit': 0}
+        mb_bal = {'balance': 0, 'limit': 0}
 
     # Агрегаты по заявкам
     conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
