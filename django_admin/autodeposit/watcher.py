@@ -504,15 +504,51 @@ class AutoDepositWatcher:
                     )
                     result = fut1.result(timeout=30)
                     is_success = (result.get('success') == True or (result.get('data') or {}).get('Success') == True)
-                    if not is_success:
-                        logger.error(f"AutoDepositWatcher: API deposit failed for request {rid}")
-                        return False
-
-                    # Обновляем статус как завершённый
+                    
                     conn = sqlite3.connect(self.db_path)
                     cur = conn.cursor()
+                    
+                    if not is_success:
+                        # Ошибка API казино - ставим profile-5
+                        logger.error(f"AutoDepositWatcher: API deposit failed for request {rid}")
+                        cur.execute(
+                            "UPDATE requests SET status='profile-5', updated_at=CURRENT_TIMESTAMP, processed_at=CURRENT_TIMESTAMP WHERE id=?",
+                            (rid,)
+                        )
+                        conn.commit()
+                        conn.close()
+                        
+                        # Синхронизируем статус profile-5 в Django
+                        try:
+                            from handlers.deposit_handlers import sync_to_django_admin
+                            def _sync_error():
+                                try:
+                                    sync_to_django_admin(
+                                        user_id=uid,
+                                        username='',
+                                        first_name='',
+                                        bookmaker=bookmaker,
+                                        amount=float(amt),
+                                        account_id=str(account_id),
+                                        photo_file_id='',
+                                        status='profile-5',
+                                        photo_file_url=None,
+                                        request_type='deposit',
+                                        auto_completed=0,
+                                        status_detail='api_error'
+                                    )
+                                except Exception as _e:
+                                    logger.warning(f"Watcher sync_to_django_admin (error) failed: {_e}")
+                            fut_sync_err = asyncio.run_coroutine_threadsafe(asyncio.to_thread(_sync_error), loop)
+                            fut_sync_err.result(timeout=10)
+                        except Exception as e:
+                            logger.warning(f"AutoDepositWatcher: site sync (error) failed: {e}")
+                        
+                        return False
+
+                    # Успешное автопополнение - ставим autodeposit_success
                     cur.execute(
-                        "UPDATE requests SET status='completed', auto_completed=1, updated_at=CURRENT_TIMESTAMP, processed_at=CURRENT_TIMESTAMP WHERE id=?",
+                        "UPDATE requests SET status='autodeposit_success', auto_completed=1, updated_at=CURRENT_TIMESTAMP, processed_at=CURRENT_TIMESTAMP WHERE id=?",
                         (rid,)
                     )
                     conn.commit()
@@ -525,7 +561,7 @@ class AutoDepositWatcher:
                     )
                     fut2.result(timeout=30)
 
-                    # Синхронизируем на сайт: отметим completed (deposit)
+                    # Синхронизируем на сайт: отметим autodeposit_success
                     try:
                         from handlers.deposit_handlers import sync_to_django_admin
                         # Выполним синхронизацию в event loop, чтобы не блокировать
@@ -539,9 +575,11 @@ class AutoDepositWatcher:
                                     amount=float(amt),
                                     account_id=str(account_id),
                                     photo_file_id='',
-                                    status='completed',
+                                    status='autodeposit_success',
                                     photo_file_url=None,
-                                    request_type='deposit'
+                                    request_type='deposit',
+                                    auto_completed=1,
+                                    status_detail='success'
                                 )
                             except Exception as _e:
                                 logger.warning(f"Watcher sync_to_django_admin failed: {_e}")

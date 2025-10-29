@@ -214,8 +214,24 @@ def update_payment_status(data):
             request_obj.status = data['status']
             request_obj.updated_at = timezone.now()
             
+            # Сохраняем status_detail если есть
+            if 'status_detail' in data:
+                try:
+                    # Добавляем поле status_detail через JSON в description или отдельным полем
+                    if hasattr(request_obj, 'status_detail'):
+                        request_obj.status_detail = data['status_detail']
+                    else:
+                        # Fallback: сохраняем в JSON в другом поле или создаем отдельную запись
+                        import json
+                        metadata = json.loads(getattr(request_obj, 'metadata', '{}') or '{}')
+                        metadata['status_detail'] = data['status_detail']
+                        if hasattr(request_obj, 'metadata'):
+                            request_obj.metadata = json.dumps(metadata)
+                except Exception:
+                    pass
+            
             # Если статус завершающий, устанавливаем processed_at
-            if data['status'] in ['completed', 'rejected', 'approved', 'auto_completed']:
+            if data['status'] in ['completed', 'rejected', 'approved', 'auto_completed', 'autodeposit_success', 'profile-5']:
                 request_obj.processed_at = timezone.now()
             
             request_obj.save()
@@ -495,6 +511,7 @@ def api_transaction_history(request):
                 'type': tx.request_type,
                 'amount': float(tx.amount) if tx.amount else 0,
                 'status': tx.status,
+                'status_detail': getattr(tx, 'status_detail', None) or (json.loads(getattr(tx, 'metadata', '{}') or '{}').get('status_detail') if hasattr(tx, 'metadata') and getattr(tx, 'metadata', None) else None),
                 'bookmaker': tx.bookmaker or '',
                 'bank': tx.bank or '',
                 'phone': tx.phone or '',

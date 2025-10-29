@@ -432,7 +432,9 @@ function createTransactionElement(transaction) {
             </div>
             <div class="transaction-meta">
                 <span class="transaction-amount ${transaction.type === 'deposit' ? 'amount-deposit' : 'amount-withdraw'}">${transaction.type === 'deposit' ? '+' : '-'}${transaction.amount} сом</span>
-                <span class="transaction-status ${statusClass}">${getStatusText(transaction.status)}</span>
+                <span class="transaction-status ${statusClass}">
+                    ${getStatusPrefix(transaction.status) ? getStatusPrefix(transaction.status) + ' ' : ''}${getStatusText(transaction.status, transaction.status_detail || '')}
+                </span>
             </div>
             <div class="transaction-date">${formatDate(transaction.created_at)}</div>
         </div>
@@ -445,7 +447,15 @@ function createTransactionElement(transaction) {
 }
 
 // Функция для получения текста статуса
-function getStatusText(status) {
+function getStatusText(status, statusDetail) {
+    // Если есть детали статуса, используем их
+    if (statusDetail === 'api_error') {
+        return 'ОШИБКА API';
+    }
+    if (statusDetail === 'success') {
+        return 'УСПЕШНО';
+    }
+    
     switch(status) {
         case 'completed': return 'ЗАВЕРШЕНО';
         case 'pending': return 'ОЖИДАЕТ';
@@ -454,7 +464,19 @@ function getStatusText(status) {
         case 'awaiting_manual': return 'РУЧНАЯ';
         case 'processing': return 'ОБРАБОТКА';
         case 'auto_completed': return 'АВТО';
+        case 'autodeposit_success': return 'УСПЕШНО';
+        case 'profile-5': return statusDetail === 'api_error' ? 'ОШИБКА API' : 'УСПЕШНО';
         default: return status.toUpperCase();
+    }
+}
+
+// Функция для получения префикса статуса (Автопополнение, profile-5, или -)
+function getStatusPrefix(status) {
+    switch(status) {
+        case 'autodeposit_success': return 'Автопополнение';
+        case 'profile-5': return 'profile-5';
+        case 'pending': return '-';
+        default: return '';
     }
 }
 
