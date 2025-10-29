@@ -2309,13 +2309,63 @@ def api_save_deposit_settings(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
-def api_get_withdrawal_settings(request):
-    """API для получения настроек выводов"""
+def api_get_payment_settings(request):
+    """API для получения настроек платежей для клиентского сайта"""
     try:
         import json
-        settings_str = BotConfiguration.get_setting('withdrawals', '{"enabled": true, "banks": ["kompanion", "odengi", "bakai", "balance", "megapay", "mbank"]}')
-        settings = json.loads(settings_str) if isinstance(settings_str, str) else settings_str
-        return JsonResponse(settings)
+        
+        # Получаем настройки депозитов
+        deposits_str = BotConfiguration.get_setting('deposits', '{"enabled": true, "banks": ["mbank", "bakai", "balance", "demir", "omoney", "megapay"]}')
+        deposits = json.loads(deposits_str) if isinstance(deposits_str, str) else deposits_str
+        
+        # Получаем настройки выводов
+        withdrawals_str = BotConfiguration.get_setting('withdrawals', '{"enabled": true, "banks": ["kompanion", "odengi", "bakai", "balance", "megapay", "mbank"]}')
+        withdrawals = json.loads(withdrawals_str) if isinstance(withdrawals_str, str) else withdrawals_str
+        
+        # Маппинг банков для клиентского сайта
+        bank_mapping = {
+            'mbank': {'name': 'MBank', 'logo': '/static/images/mbank.png'},
+            'demir': {'name': 'DemirBank', 'logo': '/static/images/demirbank.jpg'},
+            'balance': {'name': 'Balance.kg', 'logo': '/static/images/balance.jpg'},
+            'omoney': {'name': 'O!Money', 'logo': '/static/images/omoney.jpg'},
+            'megapay': {'name': 'MegaPay', 'logo': '/static/images/megapay.jpg'},
+            'bakai': {'name': 'Bakai', 'logo': '/static/images/bakai.jpg'},
+            'kompanion': {'name': 'Компаньон', 'logo': '/static/images/companion.png'},
+            'odengi': {'name': 'O!Money', 'logo': '/static/images/omoney.jpg'}
+        }
+        
+        # Формируем ответ
+        response = {
+            'deposits': {
+                'enabled': deposits.get('enabled', True),
+                'banks': []
+            },
+            'withdrawals': {
+                'enabled': withdrawals.get('enabled', True),
+                'banks': []
+            }
+        }
+        
+        # Добавляем информацию о банках для депозитов
+        for bank_code in deposits.get('banks', []):
+            if bank_code in bank_mapping:
+                response['deposits']['banks'].append({
+                    'code': bank_code,
+                    'name': bank_mapping[bank_code]['name'],
+                    'logo': bank_mapping[bank_code]['logo']
+                })
+        
+        # Добавляем информацию о банках для выводов
+        for bank_code in withdrawals.get('banks', []):
+            if bank_code in bank_mapping:
+                response['withdrawals']['banks'].append({
+                    'code': bank_code,
+                    'name': bank_mapping[bank_code]['name'],
+                    'logo': bank_mapping[bank_code]['logo']
+                })
+        
+        return JsonResponse(response)
+        
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
