@@ -33,11 +33,36 @@ export default function DepositStep4() {
     setBookmaker(savedBookmaker)
     setPlayerId(savedPlayerId)
     setAmount(savedAmount)
+    
+    // Восстанавливаем таймер из сохраненного времени начала
+    const timerStartTime = localStorage.getItem('deposit_timer_start')
+    if (timerStartTime) {
+      const startTime = parseInt(timerStartTime, 10)
+      const now = Date.now()
+      const elapsed = Math.floor((now - startTime) / 1000) // Прошло секунд
+      const remaining = Math.max(0, 300 - elapsed) // Осталось секунд (5 минут = 300 секунд)
+      setTimeLeft(remaining)
+      
+      // Если время уже истекло, обрабатываем истечение (только если не оплачено)
+      if (remaining === 0 && !isPaid) {
+        // Вызываем через setTimeout, чтобы избежать проблем с зависимостями
+        setTimeout(() => {
+          handleTimeExpired()
+        }, 100)
+      }
+    } else {
+      // Если нет сохраненного времени, сохраняем текущее время
+      localStorage.setItem('deposit_timer_start', Date.now().toString())
+    }
   }, [])
 
   // Только генерируем QR код, заявка создается только после нажатия "Я оплатил"
   useEffect(() => {
     if (bookmaker && playerId && amount > 0) {
+      // Сохраняем время начала таймера при генерации QR (если еще не сохранено)
+      if (!localStorage.getItem('deposit_timer_start')) {
+        localStorage.setItem('deposit_timer_start', Date.now().toString())
+      }
       // Генерируем только QR код
       generateQRCode()
     }
@@ -45,8 +70,27 @@ export default function DepositStep4() {
 
   // Таймер обратного отсчета и проверка почты
   useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
+    if (timeLeft > 0 && !isPaid) {
+      const timer = setTimeout(() => {
+        // Вычисляем оставшееся время от сохраненного времени начала
+        const timerStartTime = localStorage.getItem('deposit_timer_start')
+        if (timerStartTime) {
+          const startTime = parseInt(timerStartTime, 10)
+          const now = Date.now()
+          const elapsed = Math.floor((now - startTime) / 1000)
+          const remaining = Math.max(0, 300 - elapsed)
+          setTimeLeft(remaining)
+          
+          // Если время истекло
+          if (remaining === 0) {
+            handleTimeExpired()
+            return
+          }
+        } else {
+          // Если нет сохраненного времени, уменьшаем счетчик
+          setTimeLeft(timeLeft - 1)
+        }
+      }, 1000)
       
       // Проверяем почту каждые 10 секунд
       if (timeLeft % 10 === 0) {
@@ -54,11 +98,11 @@ export default function DepositStep4() {
       }
       
       return () => clearTimeout(timer)
-    } else {
+    } else if (timeLeft === 0 && !isPaid) {
       // Время истекло - автоматически отклоняем заявку
       handleTimeExpired()
     }
-  }, [timeLeft])
+  }, [timeLeft, isPaid])
 
   // Функция обработки истечения времени
   const handleTimeExpired = async () => {
@@ -88,6 +132,7 @@ export default function DepositStep4() {
       localStorage.removeItem('deposit_user_id')
       localStorage.removeItem('deposit_amount')
       localStorage.removeItem('deposit_transaction_id')
+      localStorage.removeItem('deposit_timer_start') // Очищаем таймер
       
       showAlert({
         type: 'warning',
@@ -110,13 +155,32 @@ export default function DepositStep4() {
   // Функция проверки статуса оплаты
   const checkPaymentStatus = async () => {
     try {
-      // Здесь должна быть логика проверки почты/API
-      // Пока что симуляция - если время меньше 2 минут, считаем что оплачено
-      if (timeLeft < 120 && !isPaid) {
-        setIsPaid(true)
-        // Отправляем уведомление о принятии заявки
-        await sendPaymentConfirmation()
+      // Проверяем статус заявки через API
+      const transactionId = localStorage.getItem('deposit_transaction_id')
+      if (transactionId) {
+        const base = process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:8081' 
+          : 'https://xendro.pro'
+        const response = await fetch(`${base}/api/payment/${transactionId}`)
+        if (response.ok) {
+          const data = await response.json()
+          // Если заявка оплачена (completed, approved, auto_completed, autodeposit_success)
+          if (data.status && ['completed', 'approved', 'auto_completed', 'autodeposit_success'].includes(data.status)) {
+            if (!isPaid) {
+              setIsPaid(true)
+              // Останавливаем таймер
+              localStorage.removeItem('deposit_timer_start')
+              // Отправляем уведомление о принятии заявки
+              await sendPaymentConfirmation()
+            }
+          }
+        }
       }
+      // Fallback: если время меньше 2 минут, считаем что оплачено (старая логика для теста)
+      // if (timeLeft < 120 && !isPaid) {
+      //   setIsPaid(true)
+      //   await sendPaymentConfirmation()
+      // }
     } catch (error) {
       console.error('Ошибка проверки оплаты:', error)
     }
@@ -186,6 +250,12 @@ export default function DepositStep4() {
         localStorage.setItem('deposit_transaction_id', data.id || data.transactionId)
         localStorage.setItem('deposit_request_id', data.id || data.transactionId) // Сохраняем request_id
         
+        // Сохраняем время начала таймера при создании заявки (если еще не сохранено)
+        if (!localStorage.getItem('deposit_timer_start')) {
+          localStorage.setItem('deposit_timer_start', Date.now().toString())
+          console.log('⏱️ Timer start saved:', new Date().toISOString())
+        }
+        
         // Синхронизируем с ботом
         const telegramUser = getTelegramUser()
         if (telegramUser) {
@@ -233,6 +303,10 @@ export default function DepositStep4() {
 
   // Кнопка "Я оплатил" — отправляем заявку в админку только по нажатию
   const handleIPaid = async () => {
+    // Сохраняем время начала таймера при создании заявки (если еще не сохранено)
+    if (!localStorage.getItem('deposit_timer_start')) {
+      localStorage.setItem('deposit_timer_start', Date.now().toString())
+    }
     try {
       await createDepositRequest()
       
