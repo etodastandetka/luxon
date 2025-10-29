@@ -13,132 +13,108 @@
 {% block header_subtitle %}Настройки системы и банков{% endblock %}
 
 {% block content %}
-<div class="modern-container">
+<div class="mobile-container">
     <!-- Основные настройки -->
-    <div class="settings-card">
-        <div class="card-header">
-            <div class="header-icon">🤖</div>
-            <div class="header-content">
-                <h3>Основные настройки</h3>
-                <p>Управление статусом бота и сообщениями</p>
+    <div class="settings-section">
+        <div class="section-header">
+            <h2>Основные настройки</h2>
+            <p>Управление статусом бота и сообщениями</p>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-content">
+                <div class="setting-title">Пауза бота</div>
+                <div class="setting-desc">Временно отключить бота для обслуживания</div>
+            </div>
+            <div class="setting-control">
+                <input type="checkbox" id="bot-pause" class="modern-checkbox">
+                <label for="bot-pause" class="checkbox-label"></label>
             </div>
         </div>
-        <div class="card-body">
-            <div class="setting-row">
-                <div class="setting-info">
-                    <div class="setting-title">Пауза бота</div>
-                    <div class="setting-desc">Временно отключить бота для обслуживания</div>
-                </div>
-                <div class="toggle-container">
-                    <label class="modern-toggle">
-                        <input type="checkbox" id="bot-pause">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
+        
+        <div class="setting-item">
+            <div class="setting-content">
+                <div class="setting-title">Сообщение обслуживания</div>
+                <div class="setting-desc">Текст для пользователей во время паузы</div>
             </div>
-            
-            <div class="setting-row">
-                <div class="setting-info">
-                    <div class="setting-title">Сообщение обслуживания</div>
-                    <div class="setting-desc">Текст для пользователей во время паузы</div>
-                </div>
-                <div class="input-container">
-                    <textarea id="maintenance-message" class="modern-textarea" placeholder="Введите сообщение..."></textarea>
-                </div>
+            <div class="setting-control">
+                <textarea id="maintenance-message" class="modern-textarea" placeholder="Введите сообщение..."></textarea>
             </div>
         </div>
     </div>
 
     <!-- Настройки пополнений -->
-    <div class="settings-card">
-        <div class="card-header">
-            <div class="header-icon">💰</div>
-            <div class="header-content">
-                <h3>Настройки пополнений</h3>
-                <p>Управление депозитами и банками</p>
+    <div class="settings-section">
+        <div class="section-header">
+            <h2>Настройки пополнений</h2>
+            <p>Управление депозитами и банками</p>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-content">
+                <div class="setting-title">Включить пополнения</div>
+                <div class="setting-desc">Разрешить пользователям пополнять баланс</div>
+            </div>
+            <div class="setting-control">
+                <input type="checkbox" id="deposits-enabled" class="modern-checkbox">
+                <label for="deposits-enabled" class="checkbox-label"></label>
             </div>
         </div>
-        <div class="card-body">
-            <div class="setting-row">
-                <div class="setting-info">
-                    <div class="setting-title">Включить пополнения</div>
-                    <div class="setting-desc">Разрешить пользователям пополнять баланс</div>
+        
+        <div class="banks-section">
+            <h3>Доступные банки</h3>
+            <div class="banks-grid">
+                <div class="bank-item">
+                    <div class="bank-icon">🏦</div>
+                    <div class="bank-name">MBank</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="deposit-mbank" class="modern-checkbox">
+                        <label for="deposit-mbank" class="checkbox-label"></label>
+                    </div>
                 </div>
-                <div class="toggle-container">
-                    <label class="modern-toggle">
-                        <input type="checkbox" id="deposits-enabled">
-                        <span class="toggle-slider"></span>
-                    </label>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">🏛️</div>
+                    <div class="bank-name">DemirBank</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="deposit-demir" class="modern-checkbox">
+                        <label for="deposit-demir" class="checkbox-label"></label>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="bank-section">
-                <div class="section-title">Доступные банки</div>
-                <div class="bank-grid">
-                    <div class="bank-card" data-bank="mbank">
-                        <div class="bank-icon">🏦</div>
-                        <div class="bank-name">MBank</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="deposit-mbank">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">💳</div>
+                    <div class="bank-name">Balance.kg</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="deposit-balance" class="modern-checkbox">
+                        <label for="deposit-balance" class="checkbox-label"></label>
                     </div>
-                    
-                    <div class="bank-card" data-bank="demir">
-                        <div class="bank-icon">🏛️</div>
-                        <div class="bank-name">DemirBank</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="deposit-demir">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                </div>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">💎</div>
+                    <div class="bank-name">O!Money</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="deposit-omoney" class="modern-checkbox">
+                        <label for="deposit-omoney" class="checkbox-label"></label>
                     </div>
-                    
-                    <div class="bank-card" data-bank="balance">
-                        <div class="bank-icon">💳</div>
-                        <div class="bank-name">Balance.kg</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="deposit-balance">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                </div>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">⚡</div>
+                    <div class="bank-name">MegaPay</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="deposit-megapay" class="modern-checkbox">
+                        <label for="deposit-megapay" class="checkbox-label"></label>
                     </div>
-                    
-                    <div class="bank-card" data-bank="omoney">
-                        <div class="bank-icon">💎</div>
-                        <div class="bank-name">O!Money</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="deposit-omoney">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="bank-card" data-bank="megapay">
-                        <div class="bank-icon">⚡</div>
-                        <div class="bank-name">MegaPay</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="deposit-megapay">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="bank-card" data-bank="bakai">
-                        <div class="bank-icon">🏪</div>
-                        <div class="bank-name">Bakai</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="deposit-bakai">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                </div>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">🏪</div>
+                    <div class="bank-name">Bakai</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="deposit-bakai" class="modern-checkbox">
+                        <label for="deposit-bakai" class="checkbox-label"></label>
                     </div>
                 </div>
             </div>
@@ -146,95 +122,77 @@
     </div>
 
     <!-- Настройки выводов -->
-    <div class="settings-card">
-        <div class="card-header">
-            <div class="header-icon">📤</div>
-            <div class="header-content">
-                <h3>Настройки выводов</h3>
-                <p>Управление выводами средств</p>
+    <div class="settings-section">
+        <div class="section-header">
+            <h2>Настройки выводов</h2>
+            <p>Управление выводами средств</p>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-content">
+                <div class="setting-title">Включить выводы</div>
+                <div class="setting-desc">Разрешить пользователям выводить средства</div>
+            </div>
+            <div class="setting-control">
+                <input type="checkbox" id="withdrawals-enabled" class="modern-checkbox">
+                <label for="withdrawals-enabled" class="checkbox-label"></label>
             </div>
         </div>
-        <div class="card-body">
-            <div class="setting-row">
-                <div class="setting-info">
-                    <div class="setting-title">Включить выводы</div>
-                    <div class="setting-desc">Разрешить пользователям выводить средства</div>
+        
+        <div class="banks-section">
+            <h3>Доступные банки</h3>
+            <div class="banks-grid">
+                <div class="bank-item">
+                    <div class="bank-icon">🏢</div>
+                    <div class="bank-name">Компаньон</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="withdrawal-kompanion" class="modern-checkbox">
+                        <label for="withdrawal-kompanion" class="checkbox-label"></label>
+                    </div>
                 </div>
-                <div class="toggle-container">
-                    <label class="modern-toggle">
-                        <input type="checkbox" id="withdrawals-enabled">
-                        <span class="toggle-slider"></span>
-                    </label>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">💎</div>
+                    <div class="bank-name">O!Money</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="withdrawal-odengi" class="modern-checkbox">
+                        <label for="withdrawal-odengi" class="checkbox-label"></label>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="bank-section">
-                <div class="section-title">Доступные банки</div>
-                <div class="bank-grid">
-                    <div class="bank-card" data-bank="kompanion">
-                        <div class="bank-icon">🏢</div>
-                        <div class="bank-name">Компаньон</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="withdrawal-kompanion">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">🏪</div>
+                    <div class="bank-name">Bakai</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="withdrawal-bakai" class="modern-checkbox">
+                        <label for="withdrawal-bakai" class="checkbox-label"></label>
                     </div>
-                    
-                    <div class="bank-card" data-bank="odengi">
-                        <div class="bank-icon">💎</div>
-                        <div class="bank-name">O!Money</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="withdrawal-odengi">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                </div>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">💳</div>
+                    <div class="bank-name">Balance.kg</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="withdrawal-balance" class="modern-checkbox">
+                        <label for="withdrawal-balance" class="checkbox-label"></label>
                     </div>
-                    
-                    <div class="bank-card" data-bank="bakai">
-                        <div class="bank-icon">🏪</div>
-                        <div class="bank-name">Bakai</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="withdrawal-bakai">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                </div>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">⚡</div>
+                    <div class="bank-name">MegaPay</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="withdrawal-megapay" class="modern-checkbox">
+                        <label for="withdrawal-megapay" class="checkbox-label"></label>
                     </div>
-                    
-                    <div class="bank-card" data-bank="balance">
-                        <div class="bank-icon">💳</div>
-                        <div class="bank-name">Balance.kg</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="withdrawal-balance">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="bank-card" data-bank="megapay">
-                        <div class="bank-icon">⚡</div>
-                        <div class="bank-name">MegaPay</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="withdrawal-megapay">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="bank-card" data-bank="mbank">
-                        <div class="bank-icon">🏦</div>
-                        <div class="bank-name">MBank</div>
-                        <div class="bank-toggle">
-                            <label class="modern-toggle small">
-                                <input type="checkbox" id="withdrawal-mbank">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+                </div>
+                
+                <div class="bank-item">
+                    <div class="bank-icon">🏦</div>
+                    <div class="bank-name">MBank</div>
+                    <div class="bank-control">
+                        <input type="checkbox" id="withdrawal-mbank" class="modern-checkbox">
+                        <label for="withdrawal-mbank" class="checkbox-label"></label>
                     </div>
                 </div>
             </div>
@@ -242,46 +200,40 @@
     </div>
 
     <!-- Настройки канала -->
-    <div class="settings-card">
-        <div class="card-header">
-            <div class="header-icon">📢</div>
-            <div class="header-content">
-                <h3>Настройки канала</h3>
-                <p>Управление информационным каналом</p>
+    <div class="settings-section">
+        <div class="section-header">
+            <h2>Настройки канала</h2>
+            <p>Управление информационным каналом</p>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-content">
+                <div class="setting-title">Включить канал</div>
+                <div class="setting-desc">Активировать информационный канал</div>
+            </div>
+            <div class="setting-control">
+                <input type="checkbox" id="channel-enabled" class="modern-checkbox">
+                <label for="channel-enabled" class="checkbox-label"></label>
             </div>
         </div>
-        <div class="card-body">
-            <div class="setting-row">
-                <div class="setting-info">
-                    <div class="setting-title">Включить канал</div>
-                    <div class="setting-desc">Активировать информационный канал</div>
-                </div>
-                <div class="toggle-container">
-                    <label class="modern-toggle">
-                        <input type="checkbox" id="channel-enabled">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
+        
+        <div class="setting-item">
+            <div class="setting-content">
+                <div class="setting-title">Название канала</div>
+                <div class="setting-desc">Имя канала для отображения</div>
             </div>
-            
-            <div class="setting-row">
-                <div class="setting-info">
-                    <div class="setting-title">Название канала</div>
-                    <div class="setting-desc">Имя канала для отображения</div>
-                </div>
-                <div class="input-container">
-                    <input type="text" id="channel-name" class="modern-input" placeholder="Введите название канала">
-                </div>
+            <div class="setting-control">
+                <input type="text" id="channel-name" class="modern-input" placeholder="Введите название канала">
             </div>
-            
-            <div class="setting-row">
-                <div class="setting-info">
-                    <div class="setting-title">Приветственное сообщение</div>
-                    <div class="setting-desc">Сообщение для новых подписчиков</div>
-                </div>
-                <div class="input-container">
-                    <textarea id="channel-welcome" class="modern-textarea" placeholder="Введите приветственное сообщение..."></textarea>
-                </div>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-content">
+                <div class="setting-title">Приветственное сообщение</div>
+                <div class="setting-desc">Сообщение для новых подписчиков</div>
+            </div>
+            <div class="setting-control">
+                <textarea id="channel-welcome" class="modern-textarea" placeholder="Введите приветственное сообщение..."></textarea>
             </div>
         </div>
     </div>
@@ -299,330 +251,168 @@
 
 {% block extra_css %}
 <style>
-/* Современный дизайн управления ботом */
+/* Мобильный дизайн как на скриншоте */
 :root {
-    --primary-color: #6366f1;
-    --primary-dark: #4f46e5;
-    --primary-light: #818cf8;
-    --success-color: #10b981;
-    --warning-color: #f59e0b;
-    --error-color: #ef4444;
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-card: #334155;
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --border-color: #475569;
-    --shadow-color: rgba(0, 0, 0, 0.3);
+    --bg-primary: #1a4d3a;
+    --bg-secondary: #2d5a47;
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --border-color: #3a6b5a;
+    --accent-color: #4a9d7a;
+    --checkbox-bg: #ffffff;
+    --checkbox-checked: #007bff;
 }
 
 body {
-    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    background: var(--bg-primary);
     color: var(--text-primary);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
     min-height: 100vh;
 }
 
-.modern-container {
-    max-width: 1200px;
+.mobile-container {
+    max-width: 480px;
     margin: 0 auto;
-    padding: 24px;
+    padding: 20px;
+    background: var(--bg-primary);
     min-height: 100vh;
 }
 
-/* Карточки настроек */
-.settings-card {
-    background: var(--bg-card);
-    border-radius: 20px;
-    margin-bottom: 24px;
-    box-shadow: 0 10px 40px var(--shadow-color);
+/* Секции настроек */
+.settings-section {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    padding: 20px;
     border: 1px solid var(--border-color);
-    overflow: hidden;
-    transition: all 0.3s ease;
 }
 
-.settings-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 60px var(--shadow-color);
+.section-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.card-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    padding: 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    position: relative;
-    overflow: hidden;
+.section-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 5px 0;
 }
 
-.card-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-    pointer-events: none;
-}
-
-.header-icon {
-    font-size: 32px;
-    width: 60px;
-    height: 60px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    position: relative;
-    z-index: 1;
-}
-
-.header-content {
-    position: relative;
-    z-index: 1;
-}
-
-.header-content h3 {
-    font-size: 24px;
-    font-weight: 700;
-    color: white;
-    margin: 0 0 8px 0;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.header-content p {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.9);
+.section-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
     margin: 0;
 }
 
-.card-body {
-    padding: 32px;
-}
-
-/* Строки настроек */
-.setting-row {
+/* Элементы настроек */
+.setting-item {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: 24px 0;
+    padding: 15px 0;
     border-bottom: 1px solid var(--border-color);
-    gap: 24px;
+    gap: 15px;
 }
 
-.setting-row:last-child {
+.setting-item:last-child {
     border-bottom: none;
 }
 
-.setting-info {
+.setting-content {
     flex: 1;
 }
 
 .setting-title {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 500;
     color: var(--text-primary);
-    margin-bottom: 8px;
+    margin-bottom: 5px;
 }
 
 .setting-desc {
     font-size: 14px;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.4;
 }
 
-.toggle-container {
+.setting-control {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
-/* Современные переключатели */
-.modern-toggle {
-    position: relative;
-    display: inline-block;
+/* Современные чекбоксы */
+.modern-checkbox {
+    display: none;
+}
+
+.checkbox-label {
+    width: 24px;
+    height: 24px;
+    background: var(--checkbox-bg);
+    border: 2px solid #ddd;
+    border-radius: 4px;
     cursor: pointer;
-}
-
-.modern-toggle input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
     position: relative;
+    transition: all 0.3s ease;
     display: block;
-    width: 64px;
-    height: 36px;
-    background: #374151;
-    border-radius: 36px;
-    transition: all 0.4s ease;
-    border: 2px solid #4b5563;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.toggle-slider::before {
+.checkbox-label::after {
     content: '';
     position: absolute;
     top: 2px;
-    left: 2px;
-    width: 28px;
-    height: 28px;
-    background: linear-gradient(135deg, #ffffff, #f3f4f6);
-    border-radius: 50%;
-    transition: all 0.4s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.modern-toggle input:checked + .toggle-slider {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    border-color: var(--primary-color);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 20px rgba(99, 102, 241, 0.3);
-}
-
-.modern-toggle input:checked + .toggle-slider::before {
-    transform: translateX(28px);
-    background: linear-gradient(135deg, #ffffff, #f8fafc);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-
-.modern-toggle:hover .toggle-slider {
-    border-color: var(--primary-color);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 16px rgba(99, 102, 241, 0.2);
-}
-
-/* Маленькие переключатели для банков */
-.modern-toggle.small .toggle-slider {
-    width: 48px;
-    height: 28px;
-}
-
-.modern-toggle.small .toggle-slider::before {
-    width: 20px;
-    height: 20px;
-}
-
-.modern-toggle.small input:checked + .toggle-slider::before {
-    transform: translateX(20px);
-}
-
-/* Секция банков */
-.bank-section {
-    margin-top: 32px;
-}
-
-.section-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.section-title::before {
-    content: '';
-    width: 4px;
-    height: 20px;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    border-radius: 2px;
-}
-
-.bank-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-}
-
-.bank-card {
-    background: var(--bg-secondary);
-    border: 2px solid var(--border-color);
-    border-radius: 16px;
-    padding: 20px;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-
-.bank-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(79, 70, 229, 0.05));
+    left: 6px;
+    width: 6px;
+    height: 12px;
+    border: solid var(--checkbox-checked);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
     opacity: 0;
     transition: opacity 0.3s ease;
 }
 
-.bank-card:hover {
-    border-color: var(--primary-color);
-    transform: translateY(-4px);
-    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.2);
+.modern-checkbox:checked + .checkbox-label {
+    background: var(--checkbox-checked);
+    border-color: var(--checkbox-checked);
 }
 
-.bank-card:hover::before {
+.modern-checkbox:checked + .checkbox-label::after {
     opacity: 1;
+    border-color: white;
 }
 
-.bank-card.active {
-    border-color: var(--primary-color);
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(79, 70, 229, 0.1));
-}
-
-.bank-icon {
-    font-size: 32px;
-    margin-bottom: 12px;
-    text-align: center;
-}
-
-.bank-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    text-align: center;
-    margin-bottom: 16px;
-}
-
-.bank-toggle {
-    display: flex;
-    justify-content: center;
+.checkbox-label:hover {
+    border-color: var(--checkbox-checked);
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
 }
 
 /* Формы */
-.input-container {
-    flex: 1;
-    max-width: 400px;
-}
-
 .modern-input, .modern-textarea {
     width: 100%;
-    padding: 16px 20px;
+    padding: 12px 16px;
     border: 2px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     font-size: 16px;
     color: var(--text-primary);
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     transition: all 0.3s ease;
     font-family: inherit;
+    box-sizing: border-box;
 }
 
 .modern-input:focus, .modern-textarea:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    border-color: var(--checkbox-checked);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
 .modern-textarea {
-    min-height: 100px;
+    min-height: 80px;
     resize: vertical;
 }
 
@@ -630,49 +420,82 @@ body {
     color: var(--text-secondary);
 }
 
+/* Секция банков */
+.banks-section {
+    margin-top: 20px;
+}
+
+.banks-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 15px 0;
+}
+
+.banks-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.bank-item {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.bank-item:hover {
+    border-color: var(--checkbox-checked);
+    background: var(--bg-secondary);
+}
+
+.bank-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.bank-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.bank-control {
+    flex-shrink: 0;
+}
+
 /* Секция сохранения */
 .save-section {
     text-align: center;
-    margin-top: 40px;
-    padding: 32px;
+    margin-top: 30px;
+    padding: 20px;
 }
 
 .save-button {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    background: linear-gradient(135deg, var(--checkbox-checked), #0056b3);
     border: none;
-    border-radius: 16px;
-    padding: 20px 40px;
-    font-size: 18px;
+    border-radius: 12px;
+    padding: 16px 32px;
+    font-size: 16px;
     font-weight: 600;
     color: white;
     cursor: pointer;
     transition: all 0.3s ease;
     display: inline-flex;
     align-items: center;
-    gap: 12px;
-    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
-    position: relative;
-    overflow: hidden;
-}
-
-.save-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
+    gap: 10px;
+    box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
 }
 
 .save-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.4);
-}
-
-.save-button:hover::before {
-    left: 100%;
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
 }
 
 .save-button:active {
@@ -680,12 +503,12 @@ body {
 }
 
 .save-icon {
-    font-size: 20px;
+    font-size: 18px;
 }
 
 .save-status {
-    margin-top: 16px;
-    font-size: 16px;
+    margin-top: 15px;
+    font-size: 14px;
     font-weight: 500;
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -696,63 +519,62 @@ body {
 }
 
 .save-status.success {
-    color: var(--success-color);
+    color: #10b981;
 }
 
 .save-status.error {
-    color: var(--error-color);
+    color: #ef4444;
 }
 
 /* Адаптивность */
-@media (max-width: 768px) {
-    .modern-container {
-        padding: 16px;
-    }
-    
-    .card-body {
-        padding: 24px;
-    }
-    
-    .setting-row {
-        flex-direction: column;
-        gap: 16px;
-    }
-    
-    .bank-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-    
-    .bank-card {
-        padding: 16px;
-    }
-    
-    .header-content h3 {
-        font-size: 20px;
-    }
-    
-    .header-content p {
-        font-size: 14px;
-    }
-}
-
 @media (max-width: 480px) {
-    .bank-grid {
+    .mobile-container {
+        padding: 15px;
+    }
+    
+    .settings-section {
+        padding: 15px;
+    }
+    
+    .setting-item {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .setting-control {
+        align-self: flex-start;
+    }
+    
+    .banks-grid {
         grid-template-columns: 1fr;
     }
     
-    .card-header {
-        padding: 20px;
-    }
-    
-    .card-body {
-        padding: 20px;
+    .bank-item {
+        padding: 12px;
     }
     
     .save-button {
-        padding: 16px 32px;
-        font-size: 16px;
+        padding: 14px 28px;
+        font-size: 15px;
     }
+}
+
+/* Скроллбар */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--checkbox-checked);
 }
 </style>
 {% endblock %}
@@ -939,7 +761,7 @@ if (window.botManagementInitialized) {
 
     // Инициализация при загрузке страницы
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚀 Инициализация современной страницы управления ботом');
+        console.log('🚀 Инициализация мобильной страницы управления ботом');
         
         // Загружаем настройки с задержкой
         setTimeout(() => {
@@ -971,17 +793,6 @@ if (window.botManagementInitialized) {
         document.querySelectorAll('input[id^="deposit-"], input[id^="withdrawal-"]').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 setTimeout(saveAllSettings, 500);
-            });
-        });
-        
-        // Анимация карточек банков
-        document.querySelectorAll('.bank-card').forEach(card => {
-            card.addEventListener('click', function() {
-                const checkbox = this.querySelector('input[type="checkbox"]');
-                if (checkbox) {
-                    checkbox.checked = !checkbox.checked;
-                    checkbox.dispatchEvent(new Event('change'));
-                }
             });
         });
     });
