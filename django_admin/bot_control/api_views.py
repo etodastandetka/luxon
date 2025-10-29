@@ -243,13 +243,45 @@ def generate_qr_api(request):
             'Компаньон': f"https://kompanion.kg/qr/#{qr_hash}"
         }
 
+        # Получаем настройки депозитов из админки
+        try:
+            import json
+            deposits_str = BotConfiguration.get_setting('deposits', '{"enabled": true, "banks": ["mbank", "bakai", "balance", "demir", "omoney", "megapay"]}')
+            deposits = json.loads(deposits_str) if isinstance(deposits_str, str) else deposits_str
+            
+            # Маппинг банков для клиентского сайта
+            bank_mapping = {
+                'mbank': 'MBank',
+                'demir': 'DemirBank', 
+                'balance': 'Balance.kg',
+                'omoney': 'O!Money',
+                'megapay': 'MegaPay',
+                'bakai': 'Bakai',
+                'optima': 'Optima',
+                'kompanion': 'Компаньон'
+            }
+            
+            # Фильтруем банки согласно настройкам
+            enabled_banks = []
+            for bank_code in deposits.get('banks', []):
+                if bank_code in bank_mapping:
+                    enabled_banks.append(bank_code)
+            
+            logger.info(f"Enabled banks from admin: {enabled_banks}")
+            
+        except Exception as e:
+            logger.error(f"Error getting deposit settings: {str(e)}")
+            # Fallback - все банки включены
+            enabled_banks = ['demir', 'omoney', 'balance', 'bakai', 'megapay', 'mbank', 'optima', 'kompanion']
+
         return JsonResponse({
             'success': True,
             'qr_hash': qr_hash,
             'primary_url': bank_links['DemirBank'],
             'all_bank_urls': bank_links,
             'settings': {
-                'enabled_banks': ['demir', 'omoney', 'balance', 'bakai', 'megapay', 'mbank', 'optima', 'kompanion']
+                'enabled_banks': enabled_banks,
+                'deposits_enabled': deposits.get('enabled', True)
             }
         })
         
