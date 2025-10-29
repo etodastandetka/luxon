@@ -463,19 +463,32 @@ function shortHash(val){
 async function fetchBankWallets() {
   try {
     const res = await fetch('/dashboard/api/bank-wallets/');
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка');
-    renderBankWallets(data.items || []);
+    if (!res.ok) {
+      throw new Error('Ошибка загрузки кошельков');
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!data || !data.success) {
+      throw new Error(data?.error || 'Ошибка загрузки кошельков');
+    }
+    const items = data.items || [];
+    renderBankWallets(Array.isArray(items) ? items : []);
   } catch (e) {
+    console.error('Ошибка загрузки кошельков:', e);
     const c = document.getElementById('bw_list');
-    if (c) c.innerHTML = `<div style="color:#f66;">${e.message}</div>`;
+    if (c) {
+      const errorMsg = e?.message || 'Ошибка загрузки кошельков';
+      c.innerHTML = `<div style="color:#f66;">${errorMsg}</div>`;
+    }
   }
 }
 
 function renderBankWallets(items) {
   const c = document.getElementById('bw_list');
   if (!c) return;
-  if (!items.length) { c.innerHTML = '<div style="color:#cccccc; background: transparent;">Кошельки не добавлены</div>'; return; }
+  if (!items || !Array.isArray(items) || !items.length) { 
+    c.innerHTML = '<div style="color:#cccccc; background: transparent;">Кошельки не добавлены</div>'; 
+    return; 
+  }
   c.innerHTML = '';
   items.forEach(w => {
     const el = document.createElement('div');
