@@ -58,11 +58,14 @@
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
             border-radius: 0;
             border: 1px solid rgba(138, 43, 226, 0.1);
-            padding-bottom: 70px !important; /* Отступ для нижнего меню */
+            padding-bottom: 80px !important; /* Отступ для нижнего меню */
             overflow-x: hidden !important;
+            overflow-y: auto !important; /* Единственный скролл для всего контента */
             display: flex !important;
             flex-direction: column !important;
             width: 100% !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
         }
         
         /* Дополнительная фиксация для меню */
@@ -107,7 +110,7 @@
         html, body {
             height: 100% !important;
             overflow-x: hidden !important;
-            overflow-y: auto !important; /* Разрешаем скролл для body */
+            overflow-y: hidden !important; /* Убираем скролл у body - скролл будет у mobile-container */
             margin: 0 !important;
             padding: 0 !important;
         }
@@ -146,7 +149,6 @@
             .main-content {
                 padding: 8px;
                 padding-bottom: 80px; /* Отступ для меню */
-                max-height: calc(100vh - 100px);
             }
             .card {
                 padding: 12px;
@@ -167,7 +169,6 @@
             .main-content {
                 padding: 6px;
                 padding-bottom: 80px; /* Отступ для меню */
-                max-height: calc(100vh - 90px);
             }
             .card {
                 padding: 10px;
@@ -188,7 +189,6 @@
             .main-content {
                 padding: 4px;
                 padding-bottom: 80px; /* Отступ для меню */
-                max-height: calc(100vh - 80px);
             }
             .card {
                 padding: 8px;
@@ -243,8 +243,7 @@
             padding-bottom: 80px; /* Отступ для меню */
             background: transparent;
             flex: 1;
-            overflow-y: auto;
-            max-height: calc(100vh - 120px);
+            overflow-y: visible !important; /* Убираем скролл - будет один общий скролл */
             /* Красивый скролл */
             scrollbar-width: thin;
             scrollbar-color: rgba(138, 43, 226, 0.5) rgba(30, 30, 46, 0.3);
