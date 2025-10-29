@@ -87,6 +87,7 @@ urlpatterns = [
     path('api/payment/', api_views.payment_api, name='payment_api'),
     path('api/generate-qr/', api_views.generate_qr_api, name='generate_qr_api'),
     path('api/sync-bot/', api_views.sync_bot_api, name='sync_bot_api'),
+    path('api/requisites/list/', api_views.api_requisites_list, name='api_requisites_list'),
     
     # Унифицированные API endpoints
     path('api/', include('bot_control.unified_urls')),
