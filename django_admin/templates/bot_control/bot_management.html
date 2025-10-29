@@ -351,27 +351,34 @@
 
 {% block extra_css %}
 <style>
-/* Профессиональный финансовый интерфейс */
+/* Современный финансовый интерфейс с улучшенным дизайном */
 :root {
-    --bg-primary: #0d1117;
-    --bg-secondary: #161b22;
-    --bg-tertiary: #21262d;
-    --bg-panel: #1c2128;
-    --text-primary: #f0f6fc;
-    --text-secondary: #8b949e;
-    --text-muted: #6e7681;
-    --border-primary: #30363d;
-    --border-secondary: #21262d;
-    --accent-green: #238636;
-    --accent-green-hover: #2ea043;
-    --accent-blue: #0969da;
-    --accent-blue-hover: #0860ca;
-    --success: #238636;
-    --error: #da3633;
-    --warning: #d29922;
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #1a1f2e;
+    --bg-tertiary: #252b3d;
+    --bg-panel: #1e2433;
+    --bg-card: #232937;
+    --text-primary: #ffffff;
+    --text-secondary: #a8b3cf;
+    --text-muted: #7c8db5;
+    --border-primary: #3d4a66;
+    --border-secondary: #2a3441;
+    --accent-green: #00d4aa;
+    --accent-green-hover: #00b894;
+    --accent-blue: #4dabf7;
+    --accent-blue-hover: #339af0;
+    --accent-purple: #9775fa;
+    --accent-purple-hover: #845ef7;
+    --success: #00d4aa;
+    --error: #ff6b6b;
+    --warning: #ffd43b;
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-success: linear-gradient(135deg, #00d4aa 0%, #00b894 100%);
+    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
+    --shadow-glow: 0 0 20px rgba(0, 212, 170, 0.3);
 }
 
 /* Сброс стилей */
@@ -383,11 +390,17 @@
 
 body {
     background: var(--bg-primary) !important;
+    background-image: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.05) 0%, transparent 50%);
     color: var(--text-primary) !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
     min-height: 100vh !important;
+    position: relative;
+    overflow-x: hidden;
 }
 
 /* Переопределение базовых стилей */
@@ -416,9 +429,11 @@ input::placeholder, textarea::placeholder {
     max-width: 480px;
     margin: 0 auto;
     padding: 20px;
-    background: var(--bg-primary);
+    background: transparent;
     min-height: 100vh;
     color: var(--text-primary);
+    position: relative;
+    z-index: 1;
 }
 
 /* Улучшенные стили для текста */
@@ -448,33 +463,68 @@ input::placeholder, textarea::placeholder {
 
 /* Панели управления */
 .control-panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    margin-bottom: 20px;
+    background: var(--gradient-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    margin-bottom: 24px;
     overflow: hidden;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.control-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.control-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .panel-header {
-    background: var(--bg-tertiary);
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border-primary);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(10px);
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    position: relative;
 }
 
 .panel-icon {
-    font-size: 20px;
-    width: 32px;
-    height: 32px;
+    font-size: 24px;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-secondary);
-    border-radius: 6px;
-    border: 1px solid var(--border-primary);
+    background: var(--gradient-primary);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+}
+
+.panel-icon::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    pointer-events: none;
 }
 
 .panel-info h2 {
@@ -539,39 +589,63 @@ input::placeholder, textarea::placeholder {
 .switch-label {
     position: relative;
     display: block;
-    width: 44px;
-    height: 24px;
+    width: 52px;
+    height: 28px;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-primary);
-    border-radius: 12px;
+    border-radius: 16px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .switch-slider {
     position: absolute;
     top: 2px;
     left: 2px;
-    width: 18px;
-    height: 18px;
-    background: var(--text-muted);
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     border-radius: 50%;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.switch-slider::before {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
 .financial-switch:checked + .switch-label {
-    background: var(--accent-green);
+    background: var(--gradient-success);
     border-color: var(--accent-green);
+    box-shadow: var(--shadow-glow);
 }
 
 .financial-switch:checked + .switch-label .switch-slider {
-    background: white;
-    transform: translateX(20px);
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    transform: translateX(24px);
+    box-shadow: 0 4px 12px rgba(0, 212, 170, 0.3);
+}
+
+.financial-switch:checked + .switch-label .switch-slider::before {
+    opacity: 1;
+    background: var(--accent-green);
 }
 
 .switch-label:hover {
     border-color: var(--accent-green);
-    box-shadow: 0 0 0 3px rgba(35, 134, 54, 0.1);
+    box-shadow: 0 0 0 4px rgba(0, 212, 170, 0.1);
+    transform: scale(1.05);
 }
 
 /* Формы */
@@ -582,29 +656,38 @@ input::placeholder, textarea::placeholder {
 
 .financial-input, .financial-textarea {
     width: 100%;
-    padding: 8px 12px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 6px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
     color: var(--text-primary);
     font-size: 14px;
     font-family: inherit;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .financial-input:focus, .financial-textarea:focus {
     outline: none;
     border-color: var(--accent-blue);
-    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+    box-shadow: 
+        0 0 0 4px rgba(77, 171, 247, 0.1),
+        inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
 }
 
 .financial-textarea {
-    min-height: 60px;
+    min-height: 80px;
     resize: vertical;
+    font-family: inherit;
+    line-height: 1.5;
 }
 
 .financial-input::placeholder, .financial-textarea::placeholder {
     color: var(--text-muted);
+    opacity: 0.8;
 }
 
 /* Панель банков */
@@ -644,22 +727,50 @@ input::placeholder, textarea::placeholder {
 }
 
 .bank-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 6px;
-    padding: 12px;
-    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.bank-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
 .bank-card:hover {
     border-color: var(--accent-blue);
-    background: var(--bg-tertiary);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+.bank-card:hover::before {
+    opacity: 1;
 }
 
 .bank-card.active {
     border-color: var(--accent-green);
-    background: rgba(35, 134, 54, 0.1);
+    background: rgba(0, 212, 170, 0.1);
+    box-shadow: var(--shadow-glow);
+}
+
+.bank-card.active::before {
+    opacity: 1;
+    background: linear-gradient(135deg, rgba(0, 212, 170, 0.1) 0%, transparent 50%);
 }
 
 .bank-logo {
@@ -695,39 +806,47 @@ input::placeholder, textarea::placeholder {
 .checkbox-label {
     position: relative;
     display: block;
-    width: 18px;
-    height: 18px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-primary);
-    border-radius: 3px;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .checkmark {
     position: absolute;
-    top: 2px;
-    left: 5px;
+    top: 3px;
+    left: 6px;
     width: 6px;
     height: 10px;
     border: solid white;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .bank-checkbox:checked + .checkbox-label {
-    background: var(--accent-green);
+    background: var(--gradient-success);
     border-color: var(--accent-green);
+    box-shadow: 0 0 0 4px rgba(0, 212, 170, 0.2);
+    transform: scale(1.1);
 }
 
 .bank-checkbox:checked + .checkbox-label .checkmark {
     opacity: 1;
+    transform: rotate(45deg) scale(1.2);
 }
 
 .checkbox-label:hover {
     border-color: var(--accent-green);
+    box-shadow: 0 0 0 4px rgba(0, 212, 170, 0.1);
+    transform: scale(1.05);
 }
 
 /* Панель действий */
@@ -738,59 +857,107 @@ input::placeholder, textarea::placeholder {
 }
 
 .primary-button {
-    background: var(--accent-green);
+    background: var(--gradient-success);
     border: none;
-    border-radius: 6px;
-    padding: 12px 24px;
+    border-radius: 12px;
+    padding: 16px 32px;
     color: white;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    box-shadow: var(--shadow-sm);
+    gap: 12px;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.primary-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
 }
 
 .primary-button:hover {
-    background: var(--accent-green-hover);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    background: var(--gradient-success);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.primary-button:hover::before {
+    left: 100%;
 }
 
 .primary-button:active {
     transform: translateY(0);
+    box-shadow: var(--shadow-md);
 }
 
 .button-icon {
-    font-size: 16px;
+    font-size: 18px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .status-indicator {
-    margin-top: 12px;
-    font-size: 12px;
-    font-weight: 500;
+    margin-top: 16px;
+    font-size: 14px;
+    font-weight: 600;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 8px 16px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .status-indicator.show {
     opacity: 1;
+    transform: translateY(0);
 }
 
 .status-indicator.success {
     color: var(--success);
+    background: rgba(0, 212, 170, 0.1);
+    border-color: var(--success);
+    box-shadow: 0 0 20px rgba(0, 212, 170, 0.2);
 }
 
 .status-indicator.error {
     color: var(--error);
+    background: rgba(255, 107, 107, 0.1);
+    border-color: var(--error);
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.2);
+}
+
+.status-indicator.loading {
+    color: var(--accent-blue);
+    background: rgba(77, 171, 247, 0.1);
+    border-color: var(--accent-blue);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 /* Адаптивность */
 @media (max-width: 480px) {
     .financial-interface {
         padding: 16px;
+        max-width: 100%;
     }
     
     .control-group {
@@ -799,38 +966,171 @@ input::placeholder, textarea::placeholder {
     
     .control-item {
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
+        padding: 20px 0;
     }
     
     .control-input {
         max-width: none;
+        width: 100%;
     }
     
     .banks-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
     
     .bank-card {
-        padding: 10px;
+        padding: 20px;
+    }
+    
+    .panel-header {
+        padding: 16px 20px;
+        gap: 12px;
+    }
+    
+    .panel-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+    
+    .primary-button {
+        width: 100%;
+        padding: 18px 24px;
+        font-size: 15px;
+    }
+    
+    .switch-label {
+        width: 48px;
+        height: 26px;
+    }
+    
+    .switch-slider {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .financial-switch:checked + .switch-label .switch-slider {
+        transform: translateX(22px);
     }
 }
 
+/* Дополнительные анимации */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.control-panel {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.control-panel:nth-child(1) { animation-delay: 0.1s; }
+.control-panel:nth-child(2) { animation-delay: 0.2s; }
+.control-panel:nth-child(3) { animation-delay: 0.3s; }
+.control-panel:nth-child(4) { animation-delay: 0.4s; }
+
 /* Скроллбар */
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 
 ::-webkit-scrollbar-track {
     background: var(--bg-primary);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--border-primary);
-    border-radius: 3px;
+    background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+    background: linear-gradient(135deg, var(--accent-blue-hover) 0%, var(--accent-purple-hover) 100%);
+    box-shadow: 0 0 10px rgba(77, 171, 247, 0.3);
+}
+
+/* Дополнительные эффекты */
+.financial-interface::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Улучшенные эффекты для элементов управления */
+.control-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.control-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.control-item:hover::after {
+    opacity: 1;
+}
+
+/* Эффект загрузки */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(10, 14, 26, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.loading-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top: 3px solid var(--accent-green);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 </style>
 {% endblock %}
