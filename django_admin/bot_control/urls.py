@@ -6,6 +6,7 @@ from . import referral_views_simple as referral_views
 from . import api_views_webapp
 from . import api_views
 from . import cashdesk_views
+from . import mostbet_views
 
 app_name = 'bot_control'
 
@@ -94,4 +95,11 @@ urlpatterns = [
     path('api/cashdesk/<str:casino>/search-player/', cashdesk_views.api_cashdesk_search_player, name='api_cashdesk_search_player'),
     path('api/cashdesk/<str:casino>/deposit/', cashdesk_views.api_cashdesk_deposit, name='api_cashdesk_deposit'),
     path('api/cashdesk/<str:casino>/payout/', cashdesk_views.api_cashdesk_payout, name='api_cashdesk_payout'),
+    
+    # Mostbet Cash API
+    path('api/mostbet/balance/', mostbet_views.api_mostbet_balance, name='api_mostbet_balance'),
+    path('api/mostbet/deposit/', mostbet_views.api_mostbet_deposit, name='api_mostbet_deposit'),
+    path('api/mostbet/cashout/list/', mostbet_views.api_mostbet_cashout_list, name='api_mostbet_cashout_list'),
+    path('api/mostbet/cashout/confirm/', mostbet_views.api_mostbet_confirm_cashout, name='api_mostbet_confirm_cashout'),
+    path('api/mostbet/transactions/', mostbet_views.api_mostbet_transactions, name='api_mostbet_transactions'),
 ]
