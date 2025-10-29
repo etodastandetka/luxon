@@ -1395,11 +1395,24 @@ if (window.financialInterfaceInitialized) {
         }
     }
 
+    // Переменная для отслеживания процесса сохранения и debounce таймера
+    let isSaving = false;
+    let saveTimeout = null;
+    
     // Сохранение настроек
-    async function saveAllSettings() {
+    async function saveAllSettings(showLoading = true) {
+        // Если уже идет сохранение, пропускаем
+        if (isSaving) {
+            console.log('⏳ Сохранение уже выполняется, пропускаем...');
+            return;
+        }
+        
         try {
-            console.log('💾 Сохранение настроек системы...');
-            showStatus('Сохранение...', 'loading');
+            isSaving = true;
+            if (showLoading) {
+                console.log('💾 Сохранение настроек системы...');
+                showStatus('Сохранение...', 'loading');
+            }
             
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
             if (!csrfToken) {
@@ -1502,7 +1515,9 @@ if (window.financialInterfaceInitialized) {
                 })
             });
             
-            showStatus('Настройки сохранены', 'success');
+            if (showLoading) {
+                showStatus('Настройки сохранены', 'success');
+            }
             console.log('✅ Настройки системы сохранены');
             
             // Перезагружаем настройки для обновления UI
@@ -1514,7 +1529,22 @@ if (window.financialInterfaceInitialized) {
         } catch (error) {
             console.error('❌ Ошибка сохранения:', error);
             showStatus('Ошибка сохранения: ' + error.message, 'error');
+        } finally {
+            isSaving = false;
         }
+    }
+    
+    // Debounced версия сохранения (сохраняет только один раз после последнего изменения)
+    function debouncedSaveAllSettings() {
+        // Очищаем предыдущий таймер
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+        }
+        
+        // Устанавливаем новый таймер (сохранит через 1.5 секунды после последнего изменения)
+        saveTimeout = setTimeout(() => {
+            saveAllSettings(true);
+        }, 1500);
     }
 
     // Показать статус
@@ -1557,7 +1587,7 @@ if (window.financialInterfaceInitialized) {
             saveButton.addEventListener('click', saveAllSettings);
         }
         
-        // Автоматическое сохранение при изменении
+        // Автоматическое сохранение при изменении (с debounce)
         const autoSaveElements = [
             'bot-pause', 'maintenance-message', 'deposits-enabled', 'withdrawals-enabled', 
             'channel-enabled', 'channel-name', 'channel-id', 'channel-username'
@@ -1567,7 +1597,7 @@ if (window.financialInterfaceInitialized) {
             const element = document.getElementById(id);
             if (element) {
                 element.addEventListener('change', () => {
-                    setTimeout(saveAllSettings, 500);
+                    debouncedSaveAllSettings();
                 });
             }
         });
@@ -1576,7 +1606,7 @@ if (window.financialInterfaceInitialized) {
         document.querySelectorAll('input[id^="deposit-"], input[id^="withdrawal-"]').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 updateBankCounters();
-                setTimeout(saveAllSettings, 500);
+                debouncedSaveAllSettings();
             });
         });
         
