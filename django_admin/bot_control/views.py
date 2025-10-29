@@ -763,23 +763,27 @@ def limits_dashboard(request):
     
     chart_filters = {'created_at__date__gte': start_date, 'created_at__date__lte': end_date}
     
-    deposits_chart = list(Request.objects.filter(
+    deposits_chart_all = list(Request.objects.filter(
         request_type='deposit',
         **chart_filters
     ).extra(
         select={'date': 'DATE(created_at)'}
     ).values('date').annotate(
         count=Count('id')
-    ).order_by('date')[-10:])  # Последние 10 записей
+    ).order_by('date'))
     
-    withdrawals_chart = list(Request.objects.filter(
+    withdrawals_chart_all = list(Request.objects.filter(
         request_type='withdraw',
         **chart_filters
     ).extra(
         select={'date': 'DATE(created_at)'}
     ).values('date').annotate(
         count=Count('id')
-    ).order_by('date')[-10:])  # Последние 10 записей
+    ).order_by('date'))
+    
+    # Берем последние 10 записей
+    deposits_chart = deposits_chart_all[-10:] if len(deposits_chart_all) > 10 else deposits_chart_all
+    withdrawals_chart = withdrawals_chart_all[-10:] if len(withdrawals_chart_all) > 10 else withdrawals_chart_all
 
     def format_chart_date(date_str):
         if isinstance(date_str, str):
