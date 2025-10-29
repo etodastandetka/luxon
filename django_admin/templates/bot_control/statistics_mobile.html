@@ -203,10 +203,6 @@ select.form-control:focus {
             <div class="stat-value" id="conversion-rate">0%</div>
             <div class="stat-label">Конверсия</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value" id="active-users">0</div>
-            <div class="stat-label">Активных</div>
-        </div>
     </div>
 </div>
 
@@ -316,7 +312,6 @@ function updateGeneralStats(stats) {
     document.getElementById('avg-deposit').textContent = `${formatAmount(stats.avg_deposit || 0)} KGS`;
     document.getElementById('avg-withdrawal').textContent = `${formatAmount(stats.avg_withdrawal || 0)} KGS`;
     document.getElementById('conversion-rate').textContent = `${stats.conversion_rate || 0}%`;
-    document.getElementById('active-users').textContent = stats.active_users || 0;
 }
 
 function updateBookmakerStats(bookmakers) {
