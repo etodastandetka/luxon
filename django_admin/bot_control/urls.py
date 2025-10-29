@@ -22,8 +22,6 @@ urlpatterns = [
     
     # Управление ботом
     path('bot-management/', views.bot_management, name='bot_management'),
-    path('bot-management-v2/', views.bot_management_v2, name='bot_management_v2'),
-    path('bot-management-fixed/', views.bot_management_fixed, name='bot_management_fixed'),
     
     # Детали транзакций и заявок
     path('transactions/<int:trans_id>/', views_deposits.transaction_detail, name='transaction_detail'),

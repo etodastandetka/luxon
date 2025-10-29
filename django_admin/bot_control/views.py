@@ -35,14 +35,6 @@ def bot_management(request):
     """Страница управления ботом - все настройки в одном месте"""
     return render(request, 'bot_control/bot_management.html')
 
-def bot_management_v2(request):
-    """Альтернативная страница управления ботом для тестирования"""
-    return render(request, 'bot_control/bot_management_v2.html')
-
-def bot_management_fixed(request):
-    """Исправленная страница управления ботом без кэширования"""
-    return render(request, 'bot_control/bot_management_fixed.html')
-
 def statistics(request):
     """Страница статистики"""
     return render(request, 'bot_control/statistics_mobile.html')
