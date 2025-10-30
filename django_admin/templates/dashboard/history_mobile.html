@@ -352,6 +352,7 @@
 {% block extra_js %}
 <script>
 let currentTab = 'all';
+const userIdParam = new URLSearchParams(location.search).get('user_id');
 
 // Возвращает URL иконки банка по известным реальным файлам в static/images
 function getBankIconUrl(bankStr){
@@ -372,7 +373,9 @@ function getBankIconUrl(bankStr){
 // Функция для загрузки реальных транзакций
 function displayRealTransactions() {
     // Получаем данные из Django view
-    fetch('/api/transaction-history/')
+    const base = '/api/transaction-history/';
+    const url = userIdParam ? `${base}?user_id=${encodeURIComponent(userIdParam)}` : base;
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.transactions) {
@@ -544,9 +547,12 @@ async function loadTransactions() {
     try {
         // Маппим значения вкладок в ожидаемые API: deposit/withdraw
         const typeParam = currentTab === 'deposits' ? 'deposit' : (currentTab === 'withdrawals' ? 'withdraw' : '');
-        const url = currentTab === 'all'
-            ? '{% url "dashboard:api_transaction_history" %}'
-            : `{% url "dashboard:api_transaction_history" %}?type=${typeParam}`;
+        let url = '{% url "dashboard:api_transaction_history" %}';
+        const qs = new URLSearchParams();
+        if (typeParam) qs.set('type', typeParam);
+        if (userIdParam) qs.set('user_id', userIdParam);
+        const qsStr = qs.toString();
+        if (qsStr) url += `?${qsStr}`;
         
         console.log('Loading transactions for tab:', currentTab, 'URL:', url);
         
