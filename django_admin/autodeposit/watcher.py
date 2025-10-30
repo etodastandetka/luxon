@@ -23,14 +23,19 @@ from typing import Optional, Tuple
 
 # Импорт парсера с резервом на разные пути импорта
 try:
-    from .parsers import parse_demirbank_email  # пакетный относительный импорт (предпочтительно)
+    # Явный путь в рамках проекта
+    from django_admin.autodeposit.parsers import parse_demirbank_email
 except Exception:
     try:
-        from autodeposit.parsers import parse_demirbank_email  # абсолютный импорт, если пакет виден как autodeposit
+        # Пакетный относительный импорт, если модуль загружен как autodeposit.watcher
+        from .parsers import parse_demirbank_email
     except Exception:
-        # Последняя попытка: динамический импорт по модулю
-        import importlib
-        parse_demirbank_email = importlib.import_module('autodeposit.parsers').parse_demirbank_email
+        try:
+            # Абсолютный короткий импорт
+            from autodeposit.parsers import parse_demirbank_email
+        except Exception:
+            import importlib
+            parse_demirbank_email = importlib.import_module('django_admin.autodeposit.parsers').parse_demirbank_email
 
 logger = logging.getLogger(__name__)
 
