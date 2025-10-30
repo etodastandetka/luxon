@@ -627,18 +627,23 @@ def api_transaction_history(request):
         
         print(f"🔄 Django API: Получен запрос истории транзакций, user_id={user_id}, type={request_type}")
         
-        # Если user_id не указан, возвращаем все транзакции
-        if not user_id:
-            print("🔄 Django API: user_id не указан, возвращаем все транзакции")
-            transactions = Request.objects.all().order_by('-created_at')[:100]
-        else:
+        # БЕЗОПАСНО: выбираем только существующие столбцы, чтобы избежать ошибок миграций
+        base_qs = Request.objects.all().only(
+            'id', 'user_id', 'account_id', 'username', 'first_name', 'last_name',
+            'request_type', 'amount', 'status', 'bookmaker', 'bank', 'phone',
+            'created_at', 'processed_at'
+        )
+        if user_id:
             print(f"🔄 Django API: Фильтруем по user_id={user_id}")
-            transactions = Request.objects.filter(user_id=user_id).order_by('-created_at')[:50]
-        
-        # Дополнительная фильтрация по типу
+            base_qs = base_qs.filter(user_id=user_id)
+        else:
+            print("🔄 Django API: user_id не указан, возвращаем все транзакции")
+
         if request_type:
-            transactions = transactions.filter(request_type=request_type)
-        
+            base_qs = base_qs.filter(request_type=request_type)
+
+        transactions = list(base_qs.order_by('-created_at')[: (50 if user_id else 100)])
+
         transaction_list = []
         for tx in transactions:
             # Формируем имя пользователя
