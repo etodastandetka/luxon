@@ -324,15 +324,15 @@
 
 <!-- Фильтры транзакций -->
 <div class="tabs-container">
-    <div class="tab active" onclick="switchTab('all')">
+    <div class="tab active" onclick="switchTab('all', event)">
         <i class="fas fa-list"></i>
         <span>Все</span>
     </div>
-    <div class="tab" onclick="switchTab('deposits')">
+    <div class="tab" onclick="switchTab('deposits', event)">
         <i class="fas fa-arrow-down"></i>
         <span>Пополнения</span>
     </div>
-    <div class="tab" onclick="switchTab('withdrawals')">
+    <div class="tab" onclick="switchTab('withdrawals', event)">
         <i class="fas fa-arrow-up"></i>
         <span>Выводы</span>
     </div>
@@ -518,12 +518,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 30000);
 });
 
-function switchTab(tab) {
+function switchTab(tab, evt) {
     // Убираем активный класс со всех табов
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     
     // Добавляем активный класс к выбранному табу
-    event.target.closest('.tab').classList.add('active');
+    if (evt && evt.target) {
+        evt.target.closest('.tab').classList.add('active');
+    }
     
     currentTab = tab;
     
@@ -540,9 +542,11 @@ function switchTab(tab) {
 
 async function loadTransactions() {
     try {
-        const url = currentTab === 'all' 
+        // Маппим значения вкладок в ожидаемые API: deposit/withdraw
+        const typeParam = currentTab === 'deposits' ? 'deposit' : (currentTab === 'withdrawals' ? 'withdraw' : '');
+        const url = currentTab === 'all'
             ? '{% url "dashboard:api_transaction_history" %}'
-            : `{% url "dashboard:api_transaction_history" %}?type=${currentTab}`;
+            : `{% url "dashboard:api_transaction_history" %}?type=${typeParam}`;
         
         console.log('Loading transactions for tab:', currentTab, 'URL:', url);
         
