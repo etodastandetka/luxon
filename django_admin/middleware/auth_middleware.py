@@ -35,6 +35,8 @@ class AuthMiddleware:
             '/api/requisites/',  # API для получения реквизитов (альтернативный путь)
             '/api/payment/',
             '/api/generate-qr/',
+            # Поиск поступлений (детали заявки)
+            '/bot/api/payments/search/',
         ]
         
         # Проверяем, является ли путь публичным
