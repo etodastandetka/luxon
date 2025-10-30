@@ -154,12 +154,21 @@ def create_request(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
-@require_http_methods(["POST", "PUT", "PATCH"])
+@require_http_methods(["GET", "POST", "PUT", "PATCH"])
 def update_request_status(request, request_id):
     """
     Обновление статуса заявки
     """
     try:
+        # GET: вернуть текущий статус
+        if request.method == 'GET':
+            try:
+                from bot_control.models import Request
+                req = Request.objects.get(id=request_id)
+                return JsonResponse({'success': True, 'status': req.status})
+            except Exception:
+                return JsonResponse({'success': False, 'error': 'Request not found'}, status=404)
+
         data = json.loads(request.body)
         new_status = data.get('status')
         
