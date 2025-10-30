@@ -582,6 +582,10 @@ def api_search_payments(request):
         })
         
     except Exception as e:
+        # Если таблица еще не создана (миграция не применена), возвращаем пустой список,
+        # чтобы UI продолжал работать до выполнения миграций.
+        if 'no such table' in str(e).lower() and 'incoming_payments' in str(e).lower():
+            return JsonResponse({'success': True, 'payments': [], 'count': 0})
         logger.error(f"Error searching payments: {str(e)}", exc_info=True)
         return JsonResponse({'error': str(e)}, status=500)
 
