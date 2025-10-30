@@ -21,7 +21,16 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
-from .parsers import parse_demirbank_email
+# Импорт парсера с резервом на разные пути импорта
+try:
+    from .parsers import parse_demirbank_email  # пакетный относительный импорт (предпочтительно)
+except Exception:
+    try:
+        from autodeposit.parsers import parse_demirbank_email  # абсолютный импорт, если пакет виден как autodeposit
+    except Exception:
+        # Последняя попытка: динамический импорт по модулю
+        import importlib
+        parse_demirbank_email = importlib.import_module('autodeposit.parsers').parse_demirbank_email
 
 logger = logging.getLogger(__name__)
 
