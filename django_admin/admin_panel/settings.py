@@ -6,6 +6,10 @@ from django.http import HttpResponse
 # Корневая папка Django-проекта (django_admin/)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Добавляем сам каталог Django-проекта (django_admin/) в PYTHONPATH, чтобы видеть локальные пакеты
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 # Добавляем корень всего репо (bets/) в PYTHONPATH, чтобы видеть пакет bot/
 PROJECT_ROOT = BASE_DIR.parent  # c:\Users\...\bets
 if str(PROJECT_ROOT) not in sys.path:
