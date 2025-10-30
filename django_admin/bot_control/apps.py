@@ -28,7 +28,9 @@ class BotControlConfig(AppConfig):
 
         try:
             from django.conf import settings
-            from .autodeposit.watcher import AutoDepositWatcher
+            # Важно: модуль watcher находится в приложении django_admin/autodeposit
+            # Используем абсолютный импорт
+            from autodeposit.watcher import AutoDepositWatcher
             import asyncio
 
             db_path = str(getattr(settings, 'BOT_DATABASE_PATH', '') or '')
