@@ -95,7 +95,7 @@ class AutoDepositWatcher:
                 logger.warning("AutoDepositWatcher stop timeout")
 
     def _get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        # env has priority
+        """ENV first, then SQLite; if unavailable, return default without noise."""
         env_key = key.upper()
         if env_key in os.environ:
             return os.environ.get(env_key)
@@ -108,18 +108,28 @@ class AutoDepositWatcher:
             if row and row[0] is not None:
                 return str(row[0])
         except Exception as e:
-            logger.error(f"AutoDepositWatcher: cannot read setting {key}: {e}")
+            if 'no such table' not in str(e).lower():
+                logger.debug(f"AutoDepositWatcher: settings fallback for {key}: {e}")
         return default
 
     def _get_requisite_credentials(self) -> Tuple[Optional[str], Optional[str]]:
-        """Return (email, password) from active requisite in bot DB, if available."""
+        """Возвращает (email, password) из активного реквизита напрямую из BOT_DATABASE_PATH."""
         try:
-            # Lazy import to avoid circulars
-            from ..qr_utils import ensure_requisites_table, _bot_db_path
-            import sqlite3
-            ensure_requisites_table()
-            conn = sqlite3.connect(_bot_db_path())
+            from django.conf import settings as dj_settings
+            db_path = str(getattr(dj_settings, 'BOT_DATABASE_PATH', '') or self.db_path)
+            conn = sqlite3.connect(db_path)
             cur = conn.cursor()
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS requisites (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    value TEXT NOT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 0,
+                    name TEXT,
+                    email TEXT,
+                    password TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
             cur.execute('SELECT email, password FROM requisites WHERE is_active = 1 LIMIT 1')
             row = cur.fetchone()
             conn.close()
@@ -140,13 +150,8 @@ class AutoDepositWatcher:
                     continue
 
                 host = self._get_setting('autodeposit_imap') or DEFAULT_IMAP_HOST
-                user = self._get_setting('autodeposit_email')
-                password = self._get_setting('autodeposit_password')
-                # Fallback to active requisite credentials if not provided in settings
-                if not user or not password:
-                    rq_email, rq_password = self._get_requisite_credentials()
-                    user = user or rq_email
-                    password = password or rq_password
+                # email/password только из активного реквизита
+                user, password = self._get_requisite_credentials()
                 # Infer host for common providers if missing
                 if not host and user:
                     try:
