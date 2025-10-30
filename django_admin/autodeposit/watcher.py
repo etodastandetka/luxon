@@ -39,6 +39,12 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
+# Defaults for IMAP (Timeweb)
+DEFAULT_IMAP_HOST = 'imap.timeweb.ru'
+DEFAULT_IMAP_FOLDER = 'INBOX'
+DEFAULT_IMAP_BANK = 'DEMIRBANK'
+DEFAULT_INTERVAL_SEC = 60
+
 # Глобальный экземпляр watcher для внешнего использования
 _global_watcher_instance = None
 
@@ -128,12 +134,12 @@ class AutoDepositWatcher:
     async def _run_loop(self):
         while not self._stop_event.is_set():
             try:
-                enabled = self._get_setting('autodeposit_enabled', '0')
+                enabled = self._get_setting('autodeposit_enabled', '1')
                 if str(enabled) != '1':
                     await asyncio.sleep(30)
                     continue
 
-                host = self._get_setting('autodeposit_imap')
+                host = self._get_setting('autodeposit_imap') or DEFAULT_IMAP_HOST
                 user = self._get_setting('autodeposit_email')
                 password = self._get_setting('autodeposit_password')
                 # Fallback to active requisite credentials if not provided in settings
@@ -154,9 +160,9 @@ class AutoDepositWatcher:
                     except Exception:
                         pass
 
-                folder = self._get_setting('autodeposit_folder', 'INBOX')
-                bank = 'DEMIRBANK'
-                interval = int(self._get_setting('autodeposit_interval_sec', '60') or '60')
+                folder = self._get_setting('autodeposit_folder', DEFAULT_IMAP_FOLDER)
+                bank = DEFAULT_IMAP_BANK
+                interval = int(self._get_setting('autodeposit_interval_sec', str(DEFAULT_INTERVAL_SEC)) or str(DEFAULT_INTERVAL_SEC))
                 use_idle = str(self._get_setting('autodeposit_idle', '1')) == '1'
                 keepalive_sec = int(self._get_setting('autodeposit_keepalive_sec', '60') or '60')
 
@@ -303,12 +309,12 @@ class AutoDepositWatcher:
 
     def check_mailbox_now(self):
         """Публичный метод для немедленной проверки почты (используется при создании заявки)"""
-        enabled = self._get_setting('autodeposit_enabled', '0')
+        enabled = self._get_setting('autodeposit_enabled', '1')
         if str(enabled) != '1':
             logger.debug("AutoDepositWatcher: disabled, skipping immediate check")
             return
 
-        host = self._get_setting('autodeposit_imap')
+        host = self._get_setting('autodeposit_imap') or DEFAULT_IMAP_HOST
         user = self._get_setting('autodeposit_email')
         password = self._get_setting('autodeposit_password')
         # Fallback to active requisite credentials if not provided in settings
@@ -330,8 +336,8 @@ class AutoDepositWatcher:
             except Exception:
                 pass
 
-        folder = self._get_setting('autodeposit_folder', 'INBOX')
-        bank = 'DEMIRBANK'
+        folder = self._get_setting('autodeposit_folder', DEFAULT_IMAP_FOLDER)
+        bank = DEFAULT_IMAP_BANK
 
         if not (host and user and password):
             logger.warning("AutoDepositWatcher: IMAP credentials are not set for immediate check")
