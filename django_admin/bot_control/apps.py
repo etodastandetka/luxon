@@ -36,8 +36,11 @@ class BotControlConfig(AppConfig):
                     sys.path.insert(0, base_dir)
             except Exception:
                 pass
-            # Теперь импортируем watcher из пакета autodeposit
-            from autodeposit.watcher import AutoDepositWatcher
+            # Теперь импортируем watcher из явного пути проекта
+            try:
+                from django_admin.autodeposit.watcher import AutoDepositWatcher
+            except Exception:
+                from autodeposit.watcher import AutoDepositWatcher
             import asyncio
 
             db_path = str(getattr(settings, 'BOT_DATABASE_PATH', '') or '')
