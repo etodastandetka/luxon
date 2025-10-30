@@ -809,10 +809,7 @@
                 <i class="fas fa-sliders-h"></i>
                 <span>Лимиты</span>
             </a>
-            <a href="{% url 'bot_control:bot_management' %}" class="nav-item {% if request.resolver_match.url_name == 'bot_management' %}active{% endif %}">
-                <i class="fas fa-cog"></i>
-                <span>Настройки</span>
-            </a>
+            {# Удалено: пункт "Настройки" из нижнего меню по просьбе #}
             <a href="{% url 'dashboard:menu' %}" class="nav-item {% if request.resolver_match.url_name == 'menu' %}active{% endif %}">
                 <i class="fas fa-bars"></i>
                 <span>Меню</span>
