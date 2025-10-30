@@ -587,11 +587,6 @@
                 <span>Управление</span>
                 {% if request.resolver_match.url_name == 'bot_management' %}<div class="nav-dot"></div>{% endif %}
             </a>
-            <a href="{% url 'bot_control:referral_management' %}" class="nav-item {% if request.resolver_match.url_name == 'referral_management' %}active{% endif %}">
-                <i class="fas fa-users"></i>
-                <span>Рефералы</span>
-                {% if request.resolver_match.url_name == 'referral_management' %}<div class="nav-dot"></div>{% endif %}
-            </a>
             <a href="#" class="nav-item" onclick="toggleMenu()">
                 <i class="fas fa-bars"></i>
                 <span>Меню</span>

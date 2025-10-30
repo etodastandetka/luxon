@@ -12,9 +12,9 @@ import os
 from django.conf import settings
 from datetime import datetime, timedelta
 
-def referral_management(request):
-    """Страница управления реферальной системой"""
-    return render(request, 'bot_control/referral_management.html')
+# def referral_management(request):
+#     """Страница управления реферальной системой"""
+#     return render(request, 'bot_control/referral_management.html')
 
 @csrf_exempt
 @require_http_methods(["GET"])

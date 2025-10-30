@@ -8,9 +8,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
 
-def referral_management(request):
-    """Страница управления реферальной системой"""
-    return render(request, 'bot_control/referral_management.html')
+# def referral_management(request):
+#     """Страница управления реферальной системой"""
+#     return render(request, 'bot_control/referral_management.html')
 
 @csrf_exempt
 @require_http_methods(["GET"])
