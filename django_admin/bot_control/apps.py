@@ -28,8 +28,15 @@ class BotControlConfig(AppConfig):
 
         try:
             from django.conf import settings
-            # Важно: модуль watcher находится в приложении django_admin/autodeposit
-            # Используем абсолютный импорт
+            # Убедимся, что BASE_DIR (django_admin/) в sys.path, чтобы импортировать пакет autodeposit
+            try:
+                import sys
+                base_dir = str(getattr(settings, 'BASE_DIR', ''))
+                if base_dir and base_dir not in sys.path:
+                    sys.path.insert(0, base_dir)
+            except Exception:
+                pass
+            # Теперь импортируем watcher из пакета autodeposit
             from autodeposit.watcher import AutoDepositWatcher
             import asyncio
 
