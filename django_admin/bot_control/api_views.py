@@ -650,6 +650,21 @@ def api_transaction_history(request):
             elif tx.first_name:
                 user_display_name = tx.first_name
             
+            # Безопасно достаем status_detail из metadata, если поле есть и валидно
+            status_detail_value = None
+            try:
+                if getattr(tx, 'status_detail', None):
+                    status_detail_value = tx.status_detail
+                elif hasattr(tx, 'metadata') and getattr(tx, 'metadata', None):
+                    meta = getattr(tx, 'metadata', '{}') or '{}'
+                    if isinstance(meta, str):
+                        meta_json = json.loads(meta)
+                    else:
+                        meta_json = meta
+                    status_detail_value = meta_json.get('status_detail')
+            except Exception:
+                status_detail_value = None
+
             transaction_list.append({
                 'id': tx.id,
                 'user_id': tx.user_id,  # Telegram ID
@@ -661,7 +676,7 @@ def api_transaction_history(request):
                 'type': tx.request_type,
                 'amount': float(tx.amount) if tx.amount else 0,
                 'status': tx.status,
-                'status_detail': getattr(tx, 'status_detail', None) or (json.loads(getattr(tx, 'metadata', '{}') or '{}').get('status_detail') if hasattr(tx, 'metadata') and getattr(tx, 'metadata', None) else None),
+                'status_detail': status_detail_value,
                 'bookmaker': tx.bookmaker or '',
                 'bank': tx.bank or '',
                 'phone': tx.phone or '',
@@ -679,7 +694,10 @@ def api_transaction_history(request):
     except Exception as e:
         print(f"❌ Django API: Ошибка получения истории транзакций: {str(e)}")
         logger.error(f"Error getting transaction history: {str(e)}")
-        return JsonResponse({'error': str(e)}, status=500)
+        # Если таблица ещё не создана или иная проблемная ситуация — не ломаем UI
+        if 'no such table' in str(e).lower() and 'request' in str(e).lower():
+            return JsonResponse({'success': True, 'transactions': []})
+        return JsonResponse({'success': False, 'transactions': [], 'error': str(e)}, status=500)
 
 @csrf_exempt
 @require_http_methods(["POST"])
