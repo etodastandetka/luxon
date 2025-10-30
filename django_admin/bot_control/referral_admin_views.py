@@ -17,10 +17,10 @@ def referral_history(request):
     if bookmaker:
         qs = qs.filter(bookmaker=bookmaker)
 
-    return render(request, 'referral/history.html', {
-        'items': qs[:500],
-        'status': status or '',
-        'bookmaker': bookmaker or '',
-        'status_choices': [('pending','Ожидает'), ('processing','В обработке'), ('completed','Выплачено'), ('rejected','Отклонено')],
-        'bookmaker_choices': [('1xbet','1XBET'), ('1win','1WIN'), ('melbet','MELBET'), ('mostbet','MOSTBET')],
-    })
+    # return render(request, 'referral/history.html', {
+    #     'items': qs[:500],
+    #     'status': status or '',
+    #     'bookmaker': bookmaker or '',
+    #     'status_choices': [('pending','Ожидает'), ('processing','В обработке'), ('completed','Выплачено'), ('rejected','Отклонено')],
+    #     'bookmaker_choices': [('1xbet','1XBET'), ('1win','1WIN'), ('melbet','MELBET'), ('mostbet','MOSTBET')],
+    # })

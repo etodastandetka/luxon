@@ -39,7 +39,7 @@ urlpatterns = [
     path('api/save-chat-message/', views_deposits.save_chat_message, name='save_chat_message'),
     
     # Новые страницы
-    path('referral/', referral_views.referral_management, name='referral_management'),
+    # path('referral/', referral_views.referral_management, name='referral_management'),
     path('autodeposit/', autodeposit_views.autodeposit_settings, name='autodeposit_settings'),
     path('statistics/', views.statistics, name='statistics'),
     path('broadcast/', views.broadcast_message, name='broadcast_message'),
