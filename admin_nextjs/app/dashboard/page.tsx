@@ -200,6 +200,11 @@ export default function DashboardPage() {
         return '-'
       }
       
+      // Если заявка отклонена или отклонена вручную, не показываем "Авто пополнение"
+      if (request.status === 'rejected' || request.status === 'declined') {
+        return request.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+      }
+      
       // Определяем тип транзакции для отображения
       if (request.status_detail?.includes('autodeposit') || request.status === 'autodeposit_success' || request.status === 'auto_completed') {
         return 'Авто пополнение'
