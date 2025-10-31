@@ -25,6 +25,33 @@ export async function GET(
       )
     }
 
+    // Получаем все транзакции по accountId (ID казино), если он есть
+    // Включаем все заявки с таким же accountId и букмекером от всех пользователей
+    let casinoTransactions: any[] = []
+    if (requestData.accountId) {
+      casinoTransactions = await prisma.request.findMany({
+        where: {
+          accountId: requestData.accountId,
+          bookmaker: requestData.bookmaker, // Также фильтруем по букмекеру для точности
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100, // Лимит на количество транзакций
+        select: {
+          id: true,
+          userId: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          amount: true,
+          requestType: true,
+          status: true,
+          createdAt: true,
+          bookmaker: true,
+          accountId: true,
+        },
+      })
+    }
+
     return NextResponse.json(
       createApiResponse({
         ...requestData,
@@ -33,6 +60,11 @@ export async function GET(
         incomingPayments: requestData.incomingPayments.map(p => ({
           ...p,
           amount: p.amount.toString(),
+        })),
+        casinoTransactions: casinoTransactions.map(t => ({
+          ...t,
+          userId: t.userId.toString(),
+          amount: t.amount ? t.amount.toString() : null,
         })),
       })
     )
