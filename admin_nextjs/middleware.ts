@@ -12,8 +12,22 @@ export function middleware(request: NextRequest) {
   const publicApiRoutes = ['/api/auth', '/api/payment', '/api/transaction-history', '/api/public']
   const isPublicApiRoute = publicApiRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
+  // Add CORS headers for public API routes
+  if (isPublicApiRoute && request.method === 'OPTIONS') {
+    const response = new NextResponse(null, { status: 200 })
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    return response
+  }
+
   if (isPublicRoute || isPublicApiRoute) {
-    return NextResponse.next()
+    const response = NextResponse.next()
+    // Add CORS headers
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    return response
   }
 
   // Protect API routes

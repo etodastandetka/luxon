@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 // Публичный эндпоинт для получения списка реквизитов (без авторизации)
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const requisites = await prisma.botRequisite.findMany({
@@ -28,13 +39,17 @@ export async function GET(request: NextRequest) {
       active_id: activeId,
     }
 
-    return NextResponse.json(response)
+    const res = NextResponse.json(response)
+    res.headers.set('Access-Control-Allow-Origin', '*')
+    return res
   } catch (error: any) {
     console.error('Requisites list API error:', error)
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, error: error.message || 'Failed to fetch requisites' },
       { status: 500 }
     )
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    return errorResponse
   }
 }
 

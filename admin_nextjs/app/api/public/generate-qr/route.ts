@@ -3,13 +3,34 @@ import { prisma } from '@/lib/prisma'
 import { createHash } from 'crypto'
 
 // Публичный эндпоинт для генерации QR кода (без авторизации)
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    const amount = body.amount || 0
+    const amount = parseFloat(String(body.amount || 0))
     const playerId = body.playerId || ''
     const bank = body.bank || 'demirbank'
+    
+    // Валидация
+    if (isNaN(amount) || amount <= 0) {
+      const errorResponse = NextResponse.json(
+        { success: false, error: 'Invalid amount' },
+        { status: 400 }
+      )
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
     
     // Получаем активный реквизит
     let requisite = null
@@ -32,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Конвертируем сумму в центы и форматируем
-    const amountCents = Math.round(parseFloat(String(amount)) * 100)
+    const amountCents = Math.round(amount * 100)
     const amountStr = amountCents.toString().padStart(5, '0')
     const amountLen = amountStr.length.toString().padStart(2, '0')
     
@@ -113,7 +134,7 @@ export async function POST(request: NextRequest) {
     const primaryBank = primaryBankMap[bank.toLowerCase()] || 'DemirBank'
     const primaryUrl = bankLinks[primaryBank] || bankLinks['DemirBank']
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       qr_hash: qrHash,
       primary_url: primaryUrl,
@@ -123,13 +144,17 @@ export async function POST(request: NextRequest) {
         deposits_enabled: true
       }
     })
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
     
   } catch (error: any) {
     console.error('Generate QR API error:', error)
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, error: error.message || 'Failed to generate QR code' },
       { status: 500 }
     )
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    return errorResponse
   }
 }
 

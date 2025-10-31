@@ -28,10 +28,10 @@ export const useBotSettings = () => {
         setError(null)
         
         const apiUrl = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:8081' 
+          ? 'http://localhost:3001' 
           : 'https://xendro.pro'
         
-        const response = await fetch(`${apiUrl}/api/bot-settings/`)
+        const response = await fetch(`${apiUrl}/api/public/payment-settings`)
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)

@@ -3,6 +3,17 @@ import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 
 // Публичный эндпоинт для получения настроек платежей (без авторизации)
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Получаем настройки из BotConfiguration
@@ -52,11 +63,13 @@ export async function GET(request: NextRequest) {
       maintenance_message: settingsMap.maintenance_message || 'Технические работы. Попробуйте позже.',
     }
 
-    return NextResponse.json(response)
+    const res = NextResponse.json(response)
+    res.headers.set('Access-Control-Allow-Origin', '*')
+    return res
   } catch (error: any) {
     console.error('Payment settings API error:', error)
     // Возвращаем настройки по умолчанию при ошибке
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       deposits: { enabled: true, banks: ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay'] },
       withdrawals: { enabled: true, banks: ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank'] },
@@ -69,6 +82,8 @@ export async function GET(request: NextRequest) {
       pause: false,
       maintenance_message: 'Технические работы. Попробуйте позже.',
     })
+    res.headers.set('Access-Control-Allow-Origin', '*')
+    return res
   }
 }
 
