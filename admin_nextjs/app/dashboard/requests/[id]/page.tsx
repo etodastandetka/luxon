@@ -57,7 +57,10 @@ export default function RequestDetailPage() {
 
   useEffect(() => {
     const requestId = Array.isArray(params.id) ? params.id[0] : params.id
-    if (!requestId) return
+    if (!requestId) {
+      setLoading(false)
+      return
+    }
 
     const abortController = new AbortController()
 
@@ -98,6 +101,27 @@ export default function RequestDetailPage() {
       abortController.abort()
     }
   }, [params.id])
+
+  // Закрываем меню при клике вне его
+  useEffect(() => {
+    if (!showMenu) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!isMountedRef.current) return
+      
+      const target = event.target as HTMLElement
+      if (!target.closest('.relative')) {
+        if (isMountedRef.current) {
+          setShowMenu(false)
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMenu])
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -221,36 +245,6 @@ export default function RequestDetailPage() {
     )
   }
 
-  const displayAmount = request.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
-  const isDeposit = request.requestType === 'deposit'
-  const userName = request.username 
-    ? `@${request.username}` 
-    : request.firstName 
-      ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
-      : `ID: ${request.userId}`
-  const displayName = request.firstName || request.username || `ID: ${request.userId}`
-
-  // Закрываем меню при клике вне его
-  useEffect(() => {
-    if (!showMenu) return
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!isMountedRef.current) return
-      
-      const target = event.target as HTMLElement
-      if (!target.closest('.relative')) {
-        if (isMountedRef.current) {
-          setShowMenu(false)
-        }
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showMenu])
-
   // Получаем все транзакции по accountId (ID казино) - используем useMemo для безопасного вычисления
   const transactions = useMemo(() => {
     if (!request || !request.casinoTransactions) return []
@@ -277,6 +271,15 @@ export default function RequestDetailPage() {
       }
     })
   }, [request])
+
+  const displayAmount = request?.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
+  const isDeposit = request?.requestType === 'deposit'
+  const userName = request?.username 
+    ? `@${request.username}` 
+    : request?.firstName 
+      ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
+      : request ? `ID: ${request.userId}` : ''
+  const displayName = request?.firstName || request?.username || (request ? `ID: ${request.userId}` : '')
 
   return (
     <div className="py-4">
