@@ -250,3 +250,209 @@ class IncomingPayment(models.Model):
     def amount_without_cents(self):
         """Возвращает сумму без копеек для поиска"""
         return int(float(self.amount))
+
+
+# ===== Модели для переноса из SQLite в PostgreSQL =====
+
+class BotUser(models.Model):
+    """Пользователь бота (из universal_bot.db -> users)"""
+    user_id = models.BigIntegerField(primary_key=True, db_column='user_id')
+    username = models.CharField(max_length=255, blank=True, null=True)
+    first_name = models.CharField(max_length=255, blank=True, null=True)
+    last_name = models.CharField(max_length=255, blank=True, null=True)
+    language = models.CharField(max_length=10, default='ru')
+    selected_bookmaker = models.CharField(max_length=50, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'users'
+        verbose_name = 'Пользователь бота'
+        verbose_name_plural = 'Пользователи бота'
+    
+    def __str__(self):
+        return f"User {self.user_id}: {self.username or self.first_name or 'Unknown'}"
+
+
+class BotUserData(models.Model):
+    """Данные пользователя (из universal_bot.db -> user_data)"""
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='user_data', db_column='user_id')
+    data_type = models.CharField(max_length=255, db_index=True)
+    data_value = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'user_data'
+        unique_together = [['user', 'data_type']]
+        verbose_name = 'Данные пользователя'
+        verbose_name_plural = 'Данные пользователей'
+    
+    def __str__(self):
+        return f"UserData {self.user.user_id}: {self.data_type}"
+
+
+class BotReferral(models.Model):
+    """Реферальная связь (из universal_bot.db -> referrals)"""
+    id = models.AutoField(primary_key=True)
+    referrer = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='referrals_made', db_column='referrer_id')
+    referred = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='referral_from', db_column='referred_id', unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'referrals'
+        verbose_name = 'Реферальная связь'
+        verbose_name_plural = 'Реферальные связи'
+        indexes = [
+            models.Index(fields=['referrer']),
+            models.Index(fields=['referred']),
+        ]
+    
+    def __str__(self):
+        return f"Referral: {self.referrer.user_id} -> {self.referred.user_id}"
+
+
+class BotReferralEarning(models.Model):
+    """Реферальный заработок (из universal_bot.db -> referral_earnings)"""
+    id = models.AutoField(primary_key=True)
+    referrer = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='referral_earnings', db_column='referrer_id')
+    referred = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='earnings_generated', db_column='referred_id')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    commission_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    bookmaker = models.CharField(max_length=50, blank=True, null=True)
+    status = models.CharField(max_length=20, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'referral_earnings'
+        verbose_name = 'Реферальный заработок'
+        verbose_name_plural = 'Реферальные заработки'
+        indexes = [
+            models.Index(fields=['referrer', 'status']),
+            models.Index(fields=['referred']),
+        ]
+    
+    def __str__(self):
+        return f"Earning: {self.referrer.user_id} <- {self.referred.user_id}: {self.commission_amount}"
+
+
+class BotTransaction(models.Model):
+    """Транзакция пользователя (из universal_bot.db -> transactions)"""
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='transactions', db_column='user_id')
+    bookmaker = models.CharField(max_length=50, blank=True, null=True)
+    trans_type = models.CharField(max_length=50, db_index=True)  # deposit, withdraw, etc.
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        db_table = 'transactions'
+        verbose_name = 'Транзакция'
+        verbose_name_plural = 'Транзакции'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"Transaction {self.id}: User {self.user.user_id} - {self.trans_type} {self.amount}"
+
+
+class BotSetting(models.Model):
+    """Настройка бота (из universal_bot.db -> bot_settings)"""
+    key = models.CharField(max_length=100, primary_key=True, db_column='key')
+    value = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'bot_settings'
+        verbose_name = 'Настройка бота (SQLite)'
+        verbose_name_plural = 'Настройки бота (SQLite)'
+    
+    def __str__(self):
+        return f"{self.key}: {self.value}"
+
+
+class BotRequisite(models.Model):
+    """Реквизит (из universal_bot.db -> requisites)"""
+    id = models.AutoField(primary_key=True)
+    value = models.TextField()  # QR хеш или номер счета
+    is_active = models.BooleanField(default=False, db_index=True)
+    name = models.CharField(max_length=255, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    password = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'requisites'
+        verbose_name = 'Реквизит'
+        verbose_name_plural = 'Реквизиты'
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['is_active'],
+                condition=models.Q(is_active=True),
+                name='unique_active_requisite'
+            )
+        ]
+    
+    def __str__(self):
+        return f"Requisite {self.id}: {self.name or self.value[:20]} ({'active' if self.is_active else 'inactive'})"
+
+
+class BotReferralTop(models.Model):
+    """Топ рефералов (из universal_bot.db -> referral_top)"""
+    id = models.AutoField(primary_key=True)
+    user = models.OneToOneField(BotUser, on_delete=models.CASCADE, related_name='referral_top_entry', db_column='user_id')
+    total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_referrals = models.IntegerField(default=0)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'referral_top'
+        verbose_name = 'Топ реферал'
+        verbose_name_plural = 'Топ рефералов'
+        ordering = ['-total_earnings']
+    
+    def __str__(self):
+        return f"Top {self.user.user_id}: {self.total_referrals} referrals, {self.total_earnings} earned"
+
+
+class BotTopPayment(models.Model):
+    """Выплата топ рефералу (из universal_bot.db -> top_payments)"""
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='top_payments', db_column='user_id')
+    position = models.IntegerField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'top_payments'
+        verbose_name = 'Выплата топ рефералу'
+        verbose_name_plural = 'Выплаты топ рефералам'
+    
+    def __str__(self):
+        return f"TopPayment {self.id}: User {self.user.user_id} - Position {self.position} - {self.amount}"
+
+
+class BotMonthlyPayment(models.Model):
+    """Месячная выплата (из universal_bot.db -> monthly_payments)"""
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='monthly_payments', db_column='user_id')
+    position = models.IntegerField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'monthly_payments'
+        verbose_name = 'Месячная выплата'
+        verbose_name_plural = 'Месячные выплаты'
+    
+    def __str__(self):
+        return f"MonthlyPayment {self.id}: User {self.user.user_id} - {self.amount}"

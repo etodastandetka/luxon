@@ -113,29 +113,18 @@ class AutoDepositWatcher:
         return default
 
     def _get_requisite_credentials(self) -> Tuple[Optional[str], Optional[str]]:
-        """Возвращает (email, password) из активного реквизита напрямую из BOT_DATABASE_PATH."""
+        """Возвращает (email, password) из активного реквизита из PostgreSQL через Django ORM."""
         try:
-            from django.conf import settings as dj_settings
-            db_path = str(getattr(dj_settings, 'BOT_DATABASE_PATH', '') or self.db_path)
-            conn = sqlite3.connect(db_path)
-            cur = conn.cursor()
-            cur.execute('''
-                CREATE TABLE IF NOT EXISTS requisites (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    value TEXT NOT NULL,
-                    is_active INTEGER NOT NULL DEFAULT 0,
-                    name TEXT,
-                    email TEXT,
-                    password TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            cur.execute('SELECT email, password FROM requisites WHERE is_active = 1 LIMIT 1')
-            row = cur.fetchone()
-            conn.close()
-            if row:
-                email = (row[0] or '').strip() or None
-                password = (row[1] or '').strip() or None
+            # Импортируем только внутри функции, чтобы не было проблем при старте
+            from django.apps import apps
+            if not apps.ready:
+                return None, None
+            
+            from bot_control.models import BotRequisite
+            active_requisite = BotRequisite.objects.filter(is_active=True).first()
+            if active_requisite:
+                email = (active_requisite.email or '').strip() or None
+                password = (active_requisite.password or '').strip() or None
                 return email, password
         except Exception as e:
             logger.warning(f"AutoDepositWatcher: cannot get requisite credentials: {e}")
