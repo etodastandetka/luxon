@@ -265,50 +265,21 @@ def wallet(request):
     qr_codes = QRHash.objects.all()
     bank_wallets = BankWallet.objects.all().order_by('bank_name', '-is_active', '-created_at')
 
-    # Читаем реквизиты из bot/universal_bot.db
-    requisites = []
+    # Читаем реквизиты из PostgreSQL через Django ORM
     try:
-        # используем qr_utils.ensure_requisites_table для уверенности (best-effort)
-        try:
-            from bot.qr_utils import ensure_requisites_table
-            ensure_requisites_table()
-        except Exception:
-            pass
-
-        # Открываем соединение один раз и работаем с ним
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        # Локальный DDL на случай, если импорт не сработал
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS requisites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                name TEXT,
-                email TEXT,
-                password TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        # Читаем список
-        cur.execute('''
-            SELECT id, value, COALESCE(is_active,0), COALESCE(name,''), 
-                   COALESCE(email,''), COALESCE(password,''), COALESCE(created_at,'')
-            FROM requisites
-            ORDER BY id DESC
-        ''')
-        for rid, value, is_active, name, email, password, created_at in cur.fetchall():
-            requisites.append({
-                'id': rid,
-                'value': value,
-                'is_active': bool(is_active),
-                'name': name,
-                'email': email,
-                'password': password,
-                'created_at': created_at,
-            })
-        conn.close()
-    except Exception:
+        from bot_control.models import BotRequisite
+        requisites_list = BotRequisite.objects.all().order_by('-id')
+        requisites = [{
+            'id': req.id,
+            'value': req.value,
+            'is_active': req.is_active,
+            'name': req.name or '',
+            'email': req.email or '',
+            'password': req.password or '',
+            'created_at': req.created_at.isoformat() if req.created_at else '',
+        } for req in requisites_list]
+    except Exception as e:
+        logger.error(f"Error loading requisites: {e}", exc_info=True)
         requisites = []
     
     context = {
@@ -540,51 +511,28 @@ def api_update_amount(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 def api_requisites_list(request):
-    """GET: вернуть список реквизитов из bot/universal_bot.db
+    """GET: вернуть список реквизитов из PostgreSQL
     Ответ: {success: True, requisites: [{id, value, is_active, created_at}], active_id}
     """
     if request.method != 'GET':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     try:
-        # ensure table
-        try:
-            from bot.qr_utils import ensure_requisites_table
-            ensure_requisites_table()
-        except Exception:
-            pass
-
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS requisites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                name TEXT,
-                email TEXT,
-                password TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        cur.execute('''
-            SELECT id, value, COALESCE(is_active,0), COALESCE(created_at,'')
-            FROM requisites
-            ORDER BY is_active DESC, id DESC
-        ''')
+        from bot_control.models import BotRequisite
+        requisites_list = BotRequisite.objects.all().order_by('-is_active', '-id')
         items = []
         active_id = None
-        for rid, value, is_active, created_at in cur.fetchall():
-            if is_active and active_id is None:
-                active_id = rid
+        for req in requisites_list:
+            if req.is_active and active_id is None:
+                active_id = req.id
             items.append({
-                'id': rid,
-                'value': value,
-                'is_active': bool(is_active),
-                'created_at': created_at,
+                'id': req.id,
+                'value': req.value,
+                'is_active': req.is_active,
+                'created_at': req.created_at.isoformat() if req.created_at else '',
             })
-        conn.close()
         return JsonResponse({'success': True, 'requisites': items, 'active_id': active_id})
     except Exception as e:
+        logger.error(f"Error getting requisites list: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -595,6 +543,7 @@ def api_requisites(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     try:
+        from bot_control.models import BotRequisite
         data = json.loads(request.body or '{}')
         value = str(data.get('value', '')).strip()
         name = str(data.get('name', '') or '').strip()
@@ -612,34 +561,20 @@ def api_requisites(request):
         if not password or len(password) < 6:
             return JsonResponse({'success': False, 'error': 'Пароль обязателен и должен быть не менее 6 символов'}, status=400)
 
-        # ensure table
-        try:
-            from bot.qr_utils import ensure_requisites_table
-            ensure_requisites_table()
-        except Exception:
-            pass
-
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS requisites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                name TEXT,
-                email TEXT,
-                password TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
+        # Если делаем активным, деактивируем все остальные
         if is_active:
-            cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
-        cur.execute('INSERT INTO requisites (value, is_active, name, email, password) VALUES (?, ?, ?, ?, ?)',
-                    (value, 1 if is_active else 0, name, email, password))
-        conn.commit()
-        conn.close()
+            BotRequisite.objects.filter(is_active=True).update(is_active=False)
+        
+        BotRequisite.objects.create(
+            value=value,
+            is_active=is_active,
+            name=name or None,
+            email=email or None,
+            password=password or None,
+        )
         return JsonResponse({'success': True})
     except Exception as e:
+        logger.error(f"Error creating requisite: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -649,66 +584,39 @@ def api_requisites_set_active(request, rid: int):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     try:
-        # ensure table
-        try:
-            from bot.qr_utils import ensure_requisites_table
-            ensure_requisites_table()
-        except Exception:
-            pass
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS requisites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                name TEXT,
-                email TEXT,
-                password TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
+        from bot_control.models import BotRequisite, QRHash, BankWallet
         # Сделать выбранный реквизит единственным активным
-        cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
-        cur.execute('UPDATE requisites SET is_active = 1 WHERE id = ?', (rid,))
-        conn.commit()
-        conn.close()
+        BotRequisite.objects.filter(is_active=True).update(is_active=False)
+        try:
+            requisite = BotRequisite.objects.get(id=rid)
+            requisite.is_active = True
+            requisite.save()
+        except BotRequisite.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Реквизит не найден'}, status=404)
 
         # Взаимоисключаемость: выключаем все QR и банковские кошельки
-        try:
-            from bot_control.models import QRHash, BankWallet
-            QRHash.objects.filter(is_active=True).update(is_active=False)
-            BankWallet.objects.filter(is_active=True).update(is_active=False)
-        except Exception:
-            pass
+        QRHash.objects.filter(is_active=True).update(is_active=False)
+        BankWallet.objects.filter(is_active=True).update(is_active=False)
         return JsonResponse({'success': True})
     except Exception as e:
+        logger.error(f"Error setting active requisite: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
 def api_requisites_delete(request, rid: int):
-    """DELETE: удалить реквизит из SQLite таблицы requisites."""
+    """DELETE: удалить реквизит из PostgreSQL."""
     if request.method != 'DELETE':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     try:
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS requisites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                name TEXT,
-                email TEXT,
-                password TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        cur.execute('DELETE FROM requisites WHERE id = ?', (rid,))
-        conn.commit()
-        conn.close()
-        return JsonResponse({'success': True})
+        from bot_control.models import BotRequisite
+        try:
+            requisite = BotRequisite.objects.get(id=rid)
+            requisite.delete()
+            return JsonResponse({'success': True})
+        except BotRequisite.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Реквизит не найден'}, status=404)
     except Exception as e:
+        logger.error(f"Error deleting requisite: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @csrf_exempt

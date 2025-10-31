@@ -249,36 +249,18 @@ def generate_qr_api(request):
         amount = data.get('amount', 0)
         player_id = data.get('playerId', '')
         
-        # Получаем активный реквизит из таблицы requisites в SQLite
+        # Получаем активный реквизит из PostgreSQL через Django ORM
         requisite = None
         try:
-            import sqlite3
-            from django.conf import settings as dj_settings
-            
-            db_path = str(dj_settings.BOT_DATABASE_PATH)
-            if not db_path:
-                raise ValueError("BOT_DATABASE_PATH не настроен")
-            
-            import os
-            if not os.path.exists(db_path):
-                logger.warning(f"Database file not found: {db_path}")
-                raise FileNotFoundError(f"Database file not found: {db_path}")
-            
-            conn = sqlite3.connect(db_path)
-            cur = conn.cursor()
-            # Проверяем, есть ли таблица requisites
-            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='requisites'")
-            if cur.fetchone():
-                cur.execute('SELECT value FROM requisites WHERE is_active = 1 LIMIT 1')
-                row = cur.fetchone()
-                if row:
-                    requisite = row[0]
-                    logger.info(f"Using active requisite from DB: {requisite}")
-            conn.close()
+            from bot_control.models import BotRequisite
+            active_requisite = BotRequisite.objects.filter(is_active=True).first()
+            if active_requisite:
+                requisite = active_requisite.value
+                logger.info(f"Using active requisite from PostgreSQL: {requisite}")
         except Exception as e:
-            logger.error(f"Error fetching requisite from SQLite: {str(e)}", exc_info=True)
+            logger.error(f"Error fetching requisite from PostgreSQL: {str(e)}", exc_info=True)
         
-        # Если не нашли в SQLite, пробуем получить из BotConfiguration
+        # Если не нашли в PostgreSQL, пробуем получить из BotConfiguration (fallback)
         if not requisite:
             try:
                 from bot_control.models import BotConfiguration
@@ -438,65 +420,25 @@ def api_bot_settings(request):
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_requisites_list(request):
-    """API для получения списка реквизитов из SQLite базы бота"""
+    """API для получения списка реквизитов из PostgreSQL через Django ORM"""
     try:
-        import sqlite3
-        from django.conf import settings as dj_settings
-        
-        # Получаем путь к базе данных бота
-        db_path = str(dj_settings.BOT_DATABASE_PATH)
-        if not db_path:
-            logger.error("BOT_DATABASE_PATH не настроен")
-            return JsonResponse({'error': 'BOT_DATABASE_PATH not configured'}, status=500)
-        
-        import os
-        if not os.path.exists(db_path):
-            logger.warning(f"Database file not found: {db_path}")
-            return JsonResponse({
-                'success': True,
-                'requisites': [],
-                'active_id': None
-            })
-        
-        # Создаем таблицу, если её нет
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS requisites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                name TEXT,
-                email TEXT,
-                password TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Получаем все реквизиты
-        cur.execute('''
-            SELECT id, value, COALESCE(is_active, 0), COALESCE(name, ''), COALESCE(created_at, '')
-            FROM requisites
-            ORDER BY is_active DESC, id DESC
-        ''')
+        from bot_control.models import BotRequisite
+        requisites_list = BotRequisite.objects.all().order_by('-is_active', '-id')
         
         requisites = []
         active_id = None
         
-        for row in cur.fetchall():
-            rid, value, is_active, name, created_at = row
-            if is_active and active_id is None:
-                active_id = rid
+        for req in requisites_list:
+            if req.is_active and active_id is None:
+                active_id = req.id
             
             requisites.append({
-                'id': rid,
-                'name': name or f'Реквизит {rid}',
-                'value': value,
-                'is_active': bool(is_active),
-                'created_at': created_at
+                'id': req.id,
+                'name': req.name or f'Реквизит {req.id}',
+                'value': req.value,
+                'is_active': req.is_active,
+                'created_at': req.created_at.isoformat() if req.created_at else ''
             })
-        
-        conn.close()
         
         logger.info(f"Found {len(requisites)} requisites, active_id: {active_id}")
         
