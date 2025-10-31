@@ -9,7 +9,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 
 # Настройки
-BOT_TOKEN = "7796879640:AAFKi7SFuqNJKUv8hapAYFeeJsFN3OCJF0Y"
+BOT_TOKEN = "8372920134:AAG9VbvRvu-7Ikug_fwMtc-5OzxmevKTfSw"
 WEBSITE_URL = "https://luxservice.online"
 
 # Настройка логирования
