@@ -23,7 +23,7 @@ async function getCasinoConfig(bookmaker: string) {
           hash: config.hash,
           cashierpass: config.cashierpass,
           login: config.login,
-          cashdeskid: parseInt(String(config.cashdeskid)),
+          cashdeskid: String(config.cashdeskid),
         }
       }
     }
@@ -50,7 +50,7 @@ async function getCasinoConfig(bookmaker: string) {
           hash: config.hash,
           cashierpass: config.cashierpass,
           login: config.login,
-          cashdeskid: parseInt(String(config.cashdeskid)),
+          cashdeskid: String(config.cashdeskid),
         }
       }
     }
