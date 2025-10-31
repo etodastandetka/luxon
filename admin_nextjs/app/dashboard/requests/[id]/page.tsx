@@ -19,6 +19,7 @@ interface RequestDetail {
   status_detail: string | null
   bank: string | null
   phone: string | null
+  photoFileUrl: string | null
   createdAt: string
   updatedAt: string
   processedAt: string | null
@@ -603,6 +604,29 @@ export default function RequestDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Фото чека (если есть) */}
+      {request.photoFileUrl && (
+        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
+          <h3 className="text-base font-semibold text-white mb-3">Фото чека</h3>
+          <div className="relative w-full flex justify-center">
+            <img
+              src={request.photoFileUrl}
+              alt="Фото чека об оплате"
+              className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
+              onError={(e) => {
+                // Если фото не загрузилось, скрываем блок
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const parent = target.closest('.bg-gray-800')
+                if (parent) {
+                  (parent as HTMLElement).style.display = 'none'
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Кнопки действий для отложенных и ожидающих заявок */}
       {(request.status === 'deferred' || request.status === 'pending') && (

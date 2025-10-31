@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       telegram_username,
       telegram_first_name,
       telegram_last_name,
+      receipt_photo, // base64 строка фото чека
     } = body
 
     // Определяем user_id (пробуем разные варианты)
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
         bank,
         phone,
         status: 'pending',
+        photoFileUrl: receipt_photo || null, // Сохраняем base64 фото чека
       },
     })
 
