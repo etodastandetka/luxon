@@ -40,6 +40,10 @@ export default function RequestDetailPage() {
   const [searchAmount, setSearchAmount] = useState('')
   const [exactAmount, setExactAmount] = useState(false)
   const [processedOnly, setProcessedOnly] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [showSearchModal, setShowSearchModal] = useState(false)
+  const [searchId, setSearchId] = useState('')
+  const [deferring, setDeferring] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -92,6 +96,8 @@ export default function RequestDetailPage() {
         return 'bg-green-500 text-black'
       case 'rejected':
         return 'bg-red-500 text-white'
+      case 'deferred':
+        return 'bg-orange-500 text-white'
       default:
         return 'bg-gray-700 text-gray-300'
     }
@@ -106,9 +112,56 @@ export default function RequestDetailPage() {
         return 'Успешно'
       case 'rejected':
         return 'Отклонено'
+      case 'deferred':
+        return 'Отложено'
       default:
         return status
     }
+  }
+
+  const deferRequest = async () => {
+    if (!request) return
+    
+    setDeferring(true)
+    try {
+      const response = await fetch(`/api/requests/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'deferred' }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setRequest(data.data)
+        setShowMenu(false)
+        alert('Заявка отложена')
+      } else {
+        alert(data.error || 'Ошибка при откладывании заявки')
+      }
+    } catch (error) {
+      console.error('Failed to defer request:', error)
+      alert('Ошибка при откладывании заявки')
+    } finally {
+      setDeferring(false)
+    }
+  }
+
+  const handleSearchById = () => {
+    if (!searchId.trim()) {
+      alert('Введите ID заявки')
+      return
+    }
+
+    const id = parseInt(searchId.trim())
+    if (isNaN(id)) {
+      alert('ID должен быть числом')
+      return
+    }
+
+    router.push(`/dashboard/requests/${id}`)
+    setShowSearchModal(false)
+    setSearchId('')
   }
 
   if (loading) {
@@ -155,6 +208,18 @@ export default function RequestDetailPage() {
     description: p.description || 'Перевод по QR'
   })) || []
 
+  // Закрываем меню при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (showMenu && !target.closest('.relative')) {
+        setShowMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showMenu])
+
   return (
     <div className="py-4">
       {/* Хедер с навигацией */}
@@ -182,16 +247,83 @@ export default function RequestDetailPage() {
               )}
             </div>
           </Link>
-          <Link
-            href={`/dashboard/users/${request.userId}/chat`}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
-          >
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-          </Link>
+          <div className="flex items-center space-x-1">
+            <Link
+              href={`/dashboard/users/${request.userId}/chat`}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </Link>
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+              >
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-lg z-50">
+                  <button
+                    onClick={deferRequest}
+                    disabled={deferring}
+                    className="w-full text-left px-4 py-3 text-sm text-white hover:bg-gray-700 rounded-t-xl transition-colors disabled:opacity-50"
+                  >
+                    {deferring ? 'Откладывание...' : 'Отложить'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false)
+                      setShowSearchModal(true)
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-white hover:bg-gray-700 rounded-b-xl transition-colors"
+                  >
+                    Поиск по ID
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Модальное окно поиска по ID */}
+      {showSearchModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl p-6 mx-4 w-full max-w-md border border-gray-700">
+            <h3 className="text-xl font-bold text-white mb-4">Поиск по ID</h3>
+            <input
+              type="text"
+              placeholder="Введите ID заявки"
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearchById()}
+              className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500 mb-4"
+              autoFocus
+            />
+            <div className="flex space-x-2">
+              <button
+                onClick={handleSearchById}
+                className="flex-1 px-4 py-3 bg-green-500 hover:bg-green-600 text-black rounded-lg font-medium transition-colors"
+              >
+                Найти
+              </button>
+              <button
+                onClick={() => {
+                  setShowSearchModal(false)
+                  setSearchId('')
+                }}
+                className="px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Основная карточка с номером заявки и суммой */}
       <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-lg">
