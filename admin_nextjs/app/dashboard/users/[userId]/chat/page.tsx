@@ -34,14 +34,19 @@ export default function ChatPage() {
   useEffect(() => {
     if (params.userId) {
       fetchChatData()
-      // Обновляем чат каждые 3 секунды
-      const interval = setInterval(fetchChatData, 3000)
+      // Обновляем чат каждые 5 секунд
+      const interval = setInterval(() => {
+        fetchChatData()
+      }, 5000)
       return () => clearInterval(interval)
     }
   }, [params.userId])
 
   useEffect(() => {
-    scrollToBottom()
+    // Используем setTimeout для корректного скролла после рендера
+    setTimeout(() => {
+      scrollToBottom()
+    }, 100)
   }, [messages])
 
   const scrollToBottom = () => {
@@ -60,18 +65,20 @@ export default function ChatPage() {
       const userData = await userRes.json()
       const photoData = await photoRes.json()
 
-      if (chatData.success) {
-        setMessages(chatData.data.messages.reverse()) // Разворачиваем, чтобы старые были сверху
+      if (chatData.success && chatData.data.messages) {
+        // Разворачиваем, чтобы старые были сверху
+        const reversedMessages = [...chatData.data.messages].reverse()
+        setMessages(reversedMessages)
       }
 
-      if (userData.success) {
+      if (userData.success && userData.data) {
         const userInfo = userData.data
         setUser({
-          userId: userInfo.userId,
+          userId: userInfo.userId || params.userId?.toString() || '',
           username: userInfo.username,
           firstName: userInfo.firstName,
           lastName: userInfo.lastName,
-          photoUrl: photoData.success ? photoData.data.photoUrl : null,
+          photoUrl: photoData.success && photoData.data?.photoUrl ? photoData.data.photoUrl : null,
         })
       }
     } catch (error) {
@@ -141,9 +148,9 @@ export default function ChatPage() {
   const displayName = user.firstName || user.username || `ID: ${user.userId}`
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full">
       {/* Хедер */}
-      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700 flex-shrink-0">
         <button
           onClick={() => router.back()}
           className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
@@ -167,15 +174,15 @@ export default function ChatPage() {
               <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
             </div>
           )}
-          <div className="flex-1">
-            <p className="text-sm font-medium text-white">{displayName}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">{displayName}</p>
             {user.username && (
-              <p className="text-xs text-gray-400">@{user.username}</p>
+              <p className="text-xs text-gray-400 truncate">@{user.username}</p>
             )}
             <p className="text-xs text-green-500">онлайн</p>
           </div>
         </Link>
-        <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+        <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
           </svg>
@@ -183,7 +190,7 @@ export default function ChatPage() {
       </div>
 
       {/* Сообщения */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-green-950 to-green-900">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-transparent">
         {messages.length === 0 ? (
           <div className="text-center text-gray-400 py-12">
             <p>Нет сообщений</p>
@@ -202,7 +209,7 @@ export default function ChatPage() {
                     : 'bg-gray-700 text-white'
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.messageText}</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{message.messageText}</p>
                 <p className={`text-xs mt-1 ${message.direction === 'out' ? 'text-gray-800' : 'text-gray-400'}`}>
                   {formatDate(message.createdAt)}
                 </p>
@@ -214,9 +221,9 @@ export default function ChatPage() {
       </div>
 
       {/* Поле ввода */}
-      <div className="p-4 bg-gray-800 border-t border-gray-700">
+      <div className="p-4 bg-gray-800 border-t border-gray-700 flex-shrink-0">
         <div className="flex items-center space-x-2">
-          <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+          <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
             </svg>
@@ -225,7 +232,7 @@ export default function ChatPage() {
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
             placeholder="Введите сообщение..."
             className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             disabled={sending}
@@ -233,7 +240,7 @@ export default function ChatPage() {
           <button
             onClick={sendMessage}
             disabled={sending || !newMessage.trim()}
-            className="p-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
           >
             <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
