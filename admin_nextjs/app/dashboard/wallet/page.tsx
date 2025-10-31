@@ -15,7 +15,6 @@ export default function WalletPage() {
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [showActiveSelector, setShowActiveSelector] = useState(false)
   const [editing, setEditing] = useState<Wallet | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -165,7 +164,6 @@ export default function WalletPage() {
       const data = await response.json()
       if (data.success) {
         fetchWallets()
-        setShowActiveSelector(false)
       } else {
         alert(data.error || 'Ошибка при активации кошелька')
       }
@@ -176,23 +174,6 @@ export default function WalletPage() {
   }
 
   const activeWallet = wallets.find(w => w.isActive)
-
-  // Закрываем выпадающий список при клике вне его
-  useEffect(() => {
-    if (!showActiveSelector) return
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-      if (!target.closest('.relative')) {
-        setShowActiveSelector(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showActiveSelector])
 
   if (loading) {
     return (
@@ -219,71 +200,36 @@ export default function WalletPage() {
         </button>
       </div>
 
-      {/* Всплывающий блок выбора активного кошелька */}
-      <div className="relative mb-4">
-        <button
-          onClick={() => setShowActiveSelector(!showActiveSelector)}
-          className="w-full bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm flex items-center justify-between"
-        >
-          <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${activeWallet ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-            <div className="text-left">
-              <p className="text-sm text-gray-400">Активный кошелек</p>
-              <p className="text-base font-bold text-white">
-                {activeWallet ? (activeWallet.name || `Кошелек #${activeWallet.id}`) : 'Не выбран'}
-              </p>
-            </div>
-          </div>
-          <svg 
-            className={`w-5 h-5 text-gray-400 transition-transform ${showActiveSelector ? 'rotate-180' : ''}`}
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
+      {/* Выбор активного кошелька */}
+      {wallets.length > 0 && (
+        <div className="mb-4 bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 backdrop-blur-sm">
+          <label className="block text-sm font-medium text-white mb-2">
+            Активный кошелек
+          </label>
+          <select
+            value={activeWallet?.id || ''}
+            onChange={(e) => {
+              const id = parseInt(e.target.value)
+              if (id) handleSetActive(id)
+            }}
+            className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center',
+              backgroundSize: '16px',
+              paddingRight: '40px'
+            }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {/* Выпадающий список кошельков */}
-        {showActiveSelector && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 rounded-xl border border-gray-700 shadow-xl z-50 max-h-64 overflow-y-auto">
-            {wallets.length === 0 ? (
-              <div className="p-4 text-center text-gray-400 text-sm">
-                Нет кошельков
-              </div>
-            ) : (
-              <div className="py-2">
-                {wallets.map((wallet) => (
-                  <button
-                    key={wallet.id}
-                    onClick={() => handleSetActive(wallet.id)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center justify-between ${
-                      wallet.isActive ? 'bg-gray-700 bg-opacity-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${wallet.isActive ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">
-                          {wallet.name || `Кошелек #${wallet.id}`}
-                        </p>
-                        <p className="text-xs text-gray-400 font-mono truncate">
-                          {wallet.value}
-                        </p>
-                      </div>
-                    </div>
-                    {wallet.isActive && (
-                      <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+            <option value="">Выберите активный кошелек</option>
+            {wallets.map((wallet) => (
+              <option key={wallet.id} value={wallet.id}>
+                {wallet.name || `Кошелек #${wallet.id}`} - {wallet.value.slice(0, 4)}****{wallet.value.slice(-4)} {wallet.isActive ? '(Активен)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {wallets.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
