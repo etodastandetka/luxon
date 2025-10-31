@@ -21,7 +21,8 @@ body {
 
 /* Мобильный контейнер */
 .mobile-container {
-  width: 100%;
+  max-width: 414px;
+  margin: 0 auto;
   height: 100vh;
   background: transparent;
   position: relative;
