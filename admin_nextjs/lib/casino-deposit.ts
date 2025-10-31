@@ -93,6 +93,9 @@ export async function depositCashdeskAPI(
   }
 
   try {
+    // userId здесь - это ID казино (accountId), не Telegram ID
+    console.log(`[Cashdesk Deposit] Bookmaker: ${bookmaker}, Casino User ID: ${userId}, Amount: ${amount}`)
+    
     const confirm = generateConfirm(userId, hash, isMelbet)
     const sign = isMelbet
       ? generateSignForDepositMelbet(userId, amount, hash, cashierpass, cashdeskid)
@@ -101,6 +104,15 @@ export async function depositCashdeskAPI(
     const url = `${baseUrl}Deposit/${userId}/Add`
     const authHeader = generateBasicAuth(login, cashierpass)
 
+    const requestBody = {
+      cashdeskId: String(cashdeskid),
+      lng: 'ru',
+      summa: amount,
+      confirm: confirm,
+    }
+
+    console.log(`[Cashdesk Deposit] URL: ${url}, Request body:`, requestBody)
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -108,15 +120,23 @@ export async function depositCashdeskAPI(
         'Authorization': authHeader,
         'sign': sign,
       },
-      body: JSON.stringify({
-        cashdeskId: String(cashdeskid),
-        lng: 'ru',
-        summa: amount,
-        confirm: confirm,
-      }),
+      body: JSON.stringify(requestBody),
     })
 
-    const data = await response.json()
+    const responseText = await response.text()
+    let data: any
+    try {
+      data = JSON.parse(responseText)
+    } catch (e) {
+      console.error(`[Cashdesk Deposit] Failed to parse response: ${responseText}`)
+      return {
+        success: false,
+        message: `Invalid response from ${bookmaker} API: ${responseText.substring(0, 100)}`,
+        data: { rawResponse: responseText, status: response.status },
+      }
+    }
+
+    console.log(`[Cashdesk Deposit] Response status: ${response.status}, Data:`, data)
 
     if (response.ok && data.success) {
       return {
@@ -128,11 +148,11 @@ export async function depositCashdeskAPI(
 
     return {
       success: false,
-      message: data.message || data.error || 'Failed to deposit balance',
+      message: data.message || data.error || data.Message || `Failed to deposit balance (Status: ${response.status})`,
       data,
     }
   } catch (error: any) {
-    console.error(`Deposit error for ${bookmaker}:`, error)
+    console.error(`[Cashdesk Deposit] Error for ${bookmaker}, userId: ${userId}:`, error)
     return {
       success: false,
       message: error.message || 'Failed to deposit balance',
@@ -163,6 +183,9 @@ export async function depositMostbetAPI(
   }
 
   try {
+    // userId здесь - это ID казино (accountId), не Telegram ID
+    console.log(`[Mostbet Deposit] Casino Player ID: ${userId}, Amount: ${amount}`)
+    
     // Получаем timestamp
     const now = new Date()
     const timestamp = now.toISOString().slice(0, 19).replace('T', ' ')
@@ -170,12 +193,13 @@ export async function depositMostbetAPI(
     // Формируем путь и тело запроса
     const cashpointIdStr = String(cashpointId)
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/player/deposit`
-    const requestBody = JSON.stringify({
+    const requestBodyData = {
       brandId: 1,
-      playerId: String(userId),
+      playerId: String(userId), // ID игрока в казино
       amount: amount,
       currency: 'KGS',
-    })
+    }
+    const requestBody = JSON.stringify(requestBodyData)
 
     // API key может быть с префиксом или без
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
@@ -190,6 +214,9 @@ export async function depositMostbetAPI(
       .digest('hex')
 
     const url = `${baseUrl}${path}`
+    
+    console.log(`[Mostbet Deposit] URL: ${url}, Request body:`, requestBodyData)
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -203,7 +230,20 @@ export async function depositMostbetAPI(
       body: requestBody,
     })
 
-    const data = await response.json()
+    const responseText = await response.text()
+    let data: any
+    try {
+      data = JSON.parse(responseText)
+    } catch (e) {
+      console.error(`[Mostbet Deposit] Failed to parse response: ${responseText}`)
+      return {
+        success: false,
+        message: `Invalid response from Mostbet API: ${responseText.substring(0, 100)}`,
+        data: { rawResponse: responseText, status: response.status },
+      }
+    }
+
+    console.log(`[Mostbet Deposit] Response status: ${response.status}, Data:`, data)
 
     if (response.ok) {
       return {
@@ -215,11 +255,11 @@ export async function depositMostbetAPI(
 
     return {
       success: false,
-      message: data.message || data.error || 'Failed to deposit balance',
+      message: data.message || data.error || data.Message || `Failed to deposit balance (Status: ${response.status})`,
       data,
     }
   } catch (error: any) {
-    console.error('Mostbet deposit error:', error)
+    console.error(`[Mostbet Deposit] Error for playerId: ${userId}:`, error)
     return {
       success: false,
       message: error.message || 'Failed to deposit balance',
