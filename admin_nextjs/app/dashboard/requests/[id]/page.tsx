@@ -48,28 +48,38 @@ export default function RequestDetailPage() {
 
   useEffect(() => {
     if (params.id) {
+      let isMounted = true
+      
+      const fetchRequest = async () => {
+        try {
+          const response = await fetch(`/api/requests/${params.id}`)
+          const data = await response.json()
+
+          console.log('📋 Request detail data:', data)
+
+          if (!isMounted) return
+
+          if (data.success) {
+            setRequest(data.data)
+          } else {
+            console.error('❌ Failed to fetch request:', data.error)
+          }
+        } catch (error) {
+          console.error('❌ Failed to fetch request:', error)
+        } finally {
+          if (isMounted) {
+            setLoading(false)
+          }
+        }
+      }
+      
       fetchRequest()
+      
+      return () => {
+        isMounted = false
+      }
     }
   }, [params.id])
-
-  const fetchRequest = async () => {
-    try {
-      const response = await fetch(`/api/requests/${params.id}`)
-      const data = await response.json()
-
-      console.log('📋 Request detail data:', data)
-
-      if (data.success) {
-        setRequest(data.data)
-      } else {
-        console.error('❌ Failed to fetch request:', data.error)
-      }
-    } catch (error) {
-      console.error('❌ Failed to fetch request:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -203,15 +213,16 @@ export default function RequestDetailPage() {
 
   // Закрываем меню при клике вне его
   useEffect(() => {
+    if (!showMenu) return
+
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement
-      if (showMenu && !target.closest('.relative')) {
+      if (!target.closest('.relative')) {
         setShowMenu(false)
       }
     }
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+
+    document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
