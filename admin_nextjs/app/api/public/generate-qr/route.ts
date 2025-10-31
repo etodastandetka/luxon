@@ -40,16 +40,22 @@ export async function POST(request: NextRequest) {
       })
       if (activeRequisite) {
         requisite = activeRequisite.value
-        console.log(`Using active requisite: ${requisite}`)
+        console.log(`✅ Using active requisite: ${activeRequisite.name || `#${activeRequisite.id}`} - ${requisite.slice(0, 4)}****${requisite.slice(-4)}`)
+      } else {
+        console.error('❌ No active requisite found in database')
       }
     } catch (error) {
       console.error('Error fetching requisite:', error)
     }
     
-    // Если не нашли реквизит, используем fallback
+    // Если не нашли реквизит, возвращаем ошибку
     if (!requisite) {
-      requisite = '1234567890123456'
-      console.warn('No active requisite found, using fallback')
+      const errorResponse = NextResponse.json(
+        { success: false, error: 'No active wallet configured. Please select an active wallet in admin panel.' },
+        { status: 400 }
+      )
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
     }
     
     // Конвертируем сумму в центы и форматируем
