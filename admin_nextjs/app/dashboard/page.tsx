@@ -327,6 +327,9 @@ export default function DashboardPage() {
                 ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
                 : `ID: ${request.userId}`
             const transactionType = getTransactionType(request)
+            const isDeferred = request.status === 'deferred'
+            // Если отложено и "Авто пополнение", показываем минус
+            const showMinus = isDeferred && transactionType === 'Авто пополнение'
 
             const isPending = request.status === 'pending'
             
@@ -390,10 +393,10 @@ export default function DashboardPage() {
                       {/* Сумма */}
                       <p
                         className={`text-base font-bold ${
-                          isDeposit ? 'text-green-500' : 'text-red-500'
+                          showMinus ? 'text-red-500' : (isDeposit ? 'text-green-500' : 'text-red-500')
                         }`}
                       >
-                        {isDeposit ? '+' : '-'}
+                        {showMinus ? '-' : (isDeposit ? '+' : '-')}
                         {request.amount ? parseFloat(request.amount).toLocaleString('ru-RU', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
