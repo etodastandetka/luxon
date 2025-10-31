@@ -2,6 +2,95 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+def create_table_and_indexes_if_needed(apps, schema_editor):
+    """Создаем таблицу и индексы только если таблицы нет"""
+    with schema_editor.connection.cursor() as cursor:
+        # Проверяем существование таблицы
+        if schema_editor.connection.vendor == 'sqlite':
+            cursor.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='incoming_payments'
+            """)
+        else:
+            # Для PostgreSQL
+            cursor.execute("""
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = 'incoming_payments'
+            """)
+        
+        table_exists = cursor.fetchone() is not None
+    
+    # Если таблица уже существует, просто пропускаем создание
+    if table_exists:
+        return
+    
+    # Создаем таблицу через SQL
+    with schema_editor.connection.cursor() as cursor:
+        if schema_editor.connection.vendor == 'sqlite':
+            cursor.execute("""
+                CREATE TABLE incoming_payments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    amount NUMERIC(10, 2) NOT NULL,
+                    bank VARCHAR(50),
+                    payment_date TIMESTAMP NOT NULL,
+                    notification_text TEXT,
+                    is_processed BOOLEAN NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL,
+                    updated_at TIMESTAMP NOT NULL,
+                    request_id INTEGER REFERENCES bot_control_request(id) ON DELETE SET NULL
+                )
+            """)
+        else:
+            # PostgreSQL
+            cursor.execute("""
+                CREATE TABLE incoming_payments (
+                    id BIGSERIAL PRIMARY KEY,
+                    amount NUMERIC(10, 2) NOT NULL,
+                    bank VARCHAR(50),
+                    payment_date TIMESTAMP NOT NULL,
+                    notification_text TEXT,
+                    is_processed BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMP NOT NULL,
+                    updated_at TIMESTAMP NOT NULL,
+                    request_id INTEGER REFERENCES bot_control_request(id) ON DELETE SET NULL
+                )
+            """)
+    
+    # Создаем индексы
+    with schema_editor.connection.cursor() as cursor:
+        if schema_editor.connection.vendor == 'sqlite':
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS incoming_amount_processed_idx 
+                ON incoming_payments(amount, is_processed)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS incoming_payment_date_idx 
+                ON incoming_payments(payment_date)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS incoming_bank_processed_idx 
+                ON incoming_payments(bank, is_processed)
+            """)
+        else:
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS incoming_amount_processed_idx 
+                ON incoming_payments(amount, is_processed)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS incoming_payment_date_idx 
+                ON incoming_payments(payment_date)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS incoming_bank_processed_idx 
+                ON incoming_payments(bank, is_processed)
+            """)
+
+
+def reverse_migration(apps, schema_editor):
+    """Обратная миграция - не удаляем таблицу, т.к. могут быть данные"""
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -9,6 +98,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Создаем модель в состоянии Django (для ORM)
         migrations.CreateModel(
             name='IncomingPayment',
             fields=[
@@ -27,17 +117,18 @@ class Migration(migrations.Migration):
                 'ordering': ['-payment_date', '-created_at'],
             },
         ),
-        migrations.AddIndex(
-            model_name='incomingpayment',
-            index=models.Index(fields=['amount', 'is_processed'], name='incoming_amount_processed_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='incomingpayment',
-            index=models.Index(fields=['payment_date'], name='incoming_payment_date_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='incomingpayment',
-            index=models.Index(fields=['bank', 'is_processed'], name='incoming_bank_processed_idx'),
+        # Используем SeparateDatabaseAndState - модель создается только в состоянии,
+        # а таблицу создаем условно через RunPython
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                # В состоянии Django ничего не делаем, модель уже создана выше
+            ],
+            database_operations=[
+                migrations.RunPython(
+                    create_table_and_indexes_if_needed,
+                    reverse_migration,
+                ),
+            ],
         ),
     ]
 
