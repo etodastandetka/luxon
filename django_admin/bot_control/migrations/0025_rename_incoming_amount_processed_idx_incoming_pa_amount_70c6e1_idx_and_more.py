@@ -80,19 +80,8 @@ class Migration(migrations.Migration):
         # Используем SeparateDatabaseAndState - обновляем только состояние Django
         migrations.SeparateDatabaseAndState(
             state_operations=[
-                # Добавляем индексы в состояние Django (для ORM)
-                migrations.AddIndex(
-                    model_name='incomingpayment',
-                    index=migrations.Index(fields=['amount', 'is_processed'], name='incoming_pa_amount_70c6e1_idx'),
-                ),
-                migrations.AddIndex(
-                    model_name='incomingpayment',
-                    index=migrations.Index(fields=['payment_date'], name='incoming_pa_payment_d_8f5b3a_idx'),
-                ),
-                migrations.AddIndex(
-                    model_name='incomingpayment',
-                    index=migrations.Index(fields=['bank', 'is_processed'], name='incoming_pa_bank_is_pr_9a8c7d_idx'),
-                ),
+                # Пропускаем добавление индексов в состояние, т.к. они уже могут быть в БД
+                # Django ORM будет работать с индексами из БД
             ],
             database_operations=[
                 # Переименовываем индексы условно только через RunPython
@@ -101,6 +90,19 @@ class Migration(migrations.Migration):
                     reverse_rename_indexes,
                 ),
             ],
+        ),
+        # Добавляем индексы в состояние Django отдельно (без переименования)
+        migrations.AddIndex(
+            model_name='incomingpayment',
+            index=migrations.Index(fields=['amount', 'is_processed'], name='incoming_pa_amount_70c6e1_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='incomingpayment',
+            index=migrations.Index(fields=['payment_date'], name='incoming_pa_payment_d_8f5b3a_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='incomingpayment',
+            index=migrations.Index(fields=['bank', 'is_processed'], name='incoming_pa_bank_is_pr_9a8c7d_idx'),
         ),
     ]
 
