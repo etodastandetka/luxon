@@ -30,16 +30,33 @@ export default function DashboardPage() {
       const params = new URLSearchParams()
       if (activeTab === 'pending') {
         params.append('status', 'pending')
+      } else if (activeTab === 'all') {
+        // Для "Оставленные" показываем заявки со статусами не pending
+        params.append('status', 'left') // Используем специальный статус или фильтруем на клиенте
       }
 
       const response = await fetch(`/api/requests?${params.toString()}`)
       const data = await response.json()
 
+      console.log('📋 Fetched requests data:', data)
+
       if (data.success) {
-        setRequests(data.data.requests || [])
+        let requestsList = data.data.requests || []
+        
+        // Для вкладки "Оставленные" фильтруем заявки со статусами не pending
+        if (activeTab === 'all') {
+          requestsList = requestsList.filter((req: Request) => req.status !== 'pending')
+        }
+        
+        console.log(`✅ Loaded ${requestsList.length} requests for tab: ${activeTab}`)
+        setRequests(requestsList)
+      } else {
+        console.error('❌ Failed to fetch requests:', data.error || data)
+        setRequests([])
       }
     } catch (error) {
-      console.error('Failed to fetch requests:', error)
+      console.error('❌ Failed to fetch requests:', error)
+      setRequests([])
     } finally {
       setLoading(false)
     }

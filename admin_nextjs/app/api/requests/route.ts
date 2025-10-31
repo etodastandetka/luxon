@@ -15,7 +15,15 @@ export async function GET(request: NextRequest) {
 
     const where: any = {}
     if (type) where.requestType = type
-    if (status) where.status = status
+    if (status && status !== 'left') {
+      // Статус 'left' не существует в БД, это специальный фильтр для UI
+      where.status = status
+    } else if (status === 'left') {
+      // Для "Оставленные" фильтруем все кроме pending
+      where.status = { not: 'pending' }
+    }
+
+    console.log('📋 Requests API - Fetching requests:', { type, status, where, page, limit })
 
     const [requests, total] = await Promise.all([
       prisma.request.findMany({
@@ -27,10 +35,13 @@ export async function GET(request: NextRequest) {
       prisma.request.count({ where }),
     ])
 
+    console.log(`✅ Requests API - Found ${requests.length} requests (total: ${total})`)
+
     return NextResponse.json(
       createApiResponse({
         requests: requests.map(r => ({
           ...r,
+          userId: r.userId.toString(), // Преобразуем BigInt в строку
           amount: r.amount ? r.amount.toString() : null,
         })),
         pagination: {
