@@ -10,41 +10,83 @@ async function getCasinoConfig(bookmaker: string) {
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
   
   // Для 1xbet и Melbet нужны: hash, cashierpass, login, cashdeskid
-  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet')) {
-    const configKey = normalizedBookmaker.includes('1xbet') ? '1xbet_api_config' : 'melbet_api_config'
-    
+  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
+    // Сначала пробуем получить из БД
     const setting = await prisma.botConfiguration.findFirst({
-      where: { key: configKey },
+      where: { key: '1xbet_api_config' },
     })
 
-    if (!setting) {
-      return null
+    if (setting) {
+      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        return {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: parseInt(String(config.cashdeskid)),
+        }
+      }
     }
 
-    const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+    // Fallback на переменные окружения (как в casino-api.ts)
     return {
-      hash: config.hash || config.api_key,
-      cashierpass: config.cashierpass || config.password,
-      login: config.login || config.username,
-      cashdeskid: config.cashdeskid || config.cashdesk_id,
+      hash: process.env.XBET_HASH || process.env.ONEXBET_HASH || '',
+      cashierpass: process.env.XBET_CASHIERPASS || process.env.ONEXBET_CASHIERPASS || '',
+      login: process.env.XBET_LOGIN || process.env.ONEXBET_LOGIN || '',
+      cashdeskid: parseInt(process.env.XBET_CASHDESKID || process.env.ONEXBET_CASHDESKID || '0'),
+    }
+  }
+  
+  if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {
+    // Сначала пробуем получить из БД
+    const setting = await prisma.botConfiguration.findFirst({
+      where: { key: 'melbet_api_config' },
+    })
+
+    if (setting) {
+      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        return {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: parseInt(String(config.cashdeskid)),
+        }
+      }
+    }
+
+    // Fallback на переменные окружения (как в casino-api.ts)
+    return {
+      hash: process.env.MELBET_HASH || '',
+      cashierpass: process.env.MELBET_CASHIERPASS || '',
+      login: process.env.MELBET_LOGIN || '',
+      cashdeskid: parseInt(process.env.MELBET_CASHDESKID || '0'),
     }
   }
   
   // Для Mostbet нужны: api_key, secret, cashpoint_id
-  if (normalizedBookmaker.includes('mostbet')) {
+  if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
+    // Сначала пробуем получить из БД
     const setting = await prisma.botConfiguration.findFirst({
       where: { key: 'mostbet_api_config' },
     })
 
-    if (!setting) {
-      return null
+    if (setting) {
+      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+      if (config.api_key && config.secret && config.cashpoint_id) {
+        return {
+          api_key: config.api_key,
+          secret: config.secret,
+          cashpoint_id: parseInt(String(config.cashpoint_id)),
+        }
+      }
     }
 
-    const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+    // Fallback на переменные окружения (как в casino-api.ts)
     return {
-      api_key: config.api_key || config.apiKey,
-      secret: config.secret,
-      cashpoint_id: config.cashpoint_id || config.cashpointId,
+      api_key: process.env.MOSTBET_API_KEY || '',
+      secret: process.env.MOSTBET_SECRET || '',
+      cashpoint_id: parseInt(process.env.MOSTBET_CASHPOINT_ID || '0'),
     }
   }
 
