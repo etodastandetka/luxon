@@ -158,16 +158,16 @@ export default function RequestDetailPage() {
   return (
     <div className="py-4">
       {/* Хедер с навигацией */}
-      <div className="flex items-center justify-between mb-4 px-4">
-        <button
-          onClick={() => router.back()}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-        >
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
+      <div className="flex items-center mb-4 px-4">
         <div className="flex items-center space-x-2 flex-1 bg-gray-800 rounded-xl px-3 py-2 border border-gray-700">
+          <button
+            onClick={() => router.back()}
+            className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+          >
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
           <Link
             href={`/dashboard/users/${request.userId}`}
             className="flex items-center space-x-2 flex-1"
