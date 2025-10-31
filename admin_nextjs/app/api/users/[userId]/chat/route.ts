@@ -10,7 +10,16 @@ export async function GET(
   try {
     requireAuth(request)
 
-    const userId = BigInt(params.userId)
+    let userId: bigint
+    try {
+      userId = BigInt(params.userId)
+    } catch (e) {
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid user ID'),
+        { status: 400 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
 

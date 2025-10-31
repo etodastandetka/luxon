@@ -10,6 +10,17 @@ export async function GET(
     requireAuth(request)
 
     const userId = params.userId
+    
+    // Проверяем валидность userId
+    try {
+      BigInt(userId)
+    } catch (e) {
+      return NextResponse.json(
+        createApiResponse({ photoUrl: null }, 'Invalid user ID'),
+        { status: 400 }
+      )
+    }
+
     const botToken = process.env.BOT_TOKEN
 
     if (!botToken) {

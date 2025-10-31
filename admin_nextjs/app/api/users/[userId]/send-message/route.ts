@@ -10,7 +10,16 @@ export async function POST(
   try {
     requireAuth(request)
 
-    const userId = BigInt(params.userId)
+    let userId: bigint
+    try {
+      userId = BigInt(params.userId)
+    } catch (e) {
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid user ID'),
+        { status: 400 }
+      )
+    }
+
     const body = await request.json()
     const { message } = body
 
