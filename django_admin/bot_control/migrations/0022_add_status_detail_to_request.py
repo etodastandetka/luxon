@@ -4,10 +4,30 @@ from django.db import migrations, models
 def add_status_detail_if_needed(apps, schema_editor):
     """Добавляем поле status_detail только если его нет"""
     with schema_editor.connection.cursor() as cursor:
+        # Сначала проверяем существование таблицы
+        if schema_editor.connection.vendor == 'sqlite':
+            cursor.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='bot_control_request'
+            """)
+        else:
+            # Для PostgreSQL
+            cursor.execute("""
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = 'bot_control_request'
+            """)
+        
+        table_exists = cursor.fetchone() is not None
+        
+        # Если таблицы нет, пропускаем (она будет создана другой миграцией)
+        if not table_exists:
+            return
+        
         # Проверяем существование колонки
         if schema_editor.connection.vendor == 'sqlite':
             cursor.execute("PRAGMA table_info(bot_control_request)")
             columns = [row[1] for row in cursor.fetchall()]
+            column_exists = 'status_detail' in columns
         else:
             # Для PostgreSQL
             cursor.execute("""
@@ -16,9 +36,7 @@ def add_status_detail_if_needed(apps, schema_editor):
                 AND table_name = 'bot_control_request' 
                 AND column_name = 'status_detail'
             """)
-            columns = [row[0] for row in cursor.fetchall()]
-        
-        column_exists = 'status_detail' in columns if schema_editor.connection.vendor == 'sqlite' else len(columns) > 0
+            column_exists = cursor.fetchone() is not None
     
     # Если колонка уже существует, пропускаем
     if column_exists:
