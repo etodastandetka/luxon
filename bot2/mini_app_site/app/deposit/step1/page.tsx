@@ -19,9 +19,9 @@ export default function DepositStep1() {
     async function checkSettings() {
       try {
         const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:8081' 
+          ? 'http://localhost:3001' 
           : 'https://xendro.pro'
-        const res = await fetch(`${base}/bot/api/payment-settings/`, { cache: 'no-store' })
+        const res = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const data = await res.json()
         if (data && data.deposits) {
           setDepositsEnabled(data.deposits.enabled !== false)

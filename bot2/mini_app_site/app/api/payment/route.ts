@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://127.0.0.1:8081'
+const ADMIN_API_URL = process.env.ADMIN_API_URL || (process.env.NODE_ENV === 'production' ? 'https://xendro.pro' : 'http://localhost:3001')
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,8 +8,8 @@ export async function POST(request: NextRequest) {
     
     console.log('🔄 Next.js API: Получен запрос на создание заявки:', body)
     
-    // Проксируем запрос к Django API
-    const response = await fetch(`${DJANGO_API_URL}/bot/api/payment/`, {
+    // Проксируем запрос к админ-панели API
+    const response = await fetch(`${ADMIN_API_URL}/api/payment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -19,15 +19,25 @@ export async function POST(request: NextRequest) {
     
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Django API error:', response.status, errorText)
+      console.error('❌ Admin API error:', response.status, errorText)
       return NextResponse.json(
-        { error: `Django API error: ${response.status} - ${errorText}` },
+        { error: `Admin API error: ${response.status} - ${errorText}` },
         { status: response.status }
       )
     }
     
     const data = await response.json()
     console.log('✅ Next.js API: Заявка создана успешно:', data)
+    
+    // Преобразуем ответ в формат, который ожидает клиентский сайт
+    if (data.data && data.data.id) {
+      return NextResponse.json({
+        success: true,
+        transactionId: data.data.id,
+        id: data.data.id,
+        message: data.data.message || 'Заявка успешно создана'
+      })
+    }
     
     return NextResponse.json(data)
     
@@ -46,8 +56,8 @@ export async function PUT(request: NextRequest) {
     
     console.log('🔄 Next.js API: Получен запрос на обновление заявки:', body)
     
-    // Проксируем запрос к Django API
-    const response = await fetch(`${DJANGO_API_URL}/bot/api/payment/`, {
+    // Проксируем запрос к админ-панели API
+    const response = await fetch(`${ADMIN_API_URL}/api/payment`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -57,9 +67,9 @@ export async function PUT(request: NextRequest) {
     
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Django API error:', response.status, errorText)
+      console.error('❌ Admin API error:', response.status, errorText)
       return NextResponse.json(
-        { error: `Django API error: ${response.status} - ${errorText}` },
+        { error: `Admin API error: ${response.status} - ${errorText}` },
         { status: response.status }
       )
     }

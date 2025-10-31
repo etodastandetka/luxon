@@ -98,27 +98,30 @@ export default function HistoryPage(){
         console.log('❌ User ID not found, using test user ID')
       }
 
-      // Запрашиваем историю транзакций пользователя с Django API
+      // Запрашиваем историю транзакций пользователя с админ-панели API
       const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:8081' 
+        ? 'http://localhost:3001' 
         : 'https://xendro.pro'
-      const response = await fetch(`${apiUrl}/api/transaction-history/?user_id=${finalUserId}`)
+      const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${finalUserId}`)
       const data = await response.json()
       
-      if (data.success && data.transactions) {
+      // Админ-панель возвращает данные в формате { success: true, data: { transactions: [...] } }
+      const transactionsData = data.data?.transactions || data.transactions || []
+      
+      if (data.success !== false && transactionsData.length >= 0) {
         // Преобразуем данные в формат для отображения
-        const formattedTransactions = data.transactions.map((tx: any) => ({
-          id: tx.id,
-          type: tx.type,
-          bookmaker: tx.bookmaker,
-          amount: tx.amount,
-          status: tx.status,
-          date: tx.date
+        const formattedTransactions = transactionsData.map((tx: any) => ({
+          id: tx.id?.toString() || '',
+          type: tx.type || tx.request_type || 'deposit',
+          bookmaker: tx.bookmaker || '',
+          amount: tx.amount || 0,
+          status: tx.status || 'pending',
+          date: tx.date || tx.created_at || new Date().toISOString()
         }))
         
         setTransactions(formattedTransactions)
       } else {
-        console.error('Error loading transactions:', data.error)
+        console.error('Error loading transactions:', data.error || data)
         setTransactions([])
       }
     } catch (error) {

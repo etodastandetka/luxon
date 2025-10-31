@@ -16,9 +16,9 @@ export default function WithdrawStep1() {
     async function loadWithdrawalSettings() {
       try {
         const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:8081' 
+          ? 'http://localhost:3001' 
           : 'https://xendro.pro'
-        const res = await fetch(`${base}/bot/api/payment-settings/`, { cache: 'no-store' })
+        const res = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const data = await res.json()
         console.log('📋 Withdrawal settings from API:', data)
         if (data && data.withdrawals && data.withdrawals.banks) {
