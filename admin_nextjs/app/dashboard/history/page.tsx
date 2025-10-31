@@ -85,11 +85,6 @@ export default function HistoryPage() {
       return '-'
     }
     
-    // Если заявка отклонена или отклонена вручную, не показываем "Авто пополнение"
-    if (tx.status === 'rejected' || tx.status === 'declined') {
-      return tx.type === 'deposit' ? 'Пополнение' : 'Вывод'
-    }
-    
     // Для выводов может быть profile-*
     if (tx.type === 'withdraw') {
       return tx.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
@@ -107,10 +102,8 @@ export default function HistoryPage() {
         return tx.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
       }
       
-      // Если заявка успешно завершена (completed/approved) - это вручную подтвержденное = profile-1
-      if (tx.status === 'completed' || tx.status === 'approved') {
-        return 'profile-1'
-      }
+      // Для всех остальных депозитов (включая отклоненные) показываем profile-1
+      return 'profile-1'
     }
     
     return tx.type === 'deposit' ? 'Пополнение' : 'Вывод'
