@@ -123,6 +123,34 @@ export default function RequestDetailPage() {
     }
   }, [showMenu])
 
+  // Получаем все транзакции по accountId (ID казино) - используем useMemo для безопасного вычисления
+  // ВАЖНО: должен вызываться до любых условных возвратов!
+  const transactions = useMemo(() => {
+    if (!request || !request.casinoTransactions) return []
+    
+    return request.casinoTransactions.map(t => {
+      const amount = parseFloat(t.amount || '0')
+      const isDeposit = t.requestType === 'deposit'
+      const userName = t.username 
+        ? `@${t.username}` 
+        : t.firstName 
+          ? `${t.firstName}${t.lastName ? ' ' + t.lastName : ''}` 
+          : `ID: ${t.userId}`
+      
+      return {
+        id: t.id,
+        amount: Math.abs(amount).toFixed(2).replace('.', ','),
+        isDeposit,
+        createdAt: t.createdAt,
+        status: t.status,
+        userName,
+        userId: t.userId,
+        bookmaker: t.bookmaker,
+        description: `${isDeposit ? 'Пополнение' : 'Вывод'} от ${userName}`,
+      }
+    })
+  }, [request])
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     alert('Скопировано в буфер обмена')
@@ -244,33 +272,6 @@ export default function RequestDetailPage() {
       </div>
     )
   }
-
-  // Получаем все транзакции по accountId (ID казино) - используем useMemo для безопасного вычисления
-  const transactions = useMemo(() => {
-    if (!request || !request.casinoTransactions) return []
-    
-    return request.casinoTransactions.map(t => {
-      const amount = parseFloat(t.amount || '0')
-      const isDeposit = t.requestType === 'deposit'
-      const userName = t.username 
-        ? `@${t.username}` 
-        : t.firstName 
-          ? `${t.firstName}${t.lastName ? ' ' + t.lastName : ''}` 
-          : `ID: ${t.userId}`
-      
-      return {
-        id: t.id,
-        amount: Math.abs(amount).toFixed(2).replace('.', ','),
-        isDeposit,
-        createdAt: t.createdAt,
-        status: t.status,
-        userName,
-        userId: t.userId,
-        bookmaker: t.bookmaker,
-        description: `${isDeposit ? 'Пополнение' : 'Вывод'} от ${userName}`,
-      }
-    })
-  }, [request])
 
   const displayAmount = request?.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
   const isDeposit = request?.requestType === 'deposit'
