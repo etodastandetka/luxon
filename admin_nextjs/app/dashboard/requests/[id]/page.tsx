@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface RequestDetail {
   id: number
@@ -144,6 +145,7 @@ export default function RequestDetailPage() {
     : request.firstName 
       ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
       : `ID: ${request.userId}`
+  const displayName = request.firstName || request.username || `ID: ${request.userId}`
 
   // Фильтруем платежи если есть
   const payments: Payment[] = request.incomingPayments?.map(p => ({
@@ -165,7 +167,28 @@ export default function RequestDetailPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex-1"></div>
+        <Link
+          href={`/dashboard/users/${request.userId}`}
+          className="flex items-center space-x-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+        >
+          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+            <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-medium text-white">{displayName}</p>
+            {request.username && (
+              <p className="text-xs text-gray-400">@{request.username}</p>
+            )}
+          </div>
+        </Link>
+        <Link
+          href={`/dashboard/users/${request.userId}/chat`}
+          className="relative p-2 hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </Link>
       </div>
 
       {/* Основная карточка с номером заявки и суммой */}
