@@ -32,6 +32,9 @@ export async function POST(
 
     const botToken = process.env.BOT_TOKEN
 
+    // Логируем токен для отладки (первые 10 символов для безопасности)
+    console.log('🔑 BOT_TOKEN used:', botToken ? `${botToken.substring(0, 15)}...` : 'NOT SET')
+
     if (!botToken) {
       return NextResponse.json(
         createApiResponse(null, 'BOT_TOKEN not configured'),
