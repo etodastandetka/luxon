@@ -178,15 +178,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // ВАЖНО: Используем accountId (ID казино), а не userId (Telegram ID)
+    // accountId - это ID игрока в казино (например, ID счета 1xbet, Melbet и т.д.)
+    console.log(`[Deposit Balance] Bookmaker: ${bookmaker}, Casino Account ID: ${accountId}, Amount: ${amount}, Request ID: ${requestId}`)
+    
     // Пополняем баланс через API казино
     const depositResult = await depositToCasino(bookmaker, accountId, parseFloat(amount))
 
     if (!depositResult.success) {
+      console.error(`[Deposit Balance] Failed for ${bookmaker}, accountId: ${accountId}`, depositResult)
       return NextResponse.json(
-        createApiResponse(null, depositResult.message),
+        createApiResponse(null, depositResult.message || 'Failed to deposit balance'),
         { status: 500 }
       )
     }
+    
+    console.log(`[Deposit Balance] Success for ${bookmaker}, accountId: ${accountId}`, depositResult)
 
     // Обновляем статус заявки на completed
     const updatedRequest = await prisma.request.update({
