@@ -148,7 +148,7 @@ export default function ChatPage() {
   const displayName = user.firstName || user.username || `ID: ${user.userId}`
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-h-full">
       {/* Хедер */}
       <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700 flex-shrink-0">
         <button
@@ -190,7 +190,7 @@ export default function ChatPage() {
       </div>
 
       {/* Сообщения */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-transparent">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-green-950 to-green-900 min-h-0">
         {messages.length === 0 ? (
           <div className="text-center text-gray-400 py-12">
             <p>Нет сообщений</p>
