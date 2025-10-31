@@ -15,17 +15,20 @@ export default function ServiceStatus({ service, children }: ServiceStatusProps)
   useEffect(() => {
     const checkServiceStatus = async () => {
       try {
-        const response = await fetch('/api/bot-settings')
+        const apiUrl = process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:3001' 
+          : 'https://xendro.pro'
+        const response = await fetch(`${apiUrl}/api/public/payment-settings`)
         if (response.ok) {
           const data = await response.json()
           
-          if (data.success && data.data) {
-            const settings = data.data
+          // Админ-панель возвращает данные напрямую
+          const settings = data
 
             if (service === 'deposits') {
-              setIsEnabled(settings.deposits_enabled ?? true)
+              setIsEnabled(settings.deposits?.enabled ?? settings.deposits_enabled ?? true)
             } else if (service === 'withdrawals') {
-              setIsEnabled(settings.withdrawals_enabled ?? true)
+              setIsEnabled(settings.withdrawals?.enabled ?? settings.withdrawals_enabled ?? true)
             } else if (service === 'casinos') {
               // Проверяем, есть ли включенные казино
               const enabledSites = settings.enabled_deposit_banks || []

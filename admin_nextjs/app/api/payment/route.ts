@@ -3,6 +3,17 @@ import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 
 // API для создания заявок из внешних источников (мини-приложение, бот и т.д.)
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -11,6 +22,7 @@ export async function POST(request: NextRequest) {
       userId,
       user_id,
       telegram_user_id,
+      playerId,
       type, // deposit/withdraw
       amount,
       bookmaker,
@@ -22,14 +34,21 @@ export async function POST(request: NextRequest) {
       telegram_last_name,
     } = body
 
-    // Определяем user_id
-    const finalUserId = telegram_user_id || userId || user_id
-    const finalAccountId = account_id || user_id || userId
+    // Определяем user_id (пробуем разные варианты)
+    const finalUserId = telegram_user_id || userId || user_id || playerId
+    const finalAccountId = account_id || user_id || userId || playerId
 
+    // Если user_id не передан, используем тестовый ID (но это должно быть временным решением)
     if (!finalUserId || !type || !amount) {
+      console.error('Payment API: Missing required fields', { userId, user_id, telegram_user_id, playerId, type, amount })
       return NextResponse.json(
         createApiResponse(null, 'Missing required fields: userId, type, amount'),
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
       )
     }
 
@@ -49,19 +68,23 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createApiResponse({
         id: newRequest.id,
         transactionId: newRequest.id,
         message: 'Заявка успешно создана',
       })
     )
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
   } catch (error: any) {
     console.error('Payment API error:', error)
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       createApiResponse(null, error.message || 'Failed to create request'),
       { status: 500 }
     )
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    return errorResponse
   }
 }
 
@@ -71,10 +94,12 @@ export async function PUT(request: NextRequest) {
     const { id, status, status_detail } = body
 
     if (!id || !status) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         createApiResponse(null, 'Missing required fields: id, status'),
         { status: 400 }
       )
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
     }
 
     const updateData: any = {
@@ -94,18 +119,22 @@ export async function PUT(request: NextRequest) {
       data: updateData,
     })
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createApiResponse({
         ...updatedRequest,
         amount: updatedRequest.amount ? updatedRequest.amount.toString() : null,
       })
     )
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
   } catch (error: any) {
     console.error('Payment API update error:', error)
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       createApiResponse(null, error.message || 'Failed to update request'),
       { status: 500 }
     )
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    return errorResponse
   }
 }
 

@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -46,13 +57,17 @@ export async function GET(request: NextRequest) {
       processed_at: r.processedAt?.toISOString() || null,
     }))
 
-    return NextResponse.json(createApiResponse({ transactions }))
+    const response = NextResponse.json(createApiResponse({ transactions }))
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
   } catch (error: any) {
     console.error('Transaction history error:', error)
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       createApiResponse(null, error.message || 'Failed to fetch transaction history'),
       { status: 500 }
     )
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    return errorResponse
   }
 }
 

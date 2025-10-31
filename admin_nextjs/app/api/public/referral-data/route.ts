@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 // Публичный эндпоинт для получения данных реферальной программы (без авторизации)
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -109,20 +120,24 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       earned: earned,
       referral_count: activeReferralCount,
       top_players: topPlayers,
       user_rank: userRank
     })
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    return response
     
   } catch (error: any) {
     console.error('Referral data API error:', error)
-    return NextResponse.json({
+    const errorResponse = NextResponse.json({
       success: false,
       error: error.message || 'Failed to fetch referral data'
     }, { status: 500 })
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    return errorResponse
   }
 }
 
