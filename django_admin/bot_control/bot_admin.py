@@ -5,8 +5,8 @@
 from django.contrib import admin
 from django.contrib import messages
 from django.utils import timezone
-from .bot_models import BotDepositRequestRaw, BotWithdrawRequestRaw, BotUser, BotTransaction, BotKVSetting
-from .models import BotConfiguration
+from .bot_models import BotDepositRequestRaw, BotWithdrawRequestRaw, BotKVSetting
+from .models import BotConfiguration, BotUser, BotTransaction
 
 @admin.register(BotDepositRequestRaw)
 class BotDepositRequestRawAdmin(admin.ModelAdmin):
