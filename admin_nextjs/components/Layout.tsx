@@ -127,15 +127,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-b from-green-950 to-green-900 overflow-hidden">
-      <div className="mobile-container w-full h-full">
+    <div className="h-screen bg-gradient-to-b from-green-950 to-green-900 flex justify-center items-center overflow-hidden">
+      <div className="mobile-container w-full max-w-[414px] h-full">
         {/* Основной контент */}
         <main className="px-4 py-4 pb-24 bg-transparent overflow-y-auto h-full">
           {children}
         </main>
 
         {/* Нижнее меню навигации */}
-        <nav className="fixed bottom-0 left-0 right-0 w-full bg-gray-800 border-t border-gray-700 rounded-t-3xl z-50 shadow-2xl">
+        <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[414px] bg-gray-800 border-t border-gray-700 rounded-t-3xl z-50 shadow-2xl">
           <div className="flex justify-around items-center py-2 px-2">
             {bottomNavItems.map((item) => {
               const active = isActive(item.href)
