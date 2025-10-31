@@ -1,26 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { depositCashdeskAPI, depositMostbetAPI } from '@/lib/casino-deposit'
 
 export const dynamic = 'force-dynamic'
 
-// Функция для получения API ключей из настроек
-async function getCasinoApiKeys() {
-  const settings = await prisma.botConfiguration.findMany({
-    where: {
-      key: {
-        in: ['1xbet_api_key', 'melbet_api_key', 'mostbet_api_key', '1win_api_key']
-      }
+// Функция для получения конфигурации API казино из настроек
+async function getCasinoConfig(bookmaker: string) {
+  const normalizedBookmaker = bookmaker?.toLowerCase() || ''
+  
+  // Для 1xbet и Melbet нужны: hash, cashierpass, login, cashdeskid
+  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet')) {
+    const configKey = normalizedBookmaker.includes('1xbet') ? '1xbet_api_config' : 'melbet_api_config'
+    
+    const setting = await prisma.botConfiguration.findFirst({
+      where: { key: configKey },
+    })
+
+    if (!setting) {
+      return null
     }
-  })
 
-  const keys: Record<string, string> = {}
-  settings.forEach(setting => {
-    const keyName = setting.key.replace('_api_key', '')
-    keys[keyName] = typeof setting.value === 'string' ? setting.value : JSON.stringify(setting.value)
-  })
+    const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+    return {
+      hash: config.hash || config.api_key,
+      cashierpass: config.cashierpass || config.password,
+      login: config.login || config.username,
+      cashdeskid: config.cashdeskid || config.cashdesk_id,
+    }
+  }
+  
+  // Для Mostbet нужны: api_key, secret, cashpoint_id
+  if (normalizedBookmaker.includes('mostbet')) {
+    const setting = await prisma.botConfiguration.findFirst({
+      where: { key: 'mostbet_api_config' },
+    })
 
-  return keys
+    if (!setting) {
+      return null
+    }
+
+    const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+    return {
+      api_key: config.api_key || config.apiKey,
+      secret: config.secret,
+      cashpoint_id: config.cashpoint_id || config.cashpointId,
+    }
+  }
+
+  return null
 }
 
 // Функция для пополнения баланса через API казино
@@ -29,113 +57,55 @@ async function depositToCasino(
   accountId: string,
   amount: number
 ): Promise<{ success: boolean; message: string; data?: any }> {
-  const apiKeys = await getCasinoApiKeys()
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
 
   try {
-    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
-      // 1xbet API
-      const apiKey = apiKeys['1xbet'] || process.env.ONEXBET_API_KEY
-      if (!apiKey) {
-        return { success: false, message: '1xbet API key not configured' }
+    // 1xbet и Melbet используют Cashdesk API
+    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet')) {
+      const config = await getCasinoConfig(bookmaker)
+      
+      if (!config) {
+        return {
+          success: false,
+          message: `${bookmaker} API configuration not found in database`,
+        }
       }
 
-      // Пример вызова API 1xbet (нужно будет уточнить правильный формат)
-      const response = await fetch(`https://api.1xbet.com/deposit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          accountId: accountId,
-          amount: amount,
-        }),
-      })
-
-      const data = await response.json()
-      if (response.ok && data.success) {
-        return { success: true, message: 'Balance deposited successfully', data }
-      }
-      return { success: false, message: data.message || 'Failed to deposit balance' }
-    } else if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {
-      // Melbet API
-      const apiKey = apiKeys['melbet'] || process.env.MELBET_API_KEY
-      if (!apiKey) {
-        return { success: false, message: 'Melbet API key not configured' }
+      return await depositCashdeskAPI(bookmaker, accountId, amount, config)
+    }
+    
+    // Mostbet использует свой API
+    if (normalizedBookmaker.includes('mostbet')) {
+      const config = await getCasinoConfig(bookmaker)
+      
+      if (!config) {
+        return {
+          success: false,
+          message: 'Mostbet API configuration not found in database',
+        }
       }
 
-      const response = await fetch(`https://api.melbet.com/deposit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          playerId: accountId,
-          amount: amount,
-        }),
-      })
-
-      const data = await response.json()
-      if (response.ok && data.success) {
-        return { success: true, message: 'Balance deposited successfully', data }
+      return await depositMostbetAPI(accountId, amount, config)
+    }
+    
+    // 1win (если нужно будет добавить)
+    if (normalizedBookmaker.includes('1win')) {
+      return {
+        success: false,
+        message: '1win API not yet implemented',
       }
-      return { success: false, message: data.message || 'Failed to deposit balance' }
-    } else if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
-      // Mostbet API
-      const apiKey = apiKeys['mostbet'] || process.env.MOSTBET_API_KEY
-      if (!apiKey) {
-        return { success: false, message: 'Mostbet API key not configured' }
-      }
+    }
 
-      const response = await fetch(`https://api.mostbet.com/deposit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          userId: accountId,
-          amount: amount,
-        }),
-      })
-
-      const data = await response.json()
-      if (response.ok && data.success) {
-        return { success: true, message: 'Balance deposited successfully', data }
-      }
-      return { success: false, message: data.message || 'Failed to deposit balance' }
-    } else if (normalizedBookmaker.includes('1win') || normalizedBookmaker === '1win') {
-      // 1win API
-      const apiKey = apiKeys['1win'] || process.env.ONEWIN_API_KEY
-      if (!apiKey) {
-        return { success: false, message: '1win API key not configured' }
-      }
-
-      const response = await fetch(`https://api.1win.com/deposit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          accountId: accountId,
-          amount: amount,
-        }),
-      })
-
-      const data = await response.json()
-      if (response.ok && data.success) {
-        return { success: true, message: 'Balance deposited successfully', data }
-      }
-      return { success: false, message: data.message || 'Failed to deposit balance' }
-    } else {
-      return { success: false, message: `Unsupported bookmaker: ${bookmaker}` }
+    return {
+      success: false,
+      message: `Unsupported bookmaker: ${bookmaker}`,
     }
   } catch (error: any) {
     console.error('Deposit balance error:', error)
-    return { success: false, message: error.message || 'Failed to deposit balance' }
+    return {
+      success: false,
+      message: error.message || 'Failed to deposit balance',
+    }
   }
 }
 
