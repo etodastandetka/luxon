@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   // API routes that don't require authentication (for external integrations)
-  const publicApiRoutes = ['/api/auth', '/api/payment', '/api/transaction-history']
+  const publicApiRoutes = ['/api/auth', '/api/payment', '/api/transaction-history', '/api/public']
   const isPublicApiRoute = publicApiRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   if (isPublicRoute || isPublicApiRoute) {

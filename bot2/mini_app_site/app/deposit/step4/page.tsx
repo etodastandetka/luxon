@@ -159,7 +159,7 @@ export default function DepositStep4() {
       const transactionId = localStorage.getItem('deposit_transaction_id')
       if (transactionId) {
         const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:8081' 
+          ? 'http://localhost:3001' 
           : 'https://xendro.pro'
         const response = await fetch(`${base}/api/payment/${transactionId}`)
         if (response.ok) {
@@ -361,14 +361,10 @@ export default function DepositStep4() {
   const getActiveRequisite = async (): Promise<string | null> => {
     try {
       const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:8081' 
+        ? 'http://localhost:3001' 
         : 'https://xendro.pro'
-      // Используем правильный путь к API (пробуем оба варианта)
-      let response = await fetch(`${apiUrl}/api/requisites/list/`)
-      if (!response.ok) {
-        // Если не получилось, пробуем через /bot/
-        response = await fetch(`${apiUrl}/bot/api/requisites/list/`)
-      }
+      // Используем публичный API админ-панели
+      const response = await fetch(`${apiUrl}/api/public/requisites/list/`)
       if (response.ok) {
         const data = await response.json()
         console.log('📋 Requisites data:', data)
@@ -550,9 +546,9 @@ export default function DepositStep4() {
       // Также загружаем актуальные настройки из админки для enabled_banks
       try {
         const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:8081' 
+          ? 'http://localhost:3001' 
           : 'https://xendro.pro'
-        const settingsRes = await fetch(`${base}/bot/api/payment-settings/`, { cache: 'no-store' })
+        const settingsRes = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const settingsData = await settingsRes.json()
         if (settingsData && settingsData.deposits) {
           setDepositsEnabled(settingsData.deposits.enabled !== false)

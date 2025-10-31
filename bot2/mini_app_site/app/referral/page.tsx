@@ -75,9 +75,9 @@ export default function ReferralPage() {
 
       // Загружаем данные рефералов с Django API
       const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:8081' 
+        ? 'http://localhost:3001' 
         : 'https://xendro.pro'
-      const response = await fetch(`${apiUrl}/api/referral-data/?user_id=${userId}`)
+      const response = await fetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`)
       const data = await response.json()
       
       if (data.success) {

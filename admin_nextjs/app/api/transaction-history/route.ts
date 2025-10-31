@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     })
 
     const transactions = requests.map((r) => ({
-      id: r.id,
+      id: r.id.toString(),
       user_id: r.userId.toString(),
       account_id: r.accountId || '',
       user_display_name: r.username
@@ -37,10 +37,11 @@ export async function GET(request: NextRequest) {
       type: r.requestType,
       amount: r.amount ? parseFloat(r.amount.toString()) : 0,
       status: r.status,
-      status_detail: r.statusDetail,
+      status_detail: r.statusDetail || null,
       bookmaker: r.bookmaker || '',
       bank: r.bank || '',
       phone: r.phone || '',
+      date: r.createdAt.toISOString(),
       created_at: r.createdAt.toISOString(),
       processed_at: r.processedAt?.toISOString() || null,
     }))

@@ -31,6 +31,20 @@ module.exports = {
       restart_delay: 5000,
       max_restarts: 10,
       min_uptime: '10s'
+    },
+    {
+      name: 'luxon-telegram-bot',
+      cwd: '/var/www/luxon/bot_simple',
+      script: 'python3',
+      args: 'bot.py',
+      interpreter: 'none',
+      error_file: '/var/log/pm2/luxon-bot-error.log',
+      out_file: '/var/log/pm2/luxon-bot-out.log',
+      log_file: '/var/log/pm2/luxon-bot.log',
+      time: true,
+      restart_delay: 5000,
+      max_restarts: 10,
+      min_uptime: '10s'
     }
   ]
 }

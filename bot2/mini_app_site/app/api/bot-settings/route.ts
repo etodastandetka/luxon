@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://127.0.0.1:8081'
+const ADMIN_API_URL = process.env.ADMIN_API_URL || (process.env.NODE_ENV === 'production' ? 'https://xendro.pro' : 'http://localhost:3001')
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Next.js API: Получен запрос на загрузку настроек бота')
     
-    // Проксируем запрос к Django API
-    const response = await fetch(`${DJANGO_API_URL}/api/get-bot-control/`, {
+    // Проксируем запрос к админ-панели API
+    const response = await fetch(`${ADMIN_API_URL}/api/public/payment-settings`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
