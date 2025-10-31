@@ -80,9 +80,9 @@ export default function HistoryPage() {
   }
 
   const getTransactionType = (tx: Transaction) => {
-    // Если статус "Ожидает", показываем "Пока не известно"
+    // Если статус "Ожидает", показываем "-"
     if (tx.status === 'pending' || tx.status === 'processing') {
-      return 'Пока не известно'
+      return '-'
     }
     
     // Определяем тип транзакции для отображения
