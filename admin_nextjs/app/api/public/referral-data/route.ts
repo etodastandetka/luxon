@@ -77,9 +77,6 @@ export async function GET(request: NextRequest) {
       where: {
         requestType: 'deposit',
         status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] }
-      },
-      include: {
-        user: true
       }
     })
     
@@ -89,9 +86,15 @@ export async function GET(request: NextRequest) {
     for (const deposit of allDeposits) {
       const userIdStr = deposit.userId.toString()
       if (!userStatsMap.has(userIdStr)) {
+        // Используем поля напрямую из Request (username и firstName хранятся в самой модели)
+        const displayName = deposit.username 
+          ? `@${deposit.username}` 
+          : deposit.firstName 
+            ? deposit.firstName 
+            : `Игрок #${userIdStr}`
         userStatsMap.set(userIdStr, {
           userId: userIdStr,
-          username: deposit.user?.username || deposit.user?.firstName || `Игрок #${userIdStr}`,
+          username: displayName,
           totalDeposits: 0
         })
       }
