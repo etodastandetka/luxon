@@ -37,8 +37,37 @@ export default function DepositStep4() {
     setPlayerId(savedPlayerId)
     setAmount(savedAmount)
     
-    // Проверяем, есть ли уже отправленная заявка (transaction_id)
+    // Проверяем, есть ли сохраненные данные предыдущей заявки
+    const previousBookmaker = localStorage.getItem('previous_deposit_bookmaker') || ''
+    const previousPlayerId = localStorage.getItem('previous_deposit_user_id') || ''
+    const previousAmount = parseFloat(localStorage.getItem('previous_deposit_amount') || '0')
     const transactionId = localStorage.getItem('deposit_transaction_id')
+    
+    // Сравниваем: если данные изменились или их нет - это новая заявка
+    const isNewRequest = !previousBookmaker || 
+                         !previousPlayerId || 
+                         previousBookmaker !== savedBookmaker ||
+                         previousPlayerId !== savedPlayerId ||
+                         previousAmount !== savedAmount
+    
+    if (isNewRequest) {
+      // Новая заявка - очищаем старые данные и запускаем новый таймер
+      console.log('🆕 Новая заявка - очищаем старые данные и запускаем новый таймер')
+      setIsPaid(false)
+      setTimeLeft(300) // Начинаем с 5 минут
+      localStorage.removeItem('deposit_transaction_id')
+      localStorage.removeItem('deposit_request_id')
+      localStorage.removeItem('deposit_timer_start')
+      // Сохраняем текущие данные как "предыдущие" для сравнения
+      localStorage.setItem('previous_deposit_bookmaker', savedBookmaker)
+      localStorage.setItem('previous_deposit_user_id', savedPlayerId)
+      localStorage.setItem('previous_deposit_amount', savedAmount.toString())
+      // Запускаем новый таймер
+      localStorage.setItem('deposit_timer_start', Date.now().toString())
+      return
+    }
+    
+    // Если это та же заявка, проверяем статус
     if (transactionId) {
       // Если есть transaction_id, значит заявка уже создана, останавливаем таймер
       setIsPaid(true)
@@ -65,10 +94,8 @@ export default function DepositStep4() {
         }, 100)
       }
     } else {
-      // Если нет сохраненного времени, сохраняем текущее время (только если еще нет заявки)
-      if (!transactionId) {
-        localStorage.setItem('deposit_timer_start', Date.now().toString())
-      }
+      // Если нет сохраненного времени, сохраняем текущее время
+      localStorage.setItem('deposit_timer_start', Date.now().toString())
     }
   }, [])
 
@@ -155,6 +182,9 @@ export default function DepositStep4() {
       localStorage.removeItem('deposit_amount')
       localStorage.removeItem('deposit_transaction_id')
       localStorage.removeItem('deposit_timer_start') // Очищаем таймер
+      localStorage.removeItem('previous_deposit_bookmaker')
+      localStorage.removeItem('previous_deposit_user_id')
+      localStorage.removeItem('previous_deposit_amount')
       
       showAlert({
         type: 'warning',
@@ -392,6 +422,11 @@ export default function DepositStep4() {
       
       // Очищаем таймер из localStorage, чтобы при повторном заходе не показывался
       localStorage.removeItem('deposit_timer_start')
+      
+      // Сохраняем текущие данные как "предыдущие" для проверки новой заявки
+      localStorage.setItem('previous_deposit_bookmaker', bookmaker)
+      localStorage.setItem('previous_deposit_user_id', playerId)
+      localStorage.setItem('previous_deposit_amount', amount.toString())
       
       console.log('✅ Таймер остановлен после отправки заявки')
       
