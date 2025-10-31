@@ -59,32 +59,44 @@ export default function RequestDetailPage() {
     const requestId = Array.isArray(params.id) ? params.id[0] : params.id
     if (!requestId) return
 
+    const abortController = new AbortController()
+
     const fetchRequest = async () => {
       try {
-        const response = await fetch(`/api/requests/${requestId}`)
+        const response = await fetch(`/api/requests/${requestId}`, {
+          signal: abortController.signal
+        })
+        
+        if (abortController.signal.aborted || !isMountedRef.current) return
+        
         const data = await response.json()
 
         console.log('📋 Request detail data:', data)
 
         if (!isMountedRef.current) return
 
-        if (data.success) {
-          if (isMountedRef.current) {
-            setRequest(data.data)
-          }
+        if (data.success && isMountedRef.current) {
+          setRequest(data.data)
         } else {
           console.error('❌ Failed to fetch request:', data.error)
         }
-      } catch (error) {
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          return // Запрос был отменен, игнорируем ошибку
+        }
         console.error('❌ Failed to fetch request:', error)
       } finally {
-        if (isMountedRef.current) {
+        if (isMountedRef.current && !abortController.signal.aborted) {
           setLoading(false)
         }
       }
     }
     
     fetchRequest()
+    
+    return () => {
+      abortController.abort()
+    }
   }, [params.id])
 
   const copyToClipboard = (text: string) => {
