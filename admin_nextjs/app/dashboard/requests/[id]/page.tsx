@@ -190,11 +190,17 @@ export default function RequestDetailPage() {
         return 'Ожидает'
       case 'completed':
       case 'approved':
+      case 'auto_completed':
+      case 'autodeposit_success':
         return 'Успешно'
       case 'rejected':
+      case 'declined':
         return 'Отклонено'
       case 'deferred':
         return 'Отложено'
+      case 'manual':
+      case 'awaiting_manual':
+        return 'Ручная'
       default:
         return status
     }

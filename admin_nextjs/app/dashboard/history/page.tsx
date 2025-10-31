@@ -61,19 +61,42 @@ export default function HistoryPage() {
 
   const getStatusLabel = (status: string, statusDetail: string | null) => {
     // Маппинг статусов на русские метки
-    if (status === 'manual' || status === 'awaiting_manual' || statusDetail === 'manual') {
-      return { label: 'РУЧНАЯ', color: 'bg-red-500 text-white' }
+    if (status === 'completed' || status === 'auto_completed' || status === 'approved' || status === 'autodeposit_success') {
+      return { label: 'Успешно', color: 'bg-green-100 text-green-700 border border-green-300' }
     }
     if (status === 'rejected' || status === 'declined') {
-      return { label: 'ОТКЛОНЕНО', color: 'bg-red-500 text-white' }
-    }
-    if (status === 'completed' || status === 'auto_completed' || status === 'approved') {
-      return { label: 'ЗАВЕРШЕНО', color: 'bg-green-500 text-white' }
+      return { label: 'Отклонено', color: 'bg-red-100 text-red-700 border border-red-300' }
     }
     if (status === 'pending' || status === 'processing') {
-      return { label: 'ОЖИДАЕТ', color: 'bg-yellow-500 text-black' }
+      return { label: 'Ожидает', color: 'bg-yellow-100 text-yellow-700 border border-yellow-300' }
     }
-    return { label: status.toUpperCase(), color: 'bg-gray-700 text-gray-300' }
+    if (status === 'manual' || status === 'awaiting_manual' || statusDetail === 'manual') {
+      return { label: 'Ручная', color: 'bg-red-100 text-red-700 border border-red-300' }
+    }
+    if (status === 'deferred') {
+      return { label: 'Отложено', color: 'bg-orange-100 text-orange-700 border border-orange-300' }
+    }
+    return { label: status, color: 'bg-gray-100 text-gray-700 border border-gray-300' }
+  }
+
+  const getTransactionType = (tx: Transaction) => {
+    // Определяем тип транзакции для отображения
+    if (tx.status_detail?.includes('autodeposit') || tx.status === 'autodeposit_success' || tx.status === 'auto_completed') {
+      return 'Авто пополнение'
+    }
+    // Проверяем наличие profile-* в status_detail или других полях
+    if (tx.status_detail?.match(/profile-\d+/)) {
+      return tx.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
+    }
+    // Если есть bookmaker и это депозит, показываем "Авто пополнение"
+    if (tx.type === 'deposit' && tx.bookmaker) {
+      return 'Авто пополнение'
+    }
+    // Для выводов может быть profile-*
+    if (tx.type === 'withdraw') {
+      return tx.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
+    }
+    return tx.type === 'deposit' ? 'Пополнение' : 'Вывод'
   }
 
   const getBookmakerName = (bookmaker: string | null) => {
@@ -172,67 +195,75 @@ export default function HistoryPage() {
           {transactions.map((tx) => {
             const isDeposit = tx.type === 'deposit'
             const statusInfo = getStatusLabel(tx.status, tx.status_detail)
-            const bookmakerName = getBookmakerName(tx.bookmaker)
+            const transactionType = getTransactionType(tx)
 
             return (
-              <Link
+              <div
                 key={tx.id}
-                href={`/dashboard/history/${tx.id}`}
-                className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 backdrop-blur-sm active:bg-gray-700"
+                className="block bg-white rounded-xl p-4 shadow-sm border border-gray-200"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    {/* Тип и платформа */}
-                    <div className="mb-2">
-                      <p className="text-sm font-medium text-white mb-1">
-                        {isDeposit ? 'Пополнение' : 'Вывод'}
-                      </p>
-                      {bookmakerName && (
-                        <p className="text-sm text-green-500 font-medium">{bookmakerName}</p>
-                      )}
+                  {/* Левая часть: Аватар и информация о пользователе */}
+                  <div className="flex items-start space-x-3 flex-1">
+                    {/* Аватар */}
+                    <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
                     </div>
 
-                    {/* Сумма и дата */}
-                    <div className="mt-3">
-                      <p
-                        className={`text-lg font-bold mb-1 ${
-                          isDeposit ? 'text-green-500' : 'text-red-500'
-                        }`}
-                      >
-                        {isDeposit ? '+' : '-'}
-                        {tx.amount.toLocaleString('ru-RU', {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })}{' '}
-                        сом
+                    {/* Информация о пользователе и транзакции */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-bold text-black mb-0.5">
+                        {tx.user_display_name || 'Неизвестный пользователь'}
                       </p>
-                      <p className="text-xs text-gray-400">{formatDate(tx.created_at)}</p>
+                      <p className="text-xs text-gray-500 mb-2">
+                        ID: {tx.user_id}
+                      </p>
+                      
+                      {/* Тип транзакции */}
+                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-md mb-1">
+                        {transactionType}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Статус и стрелка */}
-                  <div className="flex flex-col items-end gap-2 ml-4">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${statusInfo.color}`}
+                  {/* Правая часть: Дата, сумма и статус */}
+                  <div className="flex flex-col items-end space-y-2 ml-4">
+                    {/* Дата и время */}
+                    <p className="text-xs text-gray-500 whitespace-nowrap">
+                      {formatDate(tx.created_at)}
+                    </p>
+                    
+                    {/* Сумма */}
+                    <p
+                      className={`text-base font-bold ${
+                        isDeposit ? 'text-green-600' : 'text-red-600'
+                      }`}
                     >
+                      {isDeposit ? '+' : '-'}
+                      {tx.amount.toLocaleString('ru-RU', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).replace('.', ',')}
+                    </p>
+                    
+                    {/* Статус */}
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${statusInfo.color}`}
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full ${
+                        statusInfo.label === 'Успешно' ? 'bg-green-600' :
+                        statusInfo.label === 'Отклонено' ? 'bg-red-600' :
+                        'bg-yellow-600'
+                      }`}></div>
                       {statusInfo.label}
                     </span>
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
                   </div>
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>
