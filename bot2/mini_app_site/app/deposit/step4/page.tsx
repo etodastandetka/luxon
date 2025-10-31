@@ -927,59 +927,74 @@ export default function DepositStep4() {
       {/* Загрузка фото чека (если требуется) */}
       {!isPaid && requireReceiptPhoto && (
         <div className="card space-y-3">
-          <h3 className="text-base font-semibold text-white">
-            {language === 'ru' ? 'Фото чека об оплате' : 'Payment Receipt Photo'}
-          </h3>
+          <div>
+            <h3 className="text-base font-semibold text-white mb-1">
+              {language === 'ru' ? 'Отправьте фото чека об оплате' : 'Send payment receipt photo'}
+            </h3>
+            <p className="text-sm text-white/70">
+              {language === 'ru' ? 'Загрузить фото чека' : 'Upload receipt photo'}
+            </p>
+          </div>
           
-          {receiptPhotoPreview ? (
-            <div className="space-y-3">
-              <div className="relative w-full flex justify-center">
-                <img
-                  src={receiptPhotoPreview}
-                  alt="Receipt preview"
-                  className="max-w-full max-h-[400px] rounded-lg border border-gray-600 object-contain"
-                />
-                <button
-                  onClick={() => {
-                    setReceiptPhoto(null)
-                    setReceiptPhotoPreview(null)
-                  }}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="text-center">
-                <p className="text-white font-medium mb-1">
-                  {language === 'ru' ? 'Файл выбран' : 'File selected'}
-                </p>
-                <p className="text-white/60 text-sm">
-                  {receiptPhoto?.name || 'receipt.jpg'}
-                </p>
-              </div>
+          <label className="block">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleReceiptPhotoChange}
+              className="hidden"
+            />
+            <div className="relative w-full min-h-[200px] bg-[#1A472A] border-2 border-dashed border-green-500 rounded-xl cursor-pointer hover:border-green-400 transition-colors flex flex-col items-center justify-center p-6">
+              {receiptPhotoPreview ? (
+                <>
+                  <div className="w-full h-full flex flex-col items-center justify-center space-y-3">
+                    <div className="relative w-full max-h-[300px] flex items-center justify-center">
+                      <img
+                        src={receiptPhotoPreview}
+                        alt="Receipt preview"
+                        className="max-w-full max-h-[300px] object-contain rounded-lg"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setReceiptPhoto(null)
+                          setReceiptPhotoPreview(null)
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-white font-medium mb-1">
+                        {language === 'ru' ? 'Файл выбран' : 'File selected'}
+                      </p>
+                      <p className="text-white/60 text-sm">
+                        {receiptPhoto?.name || 'receipt.jpg'}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <p className="text-white text-sm text-center">
+                    {language === 'ru' 
+                      ? 'Нажмите, чтобы выбрать фото'
+                      : 'Click to select photo'
+                    }
+                  </p>
+                </>
+              )}
             </div>
-          ) : (
-            <label className="block">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleReceiptPhotoChange}
-                className="hidden"
-              />
-              <div className="w-full py-4 px-4 bg-green-500 hover:bg-green-600 rounded-xl cursor-pointer transition-colors flex items-center gap-3">
-                <svg className="w-6 h-6 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-white font-medium">
-                  {language === 'ru' ? 'Нажмите, чтобы выбрать фото чека' : 'Click to select receipt photo'}
-                </span>
-              </div>
-            </label>
-          )}
+          </label>
           
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 text-center">
             {language === 'ru' 
               ? 'Загрузите четкое фото чека об оплате для быстрой обработки заявки'
               : 'Upload a clear photo of the payment receipt for quick processing'
