@@ -95,20 +95,23 @@ class AutoDepositWatcher:
                 logger.warning("AutoDepositWatcher stop timeout")
 
     def _get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        """ENV first, then SQLite; if unavailable, return default without noise."""
+        """ENV first, then PostgreSQL via Django ORM; if unavailable, return default without noise."""
         env_key = key.upper()
         if env_key in os.environ:
             return os.environ.get(env_key)
         try:
-            conn = sqlite3.connect(self.db_path)
-            cur = conn.cursor()
-            cur.execute("SELECT value FROM bot_settings WHERE key=?", (key,))
-            row = cur.fetchone()
-            conn.close()
-            if row and row[0] is not None:
-                return str(row[0])
+            # Пробуем получить через Django ORM
+            from django.apps import apps
+            if apps.ready:
+                from bot_control.models import BotSetting
+                try:
+                    setting = BotSetting.objects.get(key=key)
+                    if setting.value is not None:
+                        return str(setting.value)
+                except BotSetting.DoesNotExist:
+                    pass
         except Exception as e:
-            if 'no such table' not in str(e).lower():
+            if 'no such table' not in str(e).lower() and 'apps' not in str(e).lower():
                 logger.debug(f"AutoDepositWatcher: settings fallback for {key}: {e}")
         return default
 

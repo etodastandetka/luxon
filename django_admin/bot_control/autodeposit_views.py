@@ -25,13 +25,11 @@ def api_autodeposit_settings(request):
         return save_autodeposit_settings(request)
 
 def get_autodeposit_settings():
-    """Получение настроек автопополнения"""
+    """Получение настроек автопополнения через Django ORM"""
     try:
-        # Путь к базе данных бота
-        db_path = os.path.join(settings.BASE_DIR, '..', 'bot2', 'bot_data.db')
-        
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        from bot_control.models import BotSetting, Request
+        from django.utils import timezone
+        from datetime import timedelta
         
         # Получаем настройки
         settings_keys = [
@@ -46,27 +44,30 @@ def get_autodeposit_settings():
         
         settings_dict = {}
         for key in settings_keys:
-            cursor.execute("SELECT value FROM bot_settings WHERE key = ?", (key,))
-            row = cursor.fetchone()
-            settings_dict[key] = row[0] if row else get_default_setting(key)
+            try:
+                setting = BotSetting.objects.get(key=key)
+                settings_dict[key] = setting.value
+            except BotSetting.DoesNotExist:
+                settings_dict[key] = get_default_setting(key)
         
-        # Получаем статистику
-        cursor.execute("""
-            SELECT COUNT(*) FROM autodeposit_logs 
-            WHERE processed_at >= datetime('now', '-24 hours')
-        """)
-        processed_24h = cursor.fetchone()[0]
+        # Получаем статистику из Request
+        # Статистика autodeposit_logs - пока используем запросы
+        twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
+        processed_24h = Request.objects.filter(
+            request_type='deposit',
+            status__in=['auto_completed', 'autodeposit_success'],
+            processed_at__gte=twenty_four_hours_ago
+        ).count()
         
-        cursor.execute("SELECT COUNT(*) FROM autodeposit_logs")
-        total_processed = cursor.fetchone()[0]
+        total_processed = Request.objects.filter(
+            request_type='deposit',
+            status__in=['auto_completed', 'autodeposit_success']
+        ).count()
         
-        cursor.execute("""
-            SELECT COUNT(*) FROM deposit_requests 
-            WHERE status = 'pending'
-        """)
-        pending_requests = cursor.fetchone()[0]
-        
-        conn.close()
+        pending_requests = Request.objects.filter(
+            request_type='deposit',
+            status='pending'
+        ).count()
         
         return JsonResponse({
             'success': True,
@@ -161,22 +162,16 @@ def save_autodeposit_settings(request):
                 'error': 'Invalid bank: must be one of DEMIRBANK, MBANK, BALANCE, BAKAI, MEGAPAY, OPTIMA'
             }, status=400)
         
-        # Путь к базе данных бота
-        db_path = os.path.join(settings.BASE_DIR, '..', 'bot2', 'bot_data.db')
+        # Сохраняем настройки через Django ORM
+        from bot_control.models import BotSetting
+        from django.utils import timezone
         
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        # Сохраняем настройки
         for key, value in data.items():
             if key.startswith('autodeposit_'):
-                cursor.execute("""
-                    INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                    VALUES (?, ?, CURRENT_TIMESTAMP)
-                """, (key, str(value)))
-        
-        conn.commit()
-        conn.close()
+                BotSetting.objects.update_or_create(
+                    key=key,
+                    defaults={'value': str(value)}
+                )
         
         return JsonResponse({
             'success': True,

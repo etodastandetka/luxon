@@ -231,26 +231,10 @@ def api_bank_settings_toggle(request, bank_id: int):
                 QRHash.objects.filter(is_active=True).update(is_active=False)
                 # Деактивируем кошельки других банков
                 BankWallet.objects.exclude(bank_code=b.bank_code).update(is_active=False)
-                # Деактивируем активные реквизиты (SQLite requisites)
+                # Деактивируем активные реквизиты через Django ORM
                 try:
-                    import sqlite3
-                    from django.conf import settings as dj_settings
-                    conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
-                    cur = conn.cursor()
-                    cur.execute('''
-                        CREATE TABLE IF NOT EXISTS requisites (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            value TEXT NOT NULL,
-                            is_active INTEGER NOT NULL DEFAULT 0,
-                            name TEXT,
-                            email TEXT,
-                            password TEXT,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        )
-                    ''')
-                    cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
-                    conn.commit()
-                    conn.close()
+                    from bot_control.models import BotRequisite
+                    BotRequisite.objects.filter(is_active=True).update(is_active=False)
                 except Exception:
                     pass
         except Exception:
@@ -482,26 +466,10 @@ def api_bank_wallets_toggle(request, wid: int):
                 from .models import BankWallet as BW2, QRHash as Q2
                 BW2.objects.exclude(id=w.id).update(is_active=False)
                 Q2.objects.filter(is_active=True).update(is_active=False)
-                # Деактивируем активные реквизиты (SQLite requisites)
+                # Деактивируем активные реквизиты через Django ORM
                 try:
-                    import sqlite3
-                    from django.conf import settings as dj_settings
-                    conn = sqlite3.connect(str(dj_settings.BOT_DATABASE_PATH))
-                    cur = conn.cursor()
-                    cur.execute('''
-                        CREATE TABLE IF NOT EXISTS requisites (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            value TEXT NOT NULL,
-                            is_active INTEGER NOT NULL DEFAULT 0,
-                            name TEXT,
-                            email TEXT,
-                            password TEXT,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        )
-                    ''')
-                    cur.execute('UPDATE requisites SET is_active = 0 WHERE is_active = 1')
-                    conn.commit()
-                    conn.close()
+                    from bot_control.models import BotRequisite
+                    BotRequisite.objects.filter(is_active=True).update(is_active=False)
                 except Exception:
                     pass
             except Exception:
@@ -815,28 +783,22 @@ def limits_dashboard(request):
 
 @csrf_exempt
 def api_bot_status(request):
-    """API для получения статуса бота"""
+    """API для получения статуса бота через Django ORM"""
     try:
-        # Подключаемся к общей БД бота из настроек
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cursor = conn.cursor()
+        from bot_control.models import BotSetting
         
-        # Получаем настройки бота
-        cursor.execute('''
-            SELECT value FROM bot_settings WHERE key = 'is_active'
-        ''')
-        result = cursor.fetchone()
+        # Получаем настройки бота через Django ORM
+        try:
+            is_active_setting = BotSetting.objects.get(key='is_active')
+            is_active = bool(int(is_active_setting.value)) if is_active_setting.value else True
+        except BotSetting.DoesNotExist:
+            is_active = True
         
-        is_active = True if not result else bool(int(result[0]))
-        
-        cursor.execute('''
-            SELECT value FROM bot_settings WHERE key = 'maintenance_message'
-        ''')
-        result = cursor.fetchone()
-        
-        maintenance_message = "🔧 Технические работы\nБот временно недоступен." if not result else result[0]
-        
-        conn.close()
+        try:
+            maintenance_setting = BotSetting.objects.get(key='maintenance_message')
+            maintenance_message = maintenance_setting.value or "🔧 Технические работы\nБот временно недоступен."
+        except BotSetting.DoesNotExist:
+            maintenance_message = "🔧 Технические работы\nБот временно недоступен."
         
         return JsonResponse({
             'is_active': is_active,
@@ -848,24 +810,24 @@ def api_bot_status(request):
 
 @csrf_exempt
 def api_debug_bot_settings(request):
-    """Отладка: показать путь к SQLite бота и актуальные значения ключей."""
+    """Отладка: показать актуальные значения ключей через Django ORM."""
     try:
-        import sqlite3, json as _json
-        db_path = str(settings.BOT_DATABASE_PATH)
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
+        from bot_control.models import BotSetting
+        
         def _get(key):
-            cur.execute("SELECT value FROM bot_settings WHERE key=?", (key,))
-            row = cur.fetchone()
-            return None if not row else row[0]
+            try:
+                setting = BotSetting.objects.get(key=key)
+                return setting.value
+            except BotSetting.DoesNotExist:
+                return None
+        
         data = {
-            'bot_db_path': db_path,
+            'bot_db_type': 'PostgreSQL',
             'withdrawals_enabled': _get('withdrawals_enabled'),
             'withdraw_banks': _get('withdraw_banks'),
             'deposits_enabled': _get('deposits_enabled'),
             'deposit_banks': _get('deposit_banks'),
         }
-        conn.close()
         return JsonResponse({'success': True, 'data': data})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -901,32 +863,18 @@ def api_set_bot_status(request):
             maintenance_message = data.get('maintenance_message', '')
             
             # Подключаемся к общей БД бота из настроек
-            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-            cursor = conn.cursor()
+            # Сохраняем настройки через Django ORM
+            from bot_control.models import BotSetting
             
-            # Создаем таблицу настроек если её нет
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS bot_settings (
-                    key TEXT PRIMARY KEY,
-                    value TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
+            BotSetting.objects.update_or_create(
+                key='is_active',
+                defaults={'value': '1' if is_active else '0'}
+            )
             
-            # Обновляем статус бота
-            cursor.execute('''
-                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
-            ''', ('is_active', '1' if is_active else '0'))
-            
-            # Обновляем сообщение о технических работах
-            cursor.execute('''
-                INSERT OR REPLACE INTO bot_settings (key, value, updated_at)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
-            ''', ('maintenance_message', maintenance_message))
-            
-            conn.commit()
-            conn.close()
+            BotSetting.objects.update_or_create(
+                key='maintenance_message',
+                defaults={'value': maintenance_message}
+            )
             
             return JsonResponse({'success': True, 'message': 'Статус бота обновлен'})
             
@@ -946,14 +894,9 @@ def api_send_broadcast(request):
             if not message:
                 return JsonResponse({'error': 'Сообщение не может быть пустым'}, status=400)
             
-            # Получаем всех пользователей из общей БД бота
-            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-            cursor = conn.cursor()
-            
-            cursor.execute('SELECT telegram_id FROM users')
-            user_ids = [row[0] for row in cursor.fetchall()]
-            
-            conn.close()
+            # Получаем всех пользователей через Django ORM
+            from bot_control.models import BotUser
+            user_ids = list(BotUser.objects.values_list('user_id', flat=True))
             
             # Отправляем сообщение всем пользователям
             # Берём токен из конфигурации бота, если задан, иначе из settings.BOT_TOKEN
@@ -984,27 +927,18 @@ def api_send_broadcast(request):
                 except Exception:
                     error_count += 1
             
-            # Сохраняем в историю рассылок в общей БД бота
-            conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-            cursor = conn.cursor()
+            # Сохраняем в историю рассылок через Django ORM
+            from bot_control.models import BroadcastMessage
+            from django.utils import timezone
             
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS broadcast_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    message TEXT NOT NULL,
-                    sent_count INTEGER DEFAULT 0,
-                    error_count INTEGER DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            cursor.execute('''
-                INSERT INTO broadcast_history (message, sent_count, error_count)
-                VALUES (?, ?, ?)
-            ''', (message, success_count, error_count))
-            
-            conn.commit()
-            conn.close()
+            BroadcastMessage.objects.create(
+                title=f"Рассылка {timezone.now()}",
+                message=message,
+                is_sent=True,
+                sent_at=timezone.now()
+            )
+            # Можно добавить sent_count и error_count в модель если нужно
+            # Пока просто сохраняем сообщение
             
             return JsonResponse({
                 'success': True,

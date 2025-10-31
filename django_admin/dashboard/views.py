@@ -396,37 +396,27 @@ def api_stats(request):
 def api_transactions(request):
     """API для получения последних транзакций"""
     try:
-        # Подключаемся к общей БД бота
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cursor = conn.cursor()
+        # Получаем транзакции через Django ORM
+        from bot_control.models import BotTransaction, BotUser
         
         limit = int(request.GET.get('limit', 50))
         
-        cursor.execute('''
-            SELECT 
-                t.id, t.user_id, t.bookmaker, t.trans_type, t.amount, t.status, t.created_at,
-                u.username, u.first_name, u.last_name
-            FROM transactions t
-            JOIN users u ON t.user_id = u.user_id
-            ORDER BY t.created_at DESC
-            LIMIT ?
-        ''', (limit,))
+        transactions_list = BotTransaction.objects.select_related('user').order_by('-created_at')[:limit]
         
         transactions = []
-        for row in cursor.fetchall():
-            trans_id, user_id, bookmaker, trans_type, amount, status, created_at, username, first_name, last_name = row
+        for trans in transactions_list:
+            user = trans.user
+            username = user.username or f"{user.first_name or ''} {user.last_name or ''}".strip() or 'Unknown'
             transactions.append({
-                'id': trans_id,
-                'user_id': user_id,
-                'username': username or f"{first_name or ''} {last_name or ''}".strip() or 'Unknown',
-                'bookmaker': bookmaker,
-                'type': trans_type,
-                'amount': amount,
-                'status': status,
-                'created_at': created_at
+                'id': trans.id,
+                'user_id': trans.user.user_id,
+                'username': username,
+                'bookmaker': trans.bookmaker or '',
+                'type': trans.trans_type or '',
+                'amount': float(trans.amount) if trans.amount else 0,
+                'status': trans.status or 'pending',
+                'created_at': trans.created_at.isoformat() if trans.created_at else ''
             })
-        
-        conn.close()
         return JsonResponse(transactions, safe=False)
         
     except Exception as e:
