@@ -20,20 +20,22 @@ export async function GET(request: NextRequest) {
       filters.createdAt = { ...filters.createdAt, lte: new Date(endDate) }
     }
 
-    // Статистика пополнений
+    // Статистика пополнений (только успешные заявки)
     const depositStats = await prisma.request.aggregate({
       where: {
         requestType: 'deposit',
+        status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
         ...filters,
       },
       _count: { id: true },
       _sum: { amount: true },
     })
 
-    // Статистика выводов
+    // Статистика выводов (только успешные заявки)
     const withdrawalStats = await prisma.request.aggregate({
       where: {
         requestType: 'withdraw',
+        status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
         ...filters,
       },
       _count: { id: true },
