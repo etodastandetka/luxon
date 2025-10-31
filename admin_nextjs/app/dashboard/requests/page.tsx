@@ -22,10 +22,38 @@ export default function RequestsPage() {
 
   useEffect(() => {
     fetchRequests()
+    
+    // Автоматическое обновление каждые 3 секунды
+    const interval = setInterval(() => {
+      fetchRequests(false) // Не показываем loading при автообновлении
+    }, 3000)
+    
+    // Обновление при фокусе страницы
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchRequests(false)
+      }
+    }
+    
+    // Обновление при возврате фокуса
+    const handleFocus = () => {
+      fetchRequests(false)
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [filter])
 
-  const fetchRequests = async () => {
-    setLoading(true)
+  const fetchRequests = async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true)
+    }
     try {
       const params = new URLSearchParams()
       if (filter.type) params.append('type', filter.type)
@@ -40,7 +68,9 @@ export default function RequestsPage() {
     } catch (error) {
       console.error('Failed to fetch requests:', error)
     } finally {
-      setLoading(false)
+      if (showLoading) {
+        setLoading(false)
+      }
     }
   }
 

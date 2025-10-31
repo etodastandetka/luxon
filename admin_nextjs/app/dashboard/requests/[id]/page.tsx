@@ -63,8 +63,9 @@ export default function RequestDetailPage() {
     }
 
     const abortController = new AbortController()
+    let intervalId: NodeJS.Timeout | null = null
 
-    const fetchRequest = async () => {
+    const fetchRequest = async (showLoading = true) => {
       try {
         const response = await fetch(`/api/requests/${requestId}`, {
           signal: abortController.signal
@@ -89,16 +90,40 @@ export default function RequestDetailPage() {
         }
         console.error('❌ Failed to fetch request:', error)
       } finally {
-        if (isMountedRef.current && !abortController.signal.aborted) {
+        if (isMountedRef.current && !abortController.signal.aborted && showLoading) {
           setLoading(false)
         }
       }
     }
     
-    fetchRequest()
+    fetchRequest(true)
+    
+    // Автоматическое обновление каждые 3 секунды
+    intervalId = setInterval(() => {
+      fetchRequest(false)
+    }, 3000)
+    
+    // Обновление при фокусе страницы
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchRequest(false)
+      }
+    }
+    
+    const handleFocus = () => {
+      fetchRequest(false)
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
     
     return () => {
       abortController.abort()
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
     }
   }, [params.id])
 
