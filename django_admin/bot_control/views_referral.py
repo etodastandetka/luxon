@@ -65,56 +65,54 @@ class UserContext:
 # --- Data access helpers (SQLite) ---
 
 def _get_user_ctx(user_id: int) -> UserContext:
-    conn = sqlite3.connect(_get_bot_db_path())
-    cur = conn.cursor()
-    cur.execute("SELECT username, first_name, last_name FROM users WHERE user_id=?", (user_id,))
-    row = cur.fetchone() or ('', '', '')
-    conn.close()
-    return UserContext(user_id=user_id, username=row[0] or '', first_name=row[1] or '', last_name=row[2] or '')
+    """Получение данных пользователя через Django ORM"""
+    try:
+        from bot_control.models import BotUser
+        user = BotUser.objects.get(user_id=user_id)
+        return UserContext(
+            user_id=user_id,
+            username=user.username or '',
+            first_name=user.first_name or '',
+            last_name=user.last_name or ''
+        )
+    except Exception:
+        return UserContext(user_id=user_id, username='', first_name='', last_name='')
 
 
 def _get_referral_stats(user_id: int) -> Dict[str, Any]:
-    conn = sqlite3.connect(_get_bot_db_path())
-    cur = conn.cursor()
-    # Active referrals = referred users who have a completed deposit in requests
-    cur.execute(
-        """
-        SELECT COUNT(DISTINCT r.referred_id)
-        FROM referrals r
-        JOIN requests q ON q.user_id = r.referred_id AND q.request_type='deposit' AND q.status='completed'
-        WHERE r.referrer_id = ?
-        """,
-        (user_id,)
-    )
-    active_count = cur.fetchone()[0] or 0
-
-    cur.execute(
-        """
-        SELECT COALESCE(SUM(q.amount), 0)
-        FROM referrals r
-        JOIN requests q ON q.user_id = r.referred_id AND q.request_type='deposit' AND q.status='completed'
-        WHERE r.referrer_id = ?
-        """,
-        (user_id,)
-    )
-    total_deposits = float(cur.fetchone()[0] or 0)
-
-    # balance = earned commissions (completed) minus paid withdrawals (completed)
+    """Получение статистики рефералов через Django ORM"""
+    from bot_control.models import BotReferral, BotReferralEarning, Request, BotUser
+    
     try:
-        cur.execute(
-            """
-            SELECT COALESCE(SUM(commission_amount), 0)
-            FROM referral_earnings
-            WHERE referrer_id = ? AND status = 'completed'
-            """,
-            (user_id,)
+        # Получаем всех приглашенных пользователей
+        referrals = BotReferral.objects.filter(referrer__user_id=user_id)
+        referred_ids = [ref.referred.user_id for ref in referrals]
+        
+        # Active referrals = referred users who have a completed deposit
+        completed_deposits = Request.objects.filter(
+            user_id__in=referred_ids,
+            request_type='deposit',
+            status__in=['completed', 'approved', 'auto_completed', 'autodeposit_success']
         )
-        earned = float(cur.fetchone()[0] or 0)
-    except Exception:
-        # Table may not exist yet; treat as zero
+        active_count = completed_deposits.values('user_id').distinct().count()
+        
+        # Total deposits amount
+        total_deposits_result = completed_deposits.aggregate(total=Sum('amount'))
+        total_deposits = float(total_deposits_result['total'] or 0)
+        
+        # Earned commissions (completed)
+        try:
+            earnings = BotReferralEarning.objects.filter(
+                referrer__user_id=user_id,
+                status='completed'
+            ).aggregate(total=Sum('commission_amount'))
+            earned = float(earnings['total'] or 0)
+        except Exception:
+            earned = 0.0
+    except Exception as e:
+        active_count = 0
+        total_deposits = 0.0
         earned = 0.0
-
-    conn.close()
 
     try:
         agg_c = ReferralWithdrawalRequest.objects.filter(user_id=user_id, status='completed').aggregate(total=Sum('amount'))
@@ -138,41 +136,49 @@ def _get_referral_stats(user_id: int) -> Dict[str, Any]:
 
 
 def _get_leaderboard(limit: int = 3) -> List[Dict[str, Any]]:
-    conn = sqlite3.connect(_get_bot_db_path())
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT r.referrer_id,
-               u.username,
-               u.first_name,
-               COUNT(DISTINCT r.referred_id) AS active_count
-        FROM referrals r
-        JOIN users u ON u.telegram_id = r.referrer_id
-        WHERE EXISTS (
-            SELECT 1 FROM requests q
-            WHERE q.user_id = r.referred_id
-              AND q.request_type='deposit'
-              AND q.status='completed'
-        )
-        GROUP BY r.referrer_id, u.username, u.first_name
-        ORDER BY active_count DESC
-        LIMIT ?
-        """,
-        (limit,)
-    )
-    rows = cur.fetchall()
-    conn.close()
-    leaders = []
-    prizes = [10000, 5000, 2500]
-    for idx, row in enumerate(rows):
-        leaders.append({
-            'position': idx + 1,
-            'user_id': row[0],
-            'username': row[1] or '',
-            'first_name': row[2] or '',
-            'active_referrals': row[3],
-            'prize': prizes[idx] if idx < len(prizes) else 0,
-        })
+    """Получение лидерборда через Django ORM"""
+    from bot_control.models import BotReferral, Request, BotUser
+    from django.db.models import Count
+    
+    try:
+        # Получаем пользователей с активными депозитами (завершенными)
+        completed_user_ids = Request.objects.filter(
+            request_type='deposit',
+            status__in=['completed', 'approved', 'auto_completed', 'autodeposit_success']
+        ).values_list('user_id', flat=True).distinct()
+        
+        # Получаем рефералов, у которых есть активные депозиты
+        referrals = BotReferral.objects.filter(
+            referred__user_id__in=completed_user_ids
+        ).select_related('referrer', 'referred')
+        
+        # Группируем по referrer и считаем активных
+        from collections import defaultdict
+        referrer_counts = defaultdict(int)
+        for ref in referrals:
+            referrer_counts[ref.referrer.user_id] += 1
+        
+        # Сортируем по количеству активных рефералов
+        sorted_referrers = sorted(referrer_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+        
+        leaders = []
+        prizes = [10000, 5000, 2500]
+        for idx, (user_id, active_count) in enumerate(sorted_referrers):
+            try:
+                user = BotUser.objects.get(user_id=user_id)
+                leaders.append({
+                    'position': idx + 1,
+                    'user_id': user.user_id,
+                    'username': user.username or '',
+                    'first_name': user.first_name or '',
+                    'active_referrals': active_count,
+                    'prize': prizes[idx] if idx < len(prizes) else 0,
+                })
+            except BotUser.DoesNotExist:
+                continue
+    except Exception:
+        leaders = []
+    
     return leaders
 
 

@@ -328,34 +328,47 @@ def transaction_detail(request, trans_id):
 def request_detail(request, req_id):
     """Request details from unified requests table"""
     try:
-        # Подключаемся к общей БД бота
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        from bot_control.models import Request, BotUser
         
-        # Получаем детали заявки
-        cursor.execute('''
-            SELECT r.*, u.username, u.first_name, u.last_name
-            FROM requests r
-            LEFT JOIN users u ON r.user_id = u.user_id
-            WHERE r.id = ? OR r.request_id = ?
-        ''', (req_id, req_id))
-        
-        request_data = cursor.fetchone()
-        if not request_data:
-            conn.close()
+        # Получаем детали заявки через Django ORM
+        try:
+            request_obj = Request.objects.get(id=req_id)
+        except Request.DoesNotExist:
             return render(request, 'bot_control/error.html', {'error': 'Заявка не найдена'})
         
-        # Получаем историю действий для этой заявки
-        cursor.execute('''
-            SELECT * FROM user_actions
-            WHERE data LIKE ? AND action LIKE '%request%'
-            ORDER BY timestamp DESC
-        ''', (f'%{req_id}%',))
+        # Получаем данные пользователя, если есть
+        user_data = {}
+        try:
+            user = BotUser.objects.get(user_id=request_obj.user_id)
+            user_data = {
+                'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            }
+        except BotUser.DoesNotExist:
+            pass
         
-        actions = cursor.fetchall()
+        # История действий - пока пустой список (можно добавить отдельную модель если нужно)
+        actions = []
         
-        conn.close()
+        # Формируем данные для шаблона в формате словаря (для совместимости)
+        request_data = {
+            'id': request_obj.id,
+            'user_id': request_obj.user_id,
+            'username': user_data.get('username', ''),
+            'first_name': user_data.get('first_name', ''),
+            'last_name': user_data.get('last_name', ''),
+            'request_type': request_obj.request_type,
+            'amount': request_obj.amount,
+            'status': request_obj.status,
+            'bookmaker': request_obj.bookmaker,
+            'bank': request_obj.bank,
+            'account_id': request_obj.account_id,
+            'phone': request_obj.phone,
+            'created_at': request_obj.created_at,
+            'updated_at': request_obj.updated_at,
+            'processed_at': request_obj.processed_at,
+        }
         
         return render(request, 'bot_control/request_detail.html', {
             'request': request_data,
@@ -371,31 +384,21 @@ def deposit_detail(request, deposit_id):
     try:
         deposit = get_object_or_404(AutoDepositRequest, id=deposit_id)
 
-        # Load recent requests history for the same user from bot DB (SQLite)
+        # Load recent requests history for the same user from PostgreSQL via Django ORM
         user_history = []
         try:
             uid = getattr(deposit, 'user_id', None)
             if uid is not None:
-                conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-                conn.row_factory = sqlite3.Row
-                cur = conn.cursor()
-                cur.execute('''
-                    SELECT id, COALESCE(request_type,'') AS request_type, COALESCE(amount,0) AS amount,
-                           COALESCE(status,'pending') AS status, COALESCE(created_at,'') AS created_at
-                    FROM requests
-                    WHERE user_id = ?
-                    ORDER BY datetime(COALESCE(created_at,'1970-01-01')) DESC
-                    LIMIT 100
-                ''', (uid,))
-                for row in cur.fetchall():
+                from bot_control.models import Request
+                requests = Request.objects.filter(user_id=uid).order_by('-created_at')[:100]
+                for req in requests:
                     user_history.append({
-                        'id': row['id'],
-                        'request_type': row['request_type'] or 'deposit',
-                        'amount': float(row['amount'] or 0),
-                        'status': row['status'] or 'pending',
-                        'created_at': row['created_at'] or '',
+                        'id': req.id,
+                        'request_type': req.request_type or '',
+                        'amount': float(req.amount) if req.amount else 0,
+                        'status': req.status or 'pending',
+                        'created_at': req.created_at.isoformat() if req.created_at else '',
                     })
-                conn.close()
         except Exception:
             user_history = []
 

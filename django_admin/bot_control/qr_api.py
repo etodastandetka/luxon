@@ -4,36 +4,25 @@ import json
 import sqlite3
 import os
 
-def get_db_connection():
-    """Получает соединение с базой данных"""
-    db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'bot', 'universal_bot.db')
-    return sqlite3.connect(db_path)
+# get_db_connection больше не нужна - используем Django ORM
 
 @csrf_exempt
 def api_get_qr_hashes(request):
-    """API для получения списка QR хешей"""
+    """API для получения списка QR хешей через Django ORM"""
     if request.method == 'GET':
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT id, bank_code, hash_value, is_active, created_at
-                FROM bot_control_qrhash
-                ORDER BY bank_code, created_at DESC
-            ''')
+            from bot_control.models import QRHash
+            qr_hashes = QRHash.objects.all().order_by('created_at')
             
             data = []
-            for row in cursor.fetchall():
+            for qr in qr_hashes:
                 data.append({
-                    'id': row[0],
-                    'bank_code': row[1],
-                    'hash_value': row[2],
-                    'is_active': bool(row[3]),
-                    'created_at': row[4]
+                    'id': qr.id,
+                    'bank_code': '',  # QRHash не имеет bank_code, это legacy поле
+                    'hash_value': qr.hash_value,
+                    'is_active': qr.is_active,
+                    'created_at': qr.created_at.isoformat() if qr.created_at else ''
                 })
-            
-            conn.close()
             
             return JsonResponse({
                 'success': True,
@@ -61,26 +50,18 @@ def api_add_qr_hash(request):
                     'error': 'Не указан банк или хеш'
                 })
             
-            conn = get_db_connection()
-            cursor = conn.cursor()
+            from bot_control.models import QRHash
             
-            # Если активируем, деактивируем все остальные для этого банка
+            # Если активируем, деактивируем все остальные
             if is_active:
-                cursor.execute('''
-                    UPDATE bot_control_qrhash 
-                    SET is_active = 0 
-                    WHERE bank_code = ?
-                ''', (bank_code,))
+                QRHash.objects.filter(is_active=True).update(is_active=False)
             
             # Добавляем новый QR хеш
-            cursor.execute('''
-                INSERT INTO bot_control_qrhash (bank_code, hash_value, is_active)
-                VALUES (?, ?, ?)
-            ''', (bank_code, hash_value, 1 if is_active else 0))
-            
-            qr_hash_id = cursor.lastrowid
-            conn.commit()
-            conn.close()
+            qr_hash = QRHash.objects.create(
+                hash_value=hash_value,
+                is_active=is_active
+            )
+            qr_hash_id = qr_hash.id
             
             return JsonResponse({
                 'success': True,
@@ -97,42 +78,25 @@ def api_toggle_qr_hash(request, qr_id):
     """API для переключения статуса QR хеша"""
     if request.method == 'POST':
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
+            from bot_control.models import QRHash
             
-            # Получаем текущий статус и банк
-            cursor.execute('''
-                SELECT is_active, bank_code FROM bot_control_qrhash WHERE id = ?
-            ''', (qr_id,))
-            
-            result = cursor.fetchone()
-            if not result:
-                conn.close()
+            try:
+                qr_hash = QRHash.objects.get(id=qr_id)
+            except QRHash.DoesNotExist:
                 return JsonResponse({
                     'success': False,
                     'error': 'QR хеш не найден'
                 })
             
-            current_status, bank_code = result
-            new_status = not bool(current_status)
+            new_status = not qr_hash.is_active
             
-            # Если активируем, деактивируем все остальные для этого банка
+            # Если активируем, деактивируем все остальные
             if new_status:
-                cursor.execute('''
-                    UPDATE bot_control_qrhash 
-                    SET is_active = 0 
-                    WHERE bank_code = ? AND id != ?
-                ''', (bank_code, qr_id))
+                QRHash.objects.filter(is_active=True).exclude(id=qr_id).update(is_active=False)
             
             # Переключаем статус
-            cursor.execute('''
-                UPDATE bot_control_qrhash 
-                SET is_active = ? 
-                WHERE id = ?
-            ''', (1 if new_status else 0, qr_id))
-            
-            conn.commit()
-            conn.close()
+            qr_hash.is_active = new_status
+            qr_hash.save()
             
             return JsonResponse({
                 'success': True,
@@ -149,22 +113,16 @@ def api_delete_qr_hash(request, qr_id):
     """API для удаления QR хеша"""
     if request.method == 'DELETE':
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
+            from bot_control.models import QRHash
             
-            # Проверяем, существует ли QR хеш
-            cursor.execute('SELECT id FROM bot_control_qrhash WHERE id = ?', (qr_id,))
-            if not cursor.fetchone():
-                conn.close()
+            try:
+                qr_hash = QRHash.objects.get(id=qr_id)
+                qr_hash.delete()
+            except QRHash.DoesNotExist:
                 return JsonResponse({
                     'success': False,
                     'error': 'QR хеш не найден'
                 })
-            
-            # Удаляем QR хеш
-            cursor.execute('DELETE FROM bot_control_qrhash WHERE id = ?', (qr_id,))
-            conn.commit()
-            conn.close()
             
             return JsonResponse({
                 'success': True

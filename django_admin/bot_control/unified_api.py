@@ -117,31 +117,19 @@ def create_request(request):
         if data['request_type'] not in REQUEST_TYPES:
             return JsonResponse({'error': 'Invalid request type'}, status=400)
         
-        from django.conf import settings
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        cursor = conn.cursor()
-        
-        # Создание заявки
-        cursor.execute('''
-            INSERT INTO requests (
-                user_id, request_type, amount, status, created_at,
-                bookmaker, bank, account_id, phone
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            data['user_id'],
-            data['request_type'],
-            data['amount'],
-            'pending',  # Статус по умолчанию
-            datetime.now().isoformat(),
-            data.get('bookmaker', ''),
-            data.get('bank', ''),
-            data.get('account_id', ''),
-            data.get('phone', '')
-        ))
-        
-        request_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        # Создание заявки через Django ORM
+        from bot_control.models import Request
+        request_obj = Request.objects.create(
+            user_id=data['user_id'],
+            request_type=data['request_type'],
+            amount=data['amount'],
+            status='pending',
+            bookmaker=data.get('bookmaker', ''),
+            bank=data.get('bank', ''),
+            account_id=data.get('account_id', ''),
+            phone=data.get('phone', '')
+        )
+        request_id = request_obj.id
         
         return JsonResponse({
             'success': True,
@@ -211,54 +199,43 @@ def get_request_detail(request, request_id):
     Получение детальной информации о заявке
     """
     try:
-        from django.conf import settings
-        conn = sqlite3.connect(str(settings.BOT_DATABASE_PATH))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        from bot_control.models import Request, BotUser
         
-        cursor.execute('''
-            SELECT 
-                r.*, u.username, u.first_name, u.last_name
-            FROM requests r
-            LEFT JOIN users u ON r.user_id = u.telegram_id
-            WHERE r.id = ?
-        ''', (request_id,))
-        
-        row = cursor.fetchone()
-        if not row:
-            conn.close()
+        try:
+            request_obj = Request.objects.get(id=request_id)
+        except Request.DoesNotExist:
             return JsonResponse({'error': 'Request not found'}, status=404)
         
-        # Получаем историю действий
-        cursor.execute('''
-            SELECT * FROM user_actions
-            WHERE data LIKE ? AND action LIKE '%request%'
-            ORDER BY timestamp DESC
-        ''', (f'%{request_id}%',))
+        # Получаем данные пользователя, если есть
+        user_data = {}
+        try:
+            user = BotUser.objects.get(user_id=request_obj.user_id)
+            user_data = {
+                'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            }
+        except BotUser.DoesNotExist:
+            pass
         
-        actions = [dict(action) for action in cursor.fetchall()]
-        
-        conn.close()
+        # История действий - пока пустой список (можно добавить отдельную модель если нужно)
+        actions = []
         
         return JsonResponse({
             'success': True,
             'request': {
-                'id': row['id'],
-                'user_id': row['user_id'],
-                'type': row['request_type'],
-                'amount': row['amount'],
-                'status': row['status'],
-                'created_at': row['created_at'],
-                'updated_at': row['updated_at'],
-                'bookmaker': row['bookmaker'],
-                'bank': row['bank'],
-                'account_id': row['account_id'],
-                'phone': row['phone'],
-                'user': {
-                    'username': row['username'],
-                    'first_name': row['first_name'],
-                    'last_name': row['last_name']
-                }
+                'id': request_obj.id,
+                'user_id': request_obj.user_id,
+                'type': request_obj.request_type,
+                'amount': float(request_obj.amount) if request_obj.amount else 0,
+                'status': request_obj.status,
+                'created_at': request_obj.created_at.isoformat() if request_obj.created_at else '',
+                'updated_at': request_obj.updated_at.isoformat() if request_obj.updated_at else '',
+                'bookmaker': request_obj.bookmaker or '',
+                'bank': request_obj.bank or '',
+                'account_id': request_obj.account_id or '',
+                'phone': request_obj.phone or '',
+                'user': user_data
             },
             'actions': actions
         })
