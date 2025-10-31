@@ -37,20 +37,41 @@ export default function DepositStep4() {
     setPlayerId(savedPlayerId)
     setAmount(savedAmount)
     
+    // Получаем Telegram ID пользователя
+    const tg = (window as any).Telegram?.WebApp
+    let telegramUserId: string | null = null
+    
+    if (tg?.initDataUnsafe?.user?.id) {
+      telegramUserId = String(tg.initDataUnsafe.user.id)
+    } else if (tg?.initData) {
+      try {
+        const params = new URLSearchParams(tg.initData)
+        const userParam = params.get('user')
+        if (userParam) {
+          const user = JSON.parse(decodeURIComponent(userParam))
+          telegramUserId = String(user.id)
+        }
+      } catch (e) {
+        console.log('❌ Error parsing initData:', e)
+      }
+    }
+    
     // Проверяем, есть ли сохраненные данные предыдущей заявки
     const previousBookmaker = localStorage.getItem('previous_deposit_bookmaker') || ''
-    const previousPlayerId = localStorage.getItem('previous_deposit_user_id') || ''
+    const previousTelegramUserId = localStorage.getItem('previous_deposit_telegram_user_id') || ''
     const previousAmount = parseFloat(localStorage.getItem('previous_deposit_amount') || '0')
     const transactionId = localStorage.getItem('deposit_transaction_id')
     
-    // Сравниваем: если данные изменились или их нет - это новая заявка
+    // Сравниваем: если Telegram ID изменился или данные изменились - это новая заявка
+    // Используем Telegram ID, а не ID казино для проверки новой заявки
     const isNewRequest = !previousBookmaker || 
-                         !previousPlayerId || 
+                         !previousTelegramUserId || 
+                         !telegramUserId ||
                          previousBookmaker !== savedBookmaker ||
-                         previousPlayerId !== savedPlayerId ||
+                         previousTelegramUserId !== telegramUserId ||
                          previousAmount !== savedAmount
     
-    if (isNewRequest) {
+    if (isNewRequest && telegramUserId) {
       // Новая заявка - очищаем старые данные и запускаем новый таймер
       console.log('🆕 Новая заявка - очищаем старые данные и запускаем новый таймер')
       setIsPaid(false)
@@ -58,9 +79,9 @@ export default function DepositStep4() {
       localStorage.removeItem('deposit_transaction_id')
       localStorage.removeItem('deposit_request_id')
       localStorage.removeItem('deposit_timer_start')
-      // Сохраняем текущие данные как "предыдущие" для сравнения
+      // Сохраняем текущие данные как "предыдущие" для сравнения (используем Telegram ID)
       localStorage.setItem('previous_deposit_bookmaker', savedBookmaker)
-      localStorage.setItem('previous_deposit_user_id', savedPlayerId)
+      localStorage.setItem('previous_deposit_telegram_user_id', telegramUserId)
       localStorage.setItem('previous_deposit_amount', savedAmount.toString())
       // Запускаем новый таймер
       localStorage.setItem('deposit_timer_start', Date.now().toString())
@@ -183,7 +204,7 @@ export default function DepositStep4() {
       localStorage.removeItem('deposit_transaction_id')
       localStorage.removeItem('deposit_timer_start') // Очищаем таймер
       localStorage.removeItem('previous_deposit_bookmaker')
-      localStorage.removeItem('previous_deposit_user_id')
+      localStorage.removeItem('previous_deposit_telegram_user_id')
       localStorage.removeItem('previous_deposit_amount')
       
       showAlert({
@@ -423,10 +444,31 @@ export default function DepositStep4() {
       // Очищаем таймер из localStorage, чтобы при повторном заходе не показывался
       localStorage.removeItem('deposit_timer_start')
       
-      // Сохраняем текущие данные как "предыдущие" для проверки новой заявки
-      localStorage.setItem('previous_deposit_bookmaker', bookmaker)
-      localStorage.setItem('previous_deposit_user_id', playerId)
-      localStorage.setItem('previous_deposit_amount', amount.toString())
+      // Получаем Telegram ID для сохранения
+      const tg = (window as any).Telegram?.WebApp
+      let telegramUserId: string | null = null
+      
+      if (tg?.initDataUnsafe?.user?.id) {
+        telegramUserId = String(tg.initDataUnsafe.user.id)
+      } else if (tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          if (userParam) {
+            const user = JSON.parse(decodeURIComponent(userParam))
+            telegramUserId = String(user.id)
+          }
+        } catch (e) {
+          console.log('❌ Error parsing initData:', e)
+        }
+      }
+      
+      // Сохраняем текущие данные как "предыдущие" для проверки новой заявки (используем Telegram ID)
+      if (telegramUserId) {
+        localStorage.setItem('previous_deposit_bookmaker', bookmaker)
+        localStorage.setItem('previous_deposit_telegram_user_id', telegramUserId)
+        localStorage.setItem('previous_deposit_amount', amount.toString())
+      }
       
       console.log('✅ Таймер остановлен после отправки заявки')
       
