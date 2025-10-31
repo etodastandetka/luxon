@@ -11,6 +11,7 @@ interface ChatMessage {
   messageType: string
   direction: string
   createdAt: string
+  mediaUrl?: string | null
 }
 
 interface UserInfo {
@@ -27,9 +28,12 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [user, setUser] = useState<UserInfo | null>(null)
   const [newMessage, setNewMessage] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (params.userId) {
@@ -88,21 +92,55 @@ export default function ChatPage() {
     }
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Проверяем тип файла (фото или видео)
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      setSelectedFile(file)
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+    } else {
+      alert('Пожалуйста, выберите фото или видео')
+    }
+  }
+
+  const removeFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setSelectedFile(null)
+    setPreviewUrl(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   const sendMessage = async () => {
-    if (!newMessage.trim() || sending) return
+    if ((!newMessage.trim() && !selectedFile) || sending) return
 
     setSending(true)
     try {
+      const formData = new FormData()
+      if (newMessage.trim()) {
+        formData.append('message', newMessage)
+      }
+      if (selectedFile) {
+        formData.append('file', selectedFile)
+        formData.append('fileType', selectedFile.type)
+      }
+
       const response = await fetch(`/api/users/${params.userId}/send-message`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: newMessage }),
+        body: formData,
       })
 
       const data = await response.json()
 
       if (data.success) {
         setNewMessage('')
+        removeFile()
         // Обновляем чат
         await fetchChatData()
       } else {
@@ -209,7 +247,26 @@ export default function ChatPage() {
                     : 'bg-gray-700 text-white'
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap break-words">{message.messageText}</p>
+                {message.mediaUrl && (
+                  <div className="mb-2 rounded-lg overflow-hidden">
+                    {message.messageType === 'photo' ? (
+                      <img 
+                        src={message.mediaUrl} 
+                        alt="Photo" 
+                        className="w-full max-h-64 object-cover rounded-lg"
+                      />
+                    ) : message.messageType === 'video' ? (
+                      <video 
+                        src={message.mediaUrl} 
+                        controls 
+                        className="w-full max-h-64 rounded-lg"
+                      />
+                    ) : null}
+                  </div>
+                )}
+                {message.messageText && (
+                  <p className="text-sm whitespace-pre-wrap break-words">{message.messageText}</p>
+                )}
                 <p className={`text-xs mt-1 ${message.direction === 'out' ? 'text-gray-800' : 'text-gray-400'}`}>
                   {formatDate(message.createdAt)}
                 </p>
@@ -222,10 +279,58 @@ export default function ChatPage() {
 
       {/* Поле ввода */}
       <div className="p-4 bg-gray-800 border-t border-gray-700 flex-shrink-0">
+        {/* Preview выбранного файла */}
+        {previewUrl && selectedFile && (
+          <div className="mb-2 relative">
+            {selectedFile.type.startsWith('image/') ? (
+              <div className="relative">
+                <img 
+                  src={previewUrl} 
+                  alt="Preview" 
+                  className="w-full max-h-32 object-cover rounded-lg"
+                />
+                <button
+                  onClick={removeFile}
+                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : selectedFile.type.startsWith('video/') ? (
+              <div className="relative">
+                <video 
+                  src={previewUrl} 
+                  controls 
+                  className="w-full max-h-32 rounded-lg"
+                />
+                <button
+                  onClick={removeFile}
+                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
         <div className="flex items-center space-x-2">
-          <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*,video/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+          >
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </button>
           <input
@@ -239,7 +344,7 @@ export default function ChatPage() {
           />
           <button
             onClick={sendMessage}
-            disabled={sending || !newMessage.trim()}
+            disabled={sending || (!newMessage.trim() && !selectedFile)}
             className="p-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
           >
             <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
