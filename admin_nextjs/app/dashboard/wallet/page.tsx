@@ -15,6 +15,7 @@ export default function WalletPage() {
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showActiveSelector, setShowActiveSelector] = useState(false)
   const [editing, setEditing] = useState<Wallet | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -139,6 +140,43 @@ export default function WalletPage() {
     setShowModal(true)
   }
 
+  const handleSetActive = async (id: number) => {
+    try {
+      // Сначала деактивируем все кошельки
+      await Promise.all(
+        wallets.map(w => 
+          w.isActive && w.id !== id
+            ? fetch(`/api/requisites/${w.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isActive: false }),
+              })
+            : Promise.resolve()
+        )
+      )
+
+      // Активируем выбранный кошелек
+      const response = await fetch(`/api/requisites/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        fetchWallets()
+        setShowActiveSelector(false)
+      } else {
+        alert(data.error || 'Ошибка при активации кошелька')
+      }
+    } catch (error) {
+      console.error('Failed to set active wallet:', error)
+      alert('Ошибка при активации кошелька')
+    }
+  }
+
+  const activeWallet = wallets.find(w => w.isActive)
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -162,6 +200,72 @@ export default function WalletPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </button>
+      </div>
+
+      {/* Всплывающий блок выбора активного кошелька */}
+      <div className="relative mb-4">
+        <button
+          onClick={() => setShowActiveSelector(!showActiveSelector)}
+          className="w-full bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm flex items-center justify-between"
+        >
+          <div className="flex items-center space-x-3">
+            <div className={`w-3 h-3 rounded-full ${activeWallet ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+            <div className="text-left">
+              <p className="text-sm text-gray-400">Активный кошелек</p>
+              <p className="text-base font-bold text-white">
+                {activeWallet ? (activeWallet.name || `Кошелек #${activeWallet.id}`) : 'Не выбран'}
+              </p>
+            </div>
+          </div>
+          <svg 
+            className={`w-5 h-5 text-gray-400 transition-transform ${showActiveSelector ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {/* Выпадающий список кошельков */}
+        {showActiveSelector && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 rounded-xl border border-gray-700 shadow-xl z-50 max-h-64 overflow-y-auto">
+            {wallets.length === 0 ? (
+              <div className="p-4 text-center text-gray-400 text-sm">
+                Нет кошельков
+              </div>
+            ) : (
+              <div className="py-2">
+                {wallets.map((wallet) => (
+                  <button
+                    key={wallet.id}
+                    onClick={() => handleSetActive(wallet.id)}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center justify-between ${
+                      wallet.isActive ? 'bg-gray-700 bg-opacity-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${wallet.isActive ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">
+                          {wallet.name || `Кошелек #${wallet.id}`}
+                        </p>
+                        <p className="text-xs text-gray-400 font-mono truncate">
+                          {wallet.value}
+                        </p>
+                      </div>
+                    </div>
+                    {wallet.isActive && (
+                      <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {wallets.length === 0 ? (
