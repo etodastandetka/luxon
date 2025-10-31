@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
 
 // Получение фото профиля пользователя из Telegram
 export async function GET(

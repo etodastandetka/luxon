@@ -133,7 +133,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="h-screen bg-gradient-to-b from-green-950 to-green-900 flex justify-center items-center overflow-hidden">
       <div className="mobile-container w-full max-w-[414px] h-full">
         {/* Основной контент */}
-        <main className={`px-4 py-4 bg-transparent overflow-y-auto h-full ${isChatPage ? 'pb-4' : 'pb-24'}`}>
+        <main className={`px-4 py-4 bg-transparent overflow-y-auto h-full ${isChatPage ? 'pb-4' : 'pb-20'}`}>
           {children}
         </main>
 
