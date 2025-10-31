@@ -40,13 +40,24 @@ export default function DashboardPage() {
       fetchRequests(false)
     }
     
+    // Синхронизация между вкладками через storage event
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'request_updated' && e.newValue) {
+        const updatedRequestId = parseInt(e.newValue)
+        console.log('🔄 Request updated in another tab:', updatedRequestId)
+        fetchRequests(false)
+      }
+    }
+    
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
+    window.addEventListener('storage', handleStorageChange)
     
     return () => {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('storage', handleStorageChange)
     }
   }, [activeTab])
 
