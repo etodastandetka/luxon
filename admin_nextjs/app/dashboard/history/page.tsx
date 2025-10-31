@@ -109,6 +109,39 @@ export default function HistoryPage() {
     return bookmaker
   }
 
+  const getBankImage = (bank: string | null) => {
+    if (!bank) return null
+    const normalized = bank.toLowerCase()
+    
+    // Маппинг банков на изображения
+    if (normalized.includes('demirbank') || normalized.includes('demir')) {
+      return '/images/demirbank.jpg'
+    }
+    if (normalized.includes('omoney') || normalized.includes('o!money')) {
+      return '/images/omoney.jpg'
+    }
+    if (normalized.includes('balance')) {
+      return '/images/balance.jpg'
+    }
+    if (normalized.includes('bakai')) {
+      return '/images/bakai.jpg'
+    }
+    if (normalized.includes('megapay')) {
+      return '/images/megapay.jpg'
+    }
+    if (normalized.includes('mbank')) {
+      return '/images/mbank.png'
+    }
+    if (normalized.includes('optima')) {
+      return '/images/optima.jpg'
+    }
+    if (normalized.includes('companion')) {
+      return '/images/companion.png'
+    }
+    
+    return null
+  }
+
   if (loading && transactions.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -205,14 +238,24 @@ export default function HistoryPage() {
                 <div className="flex items-start justify-between">
                   {/* Левая часть: Аватар и информация о пользователе */}
                   <div className="flex items-start space-x-3 flex-1">
-                    {/* Аватар */}
-                    <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                        <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                    {/* Иконка банка */}
+                    {getBankImage(tx.bank) ? (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900">
+                        <img
+                          src={getBankImage(tx.bank) || ''}
+                          alt={tx.bank || 'Bank'}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                    </div>
+                    ) : (
+                      <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Информация о пользователе и транзакции */}
                     <div className="flex-1 min-w-0">
