@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      createApiResponse(null, undefined, 'Settings saved successfully')
+      createApiResponse(null, undefined)
     )
   } catch (error: any) {
     return NextResponse.json(

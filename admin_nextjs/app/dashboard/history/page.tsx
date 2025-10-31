@@ -171,7 +171,7 @@ export default function HistoryPage() {
         <div className="space-y-3">
           {transactions.map((tx) => {
             const isDeposit = tx.type === 'deposit'
-            const statusInfo = getStatusLabel(tx.status, tx.statusDetail)
+            const statusInfo = getStatusLabel(tx.status, tx.status_detail)
             const bookmakerName = getBookmakerName(tx.bookmaker)
 
             return (

@@ -73,9 +73,7 @@ export async function PATCH(
       createApiResponse({
         ...updatedRequest,
         amount: updatedRequest.amount ? updatedRequest.amount.toString() : null,
-      }),
-      undefined,
-      'Request updated successfully'
+      })
     )
   } catch (error: any) {
     return NextResponse.json(

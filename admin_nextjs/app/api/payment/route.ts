@@ -54,9 +54,7 @@ export async function POST(request: NextRequest) {
         id: newRequest.id,
         transactionId: newRequest.id,
         message: 'Заявка успешно создана',
-      }),
-      undefined,
-      'Request created successfully'
+      })
     )
   } catch (error: any) {
     console.error('Payment API error:', error)
@@ -100,9 +98,7 @@ export async function PUT(request: NextRequest) {
       createApiResponse({
         ...updatedRequest,
         amount: updatedRequest.amount ? updatedRequest.amount.toString() : null,
-      }),
-      undefined,
-      'Status updated successfully'
+      })
     )
   } catch (error: any) {
     console.error('Payment API update error:', error)
