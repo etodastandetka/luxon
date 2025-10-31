@@ -36,9 +36,7 @@ export async function PATCH(
     })
 
     return NextResponse.json(
-      createApiResponse(requisite),
-      undefined,
-      'Requisite updated successfully'
+      createApiResponse(requisite)
     )
   } catch (error: any) {
     return NextResponse.json(
@@ -62,9 +60,7 @@ export async function DELETE(
     })
 
     return NextResponse.json(
-      createApiResponse(null),
-      undefined,
-      'Requisite deleted successfully'
+      createApiResponse(null)
     )
   } catch (error: any) {
     return NextResponse.json(

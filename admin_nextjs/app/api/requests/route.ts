@@ -94,9 +94,7 @@ export async function POST(request: NextRequest) {
       createApiResponse({
         ...newRequest,
         amount: newRequest.amount ? newRequest.amount.toString() : null,
-      }),
-      undefined,
-      'Request created successfully'
+      })
     )
   } catch (error: any) {
     return NextResponse.json(

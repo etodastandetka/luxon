@@ -55,9 +55,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      createApiResponse(requisite),
-      undefined,
-      'Requisite created successfully'
+      createApiResponse(requisite)
     )
   } catch (error: any) {
     return NextResponse.json(
