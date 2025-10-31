@@ -37,7 +37,18 @@ export default function DepositStep4() {
     setPlayerId(savedPlayerId)
     setAmount(savedAmount)
     
-    // Восстанавливаем таймер из сохраненного времени начала
+    // Проверяем, есть ли уже отправленная заявка (transaction_id)
+    const transactionId = localStorage.getItem('deposit_transaction_id')
+    if (transactionId) {
+      // Если есть transaction_id, значит заявка уже создана, останавливаем таймер
+      setIsPaid(true)
+      setTimeLeft(0)
+      localStorage.removeItem('deposit_timer_start') // Очищаем таймер
+      console.log('✅ Обнаружена существующая заявка - таймер остановлен')
+      return
+    }
+    
+    // Восстанавливаем таймер из сохраненного времени начала (только если нет заявки)
     const timerStartTime = localStorage.getItem('deposit_timer_start')
     if (timerStartTime) {
       const startTime = parseInt(timerStartTime, 10)
@@ -46,16 +57,18 @@ export default function DepositStep4() {
       const remaining = Math.max(0, 300 - elapsed) // Осталось секунд (5 минут = 300 секунд)
       setTimeLeft(remaining)
       
-      // Если время уже истекло, обрабатываем истечение (только если не оплачено)
-      if (remaining === 0 && !isPaid) {
+      // Если время уже истекло, обрабатываем истечение
+      if (remaining === 0) {
         // Вызываем через setTimeout, чтобы избежать проблем с зависимостями
         setTimeout(() => {
           handleTimeExpired()
         }, 100)
       }
     } else {
-      // Если нет сохраненного времени, сохраняем текущее время
-      localStorage.setItem('deposit_timer_start', Date.now().toString())
+      // Если нет сохраненного времени, сохраняем текущее время (только если еще нет заявки)
+      if (!transactionId) {
+        localStorage.setItem('deposit_timer_start', Date.now().toString())
+      }
     }
   }, [])
 
@@ -109,6 +122,12 @@ export default function DepositStep4() {
 
   // Функция обработки истечения времени
   const handleTimeExpired = async () => {
+    // Если заявка уже отправлена (нажали "Я оплатил"), не обрабатываем истечение времени
+    if (isPaid) {
+      console.log('⏸️ Таймер истек, но заявка уже отправлена - игнорируем')
+      return
+    }
+    
     try {
       // Отклоняем заявку в Django API
       const transactionId = localStorage.getItem('deposit_transaction_id')
@@ -348,12 +367,33 @@ export default function DepositStep4() {
       return
     }
 
+    // Проверяем, не отправлена ли уже заявка
+    if (isPaid) {
+      showAlert({
+        type: 'info',
+        title: language === 'ru' ? 'Информация' : 'Info',
+        message: language === 'ru'
+          ? 'Заявка уже отправлена. Ожидайте обработки.'
+          : 'Request already submitted. Please wait for processing.'
+      })
+      return
+    }
+
     // Сохраняем время начала таймера при создании заявки (если еще не сохранено)
     if (!localStorage.getItem('deposit_timer_start')) {
       localStorage.setItem('deposit_timer_start', Date.now().toString())
     }
     try {
       await createDepositRequest()
+      
+      // Останавливаем таймер - устанавливаем isPaid в true
+      setIsPaid(true)
+      setTimeLeft(0) // Останавливаем таймер
+      
+      // Очищаем таймер из localStorage, чтобы при повторном заходе не показывался
+      localStorage.removeItem('deposit_timer_start')
+      
+      console.log('✅ Таймер остановлен после отправки заявки')
       
       // Уведомляем пользователя
       showAlert({
