@@ -33,7 +33,7 @@ async function getCasinoConfig(bookmaker: string) {
       hash: process.env.XBET_HASH || process.env.ONEXBET_HASH || '',
       cashierpass: process.env.XBET_CASHIERPASS || process.env.ONEXBET_CASHIERPASS || '',
       login: process.env.XBET_LOGIN || process.env.ONEXBET_LOGIN || '',
-      cashdeskid: parseInt(process.env.XBET_CASHDESKID || process.env.ONEXBET_CASHDESKID || '0'),
+      cashdeskid: process.env.XBET_CASHDESKID || process.env.ONEXBET_CASHDESKID || '0',
     }
   }
   
@@ -60,7 +60,7 @@ async function getCasinoConfig(bookmaker: string) {
       hash: process.env.MELBET_HASH || '',
       cashierpass: process.env.MELBET_CASHIERPASS || '',
       login: process.env.MELBET_LOGIN || '',
-      cashdeskid: parseInt(process.env.MELBET_CASHDESKID || '0'),
+      cashdeskid: process.env.MELBET_CASHDESKID || '0',
     }
   }
   
@@ -77,7 +77,7 @@ async function getCasinoConfig(bookmaker: string) {
         return {
           api_key: config.api_key,
           secret: config.secret,
-          cashpoint_id: parseInt(String(config.cashpoint_id)),
+          cashpoint_id: String(config.cashpoint_id),
         }
       }
     }
@@ -86,7 +86,7 @@ async function getCasinoConfig(bookmaker: string) {
     return {
       api_key: process.env.MOSTBET_API_KEY || '',
       secret: process.env.MOSTBET_SECRET || '',
-      cashpoint_id: parseInt(process.env.MOSTBET_CASHPOINT_ID || '0'),
+      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || '0',
     }
   }
 
