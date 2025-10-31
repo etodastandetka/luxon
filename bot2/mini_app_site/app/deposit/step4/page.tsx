@@ -445,12 +445,20 @@ export default function DepositStep4() {
       // Получаем активный реквизит из админки
       let requisite = await getActiveRequisite()
       
-      // Если реквизит не найден, используем дефолтный (для тестирования)
-      // В продакшене это должно быть настроено в админке
+      // Если реквизит не найден, показываем ошибку
       if (!requisite) {
-        console.warn('Не найден активный реквизит, используем дефолтный')
-        requisite = '11800000353932089' // Дефолтный реквизит из примера (можно заменить на реальный)
+        console.error('❌ Не найден активный реквизит в админке! Пожалуйста, выберите активный кошелек в админ-панели.')
+        showAlert({
+          type: 'error',
+          title: language === 'ru' ? 'Ошибка' : 'Error',
+          message: language === 'ru'
+            ? 'Активный кошелек не настроен. Обратитесь в поддержку.'
+            : 'Active wallet not configured. Please contact support.'
+        })
+        return
       }
+      
+      console.log('✅ Используется активный реквизит из админки:', requisite.slice(0, 4) + '****' + requisite.slice(-4))
 
       const amountCents = Math.round(parseFloat(String(amount)) * 100)
       const amountStr = amountCents.toString().padStart(5, '0')
