@@ -53,8 +53,26 @@ export default function RequestsPage() {
         return 'bg-yellow-500 text-black'
       case 'rejected':
         return 'bg-red-500 text-white'
+      case 'deferred':
+        return 'bg-orange-500 text-white'
       default:
         return 'bg-gray-700 text-gray-300'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'ожидает'
+      case 'completed':
+      case 'approved':
+        return 'успешно'
+      case 'rejected':
+        return 'отклонено'
+      case 'deferred':
+        return 'отложено'
+      default:
+        return status
     }
   }
 
@@ -101,9 +119,9 @@ export default function RequestsPage() {
           Ожидающие
         </button>
         <button
-          onClick={() => setFilter({ ...filter, status: undefined })}
+          onClick={() => setFilter({ ...filter, status: 'left' })}
           className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-            !filter.status
+            filter.status === 'left'
               ? 'bg-green-500 text-black shadow-lg'
               : 'bg-gray-800 text-gray-300'
           }`}
@@ -144,7 +162,7 @@ export default function RequestsPage() {
                         request.status
                       )}`}
                     >
-                      {request.status}
+                      {getStatusLabel(request.status)}
                     </span>
                   </div>
                   <p className="text-xs text-gray-400">

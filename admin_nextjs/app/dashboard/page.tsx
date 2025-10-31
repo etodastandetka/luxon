@@ -31,8 +31,8 @@ export default function DashboardPage() {
       if (activeTab === 'pending') {
         params.append('status', 'pending')
       } else if (activeTab === 'all') {
-        // Для "Оставленные" показываем заявки со статусами не pending
-        params.append('status', 'left') // Используем специальный статус или фильтруем на клиенте
+        // Для "Оставленные" показываем заявки со статусами не pending (включая deferred)
+        params.append('status', 'left')
       }
 
       const response = await fetch(`/api/requests?${params.toString()}`)
@@ -41,12 +41,7 @@ export default function DashboardPage() {
       console.log('📋 Fetched requests data:', data)
 
       if (data.success) {
-        let requestsList = data.data.requests || []
-        
-        // Для вкладки "Оставленные" фильтруем заявки со статусами не pending
-        if (activeTab === 'all') {
-          requestsList = requestsList.filter((req: Request) => req.status !== 'pending')
-        }
+        const requestsList = data.data.requests || []
         
         console.log(`✅ Loaded ${requestsList.length} requests for tab: ${activeTab}`)
         setRequests(requestsList)
