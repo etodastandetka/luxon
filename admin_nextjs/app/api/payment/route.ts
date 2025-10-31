@@ -35,13 +35,34 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Определяем user_id (пробуем разные варианты)
+    // Приоритет: telegram_user_id > userId > user_id > playerId
     const finalUserId = telegram_user_id || userId || user_id || playerId
     const finalAccountId = account_id || user_id || userId || playerId
 
-    // Если user_id не передан, используем тестовый ID (но это должно быть временным решением)
+    console.log('📝 Payment API - Creating request:', {
+      telegram_user_id,
+      userId,
+      user_id,
+      playerId,
+      finalUserId,
+      type,
+      amount,
+      bookmaker,
+      bank
+    })
+
+    // Если user_id не передан, используем playerId как userId (для тестирования)
+    // Но лучше использовать telegram_user_id если он доступен
     if (!finalUserId || !type || !amount) {
-      console.error('Payment API: Missing required fields', { userId, user_id, telegram_user_id, playerId, type, amount })
-      return NextResponse.json(
+      console.error('❌ Payment API: Missing required fields', { 
+        userId, 
+        user_id, 
+        telegram_user_id, 
+        playerId, 
+        type, 
+        amount 
+      })
+      const errorResponse = NextResponse.json(
         createApiResponse(null, 'Missing required fields: userId, type, amount'),
         { 
           status: 400,
@@ -50,11 +71,44 @@ export async function POST(request: NextRequest) {
           }
         }
       )
+      return errorResponse
     }
+
+    // Преобразуем userId в BigInt (если это строка с числом)
+    let userIdBigInt: bigint
+    try {
+      if (typeof finalUserId === 'string') {
+        userIdBigInt = BigInt(finalUserId)
+      } else {
+        userIdBigInt = BigInt(finalUserId)
+      }
+    } catch (e) {
+      console.error('❌ Payment API: Invalid userId format', finalUserId, e)
+      const errorResponse = NextResponse.json(
+        createApiResponse(null, 'Invalid userId format'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+      return errorResponse
+    }
+
+    console.log('💾 Payment API - Saving to database:', {
+      userId: userIdBigInt.toString(),
+      username: telegram_username,
+      firstName: telegram_first_name,
+      type,
+      amount: parseFloat(amount),
+      bookmaker,
+      bank
+    })
 
     const newRequest = await prisma.request.create({
       data: {
-        userId: BigInt(finalUserId),
+        userId: userIdBigInt,
         username: telegram_username,
         firstName: telegram_first_name,
         lastName: telegram_last_name,
@@ -66,6 +120,14 @@ export async function POST(request: NextRequest) {
         phone,
         status: 'pending',
       },
+    })
+
+    console.log('✅ Payment API - Request created successfully:', {
+      id: newRequest.id,
+      userId: newRequest.userId.toString(),
+      type: newRequest.requestType,
+      status: newRequest.status,
+      amount: newRequest.amount?.toString()
     })
 
     const response = NextResponse.json(
