@@ -165,6 +165,29 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Настройка чека на заявке */}
+      <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
+        <h2 className="text-base font-bold text-white mb-4">Чек на заявке</h2>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white">Требовать фото чека</p>
+              <p className="text-xs text-gray-400">Запрашивать фото чека при создании заявки на пополнение</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.require_receipt_photo}
+                onChange={(e) => updateSetting('require_receipt_photo', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
       {/* Настройки пополнений */}
       <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
         <h2 className="text-base font-bold text-white mb-4">Настройки пополнений</h2>
@@ -180,22 +203,6 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={settings.deposits_enabled}
                 onChange={(e) => updateSetting('deposits_enabled', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-white">Требовать фото чека</p>
-              <p className="text-xs text-gray-400">Запрашивать фото чека при оплате</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.require_receipt_photo}
-                onChange={(e) => updateSetting('require_receipt_photo', e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
