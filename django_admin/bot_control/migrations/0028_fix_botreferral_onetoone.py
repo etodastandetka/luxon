@@ -39,7 +39,7 @@ def reverse_fix(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bot_control', '0026_merge_0023_0025'),
+        ('bot_control', '0027_create_botreferral'),
     ]
 
     operations = [
