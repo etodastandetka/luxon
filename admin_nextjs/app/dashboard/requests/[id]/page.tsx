@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -45,13 +45,20 @@ export default function RequestDetailPage() {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [searchId, setSearchId] = useState('')
   const [deferring, setDeferring] = useState(false)
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     const requestId = Array.isArray(params.id) ? params.id[0] : params.id
     if (!requestId) return
 
-    let isMounted = true
-    
     const fetchRequest = async () => {
       try {
         const response = await fetch(`/api/requests/${requestId}`)
@@ -59,27 +66,25 @@ export default function RequestDetailPage() {
 
         console.log('📋 Request detail data:', data)
 
-        if (!isMounted) return
+        if (!isMountedRef.current) return
 
-        if (data.success && isMounted) {
-          setRequest(data.data)
+        if (data.success) {
+          if (isMountedRef.current) {
+            setRequest(data.data)
+          }
         } else {
           console.error('❌ Failed to fetch request:', data.error)
         }
       } catch (error) {
         console.error('❌ Failed to fetch request:', error)
       } finally {
-        if (isMounted) {
+        if (isMountedRef.current) {
           setLoading(false)
         }
       }
     }
     
     fetchRequest()
-    
-    return () => {
-      isMounted = false
-    }
   }, [params.id])
 
   const copyToClipboard = (text: string) => {
@@ -217,20 +222,19 @@ export default function RequestDetailPage() {
   useEffect(() => {
     if (!showMenu) return
 
-    let isMounted = true
-
     const handleClickOutside = (event: MouseEvent) => {
-      if (!isMounted) return
+      if (!isMountedRef.current) return
       
       const target = event.target as HTMLElement
       if (!target.closest('.relative')) {
-        setShowMenu(false)
+        if (isMountedRef.current) {
+          setShowMenu(false)
+        }
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
-      isMounted = false
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showMenu])
