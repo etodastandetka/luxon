@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 interface Wallet {
   id: number
@@ -16,6 +16,7 @@ export default function WalletPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Wallet | null>(null)
+  const selectRef = useRef<HTMLSelectElement>(null)
   const [formData, setFormData] = useState({
     name: '',
     value: '',
@@ -139,13 +140,12 @@ export default function WalletPage() {
     setShowModal(true)
   }
 
-  const handleSetActive = async (id: number) => {
+  const handleSetActive = async (id: number): Promise<boolean> => {
     const wallet = wallets.find(w => w.id === id)
-    if (!wallet) return
+    if (!wallet) return false
 
     if (!confirm(`Сделать этот кошелек активным? Все остальные будут отключены.`)) {
-      // Сбрасываем выбор в выпадающем списке
-      return
+      return false
     }
 
     try {
@@ -173,12 +173,15 @@ export default function WalletPage() {
       if (data.success) {
         alert('Активный кошелек изменен!')
         fetchWallets()
+        return true
       } else {
         alert(data.error || 'Ошибка при активации кошелька')
+        return false
       }
     } catch (error) {
       console.error('Failed to set active wallet:', error)
       alert('Ошибка при активации кошелька')
+      return false
     }
   }
 
@@ -216,14 +219,15 @@ export default function WalletPage() {
             Активный кошелек
           </label>
           <select
+            ref={selectRef}
             value={activeWallet?.id || ''}
             onChange={async (e) => {
               const id = parseInt(e.target.value)
               if (id) {
-                await handleSetActive(id)
-                // Сбрасываем выбор если пользователь отменил
-                if (!wallets.find(w => w.id === id)?.isActive) {
-                  e.target.value = activeWallet?.id?.toString() || ''
+                const success = await handleSetActive(id)
+                // Сбрасываем выбор если пользователь отменил или произошла ошибка
+                if (!success && selectRef.current) {
+                  selectRef.current.value = activeWallet?.id?.toString() || ''
                 }
               }
             }}
