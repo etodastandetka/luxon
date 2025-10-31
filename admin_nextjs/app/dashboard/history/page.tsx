@@ -60,23 +60,23 @@ export default function HistoryPage() {
   }
 
   const getStatusLabel = (status: string, statusDetail: string | null) => {
-    // Маппинг статусов на русские метки
+    // Маппинг статусов на русские метки (темная тема)
     if (status === 'completed' || status === 'auto_completed' || status === 'approved' || status === 'autodeposit_success') {
-      return { label: 'Успешно', color: 'bg-green-100 text-green-700 border border-green-300' }
+      return { label: 'Успешно', color: 'bg-green-500 text-black border border-green-400' }
     }
     if (status === 'rejected' || status === 'declined') {
-      return { label: 'Отклонено', color: 'bg-red-100 text-red-700 border border-red-300' }
+      return { label: 'Отклонено', color: 'bg-red-500 text-white border border-red-400' }
     }
     if (status === 'pending' || status === 'processing') {
-      return { label: 'Ожидает', color: 'bg-yellow-100 text-yellow-700 border border-yellow-300' }
+      return { label: 'Ожидает', color: 'bg-yellow-500 text-black border border-yellow-400' }
     }
     if (status === 'manual' || status === 'awaiting_manual' || statusDetail === 'manual') {
-      return { label: 'Ручная', color: 'bg-red-100 text-red-700 border border-red-300' }
+      return { label: 'Ручная', color: 'bg-red-500 text-white border border-red-400' }
     }
     if (status === 'deferred') {
-      return { label: 'Отложено', color: 'bg-orange-100 text-orange-700 border border-orange-300' }
+      return { label: 'Отложено', color: 'bg-orange-500 text-white border border-orange-400' }
     }
-    return { label: status, color: 'bg-gray-100 text-gray-700 border border-gray-300' }
+    return { label: status, color: 'bg-gray-700 text-gray-300 border border-gray-600' }
   }
 
   const getTransactionType = (tx: Transaction) => {
@@ -200,7 +200,7 @@ export default function HistoryPage() {
             return (
               <div
                 key={tx.id}
-                className="block bg-white rounded-xl p-4 shadow-sm border border-gray-200"
+                className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 backdrop-blur-sm"
               >
                 <div className="flex items-start justify-between">
                   {/* Левая часть: Аватар и информация о пользователе */}
@@ -208,7 +208,7 @@ export default function HistoryPage() {
                     {/* Аватар */}
                     <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
                       <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </div>
@@ -216,15 +216,15 @@ export default function HistoryPage() {
 
                     {/* Информация о пользователе и транзакции */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-bold text-black mb-0.5">
+                      <p className="text-base font-bold text-white mb-0.5">
                         {tx.user_display_name || 'Неизвестный пользователь'}
                       </p>
-                      <p className="text-xs text-gray-500 mb-2">
+                      <p className="text-xs text-gray-400 mb-2">
                         ID: {tx.user_id}
                       </p>
                       
                       {/* Тип транзакции */}
-                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-md mb-1">
+                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
                         {transactionType}
                       </span>
                     </div>
@@ -233,14 +233,14 @@ export default function HistoryPage() {
                   {/* Правая часть: Дата, сумма и статус */}
                   <div className="flex flex-col items-end space-y-2 ml-4">
                     {/* Дата и время */}
-                    <p className="text-xs text-gray-500 whitespace-nowrap">
+                    <p className="text-xs text-gray-400 whitespace-nowrap">
                       {formatDate(tx.created_at)}
                     </p>
                     
                     {/* Сумма */}
                     <p
                       className={`text-base font-bold ${
-                        isDeposit ? 'text-green-600' : 'text-red-600'
+                        isDeposit ? 'text-green-500' : 'text-red-500'
                       }`}
                     >
                       {isDeposit ? '+' : '-'}
@@ -257,6 +257,7 @@ export default function HistoryPage() {
                       <div className={`w-1.5 h-1.5 rounded-full ${
                         statusInfo.label === 'Успешно' ? 'bg-green-600' :
                         statusInfo.label === 'Отклонено' ? 'bg-red-600' :
+                        statusInfo.label === 'Отложено' ? 'bg-orange-600' :
                         'bg-yellow-600'
                       }`}></div>
                       {statusInfo.label}
