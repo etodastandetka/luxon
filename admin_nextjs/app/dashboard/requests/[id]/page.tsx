@@ -298,36 +298,76 @@ export default function RequestDetailPage() {
     }
   }
 
-  // Функция для обновления статуса заявки (подтвердить/отклонить)
-  const updateRequestStatus = async (newStatus: 'completed' | 'approved' | 'rejected') => {
-    if (!request) return
-    
-    try {
-      const response = await fetch(`/api/requests/${request.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      })
+    // Функция для обновления статуса заявки (подтвердить/отклонить)
+    const updateRequestStatus = async (newStatus: 'completed' | 'approved' | 'rejected') => {
+      if (!request) return
+      
+      try {
+        // Если подтверждаем депозит, сначала пополняем баланс через API казино
+        if ((newStatus === 'completed' || newStatus === 'approved') && request.requestType === 'deposit' && request.bookmaker && request.accountId && request.amount) {
+          try {
+            const depositResponse = await fetch('/api/deposit-balance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                requestId: request.id,
+                bookmaker: request.bookmaker,
+                accountId: request.accountId,
+                amount: request.amount,
+              }),
+            })
 
-      const data = await response.json()
+            const depositData = await depositResponse.json()
 
-      if (data.success) {
-        setRequest(prevRequest => prevRequest ? { ...prevRequest, ...data.data } : data.data)
-        
-        // Уведомляем другие вкладки об обновлении
-        localStorage.setItem('request_updated', request.id.toString())
-        localStorage.removeItem('request_updated') // Триггерим storage event
-        
-        const statusLabel = newStatus === 'completed' || newStatus === 'approved' ? 'подтверждена' : 'отклонена'
-        alert(`Заявка ${statusLabel}`)
-      } else {
-        alert(data.error || 'Ошибка при обновлении заявки')
+            if (!depositData.success) {
+              alert(`Ошибка пополнения баланса: ${depositData.error || depositData.message || 'Неизвестная ошибка'}`)
+              return
+            }
+
+            // Если пополнение успешно, обновляем заявку
+            if (depositData.data?.request) {
+              setRequest(prevRequest => prevRequest ? { ...prevRequest, ...depositData.data.request } : depositData.data.request)
+              
+              // Уведомляем другие вкладки об обновлении
+              localStorage.setItem('request_updated', request.id.toString())
+              localStorage.removeItem('request_updated')
+              
+              alert(`Баланс игрока пополнен. Заявка подтверждена.`)
+              return
+            }
+          } catch (depositError) {
+            console.error('Failed to deposit balance:', depositError)
+            alert('Ошибка при пополнении баланса игрока. Заявка не подтверждена.')
+            return
+          }
+        }
+
+        // Для остальных случаев просто обновляем статус
+        const response = await fetch(`/api/requests/${request.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        })
+
+        const data = await response.json()
+
+        if (data.success) {
+          setRequest(prevRequest => prevRequest ? { ...prevRequest, ...data.data } : data.data)
+          
+          // Уведомляем другие вкладки об обновлении
+          localStorage.setItem('request_updated', request.id.toString())
+          localStorage.removeItem('request_updated') // Триггерим storage event
+          
+          const statusLabel = newStatus === 'completed' || newStatus === 'approved' ? 'подтверждена' : 'отклонена'
+          alert(`Заявка ${statusLabel}`)
+        } else {
+          alert(data.error || 'Ошибка при обновлении заявки')
+        }
+      } catch (error) {
+        console.error('Failed to update request status:', error)
+        alert('Ошибка при обновлении заявки')
       }
-    } catch (error) {
-      console.error('Failed to update request status:', error)
-      alert('Ошибка при обновлении заявки')
     }
-  }
 
   const handleSearchById = () => {
     if (!searchId.trim()) {
