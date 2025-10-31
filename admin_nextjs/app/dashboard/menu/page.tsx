@@ -14,6 +14,7 @@ export default function MenuPage() {
     { href: '/dashboard/history', label: 'История транзакций', icon: '🕐' },
     { href: '/dashboard/wallet', label: 'Кошельки', icon: '💰' },
     { href: '/dashboard/limits', label: 'Лимиты', icon: '⚙️' },
+    { href: '/dashboard/broadcast', label: 'Рассылка', icon: '📢' },
     { href: '/dashboard/settings', label: 'Настройки', icon: '🔧' },
   ]
 
