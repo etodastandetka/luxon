@@ -1,0 +1,51 @@
+# Команды для применения миграций на сервере
+
+# 1. Подключиться к серверу через SSH
+# ssh root@your-server-ip
+
+# 2. Перейти в директорию проекта
+cd /var/www/luxon
+
+# 3. Обновить код из GitHub
+git pull origin main
+
+# 4. Перейти в директорию Django
+cd django_admin
+
+# 5. Активировать виртуальное окружение
+source venv/bin/activate
+
+# 6. Проверить статус миграций
+python manage.py showmigrations bot_control
+
+# 7. Создать новые миграции для моделей PostgreSQL
+python manage.py makemigrations bot_control
+
+# 8. Применить все миграции
+python manage.py migrate
+
+# 9. Если есть конфликты, выполнить merge миграций (если нужно)
+# python manage.py makemigrations --merge
+
+# 10. Проверить, что миграции применены
+python manage.py showmigrations bot_control
+
+# 11. Деактивировать виртуальное окружение
+deactivate
+
+# 12. Перезапустить Django через PM2
+cd ..
+pm2 restart luxon-django-admin
+
+# 13. Проверить статус PM2
+pm2 status
+
+# 14. Проверить логи Django (если нужно)
+pm2 logs luxon-django-admin
+
+
+# ===== АЛЬТЕРНАТИВНО: Использовать скрипт =====
+# Скрипт SERVER_MIGRATE.sh делает всё автоматически:
+# chmod +x SERVER_MIGRATE.sh
+# ./SERVER_MIGRATE.sh
+
