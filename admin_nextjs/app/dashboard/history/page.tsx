@@ -85,6 +85,11 @@ export default function HistoryPage() {
       return '-'
     }
     
+    // Если заявка отклонена или отклонена вручную, не показываем "Авто пополнение"
+    if (tx.status === 'rejected' || tx.status === 'declined') {
+      return tx.type === 'deposit' ? 'Пополнение' : 'Вывод'
+    }
+    
     // Определяем тип транзакции для отображения
     if (tx.status_detail?.includes('autodeposit') || tx.status === 'autodeposit_success' || tx.status === 'auto_completed') {
       return 'Авто пополнение'
