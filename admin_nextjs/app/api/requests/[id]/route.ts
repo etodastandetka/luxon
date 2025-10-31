@@ -57,6 +57,7 @@ export async function GET(
         ...requestData,
         userId: requestData.userId.toString(), // Преобразуем BigInt в строку
         amount: requestData.amount ? requestData.amount.toString() : null,
+        photoFileUrl: requestData.photoFileUrl, // Фото чека (base64 или URL)
         incomingPayments: requestData.incomingPayments.map(p => ({
           ...p,
           amount: p.amount.toString(),
