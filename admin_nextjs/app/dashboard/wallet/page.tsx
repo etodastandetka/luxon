@@ -177,6 +177,23 @@ export default function WalletPage() {
 
   const activeWallet = wallets.find(w => w.isActive)
 
+  // Закрываем выпадающий список при клике вне его
+  useEffect(() => {
+    if (!showActiveSelector) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.relative')) {
+        setShowActiveSelector(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showActiveSelector])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
