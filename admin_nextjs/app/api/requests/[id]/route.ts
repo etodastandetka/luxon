@@ -28,6 +28,7 @@ export async function GET(
     return NextResponse.json(
       createApiResponse({
         ...requestData,
+        userId: requestData.userId.toString(), // Преобразуем BigInt в строку
         amount: requestData.amount ? requestData.amount.toString() : null,
         incomingPayments: requestData.incomingPayments.map(p => ({
           ...p,
