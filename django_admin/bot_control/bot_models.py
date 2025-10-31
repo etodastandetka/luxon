@@ -48,45 +48,8 @@ class BotWithdrawRequestRaw(models.Model):
     def __str__(self):
         return f"Вывод #{self.id} - {self.user_id} - {self.amount} {self.bookmaker}"
 
-class BotUser(models.Model):
-    """Модель для чтения пользователей из базы бота"""
-    
-    class Meta:
-        managed = False
-        db_table = 'users'
-        verbose_name = 'Пользователь бота'
-        verbose_name_plural = 'Пользователи бота'
-    
-    user_id = models.BigIntegerField(primary_key=True, verbose_name='ID пользователя')
-    username = models.CharField(max_length=255, blank=True, verbose_name='Username')
-    first_name = models.CharField(max_length=255, blank=True, verbose_name='Имя')
-    last_name = models.CharField(max_length=255, blank=True, verbose_name='Фамилия')
-    language = models.CharField(max_length=10, default='ru', verbose_name='Язык')
-    created_at = models.DateTimeField(verbose_name='Дата регистрации')
-    
-    def __str__(self):
-        return f"{self.username or self.first_name} ({self.user_id})"
-
-class BotTransaction(models.Model):
-    """Модель для чтения транзакций из базы бота"""
-    
-    class Meta:
-        managed = False
-        db_table = 'transactions'
-        verbose_name = 'Транзакция (из бота)'
-        verbose_name_plural = 'Транзакции (из бота)'
-    
-    id = models.AutoField(primary_key=True)
-    user_id = models.BigIntegerField(verbose_name='ID пользователя')
-    bookmaker = models.CharField(max_length=50, verbose_name='Букмекер')
-    trans_type = models.CharField(max_length=50, verbose_name='Тип')
-    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма')
-    status = models.CharField(max_length=50, verbose_name='Статус')
-    photo_file_id = models.CharField(max_length=255, blank=True, verbose_name='Фото')
-    created_at = models.DateTimeField(verbose_name='Дата создания')
-    
-    def __str__(self):
-        return f"Транзакция #{self.id} - {self.user_id} - {self.amount} {self.bookmaker}"
+# BotUser и BotTransaction теперь в models.py для PostgreSQL
+# Эти модели удалены, чтобы избежать конфликта
 
 class BotKVSetting(models.Model):
     """Прямая модель для таблицы bot_settings (ключ-значение) в БД бота"""

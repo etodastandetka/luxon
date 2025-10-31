@@ -14,7 +14,9 @@ import logging
 from django.utils import timezone
 from django.conf import settings
 import requests
-from .bot_models import BotUser, BotTransaction, BotDepositRequestRaw, BotWithdrawRequestRaw
+from .bot_models import BotDepositRequestRaw, BotWithdrawRequestRaw
+# BotUser и BotTransaction теперь импортируются из models.py
+from .models import BotUser, BotTransaction
 
 @admin.register(BotSettings)
 class BotSettingsAdmin(admin.ModelAdmin):
