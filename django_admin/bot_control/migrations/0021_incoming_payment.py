@@ -98,32 +98,32 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Создаем модель в состоянии Django (для ORM)
-        migrations.CreateModel(
-            name='IncomingPayment',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=10, db_index=True)),
-                ('bank', models.CharField(blank=True, null=True, max_length=50, db_index=True)),
-                ('payment_date', models.DateTimeField(db_index=True)),
-                ('notification_text', models.TextField(blank=True, null=True)),
-                ('is_processed', models.BooleanField(default=False, db_index=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('request', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='incoming_payments', to='bot_control.request')),
-            ],
-            options={
-                'db_table': 'incoming_payments',
-                'ordering': ['-payment_date', '-created_at'],
-            },
-        ),
-        # Используем SeparateDatabaseAndState - модель создается только в состоянии,
+        # Используем SeparateDatabaseAndState чтобы создать модель только в состоянии Django,
         # а таблицу создаем условно через RunPython
         migrations.SeparateDatabaseAndState(
             state_operations=[
-                # В состоянии Django ничего не делаем, модель уже создана выше
+                # Создаем модель только в состоянии Django (для ORM)
+                migrations.CreateModel(
+                    name='IncomingPayment',
+                    fields=[
+                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                        ('amount', models.DecimalField(decimal_places=2, max_digits=10, db_index=True)),
+                        ('bank', models.CharField(blank=True, null=True, max_length=50, db_index=True)),
+                        ('payment_date', models.DateTimeField(db_index=True)),
+                        ('notification_text', models.TextField(blank=True, null=True)),
+                        ('is_processed', models.BooleanField(default=False, db_index=True)),
+                        ('created_at', models.DateTimeField(auto_now_add=True)),
+                        ('updated_at', models.DateTimeField(auto_now=True)),
+                        ('request', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='incoming_payments', to='bot_control.request')),
+                    ],
+                    options={
+                        'db_table': 'incoming_payments',
+                        'ordering': ['-payment_date', '-created_at'],
+                    },
+                ),
             ],
             database_operations=[
+                # Создаем таблицу условно только через RunPython
                 migrations.RunPython(
                     create_table_and_indexes_if_needed,
                     reverse_migration,
