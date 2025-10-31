@@ -91,21 +91,37 @@ export default function HistoryPage() {
     }
     
     // Определяем тип транзакции для отображения
+    // Авто пополнение - только если статус указывает на автопополнение
     if (tx.status_detail?.includes('autodeposit') || tx.status === 'autodeposit_success' || tx.status === 'auto_completed') {
       return 'Авто пополнение'
     }
+    
     // Проверяем наличие profile-* в status_detail или других полях
     if (tx.status_detail?.match(/profile-\d+/)) {
       return tx.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
     }
-    // Если есть bookmaker и это депозит, показываем "Авто пополнение"
-    if (tx.type === 'deposit' && tx.bookmaker) {
-      return 'Авто пополнение'
+    
+    // Если заявка вручную подтверждена (completed/approved, но не автопополнение) - показываем profile-1
+    if ((tx.status === 'completed' || tx.status === 'approved') && tx.type === 'deposit') {
+      return 'profile-1'
     }
+    
+    // Если есть bookmaker и это депозит, но статус не успешный или не автопополнение - может быть авто
+    if (tx.type === 'deposit' && tx.bookmaker && 
+        (tx.status === 'completed' || tx.status === 'approved' || tx.status === 'autodeposit_success' || tx.status === 'auto_completed')) {
+      // Если статус autodeposit - это авто пополнение
+      if (tx.status === 'autodeposit_success' || tx.status === 'auto_completed' || tx.status_detail?.includes('autodeposit')) {
+        return 'Авто пополнение'
+      }
+      // Иначе это вручную подтвержденное - profile-1
+      return 'profile-1'
+    }
+    
     // Для выводов может быть profile-*
     if (tx.type === 'withdraw') {
       return tx.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
     }
+    
     return tx.type === 'deposit' ? 'Пополнение' : 'Вывод'
   }
 
