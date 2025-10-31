@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 // Получение истории рассылок
 export async function GET(request: NextRequest) {
   try {
