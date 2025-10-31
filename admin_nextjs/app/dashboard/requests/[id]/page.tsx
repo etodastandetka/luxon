@@ -114,8 +114,20 @@ export default function RequestDetailPage() {
       fetchRequest(false)
     }
     
+    // Синхронизация между вкладками через storage event
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'request_updated' && e.newValue) {
+        const updatedRequestId = parseInt(e.newValue)
+        if (updatedRequestId === parseInt(requestId as string)) {
+          console.log('🔄 Request updated in another tab:', updatedRequestId)
+          fetchRequest(false)
+        }
+      }
+    }
+    
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
+    window.addEventListener('storage', handleStorageChange)
     
     return () => {
       abortController.abort()
@@ -124,6 +136,7 @@ export default function RequestDetailPage() {
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('storage', handleStorageChange)
     }
   }, [params.id])
 
@@ -248,6 +261,11 @@ export default function RequestDetailPage() {
         // Проверяем, что компонент все еще смонтирован перед обновлением
         setRequest(prevRequest => prevRequest ? { ...prevRequest, ...data.data } : data.data)
         setShowMenu(false)
+        
+        // Уведомляем другие вкладки об обновлении
+        localStorage.setItem('request_updated', request.id.toString())
+        localStorage.removeItem('request_updated') // Триггерим storage event
+        
         alert('Заявка отложена')
       } else {
         alert(data.error || 'Ошибка при откладывании заявки')
@@ -257,6 +275,37 @@ export default function RequestDetailPage() {
       alert('Ошибка при откладывании заявки')
     } finally {
       setDeferring(false)
+    }
+  }
+
+  // Функция для обновления статуса заявки (подтвердить/отклонить)
+  const updateRequestStatus = async (newStatus: 'completed' | 'approved' | 'rejected') => {
+    if (!request) return
+    
+    try {
+      const response = await fetch(`/api/requests/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setRequest(prevRequest => prevRequest ? { ...prevRequest, ...data.data } : data.data)
+        
+        // Уведомляем другие вкладки об обновлении
+        localStorage.setItem('request_updated', request.id.toString())
+        localStorage.removeItem('request_updated') // Триггерим storage event
+        
+        const statusLabel = newStatus === 'completed' || newStatus === 'approved' ? 'подтверждена' : 'отклонена'
+        alert(`Заявка ${statusLabel}`)
+      } else {
+        alert(data.error || 'Ошибка при обновлении заявки')
+      }
+    } catch (error) {
+      console.error('Failed to update request status:', error)
+      alert('Ошибка при обновлении заявки')
     }
   }
 
@@ -497,6 +546,30 @@ export default function RequestDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Кнопки действий для отложенных заявок */}
+      {request.status === 'deferred' && (
+        <div className="mx-4 mb-4 flex space-x-3">
+          <button
+            onClick={() => updateRequestStatus('approved')}
+            className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Подтвердить</span>
+          </button>
+          <button
+            onClick={() => updateRequestStatus('rejected')}
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Отклонить</span>
+          </button>
+        </div>
+      )}
 
       {/* Поиск */}
       <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
