@@ -77,21 +77,29 @@ export async function depositCashdeskAPI(
   const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI/'
   const isMelbet = bookmaker.toLowerCase().includes('melbet')
 
-  if (!config.hash || !config.cashierpass || !config.login || !config.cashdeskid) {
+  // Проверяем, что все обязательные поля заполнены и не пустые
+  const hash = config.hash
+  const cashierpass = config.cashierpass
+  const login = config.login
+  const cashdeskid = config.cashdeskid
+
+  if (!hash || !cashierpass || !login || !cashdeskid || 
+      hash.trim() === '' || cashierpass.trim() === '' || 
+      login.trim() === '' || String(cashdeskid).trim() === '' || String(cashdeskid).trim() === '0') {
     return {
       success: false,
-      message: `Missing required API credentials for ${bookmaker}`,
+      message: `Missing required API credentials for ${bookmaker}. Please configure API settings in database or environment variables.`,
     }
   }
 
   try {
-    const confirm = generateConfirm(userId, config.hash, isMelbet)
+    const confirm = generateConfirm(userId, hash, isMelbet)
     const sign = isMelbet
-      ? generateSignForDepositMelbet(userId, amount, config.hash, config.cashierpass, config.cashdeskid)
-      : generateSignForDeposit1xbet(userId, amount, config.hash, config.cashierpass, config.cashdeskid)
+      ? generateSignForDepositMelbet(userId, amount, hash, cashierpass, cashdeskid)
+      : generateSignForDeposit1xbet(userId, amount, hash, cashierpass, cashdeskid)
 
     const url = `${baseUrl}Deposit/${userId}/Add`
-    const authHeader = generateBasicAuth(config.login!, config.cashierpass!)
+    const authHeader = generateBasicAuth(login, cashierpass)
 
     const response = await fetch(url, {
       method: 'POST',
@@ -101,7 +109,7 @@ export async function depositCashdeskAPI(
         'sign': sign,
       },
       body: JSON.stringify({
-        cashdeskId: String(config.cashdeskid),
+        cashdeskId: String(cashdeskid),
         lng: 'ru',
         summa: amount,
         confirm: confirm,
@@ -140,10 +148,17 @@ export async function depositMostbetAPI(
 ): Promise<{ success: boolean; message: string; data?: any }> {
   const baseUrl = 'https://apimb.com'
 
-  if (!config.api_key || !config.secret || !config.cashpoint_id) {
+  // Проверяем, что все обязательные поля заполнены и не пустые
+  const apiKey = config.api_key
+  const secret = config.secret
+  const cashpointId = config.cashpoint_id
+
+  if (!apiKey || !secret || !cashpointId ||
+      apiKey.trim() === '' || secret.trim() === '' || 
+      String(cashpointId).trim() === '' || String(cashpointId).trim() === '0') {
     return {
       success: false,
-      message: 'Missing required Mostbet API credentials',
+      message: 'Missing required Mostbet API credentials. Please configure API settings in database or environment variables.',
     }
   }
 
@@ -153,8 +168,8 @@ export async function depositMostbetAPI(
     const timestamp = now.toISOString().slice(0, 19).replace('T', ' ')
 
     // Формируем путь и тело запроса
-    const cashpointId = String(config.cashpoint_id)
-    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointId}/player/deposit`
+    const cashpointIdStr = String(cashpointId)
+    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/player/deposit`
     const requestBody = JSON.stringify({
       brandId: 1,
       playerId: String(userId),
@@ -163,14 +178,14 @@ export async function depositMostbetAPI(
     })
 
     // API key может быть с префиксом или без
-    const apiKey = (config.api_key || '').startsWith('api-key:') 
-      ? config.api_key! 
-      : `api-key:${config.api_key}`
+    const apiKeyFormatted = apiKey.startsWith('api-key:') 
+      ? apiKey
+      : `api-key:${apiKey}`
 
     // Генерируем подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
-    const signatureString = `${apiKey}${path}${requestBody}${timestamp}`
+    const signatureString = `${apiKeyFormatted}${path}${requestBody}${timestamp}`
     const signature = crypto
-      .createHmac('sha3-256', config.secret!)
+      .createHmac('sha3-256', secret)
       .update(signatureString)
       .digest('hex')
 
@@ -178,7 +193,7 @@ export async function depositMostbetAPI(
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'X-Api-Key': apiKey,
+        'X-Api-Key': apiKeyFormatted,
         'X-Timestamp': timestamp,
         'X-Signature': signature,
         'X-Project': 'MBC',
