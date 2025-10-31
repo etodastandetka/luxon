@@ -295,7 +295,7 @@ class BotReferral(models.Model):
     """Реферальная связь (из universal_bot.db -> referrals)"""
     id = models.AutoField(primary_key=True)
     referrer = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='referrals_made', db_column='referrer_id')
-    referred = models.ForeignKey(BotUser, on_delete=models.CASCADE, related_name='referral_from', db_column='referred_id', unique=True)
+    referred = models.OneToOneField(BotUser, on_delete=models.CASCADE, related_name='referral_from', db_column='referred_id')
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

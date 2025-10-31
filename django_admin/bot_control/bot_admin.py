@@ -87,11 +87,16 @@ class BotUserAdmin(admin.ModelAdmin):
 
 @admin.register(BotTransaction)
 class BotTransactionAdmin(admin.ModelAdmin):
-    list_display = ['id', 'user_id', 'bookmaker', 'trans_type', 'amount', 'status', 'created_at']
+    list_display = ['id', 'get_user_id', 'bookmaker', 'trans_type', 'amount', 'status', 'created_at']
     list_filter = ['bookmaker', 'trans_type', 'status', 'created_at']
-    search_fields = ['user_id', 'bookmaker']
-    readonly_fields = ['id', 'user_id', 'bookmaker', 'trans_type', 'amount', 'status', 'photo_file_id', 'created_at']
+    search_fields = ['user__user_id', 'bookmaker']
+    readonly_fields = ['id', 'get_user_id', 'bookmaker', 'trans_type', 'amount', 'status', 'created_at']
     ordering = ['-created_at']
+    
+    def get_user_id(self, obj):
+        """Показывает user_id из связанного пользователя"""
+        return obj.user.user_id if obj.user else None
+    get_user_id.short_description = 'User ID'
     
     def has_add_permission(self, request):
         return False
