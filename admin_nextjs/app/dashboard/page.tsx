@@ -18,17 +18,23 @@ interface Request {
 export default function DashboardPage() {
   const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'pending' | 'deferred'>('pending')
 
   useEffect(() => {
     fetchRequests()
-  }, [])
+  }, [activeTab])
 
   const fetchRequests = async () => {
     setLoading(true)
     try {
-      // На главной странице показываем только ожидающие заявки
       const params = new URLSearchParams()
-      params.append('status', 'pending')
+      if (activeTab === 'pending') {
+        // Показываем только ожидающие заявки
+        params.append('status', 'pending')
+      } else if (activeTab === 'deferred') {
+        // Показываем только отложенные заявки
+        params.append('status', 'deferred')
+      }
 
       const response = await fetch(`/api/requests?${params.toString()}`)
       const data = await response.json()
@@ -38,7 +44,7 @@ export default function DashboardPage() {
       if (data.success) {
         const requestsList = data.data.requests || []
         
-        console.log(`✅ Loaded ${requestsList.length} requests for tab: pending`)
+        console.log(`✅ Loaded ${requestsList.length} requests for tab: ${activeTab}`)
         setRequests(requestsList)
       } else {
         console.error('❌ Failed to fetch requests:', data.error || data)
@@ -119,6 +125,29 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {/* Табы */}
+      <div className="flex space-x-2 mb-6">
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+            activeTab === 'pending'
+              ? 'bg-green-500 text-black shadow-lg'
+              : 'bg-gray-800 text-gray-300'
+          }`}
+        >
+          Ожидающие
+        </button>
+        <button
+          onClick={() => setActiveTab('deferred')}
+          className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+            activeTab === 'deferred'
+              ? 'bg-green-500 text-black shadow-lg'
+              : 'bg-gray-800 text-gray-300'
+          }`}
+        >
+          Отложенные
+        </button>
+      </div>
 
       {/* Контент заявок */}
       {loading ? (
