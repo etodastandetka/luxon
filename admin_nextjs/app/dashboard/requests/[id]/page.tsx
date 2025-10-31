@@ -547,8 +547,8 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      {/* Кнопки действий для отложенных заявок */}
-      {request.status === 'deferred' && (
+      {/* Кнопки действий для отложенных и ожидающих заявок */}
+      {(request.status === 'deferred' || request.status === 'pending') && (
         <div className="mx-4 mb-4 flex space-x-3">
           <button
             onClick={() => updateRequestStatus('approved')}
