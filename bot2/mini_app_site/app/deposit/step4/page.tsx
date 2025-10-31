@@ -1001,6 +1001,16 @@ export default function DepositStep4() {
         </button>
       )}
 
+      {/* Кнопка "Назад" сразу под "Я оплатил" */}
+      {!isPaid && (
+        <button
+          onClick={handleBack}
+          className="btn btn-ghost w-full"
+        >
+          ← {t.back}
+        </button>
+      )}
+
       {/* Инструкция */}
       <div className="card space-y-4">
         <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>
@@ -1014,16 +1024,6 @@ export default function DepositStep4() {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Навигация - только кнопка "Назад" */}
-      <div className="flex gap-3">
-        <button
-          onClick={handleBack}
-          className="btn btn-ghost w-full"
-        >
-          ← {t.back}
-        </button>
       </div>
 
       {/* Кастомный алерт */}
