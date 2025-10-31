@@ -22,6 +22,9 @@ export default function DepositStep4() {
   const [playerId, setPlayerId] = useState('')
   const [amount, setAmount] = useState(0)
   const [depositsEnabled, setDepositsEnabled] = useState(true)
+  const [requireReceiptPhoto, setRequireReceiptPhoto] = useState(false)
+  const [receiptPhoto, setReceiptPhoto] = useState<File | null>(null)
+  const [receiptPhotoPreview, setReceiptPhotoPreview] = useState<string | null>(null)
   const { language } = useLanguage()
 
   useEffect(() => {
@@ -222,6 +225,20 @@ export default function DepositStep4() {
       
       console.log('🔍 Итоговые данные пользователя:', telegramUser)
 
+      // Конвертируем фото чека в base64, если есть
+      let receiptPhotoBase64: string | null = null
+      if (receiptPhoto) {
+        receiptPhotoBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const base64String = reader.result as string
+            resolve(base64String)
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(receiptPhoto)
+        })
+      }
+
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -239,7 +256,9 @@ export default function DepositStep4() {
           telegram_username: telegramUser?.username,
           telegram_first_name: telegramUser?.first_name,
           telegram_last_name: telegramUser?.last_name,
-          telegram_language_code: telegramUser?.language_code
+          telegram_language_code: telegramUser?.language_code,
+          // Фото чека (если загружено)
+          receipt_photo: receiptPhotoBase64,
         })
       })
       
@@ -301,8 +320,34 @@ export default function DepositStep4() {
     }
   }
 
+  // Обработка загрузки фото чека
+  const handleReceiptPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setReceiptPhoto(file)
+      // Создаем превью
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setReceiptPhotoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   // Кнопка "Я оплатил" — отправляем заявку в админку только по нажатию
   const handleIPaid = async () => {
+    // Проверяем, требуется ли фото чека
+    if (requireReceiptPhoto && !receiptPhoto) {
+      showAlert({
+        type: 'error',
+        title: language === 'ru' ? 'Ошибка' : 'Error',
+        message: language === 'ru'
+          ? 'Пожалуйста, загрузите фото чека об оплате'
+          : 'Please upload receipt photo'
+      })
+      return
+    }
+
     // Сохраняем время начала таймера при создании заявки (если еще не сохранено)
     if (!localStorage.getItem('deposit_timer_start')) {
       localStorage.setItem('deposit_timer_start', Date.now().toString())
@@ -552,6 +597,10 @@ export default function DepositStep4() {
         const settingsData = await settingsRes.json()
         if (settingsData && settingsData.deposits) {
           setDepositsEnabled(settingsData.deposits.enabled !== false)
+          // Проверяем настройку require_receipt_photo
+          if (settingsData.require_receipt_photo !== undefined) {
+            setRequireReceiptPhoto(settingsData.require_receipt_photo === true)
+          }
           // Обновляем enabled_banks в qrData (маппим коды банков из админки в коды компонента)
           if (settingsData.deposits.banks) {
             const bankCodeMapping: Record<string, string> = {
@@ -747,6 +796,62 @@ export default function DepositStep4() {
           <p className="text-sm text-white/70">
             Ваша заявка обрабатывается. Пополнение поступит в течение 5-10 минут.
           </p>
+        </div>
+      )}
+
+      {/* Загрузка фото чека (если требуется) */}
+      {!isPaid && requireReceiptPhoto && (
+        <div className="card space-y-3">
+          <h3 className="text-base font-semibold text-white">
+            {language === 'ru' ? 'Фото чека об оплате' : 'Payment Receipt Photo'}
+          </h3>
+          <div className="space-y-2">
+            {receiptPhotoPreview && (
+              <div className="relative">
+                <img
+                  src={receiptPhotoPreview}
+                  alt="Receipt preview"
+                  className="w-full h-auto rounded-lg border border-gray-600 max-h-64 object-contain"
+                />
+                <button
+                  onClick={() => {
+                    setReceiptPhoto(null)
+                    setReceiptPhotoPreview(null)
+                  }}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            <label className="block">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleReceiptPhotoChange}
+                className="hidden"
+              />
+              <div className="w-full py-3 px-4 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors flex items-center justify-center gap-2">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-white text-sm">
+                  {receiptPhoto 
+                    ? (language === 'ru' ? 'Фото загружено' : 'Photo uploaded')
+                    : (language === 'ru' ? 'Выберите фото чека' : 'Select receipt photo')
+                  }
+                </span>
+              </div>
+            </label>
+            <p className="text-xs text-gray-400">
+              {language === 'ru' 
+                ? 'Загрузите четкое фото чека об оплате для быстрой обработки заявки'
+                : 'Upload a clear photo of the payment receipt for quick processing'
+              }
+            </p>
+          </div>
         </div>
       )}
 
