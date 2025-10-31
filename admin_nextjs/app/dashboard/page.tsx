@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'pending' | 'deferred'>('pending')
+  const [updatingRequestId, setUpdatingRequestId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchRequests()
@@ -194,30 +195,70 @@ export default function DashboardPage() {
     return null
   }
 
-  const getTransactionType = (request: Request) => {
-    // Если статус "Ожидает", показываем "-"
-    if (request.status === 'pending' || request.status === 'processing') {
-      return '-'
+    const getTransactionType = (request: Request) => {
+      // Если статус "Ожидает", показываем "-"
+      if (request.status === 'pending' || request.status === 'processing') {
+        return '-'
+      }
+      
+      // Определяем тип транзакции для отображения
+      if (request.status_detail?.includes('autodeposit') || request.status === 'autodeposit_success' || request.status === 'auto_completed') {
+        return 'Авто пополнение'
+      }
+      // Проверяем наличие profile-* в status_detail или других полях
+      if (request.status_detail?.match(/profile-\d+/)) {
+        return request.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
+      }
+      // Если есть bookmaker и это депозит, показываем "Авто пополнение"
+      if (request.requestType === 'deposit' && request.bookmaker) {
+        return 'Авто пополнение'
+      }
+      // Для выводов может быть profile-*
+      if (request.requestType === 'withdraw') {
+        return request.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
+      }
+      return request.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
     }
-    
-    // Определяем тип транзакции для отображения
-    if (request.status_detail?.includes('autodeposit') || request.status === 'autodeposit_success' || request.status === 'auto_completed') {
-      return 'Авто пополнение'
+
+    // Функция для обновления статуса заявки (подтвердить/отклонить)
+    const updateRequestStatus = async (requestId: number, newStatus: 'completed' | 'approved' | 'rejected') => {
+      setUpdatingRequestId(requestId)
+      try {
+        const response = await fetch(`/api/requests/${requestId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        })
+
+        const data = await response.json()
+
+        if (data.success) {
+          // Обновляем заявку в списке
+          setRequests(prevRequests => 
+            prevRequests.map(req => 
+              req.id === requestId ? { ...req, ...data.data } : req
+            )
+          )
+          
+          // Уведомляем другие вкладки об обновлении
+          localStorage.setItem('request_updated', requestId.toString())
+          localStorage.removeItem('request_updated') // Триггерим storage event
+          
+          const statusLabel = newStatus === 'completed' || newStatus === 'approved' ? 'подтверждена' : 'отклонена'
+          alert(`Заявка ${statusLabel}`)
+          
+          // Обновляем список заявок
+          fetchRequests(false)
+        } else {
+          alert(data.error || 'Ошибка при обновлении заявки')
+        }
+      } catch (error) {
+        console.error('Failed to update request status:', error)
+        alert('Ошибка при обновлении заявки')
+      } finally {
+        setUpdatingRequestId(null)
+      }
     }
-    // Проверяем наличие profile-* в status_detail или других полях
-    if (request.status_detail?.match(/profile-\d+/)) {
-      return request.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
-    }
-    // Если есть bookmaker и это депозит, показываем "Авто пополнение"
-    if (request.requestType === 'deposit' && request.bookmaker) {
-      return 'Авто пополнение'
-    }
-    // Для выводов может быть profile-*
-    if (request.requestType === 'withdraw') {
-      return request.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
-    }
-    return request.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
-  }
 
   return (
     <div className="py-4">
@@ -287,85 +328,132 @@ export default function DashboardPage() {
                 : `ID: ${request.userId}`
             const transactionType = getTransactionType(request)
 
+            const isPending = request.status === 'pending'
+            
             return (
-              <Link
+              <div
                 key={request.id}
-                href={`/dashboard/requests/${request.id}`}
                 className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm"
               >
-                <div className="flex items-start justify-between">
-                  {/* Левая часть: Иконка банка и информация о пользователе */}
-                  <div className="flex items-start space-x-3 flex-1">
-                    {/* Иконка банка */}
-                    {getBankImage(request.bank) ? (
-                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900">
-                        <img
-                          src={getBankImage(request.bank) || ''}
-                          alt={request.bank || 'Bank'}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                          <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => {
+                    if (!isPending || updatingRequestId === request.id) return
+                    window.location.href = `/dashboard/requests/${request.id}`
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    {/* Левая часть: Иконка банка и информация о пользователе */}
+                    <div className="flex items-start space-x-3 flex-1">
+                      {/* Иконка банка */}
+                      {getBankImage(request.bank) ? (
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900">
+                          <img
+                            src={getBankImage(request.bank) || ''}
+                            alt={request.bank || 'Bank'}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
 
-                    {/* Информация о пользователе и транзакции */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-bold text-white mb-0.5">
-                        {userName}
-                      </p>
-                      <p className="text-xs text-gray-400 mb-2">
-                        {request.accountId ? `ID: ${request.accountId}` : request.bookmaker || '-'}
+                      {/* Информация о пользователе и транзакции */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-bold text-white mb-0.5">
+                          {userName}
+                        </p>
+                        <p className="text-xs text-gray-400 mb-2">
+                          {request.accountId ? `ID: ${request.accountId}` : request.bookmaker || '-'}
+                        </p>
+                        
+                        {/* Тип транзакции */}
+                        <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
+                          {transactionType}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Правая часть: Дата, сумма и статус */}
+                    <div className="flex flex-col items-end space-y-2 ml-4">
+                      {/* Дата и время */}
+                      <p className="text-xs text-gray-400 whitespace-nowrap">
+                        {formatDate(request.createdAt)}
                       </p>
                       
-                      {/* Тип транзакции */}
-                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
-                        {transactionType}
+                      {/* Сумма */}
+                      <p
+                        className={`text-base font-bold ${
+                          isDeposit ? 'text-green-500' : 'text-red-500'
+                        }`}
+                      >
+                        {isDeposit ? '+' : '-'}
+                        {request.amount ? parseFloat(request.amount).toLocaleString('ru-RU', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).replace('.', ',') : '0,00'}
+                      </p>
+                      
+                      {/* Статус */}
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}
+                      >
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          getStatusLabel(request.status) === 'Успешно' ? 'bg-green-600' :
+                          getStatusLabel(request.status) === 'Отклонено' ? 'bg-red-600' :
+                          getStatusLabel(request.status) === 'Отложено' ? 'bg-orange-600' :
+                          'bg-yellow-600'
+                        }`}></div>
+                        {getStatusLabel(request.status)}
                       </span>
                     </div>
                   </div>
-
-                  {/* Правая часть: Дата, сумма и статус */}
-                  <div className="flex flex-col items-end space-y-2 ml-4">
-                    {/* Дата и время */}
-                    <p className="text-xs text-gray-400 whitespace-nowrap">
-                      {formatDate(request.createdAt)}
-                    </p>
-                    
-                    {/* Сумма */}
-                    <p
-                      className={`text-base font-bold ${
-                        isDeposit ? 'text-green-500' : 'text-red-500'
-                      }`}
-                    >
-                      {isDeposit ? '+' : '-'}
-                      {request.amount ? parseFloat(request.amount).toLocaleString('ru-RU', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }).replace('.', ',') : '0,00'}
-                    </p>
-                    
-                    {/* Статус */}
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}
-                    >
-                      <div className={`w-1.5 h-1.5 rounded-full ${
-                        getStatusLabel(request.status) === 'Успешно' ? 'bg-green-600' :
-                        getStatusLabel(request.status) === 'Отклонено' ? 'bg-red-600' :
-                        getStatusLabel(request.status) === 'Отложено' ? 'bg-orange-600' :
-                        'bg-yellow-600'
-                      }`}></div>
-                      {getStatusLabel(request.status)}
-                    </span>
-                  </div>
                 </div>
-              </Link>
+
+                {/* Кнопки действий для ожидающих заявок */}
+                {isPending && (
+                  <div className="mt-4 flex space-x-3 pt-4 border-t border-gray-700" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => updateRequestStatus(request.id, 'approved')}
+                      disabled={updatingRequestId === request.id}
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {updatingRequestId === request.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Подтвердить</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => updateRequestStatus(request.id, 'rejected')}
+                      disabled={updatingRequestId === request.id}
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {updatingRequestId === request.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <span>Отклонить</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>
