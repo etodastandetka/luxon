@@ -353,14 +353,34 @@ export default function RequestDetailPage() {
     )
   }
 
-  const displayAmount = request?.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
-  const isDeposit = request?.requestType === 'deposit'
-  const userName = request?.username 
-    ? `@${request.username}` 
-    : request?.firstName 
-      ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
-      : request ? `ID: ${request.userId}` : ''
-  const displayName = request?.firstName || request?.username || (request ? `ID: ${request.userId}` : '')
+    const displayAmount = request?.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
+    const isDeposit = request?.requestType === 'deposit'
+    const isDeferred = request?.status === 'deferred'
+    
+    // Определяем тип транзакции для проверки
+    const getTransactionTypeForMinus = () => {
+      if (request?.status_detail?.includes('autodeposit') || request?.status === 'autodeposit_success' || request?.status === 'auto_completed') {
+        return 'Авто пополнение'
+      }
+      if (request?.status_detail?.match(/profile-\d+/)) {
+        return request.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
+      }
+      if (request?.requestType === 'deposit' && request?.bookmaker) {
+        return 'Авто пополнение'
+      }
+      return request?.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+    }
+    
+    const transactionType = getTransactionTypeForMinus()
+    // Если отложено и "Авто пополнение", показываем минус
+    const showMinus = isDeferred && transactionType === 'Авто пополнение'
+    
+    const userName = request?.username 
+      ? `@${request.username}` 
+      : request?.firstName 
+        ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
+        : request ? `ID: ${request.userId}` : ''
+    const displayName = request?.firstName || request?.username || (request ? `ID: ${request.userId}` : '')
 
   return (
     <div className="py-4">
@@ -494,8 +514,8 @@ export default function RequestDetailPage() {
             <p className="text-xs text-gray-400 mb-1">
               {isDeposit ? 'Пополнение' : 'Вывод'}
             </p>
-            <p className={`text-3xl font-bold ${isDeposit ? 'text-green-500' : 'text-red-500'}`}>
-              {isDeposit ? '+' : '-'}{displayAmount}
+            <p className={`text-3xl font-bold ${showMinus ? 'text-red-500' : (isDeposit ? 'text-green-500' : 'text-red-500')}`}>
+              {showMinus ? '-' : (isDeposit ? '+' : '-')}{displayAmount}
             </p>
           </div>
           <div className="flex space-x-2">
