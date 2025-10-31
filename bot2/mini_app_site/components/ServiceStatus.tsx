@@ -25,17 +25,14 @@ export default function ServiceStatus({ service, children }: ServiceStatusProps)
           // Админ-панель возвращает данные напрямую
           const settings = data
 
-            if (service === 'deposits') {
-              setIsEnabled(settings.deposits?.enabled ?? settings.deposits_enabled ?? true)
-            } else if (service === 'withdrawals') {
-              setIsEnabled(settings.withdrawals?.enabled ?? settings.withdrawals_enabled ?? true)
-            } else if (service === 'casinos') {
-              // Проверяем, есть ли включенные казино
-              const enabledSites = settings.enabled_deposit_banks || []
-              setIsEnabled(enabledSites.length > 0)
-            }
-          } else {
-            setError('Invalid response format')
+          if (service === 'deposits') {
+            setIsEnabled(settings.deposits?.enabled ?? settings.deposits_enabled ?? true)
+          } else if (service === 'withdrawals') {
+            setIsEnabled(settings.withdrawals?.enabled ?? settings.withdrawals_enabled ?? true)
+          } else if (service === 'casinos') {
+            // Проверяем, есть ли включенные казино
+            const enabledSites = settings.enabled_deposit_banks || []
+            setIsEnabled(enabledSites.length > 0)
           }
         } else {
           setError('Failed to load service status')
