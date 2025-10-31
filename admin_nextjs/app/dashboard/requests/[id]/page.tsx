@@ -45,6 +45,7 @@ export default function RequestDetailPage() {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [searchId, setSearchId] = useState('')
   const [deferring, setDeferring] = useState(false)
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
   const isMountedRef = useRef(true)
 
   useEffect(() => {
@@ -55,46 +56,64 @@ export default function RequestDetailPage() {
     }
   }, [])
 
-  useEffect(() => {
-    const requestId = Array.isArray(params.id) ? params.id[0] : params.id
-    if (!requestId) {
-      setLoading(false)
-      return
-    }
+    useEffect(() => {
+      const requestId = Array.isArray(params.id) ? params.id[0] : params.id
+      if (!requestId) {
+        setLoading(false)
+        return
+      }
 
-    const abortController = new AbortController()
-    let intervalId: NodeJS.Timeout | null = null
+      const abortController = new AbortController()
+      let intervalId: NodeJS.Timeout | null = null
 
-    const fetchRequest = async (showLoading = true) => {
-      try {
-        const response = await fetch(`/api/requests/${requestId}`, {
-          signal: abortController.signal
-        })
-        
-        if (abortController.signal.aborted || !isMountedRef.current) return
-        
-        const data = await response.json()
+      const fetchRequest = async (showLoading = true) => {
+        try {
+          const response = await fetch(`/api/requests/${requestId}`, {
+            signal: abortController.signal
+          })
+          
+          if (abortController.signal.aborted || !isMountedRef.current) return
+          
+          const data = await response.json()
 
-        console.log('📋 Request detail data:', data)
+          console.log('📋 Request detail data:', data)
 
-        if (!isMountedRef.current) return
+          if (!isMountedRef.current) return
 
-        if (data.success && isMountedRef.current) {
-          setRequest(data.data)
-        } else {
-          console.error('❌ Failed to fetch request:', data.error)
-        }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          return // Запрос был отменен, игнорируем ошибку
-        }
-        console.error('❌ Failed to fetch request:', error)
-      } finally {
-        if (isMountedRef.current && !abortController.signal.aborted && showLoading) {
-          setLoading(false)
+          if (data.success && isMountedRef.current) {
+            setRequest(data.data)
+            
+            // Загружаем фото профиля пользователя
+            if (data.data.userId) {
+              fetchProfilePhoto(data.data.userId)
+            }
+          } else {
+            console.error('❌ Failed to fetch request:', data.error)
+          }
+        } catch (error: any) {
+          if (error.name === 'AbortError') {
+            return // Запрос был отменен, игнорируем ошибку
+          }
+          console.error('❌ Failed to fetch request:', error)
+        } finally {
+          if (isMountedRef.current && !abortController.signal.aborted && showLoading) {
+            setLoading(false)
+          }
         }
       }
-    }
+      
+      const fetchProfilePhoto = async (userId: string) => {
+        try {
+          const photoResponse = await fetch(`/api/users/${userId}/profile-photo`)
+          const photoData = await photoResponse.json()
+          
+          if (photoData.success && photoData.data?.photoUrl && isMountedRef.current) {
+            setProfilePhotoUrl(photoData.data.photoUrl)
+          }
+        } catch (error) {
+          console.error('Failed to fetch profile photo:', error)
+        }
+      }
     
     fetchRequest(true)
     
@@ -399,9 +418,23 @@ export default function RequestDetailPage() {
             href={`/dashboard/users/${request.userId}`}
             className="flex items-center space-x-2 flex-1"
           >
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
-            </div>
+            {profilePhotoUrl ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-gray-600">
+                <img
+                  src={profilePhotoUrl}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                  onError={() => {
+                    // Если фото не загрузилось, показываем букву
+                    setProfilePhotoUrl(null)
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
+              </div>
+            )}
             <div className="text-left flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{displayName}</p>
               {request.username && (
