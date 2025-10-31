@@ -140,6 +140,14 @@ export default function WalletPage() {
   }
 
   const handleSetActive = async (id: number) => {
+    const wallet = wallets.find(w => w.id === id)
+    if (!wallet) return
+
+    if (!confirm(`Сделать этот кошелек активным? Все остальные будут отключены.`)) {
+      // Сбрасываем выбор в выпадающем списке
+      return
+    }
+
     try {
       // Сначала деактивируем все кошельки
       await Promise.all(
@@ -163,6 +171,7 @@ export default function WalletPage() {
 
       const data = await response.json()
       if (data.success) {
+        alert('Активный кошелек изменен!')
         fetchWallets()
       } else {
         alert(data.error || 'Ошибка при активации кошелька')
@@ -208,9 +217,15 @@ export default function WalletPage() {
           </label>
           <select
             value={activeWallet?.id || ''}
-            onChange={(e) => {
+            onChange={async (e) => {
               const id = parseInt(e.target.value)
-              if (id) handleSetActive(id)
+              if (id) {
+                await handleSetActive(id)
+                // Сбрасываем выбор если пользователь отменил
+                if (!wallets.find(w => w.id === id)?.isActive) {
+                  e.target.value = activeWallet?.id?.toString() || ''
+                }
+              }
             }}
             className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
             style={{
