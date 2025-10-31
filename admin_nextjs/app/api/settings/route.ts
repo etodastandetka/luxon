@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
       withdrawals_enabled: typeof withdrawalSettings === 'object' ? withdrawalSettings.enabled : withdrawalSettings !== false,
       enabled_deposit_banks: typeof depositSettings === 'object' ? depositSettings.banks : depositSettings || [],
       enabled_withdrawal_banks: typeof withdrawalSettings === 'object' ? withdrawalSettings.banks : withdrawalSettings || [],
+      require_receipt_photo: settingsMap.require_receipt_photo === 'true' || settingsMap.require_receipt_photo === true,
       casinos: casinoSettings,
     }
 
@@ -101,6 +102,10 @@ export async function POST(request: NextRequest) {
         banks: body.enabled_withdrawal_banks || []
       }
       await updateSetting('withdrawals', withdrawalSettings, 'Настройки выводов')
+    }
+
+    if (body.require_receipt_photo !== undefined) {
+      await updateSetting('require_receipt_photo', body.require_receipt_photo.toString(), 'Требовать фото чека при оплате')
     }
 
     if (body.casinos !== undefined) {

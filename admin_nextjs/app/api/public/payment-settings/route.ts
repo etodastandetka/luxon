@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       casinos: casinoSettings,
       pause: settingsMap.pause === 'true' || settingsMap.pause === true,
       maintenance_message: settingsMap.maintenance_message || 'Технические работы. Попробуйте позже.',
+      require_receipt_photo: settingsMap.require_receipt_photo === 'true' || settingsMap.require_receipt_photo === true,
     }
 
     const res = NextResponse.json(response)
@@ -81,6 +82,7 @@ export async function GET(request: NextRequest) {
       },
       pause: false,
       maintenance_message: 'Технические работы. Попробуйте позже.',
+      require_receipt_photo: false,
     })
     res.headers.set('Access-Control-Allow-Origin', '*')
     return res
