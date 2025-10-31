@@ -379,11 +379,6 @@ export default function RequestDetailPage() {
     
     // Определяем тип транзакции для проверки
     const getTransactionTypeForMinus = () => {
-      // Если заявка отклонена или отклонена вручную, не показываем "Авто пополнение"
-      if (request?.status === 'rejected' || request?.status === 'declined') {
-        return request?.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
-      }
-      
       // Для выводов может быть profile-*
       if (request?.requestType === 'withdraw') {
         return request?.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
@@ -401,10 +396,8 @@ export default function RequestDetailPage() {
           return request.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
         }
         
-        // Если заявка успешно завершена (completed/approved) - это вручную подтвержденное = profile-1
-        if (request?.status === 'completed' || request?.status === 'approved') {
-          return 'profile-1'
-        }
+        // Для всех остальных депозитов (включая отклоненные) показываем profile-1
+        return 'profile-1'
       }
       
       return request?.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
