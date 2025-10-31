@@ -5,10 +5,10 @@ interface CasinoConfig {
   hash?: string
   cashierpass?: string
   login?: string
-  cashdeskid?: string
+  cashdeskid?: string | number
   api_key?: string
   secret?: string
-  cashpoint_id?: string
+  cashpoint_id?: string | number
 }
 
 // Генерация confirm для 1xbet/Melbet
@@ -24,7 +24,7 @@ export function generateSignForDeposit1xbet(
   amount: number,
   hash: string,
   cashierpass: string,
-  cashdeskid: string
+  cashdeskid: string | number
 ): string {
   // a) SHA256(hash={hash}&lng=ru&userid={user_id})
   const step1String = `hash=${hash}&lng=ru&userid=${userId}`
@@ -45,7 +45,7 @@ export function generateSignForDepositMelbet(
   amount: number,
   hash: string,
   cashierpass: string,
-  cashdeskid: string
+  cashdeskid: string | number
 ): string {
   // a) SHA256(hash={hash}&lng=ru&userid={user_id.lower()})
   const step1String = `hash=${hash}&lng=ru&userid=${userId.toLowerCase()}`
@@ -91,7 +91,7 @@ export async function depositCashdeskAPI(
       : generateSignForDeposit1xbet(userId, amount, config.hash, config.cashierpass, config.cashdeskid)
 
     const url = `${baseUrl}Deposit/${userId}/Add`
-    const authHeader = generateBasicAuth(config.login, config.cashierpass)
+    const authHeader = generateBasicAuth(config.login!, config.cashierpass!)
 
     const response = await fetch(url, {
       method: 'POST',
@@ -153,7 +153,8 @@ export async function depositMostbetAPI(
     const timestamp = now.toISOString().slice(0, 19).replace('T', ' ')
 
     // Формируем путь и тело запроса
-    const path = `/mbc/gateway/v1/api/cashpoint/${config.cashpoint_id}/player/deposit`
+    const cashpointId = String(config.cashpoint_id)
+    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointId}/player/deposit`
     const requestBody = JSON.stringify({
       brandId: 1,
       playerId: String(userId),
@@ -162,14 +163,14 @@ export async function depositMostbetAPI(
     })
 
     // API key может быть с префиксом или без
-    const apiKey = config.api_key.startsWith('api-key:') 
-      ? config.api_key 
+    const apiKey = (config.api_key || '').startsWith('api-key:') 
+      ? config.api_key! 
       : `api-key:${config.api_key}`
 
     // Генерируем подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     const signatureString = `${apiKey}${path}${requestBody}${timestamp}`
     const signature = crypto
-      .createHmac('sha3-256', config.secret)
+      .createHmac('sha3-256', config.secret!)
       .update(signatureString)
       .digest('hex')
 
