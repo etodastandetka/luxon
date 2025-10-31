@@ -23,6 +23,7 @@ interface RequestDetail {
   updatedAt: string
   processedAt: string | null
   incomingPayments: any[]
+  casinoTransactions?: any[]
 }
 
 interface Payment {
@@ -200,14 +201,6 @@ export default function RequestDetailPage() {
       : `ID: ${request.userId}`
   const displayName = request.firstName || request.username || `ID: ${request.userId}`
 
-  // Фильтруем платежи если есть
-  const payments: Payment[] = request.incomingPayments?.map(p => ({
-    id: p.id,
-    amount: parseFloat(p.amount || '0').toFixed(2).replace('.', ','),
-    createdAt: p.createdAt || p.created_at,
-    description: p.description || 'Перевод по QR'
-  })) || []
-
   // Закрываем меню при клике вне его
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -216,9 +209,39 @@ export default function RequestDetailPage() {
         setShowMenu(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [showMenu])
+
+  // Получаем все транзакции по accountId (ID казино)
+  const casinoTransactions = request.casinoTransactions || []
+  
+  // Формируем список транзакций для отображения
+  const transactions = casinoTransactions.map(t => {
+    const amount = parseFloat(t.amount || '0')
+    const isDeposit = t.requestType === 'deposit'
+    const userName = t.username 
+      ? `@${t.username}` 
+      : t.firstName 
+        ? `${t.firstName}${t.lastName ? ' ' + t.lastName : ''}` 
+        : `ID: ${t.userId}`
+    
+    return {
+      id: t.id,
+      amount: Math.abs(amount).toFixed(2).replace('.', ','),
+      isDeposit,
+      createdAt: t.createdAt,
+      status: t.status,
+      userName,
+      userId: t.userId,
+      bookmaker: t.bookmaker,
+      description: `${isDeposit ? 'Пополнение' : 'Вывод'} от ${userName}`,
+    }
+  })
 
   return (
     <div className="py-4">
@@ -446,37 +469,62 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      {/* Список платежей/транзакций */}
+      {/* Список транзакций по ID казино */}
       <div className="mx-4">
-        <h3 className="text-lg font-semibold text-white mb-3">Транзакции</h3>
-        {payments.length > 0 ? (
+        <h3 className="text-lg font-semibold text-white mb-3">
+          Транзакции {request.accountId && `(ID: ${request.accountId})`}
+        </h3>
+        {transactions.length > 0 ? (
           <div className="space-y-2">
-            {payments.map((payment) => (
-              <div
-                key={payment.id}
-                className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
+            {transactions.map((transaction) => (
+              <Link
+                key={transaction.id}
+                href={`/dashboard/requests/${transaction.id}`}
+                className="block bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-1 h-12 bg-gray-600 rounded-full"></div>
+                  <div className={`w-1 h-12 rounded-full ${transaction.isDeposit ? 'bg-green-500' : 'bg-red-500'}`}></div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-white mb-1">
-                      {payment.description || 'Перевод по QR'}
-                    </p>
-                    <p className="text-xs text-gray-400">{formatDate(payment.createdAt)}</p>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <p className="text-sm font-medium text-white">
+                        {transaction.description}
+                      </p>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        transaction.status === 'completed' || transaction.status === 'approved'
+                          ? 'bg-green-500 text-black'
+                          : transaction.status === 'pending'
+                          ? 'bg-yellow-500 text-black'
+                          : transaction.status === 'rejected'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-700 text-gray-300'
+                      }`}>
+                        {transaction.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400">{formatDate(transaction.createdAt)}</p>
+                    {transaction.bookmaker && (
+                      <p className="text-xs text-gray-500 mt-1">{transaction.bookmaker}</p>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
-                    <p className="text-lg font-bold text-green-500">+{payment.amount}</p>
+                    <p className={`text-lg font-bold ${transaction.isDeposit ? 'text-green-500' : 'text-red-500'}`}>
+                      {transaction.isDeposit ? '+' : '-'}{transaction.amount}
+                    </p>
                     <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 text-center">
-            <p className="text-gray-400">Нет транзакций</p>
+            <p className="text-gray-400">
+              {request.accountId 
+                ? `Нет транзакций по ID: ${request.accountId}`
+                : 'ID казино не указан'}
+            </p>
           </div>
         )}
       </div>
