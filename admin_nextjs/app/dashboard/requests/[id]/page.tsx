@@ -520,13 +520,13 @@ export default function RequestDetailPage() {
         </div>
       )}
 
-      {/* Основная карточка с номером заявки и суммой */}
+      {/* Основная карточка с Telegram ID и суммой */}
       <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-white">{request.id}</span>
+            <span className="text-2xl font-bold text-white">{request.userId}</span>
             <button
-              onClick={() => copyToClipboard(request.id.toString())}
+              onClick={() => copyToClipboard(request.userId)}
               className="p-1 hover:bg-gray-700 rounded transition-colors"
             >
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,10 +573,14 @@ export default function RequestDetailPage() {
             <span className="text-sm text-gray-400">Сайт:</span>
             <span className="text-sm font-medium text-white">{request.bookmaker || 'N/A'}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">ID:</span>
-            <span className="text-sm font-medium text-white">{request.id}</span>
-          </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">ID заявки:</span>
+              <span className="text-sm font-medium text-white">{request.id}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">ID Telegram:</span>
+              <span className="text-sm font-medium text-white">{request.userId}</span>
+            </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-400">Дата создания:</span>
             <span className="text-sm font-medium text-white">{formatDate(request.createdAt)}</span>
