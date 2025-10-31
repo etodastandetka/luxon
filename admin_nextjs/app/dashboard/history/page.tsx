@@ -80,6 +80,11 @@ export default function HistoryPage() {
   }
 
   const getTransactionType = (tx: Transaction) => {
+    // Если статус "Ожидает", показываем "Пока не известно"
+    if (tx.status === 'pending' || tx.status === 'processing') {
+      return 'Пока не известно'
+    }
+    
     // Определяем тип транзакции для отображения
     if (tx.status_detail?.includes('autodeposit') || tx.status === 'autodeposit_success' || tx.status === 'auto_completed') {
       return 'Авто пополнение'
