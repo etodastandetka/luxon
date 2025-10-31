@@ -23,7 +23,6 @@ export default function DashboardPage() {
   const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'pending' | 'deferred'>('pending')
-  const [updatingRequestId, setUpdatingRequestId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchRequests()
@@ -220,46 +219,6 @@ export default function DashboardPage() {
       return request.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
     }
 
-    // Функция для обновления статуса заявки (подтвердить/отклонить)
-    const updateRequestStatus = async (requestId: number, newStatus: 'completed' | 'approved' | 'rejected') => {
-      setUpdatingRequestId(requestId)
-      try {
-        const response = await fetch(`/api/requests/${requestId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus }),
-        })
-
-        const data = await response.json()
-
-        if (data.success) {
-          // Обновляем заявку в списке
-          setRequests(prevRequests => 
-            prevRequests.map(req => 
-              req.id === requestId ? { ...req, ...data.data } : req
-            )
-          )
-          
-          // Уведомляем другие вкладки об обновлении
-          localStorage.setItem('request_updated', requestId.toString())
-          localStorage.removeItem('request_updated') // Триггерим storage event
-          
-          const statusLabel = newStatus === 'completed' || newStatus === 'approved' ? 'подтверждена' : 'отклонена'
-          alert(`Заявка ${statusLabel}`)
-          
-          // Обновляем список заявок
-          fetchRequests(false)
-        } else {
-          alert(data.error || 'Ошибка при обновлении заявки')
-        }
-      } catch (error) {
-        console.error('Failed to update request status:', error)
-        alert('Ошибка при обновлении заявки')
-      } finally {
-        setUpdatingRequestId(null)
-      }
-    }
-
   return (
     <div className="py-4">
       {/* Хедер с заголовком */}
@@ -334,17 +293,11 @@ export default function DashboardPage() {
             const isPending = request.status === 'pending'
             
             return (
-              <div
+              <Link
                 key={request.id}
+                href={`/dashboard/requests/${request.id}`}
                 className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm"
               >
-                <div 
-                  className="cursor-pointer"
-                  onClick={() => {
-                    if (!isPending || updatingRequestId === request.id) return
-                    window.location.href = `/dashboard/requests/${request.id}`
-                  }}
-                >
                   <div className="flex items-start justify-between">
                     {/* Левая часть: Иконка банка и информация о пользователе */}
                     <div className="flex items-start space-x-3 flex-1">
@@ -417,46 +370,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
                   </div>
-                </div>
-
-                {/* Кнопки действий для ожидающих заявок */}
-                {isPending && (
-                  <div className="mt-4 flex space-x-3 pt-4 border-t border-gray-700" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => updateRequestStatus(request.id, 'approved')}
-                      disabled={updatingRequestId === request.id}
-                      className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {updatingRequestId === request.id ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>Подтвердить</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => updateRequestStatus(request.id, 'rejected')}
-                      disabled={updatingRequestId === request.id}
-                      className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {updatingRequestId === request.id ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          <span>Отклонить</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
+                </Link>
             )
           })}
         </div>
