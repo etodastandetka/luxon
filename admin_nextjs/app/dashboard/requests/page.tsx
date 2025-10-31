@@ -48,13 +48,19 @@ export default function RequestsPage() {
     switch (status) {
       case 'completed':
       case 'approved':
+      case 'auto_completed':
+      case 'autodeposit_success':
         return 'bg-green-500 text-black'
       case 'pending':
         return 'bg-yellow-500 text-black'
       case 'rejected':
+      case 'declined':
         return 'bg-red-500 text-white'
       case 'deferred':
         return 'bg-orange-500 text-white'
+      case 'manual':
+      case 'awaiting_manual':
+        return 'bg-red-500 text-white'
       default:
         return 'bg-gray-700 text-gray-300'
     }
@@ -63,14 +69,20 @@ export default function RequestsPage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'ожидает'
+        return 'Ожидает'
       case 'completed':
       case 'approved':
-        return 'успешно'
+      case 'auto_completed':
+      case 'autodeposit_success':
+        return 'Успешно'
       case 'rejected':
-        return 'отклонено'
+      case 'declined':
+        return 'Отклонено'
       case 'deferred':
-        return 'отложено'
+        return 'Отложено'
+      case 'manual':
+      case 'awaiting_manual':
+        return 'Ручная'
       default:
         return status
     }

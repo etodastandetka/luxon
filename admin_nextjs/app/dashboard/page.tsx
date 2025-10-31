@@ -18,22 +18,17 @@ interface Request {
 export default function DashboardPage() {
   const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending')
 
   useEffect(() => {
     fetchRequests()
-  }, [activeTab])
+  }, [])
 
   const fetchRequests = async () => {
     setLoading(true)
     try {
+      // На главной странице показываем только ожидающие заявки
       const params = new URLSearchParams()
-      if (activeTab === 'pending') {
-        params.append('status', 'pending')
-      } else if (activeTab === 'all') {
-        // Для "Оставленные" показываем заявки со статусами не pending (включая deferred)
-        params.append('status', 'left')
-      }
+      params.append('status', 'pending')
 
       const response = await fetch(`/api/requests?${params.toString()}`)
       const data = await response.json()
@@ -43,7 +38,7 @@ export default function DashboardPage() {
       if (data.success) {
         const requestsList = data.data.requests || []
         
-        console.log(`✅ Loaded ${requestsList.length} requests for tab: ${activeTab}`)
+        console.log(`✅ Loaded ${requestsList.length} requests for tab: pending`)
         setRequests(requestsList)
       } else {
         console.error('❌ Failed to fetch requests:', data.error || data)
@@ -59,6 +54,50 @@ export default function DashboardPage() {
 
   const getTypeLabel = (type: string) => {
     return type === 'deposit' ? 'Пополнение' : 'Вывод'
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Ожидает'
+      case 'completed':
+      case 'approved':
+      case 'auto_completed':
+      case 'autodeposit_success':
+        return 'Успешно'
+      case 'rejected':
+      case 'declined':
+        return 'Отклонено'
+      case 'deferred':
+        return 'Отложено'
+      case 'manual':
+      case 'awaiting_manual':
+        return 'Ручная'
+      default:
+        return status
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+      case 'approved':
+      case 'auto_completed':
+      case 'autodeposit_success':
+        return 'bg-green-500 text-black'
+      case 'pending':
+        return 'bg-yellow-500 text-black'
+      case 'rejected':
+      case 'declined':
+        return 'bg-red-500 text-white'
+      case 'deferred':
+        return 'bg-orange-500 text-white'
+      case 'manual':
+      case 'awaiting_manual':
+        return 'bg-red-500 text-white'
+      default:
+        return 'bg-gray-700 text-gray-300'
+    }
   }
 
   return (
@@ -80,29 +119,6 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Табы */}
-      <div className="flex space-x-2 mb-6">
-        <button
-          onClick={() => setActiveTab('pending')}
-          className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-            activeTab === 'pending'
-              ? 'bg-green-500 text-black shadow-lg'
-              : 'bg-gray-800 text-gray-300'
-          }`}
-        >
-          Ожидающие
-        </button>
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-            activeTab === 'all'
-              ? 'bg-green-500 text-black shadow-lg'
-              : 'bg-gray-800 text-gray-300'
-          }`}
-        >
-          Оставленные
-        </button>
-      </div>
 
       {/* Контент заявок */}
       {loading ? (
@@ -132,8 +148,8 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium text-white">
                       Заявка #{request.id}
                     </span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500 text-black">
-                      {request.status}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                      {getStatusLabel(request.status)}
                     </span>
                   </div>
                   <p className="text-xs text-gray-400">
