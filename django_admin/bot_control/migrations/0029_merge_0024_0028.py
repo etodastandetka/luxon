@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('bot_control', '0024_merge_0022_0023'),
-        ('bot_control', '0027_fix_botreferral_onetoone'),
+        ('bot_control', '0028_fix_botreferral_onetoone'),
     ]
 
     operations = [
