@@ -10,7 +10,7 @@ from aiogram.filters import CommandStart
 
 # Настройки
 BOT_TOKEN = "7796879640:AAFKi7SFuqNJKUv8hapAYFeeJsFN3OCJF0Y"
-WEBSITE_URL = "https://localhost:3030"
+WEBSITE_URL = "https://luxservice.online"
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
