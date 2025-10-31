@@ -47,37 +47,38 @@ export default function RequestDetailPage() {
   const [deferring, setDeferring] = useState(false)
 
   useEffect(() => {
-    if (params.id) {
-      let isMounted = true
-      
-      const fetchRequest = async () => {
-        try {
-          const response = await fetch(`/api/requests/${params.id}`)
-          const data = await response.json()
+    const requestId = Array.isArray(params.id) ? params.id[0] : params.id
+    if (!requestId) return
 
-          console.log('📋 Request detail data:', data)
+    let isMounted = true
+    
+    const fetchRequest = async () => {
+      try {
+        const response = await fetch(`/api/requests/${requestId}`)
+        const data = await response.json()
 
-          if (!isMounted) return
+        console.log('📋 Request detail data:', data)
 
-          if (data.success) {
-            setRequest(data.data)
-          } else {
-            console.error('❌ Failed to fetch request:', data.error)
-          }
-        } catch (error) {
-          console.error('❌ Failed to fetch request:', error)
-        } finally {
-          if (isMounted) {
-            setLoading(false)
-          }
+        if (!isMounted) return
+
+        if (data.success && isMounted) {
+          setRequest(data.data)
+        } else {
+          console.error('❌ Failed to fetch request:', data.error)
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch request:', error)
+      } finally {
+        if (isMounted) {
+          setLoading(false)
         }
       }
-      
-      fetchRequest()
-      
-      return () => {
-        isMounted = false
-      }
+    }
+    
+    fetchRequest()
+    
+    return () => {
+      isMounted = false
     }
   }, [params.id])
 
@@ -144,7 +145,8 @@ export default function RequestDetailPage() {
       const data = await response.json()
 
       if (data.success) {
-        setRequest(data.data)
+        // Проверяем, что компонент все еще смонтирован перед обновлением
+        setRequest(prevRequest => prevRequest ? { ...prevRequest, ...data.data } : data.data)
         setShowMenu(false)
         alert('Заявка отложена')
       } else {
