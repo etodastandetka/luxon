@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -215,7 +215,11 @@ export default function RequestDetailPage() {
   useEffect(() => {
     if (!showMenu) return
 
+    let isMounted = true
+
     const handleClickOutside = (event: MouseEvent) => {
+      if (!isMounted) return
+      
       const target = event.target as HTMLElement
       if (!target.closest('.relative')) {
         setShowMenu(false)
@@ -224,35 +228,37 @@ export default function RequestDetailPage() {
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
+      isMounted = false
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showMenu])
 
-  // Получаем все транзакции по accountId (ID казино)
-  const casinoTransactions = request.casinoTransactions || []
-  
-  // Формируем список транзакций для отображения
-  const transactions = casinoTransactions.map(t => {
-    const amount = parseFloat(t.amount || '0')
-    const isDeposit = t.requestType === 'deposit'
-    const userName = t.username 
-      ? `@${t.username}` 
-      : t.firstName 
-        ? `${t.firstName}${t.lastName ? ' ' + t.lastName : ''}` 
-        : `ID: ${t.userId}`
+  // Получаем все транзакции по accountId (ID казино) - используем useMemo для безопасного вычисления
+  const transactions = useMemo(() => {
+    if (!request || !request.casinoTransactions) return []
     
-    return {
-      id: t.id,
-      amount: Math.abs(amount).toFixed(2).replace('.', ','),
-      isDeposit,
-      createdAt: t.createdAt,
-      status: t.status,
-      userName,
-      userId: t.userId,
-      bookmaker: t.bookmaker,
-      description: `${isDeposit ? 'Пополнение' : 'Вывод'} от ${userName}`,
-    }
-  })
+    return request.casinoTransactions.map(t => {
+      const amount = parseFloat(t.amount || '0')
+      const isDeposit = t.requestType === 'deposit'
+      const userName = t.username 
+        ? `@${t.username}` 
+        : t.firstName 
+          ? `${t.firstName}${t.lastName ? ' ' + t.lastName : ''}` 
+          : `ID: ${t.userId}`
+      
+      return {
+        id: t.id,
+        amount: Math.abs(amount).toFixed(2).replace('.', ','),
+        isDeposit,
+        createdAt: t.createdAt,
+        status: t.status,
+        userName,
+        userId: t.userId,
+        bookmaker: t.bookmaker,
+        description: `${isDeposit ? 'Пополнение' : 'Вывод'} от ${userName}`,
+      }
+    })
+  }, [request])
 
   return (
     <div className="py-4">
