@@ -8,6 +8,7 @@ interface Wallet {
   value: string
   email: string | null
   password: string | null
+  bank: string | null
   isActive: boolean
 }
 
@@ -22,6 +23,7 @@ export default function WalletPage() {
     value: '',
     email: '',
     password: '',
+    bank: '',
     isActive: false,
   })
 
@@ -89,6 +91,7 @@ export default function WalletPage() {
         value: '',
         email: '',
         password: '',
+        bank: '',
         isActive: false,
       })
       fetchWallets()
@@ -105,6 +108,7 @@ export default function WalletPage() {
       value: wallet.value || '',
       email: wallet.email || '',
       password: '', // Не показываем пароль при редактировании
+      bank: wallet.bank || '',
       isActive: wallet.isActive,
     })
     setShowModal(true)
@@ -135,6 +139,7 @@ export default function WalletPage() {
       value: '',
       email: '',
       password: '',
+      bank: '',
       isActive: false,
     })
     setShowModal(true)
@@ -311,6 +316,16 @@ export default function WalletPage() {
                     <p className="text-sm text-white font-mono">{wallet.value}</p>
                   </div>
                 </div>
+                {wallet.bank && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">
+                      Банк
+                    </label>
+                    <div className="bg-gray-900 p-2 rounded-lg border border-gray-700">
+                      <p className="text-sm text-white">{wallet.bank}</p>
+                    </div>
+                  </div>
+                )}
                 {wallet.email && (
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">
@@ -378,6 +393,29 @@ export default function WalletPage() {
                 <p className="text-xs text-gray-400 mt-1">
                   {formData.value.length}/16 цифр
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Банк *
+                </label>
+                <select
+                  required
+                  value={formData.bank}
+                  onChange={(e) => setFormData({ ...formData, bank: e.target.value })}
+                  className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    backgroundSize: '16px',
+                    paddingRight: '40px'
+                  }}
+                >
+                  <option value="">Выберите банк</option>
+                  <option value="DEMIRBANK">Demir Bank</option>
+                  <option value="BAKAI">Bakai</option>
+                </select>
               </div>
 
               <div>
