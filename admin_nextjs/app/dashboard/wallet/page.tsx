@@ -55,7 +55,14 @@ export default function WalletPage() {
       return
     }
 
+    // Для Demir Bank пароль обязателен при создании
+    if (formData.bank === 'DEMIRBANK' && !editing && !formData.password) {
+      alert('Пароль обязателен для Demir Bank')
+      return
+    }
+
     // Для Bakai Bank валидация не требуется (может быть любой hash)
+    // Почта и пароль не требуются для Bakai
 
     try {
       if (editing) {
@@ -108,7 +115,7 @@ export default function WalletPage() {
     setFormData({
       name: wallet.name || '',
       value: wallet.value || '',
-      email: wallet.email || '',
+      email: wallet.bank === 'BAKAI' ? '' : (wallet.email || ''), // Для Bakai не показываем почту
       password: '', // Не показываем пароль при редактировании
       bank: wallet.bank || '',
       isActive: wallet.isActive,
@@ -328,7 +335,7 @@ export default function WalletPage() {
                     </div>
                   </div>
                 )}
-                {wallet.email && (
+                {wallet.bank === 'DEMIRBANK' && wallet.email && (
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">
                       Почта
@@ -338,7 +345,7 @@ export default function WalletPage() {
                     </div>
                   </div>
                 )}
-                {wallet.password && (
+                {wallet.bank === 'DEMIRBANK' && wallet.password && (
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">
                       Пароль
@@ -414,7 +421,15 @@ export default function WalletPage() {
                   value={formData.bank}
                   onChange={(e) => {
                     // При смене банка очищаем значение, т.к. формат может отличаться
-                    setFormData({ ...formData, bank: e.target.value, value: '' })
+                    // Для Bakai также очищаем почту и пароль
+                    const newBank = e.target.value
+                    setFormData({ 
+                      ...formData, 
+                      bank: newBank, 
+                      value: '',
+                      email: newBank === 'BAKAI' ? '' : formData.email,
+                      password: newBank === 'BAKAI' ? '' : formData.password,
+                    })
                   }}
                   className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
                   style={{
@@ -431,33 +446,37 @@ export default function WalletPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Почта
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="email@example.com"
-                />
-              </div>
+              {formData.bank === 'DEMIRBANK' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Почта
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="email@example.com"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Пароль {editing && '(оставьте пустым, чтобы не менять)'}
-                  {!editing && ' *'}
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder={editing ? 'Оставьте пустым, чтобы не менять' : 'Пароль'}
-                  required={!editing}
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Пароль {editing && '(оставьте пустым, чтобы не менять)'}
+                      {!editing && ' *'}
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder={editing ? 'Оставьте пустым, чтобы не менять' : 'Пароль'}
+                      required={!editing}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center">
                 <input
