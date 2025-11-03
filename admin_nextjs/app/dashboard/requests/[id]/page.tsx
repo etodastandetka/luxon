@@ -726,9 +726,8 @@ export default function RequestDetailPage() {
 
       {/* Кнопки действий для отложенных и ожидающих заявок */}
       {/* Скрываем кнопки если есть привязанный платеж или заявка уже обработана */}
-      {(request.status === 'deferred' || request.status === 'pending') && 
-       !request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed) &&
-       request.status !== 'completed' && request.status !== 'approved' && request.status !== 'rejected' && (
+      {((request.status === 'deferred' || request.status === 'pending') && 
+       !request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)) && (
         <div className="mx-4 mb-4 flex space-x-3">
           <button
             onClick={() => updateRequestStatus('approved')}
