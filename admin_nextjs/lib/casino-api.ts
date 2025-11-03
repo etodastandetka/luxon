@@ -182,7 +182,8 @@ export async function getPlatformLimits(): Promise<
     const mostbetCfg = MOSTBET_CONFIG
     if (mostbetCfg.cashpoint_id > 0) {
       const mostbetBal = await getMostbetBalance(mostbetCfg)
-      limits.push({ key: 'mostbet', name: 'Mostbet', limit: mostbetBal.limit })
+      // Для Mostbet лимит недоступен, используем баланс
+      limits.push({ key: 'mostbet', name: 'Mostbet', limit: mostbetBal.balance })
     } else {
       limits.push({ key: 'mostbet', name: 'Mostbet', limit: 0 })
     }
