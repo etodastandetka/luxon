@@ -150,15 +150,30 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
 
     if (response.ok) {
       const data = await response.json()
-      if (data && typeof data.balance !== 'undefined') {
+      console.log(`📊 Mostbet API response:`, JSON.stringify(data))
+      
+      if (data) {
+        // Парсим balance (может быть строкой или числом)
+        const balanceValue = data.balance ?? data.Balance ?? 0
+        const balance = typeof balanceValue === 'string' ? parseFloat(balanceValue) : (typeof balanceValue === 'number' ? balanceValue : 0)
+        
+        // Парсим limit - проверяем разные варианты названий полей
+        const limitValue = data.limit ?? data.Limit ?? data.cashpoint_limit ?? data.cashpointLimit ?? data.max_limit ?? data.maxLimit ?? 0
+        const limit = typeof limitValue === 'string' ? parseFloat(limitValue) : (typeof limitValue === 'number' ? limitValue : 0)
+        
+        console.log(`✅ Mostbet: Balance=${balance}, Limit=${limit} (raw: ${JSON.stringify(data)})`)
         return {
-          balance: parseFloat(data.balance) || 0,
-          limit: 0, // Лимит недоступен в Mostbet Cash API
+          balance: isNaN(balance) ? 0 : balance,
+          limit: isNaN(limit) ? 0 : limit,
         }
       }
+    } else {
+      console.error(`❌ Mostbet API error: ${response.status} ${response.statusText}`)
+      const text = await response.text()
+      console.error(`Response:`, text)
     }
   } catch (error) {
-    console.error('Error getting Mostbet balance:', error)
+    console.error('❌ Error getting Mostbet balance:', error)
   }
 
   return { balance: 0, limit: 0 }
