@@ -18,14 +18,31 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
   allBankUrls?: Record<string, string>;
   enabledBanks?: string[];
 }) {
+  // Определяем, это вывод (без ссылок) или депозит (со ссылками)
+  // Проверяем не только на undefined, но и на пустые значения
+  const isWithdrawal = (!paymentUrl || paymentUrl === '') && 
+                       (!allBankUrls || Object.keys(allBankUrls).length === 0)
+  
   const handleBankClick = (bankCode: string) => {
     // Сначала выбираем банк
     onPick(bankCode)
     
-    // Определяем ссылку для банка
-    let bankUrl = paymentUrl // По умолчанию используем общую ссылку
+    // Для вывода просто выбираем банк без открытия ссылок
+    if (isWithdrawal) {
+      console.log('🏦 Bank selected for withdrawal:', bankCode)
+      return // Просто выбор, без ссылок и без ошибок
+    }
     
-    console.log('🏦 Bank clicked:', bankCode)
+    // Если мы здесь - это депозит, но проверяем еще раз для безопасности
+    if (!paymentUrl && (!allBankUrls || Object.keys(allBankUrls).length === 0)) {
+      console.log('🏦 Bank selected (no payment URLs available):', bankCode)
+      return // Просто выбор, без ошибок
+    }
+    
+    // Для депозита - ищем и открываем ссылку для оплаты
+    let bankUrl = paymentUrl && paymentUrl.trim() !== '' ? paymentUrl : undefined
+    
+    console.log('🏦 Bank clicked for deposit:', bankCode)
     console.log('📦 All bank URLs:', allBankUrls)
     console.log('🔗 Default payment URL:', paymentUrl)
     
