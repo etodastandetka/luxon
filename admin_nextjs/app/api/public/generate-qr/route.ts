@@ -34,13 +34,15 @@ export async function POST(request: NextRequest) {
     
     // Получаем активный реквизит
     let requisite = null
+    let requisiteBank = null
     try {
       const activeRequisite = await prisma.botRequisite.findFirst({
         where: { isActive: true }
       })
       if (activeRequisite) {
         requisite = activeRequisite.value
-        console.log(`✅ Using active requisite: ${activeRequisite.name || `#${activeRequisite.id}`} - ${requisite.slice(0, 4)}****${requisite.slice(-4)}`)
+        requisiteBank = activeRequisite.bank
+        console.log(`✅ Using active requisite: ${activeRequisite.name || `#${activeRequisite.id}`} - Bank: ${requisiteBank || 'N/A'} - ${requisite.slice(0, 4)}****${requisite.slice(-4)}`)
       } else {
         console.error('❌ No active requisite found in database')
       }
@@ -58,40 +60,151 @@ export async function POST(request: NextRequest) {
       return errorResponse
     }
     
-    // Конвертируем сумму в центы и форматируем
-    const amountCents = Math.round(amount * 100)
-    const amountStr = amountCents.toString().padStart(5, '0')
-    const amountLen = amountStr.length.toString().padStart(2, '0')
+    let qrHash: string
     
-    // Формируем TLV структуру
-    const requisiteLen = requisite.length.toString().padStart(2, '0')
-    
-    const merchantAccountValue = (
-      `0015qr.demirbank.kg` +  // Под-тег 00: домен
-      `01047001` +              // Под-тег 01: короткий тип (7001)
-      `10${requisiteLen}${requisite}` +  // Под-тег 10: реквизит
-      `120211130212`            // Под-теги 12, 13: дополнительные поля
-    )
-    const merchantAccountLen = merchantAccountValue.length.toString().padStart(2, '0')
-    
-    // Payload БЕЗ контрольной суммы и без 6304
-    const payload = (
-      `000201` +  // 00 - Payload Format Indicator
-      `010211` +  // 01 - Point of Initiation Method (статический QR)
-      `32${merchantAccountLen}${merchantAccountValue}` +  // 32 - Merchant Account
-      `52044829` +  // 52 - Merchant Category Code
-      `5303417` +   // 53 - Transaction Currency
-      `54${amountLen}${amountStr}` +  // 54 - Amount
-      `5909DEMIRBANK`  // 59 - Merchant Name
-    )
-    
-    // Вычисляем SHA256 контрольную сумму от payload (БЕЗ 6304)
-    const checksumFull = createHash('sha256').update(payload).digest('hex')
-    // Берем последние 4 символа в нижнем регистре
-    const checksum = checksumFull.slice(-4).toLowerCase()
-    
-    // Полный QR хеш: payload + '6304' + checksum
-    const qrHash = payload + '6304' + checksum
+    // Если банк кошелька Bakai, используем base_hash напрямую с обновлением суммы
+    if (requisiteBank === 'BAKAI') {
+      // Проверяем, что base_hash содержит данные только для Bakai
+      if (requisite.includes('qr.demirbank.kg') || requisite.includes('DEMIRBANK')) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Base_hash для Bakai содержит данные DemirBank. Проверьте настройки кошелька в админке.' },
+          { status: 400 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
+      // Проверяем, что base_hash содержит данные для Bakai
+      if (!requisite.includes('qr.bakai.kg') && !requisite.includes('BAKAIAPP')) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Base_hash не содержит данные для Bakai. Проверьте настройки кошелька в админке.' },
+          { status: 400 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
+      // Конвертируем сумму в копейки
+      const amountCents = Math.round(amount * 100)
+      const amountStr = amountCents.toString()
+      const amountLen = amountStr.length.toString().padStart(2, '0')
+      
+      // Находим последнее поле 54 перед полем 63 (контрольная сумма)
+      const field54Pattern = /54(\d{2})(\d+)/g
+      const field54Matches: Array<{ index: number; fullMatch: string }> = []
+      let match54
+      while ((match54 = field54Pattern.exec(requisite)) !== null) {
+        field54Matches.push({
+          index: match54.index,
+          fullMatch: match54[0]
+        })
+      }
+      
+      if (field54Matches.length === 0) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Не найдено поле 54 в base_hash для Bakai' },
+          { status: 400 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
+      // Находим индекс последнего поля 63
+      const last63Index = requisite.lastIndexOf('6304')
+      if (last63Index === -1) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Не найдено поле 63 в base_hash для Bakai' },
+          { status: 400 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
+      // Находим последнее поле 54 перед полем 63
+      const lastField54Before63 = field54Matches
+        .filter(m => m.index < last63Index)
+        .sort((a, b) => b.index - a.index)[0]
+      
+      if (!lastField54Before63) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Не найдено поле 54 перед полем 63 в base_hash для Bakai' },
+          { status: 400 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
+      // Заменяем последнее поле 54 на новое значение
+      const oldField54 = lastField54Before63.fullMatch
+      const newField54 = `54${amountLen}${amountStr}`
+      
+      // Заменяем последнее вхождение поля 54 (перед полем 63)
+      let updatedHash = requisite.substring(0, lastField54Before63.index) + 
+                       newField54 + 
+                       requisite.substring(lastField54Before63.index + oldField54.length)
+      
+      // Извлекаем данные до последнего объекта 63
+      const dataBefore63 = updatedHash.substring(0, last63Index)
+      
+      // Вычисляем SHA256 от данных до объекта 63
+      const checksumFull = createHash('sha256').update(dataBefore63, 'utf8').digest('hex')
+      
+      // Удаляем все символы "-" если есть
+      const checksumCleaned = checksumFull.replace(/-/g, '')
+      
+      // Берем последние 4 символа в верхнем регистре
+      const checksum = checksumCleaned.slice(-4).toUpperCase()
+      
+      // Заменяем последнее поле 63 (контрольная сумма)
+      const newField63 = `6304${checksum}`
+      qrHash = updatedHash.substring(0, last63Index) + newField63
+    } else {
+      // Для Demir Bank используем существующую логику
+      // Проверяем, что реквизит - это 16 цифр
+      if (!/^\d{16}$/.test(requisite)) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Реквизит для Demir Bank должен содержать 16 цифр' },
+          { status: 400 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
+      // Конвертируем сумму в центы и форматируем
+      const amountCents = Math.round(amount * 100)
+      const amountStr = amountCents.toString().padStart(5, '0')
+      const amountLen = amountStr.length.toString().padStart(2, '0')
+      
+      // Формируем TLV структуру
+      const requisiteLen = requisite.length.toString().padStart(2, '0')
+      
+      const merchantAccountValue = (
+        `0015qr.demirbank.kg` +  // Под-тег 00: домен
+        `01047001` +              // Под-тег 01: короткий тип (7001)
+        `10${requisiteLen}${requisite}` +  // Под-тег 10: реквизит
+        `120211130212`            // Под-теги 12, 13: дополнительные поля
+      )
+      const merchantAccountLen = merchantAccountValue.length.toString().padStart(2, '0')
+      
+      // Payload БЕЗ контрольной суммы и без 6304
+      const payload = (
+        `000201` +  // 00 - Payload Format Indicator
+        `010211` +  // 01 - Point of Initiation Method (статический QR)
+        `32${merchantAccountLen}${merchantAccountValue}` +  // 32 - Merchant Account
+        `52044829` +  // 52 - Merchant Category Code
+        `5303417` +   // 53 - Transaction Currency
+        `54${amountLen}${amountStr}` +  // 54 - Amount
+        `5909DEMIRBANK`  // 59 - Merchant Name
+      )
+      
+      // Вычисляем SHA256 контрольную сумму от payload (БЕЗ 6304)
+      const checksumFull = createHash('sha256').update(payload).digest('hex')
+      // Берем последние 4 символа в нижнем регистре
+      const checksum = checksumFull.slice(-4).toLowerCase()
+      
+      // Полный QR хеш: payload + '6304' + checksum
+      qrHash = payload + '6304' + checksum
+    }
     
     // Создаем ссылки для всех банков
     const bankLinks: Record<string, string> = {
