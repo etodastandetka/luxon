@@ -10,6 +10,8 @@ export default function WithdrawConfirm() {
   const [phone, setPhone] = useState('')
   const [userId, setUserId] = useState('')
   const [siteCode, setSiteCode] = useState('')
+  const [withdrawAmount, setWithdrawAmount] = useState<number | null>(null)
+  const [bookmaker, setBookmaker] = useState('')
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -21,12 +23,17 @@ export default function WithdrawConfirm() {
     const savedPhone = localStorage.getItem('withdraw_phone') || ''
     const savedUserId = localStorage.getItem('withdraw_user_id') || ''
     const savedSiteCode = localStorage.getItem('withdraw_site_code') || ''
+    const savedAmount = localStorage.getItem('withdraw_amount')
     
+    setBookmaker(savedBookmaker)
     setBank(savedBank)
     setQrPhoto(savedQrPhoto)
     setPhone(savedPhone)
     setUserId(savedUserId)
     setSiteCode(savedSiteCode)
+    if (savedAmount) {
+      setWithdrawAmount(parseFloat(savedAmount))
+    }
     
     // Проверяем, что все данные есть
     if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone || !savedUserId || !savedSiteCode) {
@@ -218,13 +225,13 @@ export default function WithdrawConfirm() {
   const translations = {
     ru: {
       title: 'Подтверждение вывода',
-      subtitle: 'Проверьте данные',
-      confirm: 'Подтвердить',
+      subtitle: 'Проверьте данные заявки',
+      confirm: 'Отправить заявку',
       back: 'Назад',
-      bank: 'Банк',
-      phone: 'Телефон',
-      userId: 'ID аккаунта',
-      siteCode: 'Код с сайта',
+      bank: 'Банк для получения',
+      phone: 'Номер телефона',
+      userId: 'ID аккаунта в казино',
+      siteCode: 'Код подтверждения',
       qrCode: 'QR-код'
     },
     en: {
@@ -277,6 +284,22 @@ export default function WithdrawConfirm() {
         </div>
         
         <div className="space-y-3">
+          {withdrawAmount !== null && (
+            <div className="p-4 bg-green-900/30 border border-green-500 rounded-lg mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">✅</span>
+                <span className="text-green-300 font-semibold">Вывод выполнен</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-green-500/30">
+                <span className="text-white/70">Сумма вывода:</span>
+                <span className="font-bold text-xl text-green-300">{withdrawAmount} сом</span>
+              </div>
+              <p className="text-xs text-green-200 mt-2">
+                Средства сняты с вашего счета в казино. Заявка будет обработана администратором.
+              </p>
+            </div>
+          )}
+          
           <div className="flex justify-between">
             <span className="text-white/70">{t.bank}:</span>
             <span className="font-semibold">{getBankName(bank)}</span>
