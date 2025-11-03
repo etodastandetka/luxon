@@ -86,8 +86,10 @@ export async function POST(request: NextRequest) {
  * Функция для сопоставления входящего платежа с заявкой и автоматического пополнения
  */
 async function matchAndProcessPayment(paymentId: number, amount: number) {
-  // Ищем заявки на пополнение со статусом pending за последние 5 минут
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+  // Ищем заявки на пополнение со статусом pending за последние 30 минут (увеличено с 5 минут)
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
+
+  console.log(`🔍 Matching payment ${paymentId}: looking for requests with amount ${amount} created after ${thirtyMinutesAgo.toISOString()}`)
 
   // Ищем заявки с точным совпадением суммы (с точностью до копеек)
   const matchingRequests = await prisma.request.findMany({
@@ -95,7 +97,7 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
       requestType: 'deposit',
       status: 'pending',
       createdAt: {
-        gte: fiveMinutesAgo,
+        gte: thirtyMinutesAgo,
       },
     },
     orderBy: {
@@ -103,17 +105,30 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     },
   })
 
+  console.log(`📋 Found ${matchingRequests.length} pending deposit requests in the last 30 minutes`)
+
   // Фильтруем вручную, т.к. Prisma может иметь проблемы с точным сравнением Decimal
   const exactMatches = matchingRequests.filter((req) => {
-    if (!req.amount) return false
+    if (!req.amount) {
+      console.log(`⚠️ Request ${req.id} has no amount`)
+      return false
+    }
     const reqAmount = parseFloat(req.amount.toString())
-    return Math.abs(reqAmount - amount) < 0.01 // Точность до 1 копейки
+    const diff = Math.abs(reqAmount - amount)
+    const matches = diff < 0.01 // Точность до 1 копейки
+    if (matches) {
+      console.log(`✅ Exact match found: Request ${req.id}, amount ${reqAmount} ≈ payment ${amount} (diff: ${diff})`)
+    }
+    return matches
   })
 
   if (exactMatches.length === 0) {
     console.log(`ℹ️ No matching request found for payment ${paymentId} (amount: ${amount})`)
+    console.log(`   Searched ${matchingRequests.length} requests. Amounts found: ${matchingRequests.map(r => r.amount?.toString() || 'N/A').join(', ')}`)
     return null
   }
+
+  console.log(`🎯 Found ${exactMatches.length} exact match(es) for payment ${paymentId}`)
 
   const request = exactMatches[0]
 
