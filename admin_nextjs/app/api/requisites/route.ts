@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     requireAuth(request)
 
     const body = await request.json()
-    const { value, name, email, password, isActive } = body
+    const { value, name, email, password, bank, isActive } = body
 
     if (!value) {
       return NextResponse.json(
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
         name,
         email,
         password,
+        bank: bank || null,
         isActive: isActive || false,
       },
     })

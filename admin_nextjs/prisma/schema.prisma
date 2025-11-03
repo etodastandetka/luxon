@@ -188,6 +188,7 @@ model BotRequisite {
   name      String?  @db.VarChar(255)
   email     String?  @db.VarChar(255)
   password  String?  @db.VarChar(255)
+  bank      String?  @db.VarChar(50)
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([isActive])

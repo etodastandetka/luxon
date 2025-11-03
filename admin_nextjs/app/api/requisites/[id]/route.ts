@@ -24,6 +24,7 @@ export async function PATCH(
     if (body.value !== undefined) updateData.value = body.value
     if (body.name !== undefined) updateData.name = body.name
     if (body.email !== undefined) updateData.email = body.email
+    if (body.bank !== undefined) updateData.bank = body.bank || null
     // Обновляем пароль только если он передан и не пустой
     if (body.password !== undefined && body.password !== '') {
       updateData.password = body.password
