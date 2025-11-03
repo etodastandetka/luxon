@@ -566,38 +566,72 @@ export default function DepositStep4() {
 
   // Функция для генерации Bakai QR кода
   const generateBakaiQR = async (baseHash: string, amount: number): Promise<string> => {
+    // Проверяем, что base_hash содержит данные только для Bakai
+    // Если есть данные DemirBank, это ошибка конфигурации
+    if (baseHash.includes('qr.demirbank.kg') || baseHash.includes('DEMIRBANK')) {
+      throw new Error('Base_hash для Bakai содержит данные DemirBank. Проверьте настройки кошелька в админке.')
+    }
+    
+    // Проверяем, что base_hash содержит данные для Bakai
+    if (!baseHash.includes('qr.bakai.kg') && !baseHash.includes('BAKAIAPP')) {
+      throw new Error('Base_hash не содержит данные для Bakai. Проверьте настройки кошелька в админке.')
+    }
+    
     // Конвертируем сумму в копейки
     const amountCents = Math.round(parseFloat(String(amount)) * 100)
     const amountStr = amountCents.toString()
     const amountLen = amountStr.length.toString().padStart(2, '0')
     
-    // Находим поле 54 в формате 54{len}{value}
-    // Ищем паттерн: 54 за которым следуют 2 цифры (длина) и затем значение
+    // Находим последнее поле 54 перед полем 63 (контрольная сумма)
+    // Ищем все вхождения поля 54
+    const field54Matches: Array<{ index: number; match: string; fullMatch: string }> = []
     const field54Pattern = /54(\d{2})(\d+)/g
-    const match54 = field54Pattern.exec(baseHash)
+    let match54
+    while ((match54 = field54Pattern.exec(baseHash)) !== null) {
+      field54Matches.push({
+        index: match54.index,
+        match: match54[0],
+        fullMatch: match54[0]
+      })
+    }
     
-    if (!match54) {
+    if (field54Matches.length === 0) {
       throw new Error('Не найдено поле 54 в base_hash')
     }
     
-    // Заменяем поле 54 на новое значение
-    const oldField54 = match54[0] // например "540510053"
-    const newField54 = `54${amountLen}${amountStr}` // например "0510053" или "046533"
-    
-    // Заменяем поле 54 в base_hash
-    let updatedHash = baseHash.replace(oldField54, newField54)
-    
-    // Находим поле 63 (контрольная сумма)
-    // Ищем паттерн: 6304 за которым следуют 4 символа (контрольная сумма)
-    const field63Pattern = /6304([A-Fa-f0-9]{4})/
-    const match63 = field63Pattern.exec(updatedHash)
-    
-    if (!match63) {
+    // Находим индекс поля 63
+    const index63 = baseHash.indexOf('6304')
+    if (index63 === -1) {
       throw new Error('Не найдено поле 63 в base_hash')
     }
     
-    // Извлекаем данные до объекта 63 (ID "00" - "90", исключая ID 63)
-    const dataBefore63 = updatedHash.substring(0, updatedHash.indexOf('6304'))
+    // Находим последнее поле 54 перед полем 63
+    const lastField54Before63 = field54Matches
+      .filter(m => m.index < index63)
+      .sort((a, b) => b.index - a.index)[0]
+    
+    if (!lastField54Before63) {
+      throw new Error('Не найдено поле 54 перед полем 63 в base_hash')
+    }
+    
+    // Заменяем последнее поле 54 на новое значение
+    const oldField54 = lastField54Before63.fullMatch // например "540510053"
+    const newField54 = `54${amountLen}${amountStr}` // например "0510053" или "046533"
+    
+    // Заменяем последнее вхождение поля 54 (перед полем 63)
+    let updatedHash = baseHash.substring(0, lastField54Before63.index) + 
+                     newField54 + 
+                     baseHash.substring(lastField54Before63.index + oldField54.length)
+    
+    // Находим поле 63 (контрольная сумма) - должно быть последнее
+    const field63Pattern = /6304([A-Fa-f0-9]{4})/
+    const last63Index = updatedHash.lastIndexOf('6304')
+    if (last63Index === -1) {
+      throw new Error('Не найдено поле 63 в base_hash после замены')
+    }
+    
+    // Извлекаем данные до последнего объекта 63 (ID "00" - "90", исключая ID 63)
+    const dataBefore63 = updatedHash.substring(0, last63Index)
     
     // Вычисляем SHA256 от данных до объекта 63
     const checksumFull = await calculateSHA256(dataBefore63)
@@ -605,14 +639,14 @@ export default function DepositStep4() {
     // Удаляем все символы "-" если есть
     const checksumCleaned = checksumFull.replace(/-/g, '')
     
-    // Берем последние 4 символа
-    const checksum = checksumCleaned.slice(-4)
+    // Берем последние 4 символа в верхнем регистре (как в примере)
+    const checksum = checksumCleaned.slice(-4).toUpperCase()
     
-    // Заменяем контрольную сумму в поле 63
-    const oldField63 = match63[0] // например "63044F76"
-    const newField63 = `6304${checksum}` // например "6304F76A"
+    // Заменяем последнее поле 63 (контрольная сумма)
+    const oldField63 = updatedHash.substring(last63Index, last63Index + 8) // "6304" + 4 символа
+    const newField63 = `6304${checksum}`
     
-    const finalHash = updatedHash.replace(oldField63, newField63)
+    const finalHash = updatedHash.substring(0, last63Index) + newField63
     
     return finalHash
   }
