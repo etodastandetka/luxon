@@ -5,7 +5,7 @@ import LanguageSelector from '../../../components/LanguageSelector'
 import { useLanguage } from '../../../components/LanguageContext'
 
 export default function WithdrawStep3() {
-  const [phone, setPhone] = useState('')
+  const [phone, setPhone] = useState('+996')
   const { language } = useLanguage()
     const router = useRouter()
 
@@ -19,14 +19,40 @@ export default function WithdrawStep3() {
     }
   }, [router])
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value
+    
+    // Всегда начинаем с +996
+    if (!value.startsWith('+996')) {
+      // Если пользователь пытается удалить +996, восстанавливаем
+      if (value.length < 4) {
+        value = '+996'
+      } else if (!value.startsWith('+')) {
+        // Если начинается не с +, добавляем +996
+        value = '+996' + value.replace(/[^\d]/g, '')
+      } else {
+        // Если начинается с + но не +996, заменяем на +996
+        value = '+996' + value.replace(/^\+996/, '').replace(/[^\d]/g, '')
+      }
+    } else {
+      // Если начинается с +996, оставляем как есть, но убираем лишние символы после
+      const after996 = value.slice(4).replace(/[^\d]/g, '')
+      value = '+996' + after996
+    }
+    
+    setPhone(value)
+  }
+
   const handleNext = () => {
+    // Убираем все кроме цифр для сохранения
     const cleanPhone = phone.replace(/[^\d]/g, '')
-    if (!cleanPhone || cleanPhone.length < 10) {
+    // Проверяем что номер полный (996 + минимум 9 цифр номера = минимум 12 цифр)
+    if (!cleanPhone || cleanPhone.length < 12) {
       alert('Введите корректный номер телефона')
       return
     }
     
-    // Сохраняем данные
+    // Сохраняем данные (только цифры)
     localStorage.setItem('withdraw_phone', cleanPhone)
     
     // Переходим к следующему шагу
@@ -99,7 +125,7 @@ export default function WithdrawStep3() {
               className="input w-full"
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={handlePhoneChange}
               placeholder={t.placeholder}
             />
           </div>
@@ -115,7 +141,7 @@ export default function WithdrawStep3() {
           <button 
             className="btn btn-primary flex-1"
             onClick={handleNext}
-            disabled={!phone.trim()}
+            disabled={phone.length < 12}
           >
             {t.next}
           </button>
