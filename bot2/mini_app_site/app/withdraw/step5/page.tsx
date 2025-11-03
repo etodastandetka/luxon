@@ -11,6 +11,8 @@ export default function WithdrawStep5() {
   const [checkingExists, setCheckingExists] = useState(true)
   const [hasWithdrawals, setHasWithdrawals] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [requestCreated, setRequestCreated] = useState(false)
+  const [creatingRequest, setCreatingRequest] = useState(false)
   const { language } = useLanguage()
     const router = useRouter()
 
@@ -66,6 +68,93 @@ export default function WithdrawStep5() {
     }
   }
 
+  // Создание заявки на вывод в админке
+  const createWithdrawRequest = async (amountValue?: number) => {
+    if (requestCreated || creatingRequest) {
+      return // Уже создана или создается
+    }
+
+    setCreatingRequest(true)
+    
+    try {
+      const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
+      const bank = localStorage.getItem('withdraw_bank') || ''
+      const qrPhoto = localStorage.getItem('withdraw_qr_photo') || ''
+      const phone = localStorage.getItem('withdraw_phone') || ''
+      const userId = localStorage.getItem('withdraw_user_id') || ''
+      const amount = amountValue?.toString() || withdrawAmount?.toString() || localStorage.getItem('withdraw_amount') || '0'
+      
+      // Получаем данные пользователя Telegram
+      const tg = (window as any).Telegram?.WebApp
+      let telegramUser = null
+      
+      if (tg?.initDataUnsafe?.user) {
+        telegramUser = tg.initDataUnsafe.user
+      } else if (tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          if (userParam) {
+            telegramUser = JSON.parse(decodeURIComponent(userParam))
+          }
+        } catch (e) {
+          console.log('❌ Error parsing initData:', e)
+        }
+      }
+      
+      console.log('🔄 Создаем заявку на вывод на step5...', {
+        type: 'withdraw',
+        bookmaker,
+        userId: parseInt(userId),
+        phone,
+        amount: parseFloat(amount),
+        bank,
+        qrPhoto: qrPhoto ? 'uploaded' : '',
+        siteCode
+      })
+
+      const response = await fetch('/api/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'withdraw',
+          bookmaker: bookmaker,
+          userId: parseInt(userId),
+          phone: phone,
+          amount: parseFloat(amount),
+          bank: bank,
+          playerId: userId,
+          qr_photo: qrPhoto,
+          site_code: siteCode,
+          // Данные пользователя Telegram
+          telegram_user_id: telegramUser?.id,
+          telegram_username: telegramUser?.username,
+          telegram_first_name: telegramUser?.first_name,
+          telegram_last_name: telegramUser?.last_name,
+          telegram_language_code: telegramUser?.language_code
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Заявка на вывод создана успешно на step5:', data)
+        // Сохраняем ID заявки
+        localStorage.setItem('withdraw_transaction_id', data.id || data.transactionId || '')
+        localStorage.setItem('withdraw_request_created', 'true')
+        setRequestCreated(true)
+      } else {
+        const errorData = await response.json()
+        console.error('❌ Ошибка создания заявки на вывод:', errorData)
+      }
+    } catch (error) {
+      console.error('❌ Ошибка создания заявки на вывод:', error)
+    } finally {
+      setCreatingRequest(false)
+    }
+  }
+
   // Выполнение вывода при изменении кода
   useEffect(() => {
     const bookmaker = localStorage.getItem('withdraw_bookmaker')
@@ -116,10 +205,17 @@ export default function WithdrawStep5() {
       
       if (data.success && data.data && data.data.amount) {
         // Вывод выполнен успешно - сохраняем данные
-        setWithdrawAmount(data.data.amount)
-        localStorage.setItem('withdraw_amount', data.data.amount.toString())
+        const amount = data.data.amount
+        setWithdrawAmount(amount)
+        localStorage.setItem('withdraw_amount', amount.toString())
         localStorage.setItem('withdraw_transaction_id', data.data.transactionId?.toString() || '')
         setError(null)
+        
+        // Создаем заявку в админке сразу после успешного вывода
+        // Передаем amount напрямую, чтобы не ждать обновления state
+        if (!requestCreated && !creatingRequest) {
+          createWithdrawRequest(amount)
+        }
       } else {
         setWithdrawAmount(null)
         setError(data.message || 'Код неверный или вывод не найден')
@@ -266,6 +362,22 @@ export default function WithdrawStep5() {
                   </p>
                   <p className="text-sm text-red-200 mt-1">
                     {error}
+                  </p>
+                </div>
+              )}
+              
+              {creatingRequest && (
+                <div className="mt-2 p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
+                  <p className="text-sm text-blue-300 font-semibold">
+                    📤 Создание заявки в админке...
+                  </p>
+                </div>
+              )}
+              
+              {requestCreated && (
+                <div className="mt-2 p-3 bg-green-900/30 border border-green-500 rounded-lg">
+                  <p className="text-sm text-green-300 font-semibold">
+                    ✅ Заявка успешно создана в админке
                   </p>
                 </div>
               )}
