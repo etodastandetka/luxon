@@ -22,14 +22,11 @@ CREATE TRIGGER update_bot_settings_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Вставка или обновление настроек ватчера
+-- Вставка или обновление ТОЛЬКО флага включен/выключен
+-- Все остальные настройки (IMAP, email, password) берутся из активного реквизита или фиксированы в коде
 INSERT INTO bot_settings (key, value, created_at, updated_at)
 VALUES 
-    ('autodeposit_enabled', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('autodeposit_imap', 'imap.timeweb.ru', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('autodeposit_folder', 'INBOX', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('autodeposit_bank', 'DEMIRBANK', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('autodeposit_interval_sec', '60', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ('autodeposit_enabled', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (key) 
 DO UPDATE SET 
     value = EXCLUDED.value,
