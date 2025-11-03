@@ -94,10 +94,59 @@ export default function RequestDetailPage() {
           if (!isMountedRef.current) return
 
           if (data.success && isMountedRef.current) {
-            setRequest(data.data)
+            const requestData = data.data
+            
+            // Проверяем, есть ли привязанный платеж с совпадающей суммой
+            // Если да, и заявка еще не completed, автоматически обновляем статус
+            if (requestData.requestType === 'deposit' && 
+                requestData.status !== 'completed' && 
+                requestData.status !== 'approved' &&
+                requestData.status !== 'rejected' &&
+                requestData.matchingPayments) {
+              const linkedPayment = requestData.matchingPayments.find((p: MatchingPayment) => 
+                p.requestId === requestData.id && p.isProcessed
+              )
+              
+              if (linkedPayment && requestData.amount) {
+                const paymentAmount = parseFloat(linkedPayment.amount)
+                const requestAmount = parseFloat(requestData.amount)
+                
+                // Если сумма совпадает (с точностью до 1 копейки), обновляем статус
+                if (Math.abs(paymentAmount - requestAmount) < 0.01) {
+                  try {
+                    const updateResponse = await fetch(`/api/requests/${requestData.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        status: 'completed',
+                        statusDetail: null // "успешно"
+                      }),
+                    })
+                    
+                    const updateData = await updateResponse.json()
+                    if (updateData.success) {
+                      // Обновляем данные заявки
+                      const refreshedResponse = await fetch(`/api/requests/${requestId}`, {
+                        signal: abortController.signal
+                      })
+                      const refreshedData = await refreshedResponse.json()
+                      if (refreshedData.success && isMountedRef.current) {
+                        requestData.status = 'completed'
+                        requestData.statusDetail = null
+                        requestData.processedAt = refreshedData.data.processedAt
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Failed to auto-update request status:', error)
+                  }
+                }
+              }
+            }
+            
+            setRequest(requestData)
             
             // Загружаем фото профиля пользователя
-            if (data.data.userId) {
+            if (requestData.userId) {
               fetchProfilePhoto(data.data.userId)
             }
           } else {
