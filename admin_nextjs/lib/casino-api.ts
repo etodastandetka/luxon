@@ -87,13 +87,21 @@ async function getCashdeskBalance(
     if (response.ok) {
       const data = await response.json()
       console.log(`📊 ${casino} API response:`, JSON.stringify(data))
-      if (data && typeof data.Balance !== 'undefined') {
-        const balance = parseFloat(data.Balance) || 0
-        const limit = parseFloat(data.Limit) || 0
-        console.log(`✅ ${casino}: Balance=${balance}, Limit=${limit}`)
+      
+      // Проверяем, что данные есть и правильно парсим
+      if (data) {
+        // Парсим Balance (может быть строкой или числом)
+        const balanceValue = data.Balance ?? data.balance ?? 0
+        const balance = typeof balanceValue === 'string' ? parseFloat(balanceValue) : (typeof balanceValue === 'number' ? balanceValue : 0)
+        
+        // Парсим Limit (может быть строкой или числом)
+        const limitValue = data.Limit ?? data.limit ?? 0
+        const limit = typeof limitValue === 'string' ? parseFloat(limitValue) : (typeof limitValue === 'number' ? limitValue : 0)
+        
+        console.log(`✅ ${casino}: Balance=${balance}, Limit=${limit} (raw: Balance=${data.Balance}, Limit=${data.Limit})`)
         return {
-          balance,
-          limit,
+          balance: isNaN(balance) ? 0 : balance,
+          limit: isNaN(limit) ? 0 : limit,
         }
       }
     } else {
