@@ -646,7 +646,7 @@ export default function DepositStep4() {
           const qrHash = await generateBakaiQR(requisite, amount)
           
           // Создаем ссылки для всех банков
-          const bankLinks = {
+          const bankLinks: Record<string, string> = {
             'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
             'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
             'Balance.kg': `https://balance.kg/#${qrHash}`,
@@ -662,8 +662,11 @@ export default function DepositStep4() {
           }
           
           setPaymentUrl(bankLinks[currentBank] || bankLinks['Bakai'])
-          setAllBankUrls(bankLinks)
-          setQrHash(qrHash)
+          setQrData({
+            qr_hash: qrHash,
+            all_bank_urls: bankLinks,
+            primary_url: bankLinks[currentBank] || bankLinks['Bakai']
+          })
           return
         } catch (error) {
           console.error('❌ Ошибка генерации Bakai QR:', error)
