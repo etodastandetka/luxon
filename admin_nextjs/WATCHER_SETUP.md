@@ -16,33 +16,44 @@ npm install
 
 ## 2. Настройка базы данных
 
-Убедитесь, что настройки ватчера есть в базе данных. Выполните SQL запросы через `psql` или через админ-панель:
+### Вариант 1: Использовать готовый SQL скрипт (рекомендуется)
+
+Выполните SQL скрипт:
+
+```bash
+cd /var/www/luxon/admin_nextjs
+psql -d default_db -f scripts/setup-watcher.sql
+```
+
+Или через `psql` напрямую:
+
+```bash
+psql -d default_db
+```
+
+Затем выполните содержимое файла `scripts/setup-watcher.sql`.
+
+### Вариант 2: Использовать Prisma миграции
+
+```bash
+cd /var/www/luxon/admin_nextjs
+npx prisma db push
+```
+
+Затем выполните SQL для вставки настроек:
 
 ```sql
--- Включить автопополнение
-INSERT INTO bot_settings (key, value) 
-VALUES ('autodeposit_enabled', '1')
-ON CONFLICT (key) DO UPDATE SET value = '1';
-
--- IMAP сервер (для Timeweb)
-INSERT INTO bot_settings (key, value) 
-VALUES ('autodeposit_imap', 'imap.timeweb.ru')
-ON CONFLICT (key) DO UPDATE SET value = 'imap.timeweb.ru';
-
--- Папка для проверки
-INSERT INTO bot_settings (key, value) 
-VALUES ('autodeposit_folder', 'INBOX')
-ON CONFLICT (key) DO UPDATE SET value = 'INBOX';
-
--- Банк
-INSERT INTO bot_settings (key, value) 
-VALUES ('autodeposit_bank', 'DEMIRBANK')
-ON CONFLICT (key) DO UPDATE SET value = 'DEMIRBANK';
-
--- Интервал проверки в секундах (60 секунд = 1 минута)
-INSERT INTO bot_settings (key, value) 
-VALUES ('autodeposit_interval_sec', '60')
-ON CONFLICT (key) DO UPDATE SET value = '60';
+INSERT INTO bot_settings (key, value, created_at, updated_at)
+VALUES 
+    ('autodeposit_enabled', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('autodeposit_imap', 'imap.timeweb.ru', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('autodeposit_folder', 'INBOX', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('autodeposit_bank', 'DEMIRBANK', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('autodeposit_interval_sec', '60', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (key) 
+DO UPDATE SET 
+    value = EXCLUDED.value,
+    updated_at = CURRENT_TIMESTAMP;
 ```
 
 **Важно:** Email и пароль берутся из активного реквизита (`BotRequisite` с `isActive = true`).
