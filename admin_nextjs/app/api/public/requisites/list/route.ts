@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         id: r.id,
         value: r.value,
         name: r.name,
+        bank: r.bank,
         is_active: r.isActive,
         created_at: r.createdAt.toISOString(),
       })),
