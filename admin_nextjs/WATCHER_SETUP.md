@@ -84,17 +84,52 @@ npm run watcher:check
 
 Для постоянной работы ватчера используйте PM2:
 
-```bash
-cd /var/www/luxon/admin_nextjs
+### Способ 1: Через основной ecosystem.config.js (рекомендуется)
 
-# Запустить ватчер
-pm2 start npm --name "luxon-email-watcher" -- run watcher
+```bash
+cd /var/www/luxon
+
+# Остановить старый процесс если есть
+pm2 delete luxon-email-watcher 2>/dev/null || true
+
+# Перезагрузить конфигурацию (ватчер уже добавлен в ecosystem.config.js)
+pm2 start ecosystem.config.js
 
 # Сохранить конфигурацию PM2
 pm2 save
 
 # Настроить автозапуск при перезагрузке сервера
 pm2 startup
+```
+
+### Способ 2: Через отдельный конфиг файл
+
+```bash
+cd /var/www/luxon/admin_nextjs
+
+# Остановить старый процесс если есть
+pm2 delete luxon-email-watcher 2>/dev/null || true
+
+# Запустить через ecosystem файл
+pm2 start ecosystem.watcher.config.js
+
+# Сохранить конфигурацию PM2
+pm2 save
+```
+
+### Способ 3: Прямой запуск (если выше не работает)
+
+```bash
+cd /var/www/luxon/admin_nextjs
+
+# Остановить старый процесс если есть
+pm2 delete luxon-email-watcher 2>/dev/null || true
+
+# Запустить с явным указанием cwd
+pm2 start npm --name "luxon-email-watcher" -- run watcher --cwd /var/www/luxon/admin_nextjs
+
+# Сохранить конфигурацию PM2
+pm2 save
 ```
 
 ## 5. Управление ватчером
