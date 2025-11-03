@@ -14,7 +14,7 @@ export default function InstructionPage() {
       depositSteps: [
         'Выберите букмекера из списка (1XBET, 1WIN, MELBET, MOSTBET)',
         'Введите ваш ID игрока в казино',
-        'Укажите сумму пополнения (от 200 до 50,000 сом)',
+        'Укажите сумму пополнения (от 35 до 100,000 сом)',
         'Выберите банк для оплаты (DemirBank, O! bank, Balance.kg, Bakai, MegaPay, MBank)',
         'Перейдите по сгенерированной ссылке и оплатите',
         'Дождитесь автоматического пополнения (1-5 минут)'
@@ -23,7 +23,7 @@ export default function InstructionPage() {
       withdrawSteps: [
         'Выберите букмекера из списка',
         'Введите ваш ID игрока в казино',
-        'Укажите сумму вывода (от 100 до 100,000 сом)',
+        'Укажите сумму вывода (от 100 до 50,000 сом)',
         'Выберите банк для получения средств',
         'Введите номер телефона для получения',
         'Введите код подтверждения с сайта букмекера',
@@ -49,7 +49,7 @@ export default function InstructionPage() {
       depositSteps: [
         'Choose a bookmaker from the list (1XBET, 1WIN, MELBET, MOSTBET)',
         'Enter your player ID in the casino',
-        'Specify the deposit amount (from 200 to 50,000 som)',
+        'Specify the deposit amount (from 35 to 100,000 som)',
         'Choose a bank for payment (DemirBank, O! bank, Balance.kg, Bakai, MegaPay, MBank)',
         'Follow the generated link and pay',
         'Wait for automatic deposit (1-5 minutes)'
@@ -58,7 +58,7 @@ export default function InstructionPage() {
       withdrawSteps: [
         'Choose a bookmaker from the list',
         'Enter your player ID in the casino',
-        'Specify the withdrawal amount (from 100 to 100,000 som)',
+        'Specify the withdrawal amount (from 100 to 50,000 som)',
         'Choose a bank to receive funds',
         'Enter phone number for receiving',
         'Enter confirmation code from bookmaker website',
