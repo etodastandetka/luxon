@@ -143,13 +143,31 @@ export async function POST(request: NextRequest) {
                        newField54 + 
                        requisite.substring(lastField54Before63.index + oldField54.length)
       
-      // Извлекаем данные до последнего объекта 63
-      const dataBefore63 = updatedHash.substring(0, last63Index)
+      // Извлекаем данные до последнего объекта 63 (ID "00" - "90", исключая ID 63)
+      let dataBefore63 = updatedHash.substring(0, last63Index)
+      
+      // Согласно алгоритму:
+      // 1. Все значения до объекта 63 преобразуются в строку (уже есть)
+      // 2. Декодируем процентное кодирование (%20 -> пробел и т.д.)
+      // 3. Строка переводится в массив байт с кодировкой UTF-8
+      // 4. Вычисляется SHA256 хеш от массива байт
+      // 5. Массив байт преобразуется в строку (hex)
+      // 6. Удаляются все символы "-" если есть
+      // 7. Берутся последние 4 символа
+      
+      // Декодируем процентное кодирование (%20 -> пробел и т.д.)
+      try {
+        dataBefore63 = decodeURIComponent(dataBefore63)
+      } catch (e) {
+        // Если декодирование не удалось, используем исходную строку
+        console.warn('Could not decode URI component, using original string')
+      }
       
       // Вычисляем SHA256 от данных до объекта 63
+      // createHash('sha256').update() уже работает с UTF-8 байтами по умолчанию
       const checksumFull = createHash('sha256').update(dataBefore63, 'utf8').digest('hex')
       
-      // Удаляем все символы "-" если есть
+      // Удаляем все символы "-" если есть (хотя в hex их обычно нет)
       const checksumCleaned = checksumFull.replace(/-/g, '')
       
       // Берем последние 4 символа в верхнем регистре
