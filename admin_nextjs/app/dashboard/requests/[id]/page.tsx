@@ -881,14 +881,20 @@ export default function RequestDetailPage() {
                   
                   const data = await response.json()
                   if (data.success) {
-                    // Обновляем заявку
+                    // Обновляем заявку (API автоматически обновит статус если сумма совпадает)
                     const fetchResponse = await fetch(`/api/requests/${request.id}`)
                     const fetchData = await fetchResponse.json()
                     if (fetchData.success) {
                       setRequest(fetchData.data)
+                      
+                      // Проверяем, изменился ли статус на "успешно"
+                      if (fetchData.data.status === 'completed') {
+                        alert('Платеж привязан к заявке. Заявка автоматически подтверждена.')
+                      } else {
+                        alert('Платеж привязан к заявке')
+                      }
                     }
                     setSelectedPaymentId(null)
-                    alert('Платеж привязан к заявке')
                   } else {
                     alert(data.error || 'Ошибка при привязке платежа')
                   }
