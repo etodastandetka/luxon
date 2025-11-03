@@ -134,10 +134,12 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
 
   if (!request.accountId || !request.bookmaker) {
     console.warn(`⚠️ Request ${request.id} missing accountId or bookmaker`)
+    console.warn(`   accountId: ${request.accountId}, bookmaker: ${request.bookmaker}`)
     return null
   }
 
   console.log(`🔍 Found matching request: ID ${request.id}, Account: ${request.accountId}, Bookmaker: ${request.bookmaker}`)
+  console.log(`   Request amount: ${request.amount}, Payment amount: ${amount}`)
 
   // Обновляем статус платежа - связываем с заявкой
   await prisma.incomingPayment.update({
