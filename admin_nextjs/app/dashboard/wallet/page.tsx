@@ -49,11 +49,13 @@ export default function WalletPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Валидация: реквизит должен быть 16 цифр
-    if (formData.value && !/^\d{16}$/.test(formData.value)) {
+    // Валидация: для Demir Bank реквизит должен быть 16 цифр
+    if (formData.bank === 'DEMIRBANK' && formData.value && !/^\d{16}$/.test(formData.value)) {
       alert('Реквизит должен содержать ровно 16 цифр')
       return
     }
+
+    // Для Bakai Bank валидация не требуется (может быть любой hash)
 
     try {
       if (editing) {
@@ -310,7 +312,7 @@ export default function WalletPage() {
               <div className="space-y-2 mt-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1">
-                    Реквизит (16 цифр)
+                    {wallet.bank === 'BAKAI' ? 'Hash' : 'Реквизит (16 цифр)'}
                   </label>
                   <div className="bg-gray-900 p-2 rounded-lg border border-gray-700">
                     <p className="text-sm text-white font-mono">{wallet.value}</p>
@@ -376,23 +378,31 @@ export default function WalletPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Реквизит (16 цифр) *
+                  {formData.bank === 'BAKAI' ? 'Hash *' : 'Реквизит (16 цифр) *'}
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.value}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 16)
-                    setFormData({ ...formData, value })
+                    if (formData.bank === 'DEMIRBANK') {
+                      // Для Demir Bank - только цифры, максимум 16
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 16)
+                      setFormData({ ...formData, value })
+                    } else {
+                      // Для Bakai Bank - любое значение без ограничений
+                      setFormData({ ...formData, value: e.target.value })
+                    }
                   }}
                   className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 font-mono focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="1234567890123456"
-                  maxLength={16}
+                  placeholder={formData.bank === 'BAKAI' ? 'Введите hash' : '1234567890123456'}
+                  maxLength={formData.bank === 'DEMIRBANK' ? 16 : undefined}
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                  {formData.value.length}/16 цифр
-                </p>
+                {formData.bank === 'DEMIRBANK' && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {formData.value.length}/16 цифр
+                  </p>
+                )}
               </div>
 
               <div>
@@ -402,7 +412,10 @@ export default function WalletPage() {
                 <select
                   required
                   value={formData.bank}
-                  onChange={(e) => setFormData({ ...formData, bank: e.target.value })}
+                  onChange={(e) => {
+                    // При смене банка очищаем значение, т.к. формат может отличаться
+                    setFormData({ ...formData, bank: e.target.value, value: '' })
+                  }}
                   className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
                   style={{
                     backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
