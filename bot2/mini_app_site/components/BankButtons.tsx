@@ -18,14 +18,17 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
   allBankUrls?: Record<string, string>;
   enabledBanks?: string[];
 }) {
+  // Определяем, это вывод (без ссылок) или депозит (со ссылками)
+  const isWithdrawal = !paymentUrl && !allBankUrls
+  
   const handleBankClick = (bankCode: string) => {
     // Сначала выбираем банк
     onPick(bankCode)
     
-    // Для вывода (когда нет paymentUrl и allBankUrls) просто выбираем банк без открытия ссылок
-    if (!paymentUrl && !allBankUrls) {
+    // Для вывода просто выбираем банк без открытия ссылок
+    if (isWithdrawal) {
       console.log('🏦 Bank selected for withdrawal:', bankCode)
-      return // Просто выбор, без ссылок
+      return // Просто выбор, без ссылок и без ошибок
     }
     
     // Для депозита - ищем и открываем ссылку для оплаты
@@ -73,7 +76,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     
     // Если есть ссылка для оплаты, открываем её (только для депозита)
     if (bankUrl) {
-      console.log('🚀 Opening URL:', bankUrl)
+      console.log('🚀 Opening URL for deposit:', bankUrl)
       // Используем Telegram WebApp API для открытия ссылки вне мини-приложения
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         console.log('✅ Opening with Telegram WebApp API')
@@ -83,8 +86,11 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
         window.open(bankUrl, '_blank')
       }
     } else {
-      console.error('❌ No payment URL available!')
-      alert('Ссылка для оплаты не найдена. Попробуйте обновить страницу.')
+      // Только для депозита показываем ошибку, если нет ссылки
+      if (!isWithdrawal) {
+        console.error('❌ No payment URL available for deposit!')
+        alert('Ссылка для оплаты не найдена. Попробуйте обновить страницу.')
+      }
     }
   }
 
