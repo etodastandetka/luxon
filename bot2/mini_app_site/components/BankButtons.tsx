@@ -22,7 +22,13 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     // Сначала выбираем банк
     onPick(bankCode)
     
-    // Определяем ссылку для банка
+    // Для вывода (когда нет paymentUrl и allBankUrls) просто выбираем банк без открытия ссылок
+    if (!paymentUrl && !allBankUrls) {
+      console.log('🏦 Bank selected for withdrawal:', bankCode)
+      return // Просто выбор, без ссылок
+    }
+    
+    // Для депозита - ищем и открываем ссылку для оплаты
     let bankUrl = paymentUrl // По умолчанию используем общую ссылку
     
     console.log('🏦 Bank clicked:', bankCode)
@@ -65,7 +71,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
       }
     }
     
-    // Если есть ссылка для оплаты, открываем её
+    // Если есть ссылка для оплаты, открываем её (только для депозита)
     if (bankUrl) {
       console.log('🚀 Opening URL:', bankUrl)
       // Используем Telegram WebApp API для открытия ссылки вне мини-приложения
