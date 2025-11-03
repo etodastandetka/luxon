@@ -30,10 +30,10 @@ async function getCasinoConfig(bookmaker: string) {
 
     // Fallback на дефолтные значения из casino_api_config.py
     return {
-      hash: process.env.XBET_HASH || process.env.ONEXBET_HASH || '97f471a9db92debbda38201af67e15f64d086e94ae4b919d8a6a4f64958912cf',
-      cashierpass: process.env.XBET_CASHIERPASS || process.env.ONEXBET_CASHIERPASS || 'wiaWAfE9',
-      login: process.env.XBET_LOGIN || process.env.ONEXBET_LOGIN || 'zhenishbAd',
-      cashdeskid: process.env.XBET_CASHDESKID || process.env.ONEXBET_CASHDESKID || '1388580',
+      hash: process.env.XBET_HASH || process.env.ONEXBET_HASH || 'f7ff9a23821a0dd19276392f80d43fd2e481986bebb7418fef11e03bba038101',
+      cashierpass: process.env.XBET_CASHIERPASS || process.env.ONEXBET_CASHIERPASS || 'i3EBqvV1hB',
+      login: process.env.XBET_LOGIN || process.env.ONEXBET_LOGIN || 'kurbanaevb',
+      cashdeskid: process.env.XBET_CASHDESKID || process.env.ONEXBET_CASHDESKID || '1343871',
     }
   }
   
@@ -57,10 +57,10 @@ async function getCasinoConfig(bookmaker: string) {
 
     // Fallback на дефолтные значения из casino_api_config.py
     return {
-      hash: process.env.MELBET_HASH || 'd34f03473c467b538f685f933b2dc7a3ea8c877901231235693c10be014eb6f4',
-      cashierpass: process.env.MELBET_CASHIERPASS || 'd1WRq!ke',
-      login: process.env.MELBET_LOGIN || 'uuuadetz',
-      cashdeskid: process.env.MELBET_CASHDESKID || '1390018',
+      hash: process.env.MELBET_HASH || '5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1',
+      cashierpass: process.env.MELBET_CASHIERPASS || 'ScgOQgUzZs',
+      login: process.env.MELBET_LOGIN || 'bakhtark',
+      cashdeskid: process.env.MELBET_CASHDESKID || '1350588',
     }
   }
   
@@ -85,8 +85,8 @@ async function getCasinoConfig(bookmaker: string) {
     // Fallback на дефолтные значения из casino_api_config.py
     return {
       api_key: process.env.MOSTBET_API_KEY || 'api-key:0522f4fb-0a18-4ec2-8e27-428643602db4',
-      secret: process.env.MOSTBET_SECRET || '7b6c63ae-2615-4466-a3eb-f5fca2c5c6dc',
-      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || '117753',
+      secret: process.env.MOSTBET_SECRET || 'Eldiyar.07',
+      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C92905',
     }
   }
 

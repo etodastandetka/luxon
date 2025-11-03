@@ -6,27 +6,27 @@
 # ===== Cashdesk API (1xbet и melbet) =====
 CASHDESK_CONFIG = {
     '1xbet': {
-        'hash': '97f471a9db92debbda38201af67e15f64d086e94ae4b919d8a6a4f64958912cf',
-        'cashierpass': 'wiaWAfE9',
-        'login': 'zhenishbAd',
-        'cashdeskid': 1388580
+        'hash': 'f7ff9a23821a0dd19276392f80d43fd2e481986bebb7418fef11e03bba038101',
+        'cashierpass': 'i3EBqvV1hB',
+        'login': 'kurbanaevb',
+        'cashdeskid': 1343871
     },
     'melbet': {
-        'hash': 'd34f03473c467b538f685f933b2dc7a3ea8c877901231235693c10be014eb6f4',
-        'cashierpass': 'd1WRq!ke',
-        'login': 'uuuadetz',
-        'cashdeskid': 1390018
+        'hash': '5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1',
+        'cashierpass': 'ScgOQgUzZs',
+        'login': 'bakhtark',
+        'cashdeskid': 1350588
     }
 }
 
 # ===== Mostbet Cash API =====
 MOSTBET_CONFIG = {
     'api_key': 'api-key:0522f4fb-0a18-4ec2-8e27-428643602db4',
-    'secret': '7b6c63ae-2615-4466-a3eb-f5fca2c5c6dc',
-    'cashpoint_id': 117753
+    'secret': 'Eldiyar.07',
+    'cashpoint_id': 'C92905'
 }
 
 # ===== 1WIN API =====
 ONEWIN_CONFIG = {
-    'api_key': '247d93daa0767088b27f195caac136630b05c62c9dc26a35d59c188ff8176431'
+    'api_key': '0ad11eda9f40c2e05c34dc81c24ebe7f53eabe606c6cc5e553cfe66cd7fa9c8e'
 }
