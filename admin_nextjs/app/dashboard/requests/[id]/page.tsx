@@ -147,7 +147,7 @@ export default function RequestDetailPage() {
             
             // Загружаем фото профиля пользователя
             if (requestData.userId) {
-              fetchProfilePhoto(data.data.userId)
+              fetchProfilePhoto(requestData.userId)
             }
           } else {
             console.error('❌ Failed to fetch request:', data.error)
