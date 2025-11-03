@@ -470,6 +470,7 @@ export default function WalletPage() {
                       value: '',
                       email: '',
                       password: '',
+                      bank: '',
                       isActive: false,
                     })
                   }}
