@@ -122,9 +122,12 @@ export async function GET(request: NextRequest) {
     const synchronizedDeposits = allLabels.map((label) => depositsDict[label] || 0)
     const synchronizedWithdrawals = allLabels.map((label) => withdrawalsDict[label] || 0)
 
-    // Получаем лимиты платформ через API
+    // Получаем лимиты платформ через API (каждый раз заново, без кеширования)
+    // Лимиты - это текущие лимиты кассы из API казино, не зависят от периода
     const { getPlatformLimits } = await import('@/lib/casino-api')
+    console.log(`📊 Fetching platform limits (fresh data, no cache)...`)
     const platformLimits = await getPlatformLimits()
+    console.log(`✅ Platform limits received:`, platformLimits.map(p => `${p.name}=${p.limit}`).join(', '))
 
     return NextResponse.json(
       createApiResponse({
