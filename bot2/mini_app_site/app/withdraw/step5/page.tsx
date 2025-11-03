@@ -211,12 +211,6 @@ export default function WithdrawStep5() {
         
         <p className="text-white/80 text-center">{t.instruction}</p>
         
-        <div className="p-3 bg-blue-900/20 border border-blue-500/50 rounded-lg">
-          <p className="text-sm text-blue-200">
-            ⚠️ <strong>Важно:</strong> После ввода кода средства будут сразу сняты с вашего счета в казино. Убедитесь, что код правильный.
-          </p>
-        </div>
-        
         <div className="space-y-3">
           {checkingExists && (
             <div className="p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
