@@ -11,6 +11,14 @@ export default function ReferralPage() {
   const [topPlayers, setTopPlayers] = useState([])
   const [userRank, setUserRank] = useState(0)
   const [isFromBot, setIsFromBot] = useState(true)
+  const [referralSettings, setReferralSettings] = useState({
+    referral_percentage: 5,
+    min_payout: 100,
+    first_place_prize: 10000,
+    second_place_prize: 5000,
+    third_place_prize: 2500,
+    next_payout_date: '1 ноября'
+  })
   const { language, setLanguage } = useLanguage()
   
   const handleLanguageChange = (newLanguage: string) => {
@@ -85,6 +93,18 @@ export default function ReferralPage() {
         setReferralCount(data.referral_count || 0)
         setTopPlayers(data.top_players || [])
         setUserRank(data.user_rank || 0)
+        
+        // Обновляем настройки рефералов, если они есть
+        if (data.settings) {
+          setReferralSettings({
+            referral_percentage: data.settings.referral_percentage || 5,
+            min_payout: data.settings.min_payout || 100,
+            first_place_prize: data.settings.first_place_prize || 10000,
+            second_place_prize: data.settings.second_place_prize || 5000,
+            third_place_prize: data.settings.third_place_prize || 2500,
+            next_payout_date: data.settings.next_payout_date || '1 ноября'
+          })
+        }
       } else {
         // Если нет данных, показываем пустой список
         setTopPlayers([])
@@ -114,14 +134,14 @@ export default function ReferralPage() {
       topPlayers: '🏆 Топ игроков',
       yourRank: 'Ваше место',
       prizes: 'Призы',
-      firstPlace: '1 место: 10,000 сом',
-      secondPlace: '2 место: 5,000 сом',
-      thirdPlace: '3 место: 2,500 сом',
-      steps: [
+      firstPlace: () => `1 место: ${referralSettings.first_place_prize.toLocaleString()} сом`,
+      secondPlace: () => `2 место: ${referralSettings.second_place_prize.toLocaleString()} сом`,
+      thirdPlace: () => `3 место: ${referralSettings.third_place_prize.toLocaleString()} сом`,
+      steps: () => [
         'Поделитесь ссылкой с друзьями',
-        'За каждое пополнение реферала вы получаете 5%',
+        `За каждое пополнение реферала вы получаете ${referralSettings.referral_percentage}%`,
         'Выплаты происходят автоматически в конце месяца',
-        'Минимальная сумма для выплаты: 100 сом'
+        `Минимальная сумма для выплаты: ${referralSettings.min_payout} сом`
       ],
       shareText: 'Присоединяйся к платформе пополнений и выводов! 💸\nБыстро пополняй 1xBet, Melbet, Mostbet, 1Win и выводи средства без задержек 🚀\nРегистрируйся по моей ссылке',
       copied: 'Ссылка скопирована!',
@@ -141,14 +161,14 @@ export default function ReferralPage() {
       topPlayers: '🏆 Top Players',
       yourRank: 'Your rank',
       prizes: 'Prizes',
-      firstPlace: '1st place: 10,000 som',
-      secondPlace: '2nd place: 5,000 som',
-      thirdPlace: '3rd place: 2,500 som',
-      steps: [
+      firstPlace: () => `1st place: ${referralSettings.first_place_prize.toLocaleString()} som`,
+      secondPlace: () => `2nd place: ${referralSettings.second_place_prize.toLocaleString()} som`,
+      thirdPlace: () => `3rd place: ${referralSettings.third_place_prize.toLocaleString()} som`,
+      steps: () => [
         'Share the link with friends',
-        'You get 5% for each referral deposit',
+        `You get ${referralSettings.referral_percentage}% for each referral deposit`,
         'Payouts happen automatically at the end of the month',
-        'Minimum payout amount: 100 som'
+        `Minimum payout amount: ${referralSettings.min_payout} som`
       ],
       shareText: 'Join the deposit and withdrawal platform! 💸\nQuickly top up 1xBet, Melbet, Mostbet, 1Win and withdraw funds without delays 🚀\nRegister using my link',
       copied: 'Link copied!',
@@ -249,15 +269,15 @@ export default function ReferralPage() {
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-2">
             <div className="text-xs text-yellow-400">🥇</div>
-            <div className="text-xs text-white/80">{t.firstPlace}</div>
+            <div className="text-xs text-white/80">{t.firstPlace()}</div>
           </div>
           <div className="bg-gray-500/20 border border-gray-500/30 rounded-lg p-2">
             <div className="text-xs text-gray-400">🥈</div>
-            <div className="text-xs text-white/80">{t.secondPlace}</div>
+            <div className="text-xs text-white/80">{t.secondPlace()}</div>
           </div>
           <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg p-2">
             <div className="text-xs text-orange-400">🥉</div>
-            <div className="text-xs text-white/80">{t.thirdPlace}</div>
+            <div className="text-xs text-white/80">{t.thirdPlace()}</div>
           </div>
         </div>
 
@@ -311,7 +331,7 @@ export default function ReferralPage() {
       <section className="card space-y-4">
         <h2 className="text-lg font-semibold text-white">{t.howItWorks}</h2>
         <div className="space-y-3">
-          {t.steps.map((step, index) => (
+          {t.steps().map((step, index) => (
             <div key={index} className="flex items-start space-x-3">
               <div className="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                 {index + 1}
