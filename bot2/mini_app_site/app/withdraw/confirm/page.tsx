@@ -39,8 +39,14 @@ export default function WithdrawConfirm() {
     if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone || !savedUserId || !savedSiteCode) {
       router.push('/withdraw/step0')
     } else {
-      // Создаем заявку на вывод сразу при загрузке страницы
-      createWithdrawRequest()
+      // Проверяем, не создана ли уже заявка на step5
+      const requestAlreadyCreated = localStorage.getItem('withdraw_request_created') === 'true'
+      if (!requestAlreadyCreated) {
+        // Создаем заявку на вывод сразу при загрузке страницы (fallback)
+        createWithdrawRequest()
+      } else {
+        console.log('✅ Заявка уже создана на step5, пропускаем создание на confirm')
+      }
     }
   }, [router])
 
