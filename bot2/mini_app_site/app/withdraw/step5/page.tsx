@@ -295,15 +295,15 @@ export default function WithdrawStep5() {
           )}
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-center">
           <button 
-            className="btn btn-ghost flex-1"
+            className="btn btn-ghost"
             onClick={handleBack}
           >
             {t.back}
           </button>
           <button 
-            className="btn btn-primary flex-1"
+            className="btn btn-primary"
             onClick={handleSubmit}
             disabled={!siteCode.trim() || !withdrawAmount || checking || checkingExists || hasWithdrawals === false}
           >
