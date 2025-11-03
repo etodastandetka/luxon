@@ -86,15 +86,23 @@ async function getCashdeskBalance(
 
     if (response.ok) {
       const data = await response.json()
+      console.log(`📊 ${casino} API response:`, JSON.stringify(data))
       if (data && typeof data.Balance !== 'undefined') {
+        const balance = parseFloat(data.Balance) || 0
+        const limit = parseFloat(data.Limit) || 0
+        console.log(`✅ ${casino}: Balance=${balance}, Limit=${limit}`)
         return {
-          balance: parseFloat(data.Balance) || 0,
-          limit: parseFloat(data.Limit) || 0,
+          balance,
+          limit,
         }
       }
+    } else {
+      console.error(`❌ ${casino} API error: ${response.status} ${response.statusText}`)
+      const text = await response.text()
+      console.error(`Response:`, text)
     }
   } catch (error) {
-    console.error(`Error getting ${casino} balance:`, error)
+    console.error(`❌ Error getting ${casino} balance:`, error)
   }
 
   return { balance: 0, limit: 0 }
@@ -161,6 +169,7 @@ export async function getPlatformLimits(): Promise<
     const xbetCfg = CASHDESK_CONFIG['1xbet']
     if (xbetCfg.cashdeskid > 0) {
       const xbetBal = await getCashdeskBalance('1xbet', xbetCfg)
+      console.log(`📊 1xbet result: balance=${xbetBal.balance}, limit=${xbetBal.limit}`)
       limits.push({ key: '1xbet', name: '1xbet', limit: xbetBal.limit })
     } else {
       limits.push({ key: '1xbet', name: '1xbet', limit: 0 })
@@ -170,6 +179,7 @@ export async function getPlatformLimits(): Promise<
     const melbetCfg = CASHDESK_CONFIG.melbet
     if (melbetCfg.cashdeskid > 0) {
       const melbetBal = await getCashdeskBalance('melbet', melbetCfg)
+      console.log(`📊 Melbet result: balance=${melbetBal.balance}, limit=${melbetBal.limit}`)
       limits.push({ key: 'melbet', name: 'Melbet', limit: melbetBal.limit })
     } else {
       limits.push({ key: 'melbet', name: 'Melbet', limit: 0 })
@@ -182,8 +192,8 @@ export async function getPlatformLimits(): Promise<
     const mostbetCfg = MOSTBET_CONFIG
     if (mostbetCfg.cashpoint_id > 0) {
       const mostbetBal = await getMostbetBalance(mostbetCfg)
-      // Для Mostbet лимит недоступен, используем баланс
-      limits.push({ key: 'mostbet', name: 'Mostbet', limit: mostbetBal.balance })
+      // Для Mostbet лимит недоступен в API, показываем 0
+      limits.push({ key: 'mostbet', name: 'Mostbet', limit: mostbetBal.limit })
     } else {
       limits.push({ key: 'mostbet', name: 'Mostbet', limit: 0 })
     }
