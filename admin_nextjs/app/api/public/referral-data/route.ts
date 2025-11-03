@@ -72,7 +72,78 @@ export async function GET(request: NextRequest) {
       return sum + (e.commissionAmount ? parseFloat(e.commissionAmount.toString()) : 0)
     }, 0)
     
-    // Получаем топ игроков по сумме пополнений
+    // Получаем всех пользователей, которые заходили на сайт (из BotUser или Request)
+    // Получаем всех пользователей из Request (кто создавал заявки)
+    const allRequests = await prisma.request.findMany({
+      select: {
+        userId: true,
+        username: true,
+        firstName: true,
+      }
+    })
+    
+    // Убираем дубликаты по userId
+    const uniqueUsersFromRequests = Array.from(
+      new Map(allRequests.map(r => [r.userId.toString(), r])).values()
+    )
+    
+    // Также получаем пользователей из BotUser (кто заходил на сайт)
+    const allUsersFromBot = await prisma.botUser.findMany({
+      select: {
+        userId: true,
+        username: true,
+        firstName: true,
+      }
+    })
+    
+    // Объединяем пользователей из обоих источников
+    const userStatsMap = new Map<string, { userId: string, username: string, totalDeposits: number, referralCount: number }>()
+    
+    // Добавляем всех пользователей из BotUser (все, кто заходил на сайт)
+    for (const user of allUsersFromBot) {
+      const userIdStr = user.userId.toString()
+      const displayName = user.username 
+        ? `@${user.username}` 
+        : user.firstName 
+          ? user.firstName 
+          : `Игрок #${userIdStr}`
+      
+      if (!userStatsMap.has(userIdStr)) {
+        userStatsMap.set(userIdStr, {
+          userId: userIdStr,
+          username: displayName,
+          totalDeposits: 0,
+          referralCount: 0
+        })
+      }
+    }
+    
+    // Добавляем пользователей из Request (могут быть новые, которых нет в BotUser)
+    for (const user of uniqueUsersFromRequests) {
+      const userIdStr = user.userId.toString()
+      const displayName = user.username 
+        ? `@${user.username}` 
+        : user.firstName 
+          ? user.firstName 
+          : `Игрок #${userIdStr}`
+      
+      if (!userStatsMap.has(userIdStr)) {
+        userStatsMap.set(userIdStr, {
+          userId: userIdStr,
+          username: displayName,
+          totalDeposits: 0,
+          referralCount: 0
+        })
+      } else {
+        // Обновляем имя, если оно есть в Request
+        const existing = userStatsMap.get(userIdStr)!
+        if (user.username && !existing.username.startsWith('@')) {
+          existing.username = displayName
+        }
+      }
+    }
+    
+    // Получаем завершенные депозиты и считаем суммы для каждого пользователя
     const allDeposits = await prisma.request.findMany({
       where: {
         requestType: 'deposit',
@@ -80,46 +151,71 @@ export async function GET(request: NextRequest) {
       }
     })
     
-    // Группируем по пользователям
-    const userStatsMap = new Map<string, { userId: string, username: string, totalDeposits: number }>()
-    
     for (const deposit of allDeposits) {
       const userIdStr = deposit.userId.toString()
-      if (!userStatsMap.has(userIdStr)) {
-        // Используем поля напрямую из Request (username и firstName хранятся в самой модели)
-        const displayName = deposit.username 
-          ? `@${deposit.username}` 
-          : deposit.firstName 
-            ? deposit.firstName 
-            : `Игрок #${userIdStr}`
-        userStatsMap.set(userIdStr, {
-          userId: userIdStr,
-          username: displayName,
-          totalDeposits: 0
-        })
+      if (userStatsMap.has(userIdStr)) {
+        const userStats = userStatsMap.get(userIdStr)!
+        userStats.totalDeposits += deposit.amount ? parseFloat(deposit.amount.toString()) : 0
       }
-      const userStats = userStatsMap.get(userIdStr)!
-      userStats.totalDeposits += deposit.amount ? parseFloat(deposit.amount.toString()) : 0
     }
     
-    // Сортируем и берем топ-3
-    const topPlayers = Array.from(userStatsMap.values())
-      .sort((a, b) => b.totalDeposits - a.totalDeposits)
-      .slice(0, 3)
+    // Считаем количество рефералов для каждого пользователя
+    const allReferrals = await prisma.botReferral.findMany({
+      include: {
+        referrer: true
+      }
+    })
+    
+    for (const referral of allReferrals) {
+      const userIdStr = referral.referrer.userId.toString()
+      if (userStatsMap.has(userIdStr)) {
+        const userStats = userStatsMap.get(userIdStr)!
+        userStats.referralCount += 1
+      }
+    }
+    
+    // Сортируем по сумме депозитов (от большей к меньшей), затем по количеству рефералов
+    // Включаем всех пользователей, даже с 0 депозитов
+    const allPlayers = Array.from(userStatsMap.values())
+      .sort((a, b) => {
+        // Сначала по сумме депозитов
+        if (b.totalDeposits !== a.totalDeposits) {
+          return b.totalDeposits - a.totalDeposits
+        }
+        // Затем по количеству рефералов
+        return b.referralCount - a.referralCount
+      })
       .map((p, index) => ({
         id: p.userId,
         username: p.username,
         total_deposits: p.totalDeposits,
-        referral_count: 0, // Пока не считаем
+        referral_count: p.referralCount,
         rank: index + 1
       }))
     
-    // Находим место пользователя
+    // Берем топ-3, но если пользователей меньше 3, показываем всех
+    const topPlayers = allPlayers.slice(0, 3)
+    
+    // Находим место пользователя во всем списке (не только в топ-3)
     let userRank = 0
-    for (let i = 0; i < topPlayers.length; i++) {
-      if (topPlayers[i].id === userId) {
+    for (let i = 0; i < allPlayers.length; i++) {
+      if (allPlayers[i].id === userId) {
         userRank = i + 1
         break
+      }
+    }
+    
+    // Если пользователь не в топ-3, но есть в списке, убеждаемся что он виден
+    // Добавляем текущего пользователя в топ, если его там нет
+    const userInTop = topPlayers.find(p => p.id === userId)
+    if (!userInTop && userRank > 0) {
+      const userData = allPlayers.find(p => p.id === userId)
+      if (userData && topPlayers.length < 3) {
+        // Если топ не полный, добавляем пользователя
+        topPlayers.push(userData)
+      } else if (userData && userRank <= 10) {
+        // Если пользователь в топ-10, заменяем последнего в топ-3 на него
+        topPlayers[2] = userData
       }
     }
     
