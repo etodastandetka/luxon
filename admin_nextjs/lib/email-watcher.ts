@@ -76,11 +76,30 @@ async function processEmail(
             const parsed = await simpleParser(buffer)
             const text = parsed.text || parsed.html || parsed.textAsHtml || ''
 
+            // Логируем информацию о письме для отладки
+            console.log(`📨 Email subject: ${parsed.subject || 'N/A'}`)
+            console.log(`📨 Email from: ${parsed.from?.text || 'N/A'}`)
+            console.log(`📨 Email text length: ${text.length} chars`)
+            if (text.length > 0) {
+              const preview = text.substring(0, 500).replace(/\n/g, ' ').replace(/\s+/g, ' ')
+              console.log(`📨 Email preview: ${preview}...`)
+            }
+
             // Парсим сумму и дату из письма
             const paymentData = parseEmailByBank(text, settings.bank)
 
           if (!paymentData) {
             console.log(`⚠️ Could not parse email (UID: ${uid})`)
+            console.log(`   Bank setting: ${settings.bank}`)
+            console.log(`   Trying to find amount pattern in text...`)
+            // Попробуем показать, что именно ищем
+            const amountPattern = /([0-9]+(?:[\.,][0-9]{1,2})?)\s*(KGS|сом|сомов)/i
+            const amountMatches = text.match(amountPattern)
+            if (amountMatches) {
+              console.log(`   Found potential amount: ${amountMatches[0]}`)
+            } else {
+              console.log(`   No amount pattern found`)
+            }
             resolve()
             return
           }
