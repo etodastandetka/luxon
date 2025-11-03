@@ -344,7 +344,17 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
           try {
             await checkEmails(settings)
           } catch (error: any) {
-            console.error('Error in quick polling:', error)
+            if (error.textCode === 'AUTHENTICATIONFAILED') {
+              console.error('❌ Authentication failed in polling!')
+              console.error('   Check email/password in active requisite')
+              // Останавливаем интервал при ошибке аутентификации
+              if (idleInterval) clearInterval(idleInterval)
+              if (keepAliveInterval) clearInterval(keepAliveInterval)
+              imap.end()
+              reject(error)
+              return
+            }
+            console.error('Error in quick polling:', error.message || error)
           }
         }, 5000) // Проверка каждые 5 секунд вместо 60
         
@@ -359,7 +369,14 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
     })
 
     imap.once('error', (err: Error) => {
-      console.error('❌ IMAP connection error:', err)
+      if ((err as any).textCode === 'AUTHENTICATIONFAILED') {
+        console.error('❌ IMAP Authentication Failed!')
+        console.error('   Please check email and password in the active requisite')
+        console.error(`   Email: ${settings.email ? '✓ set' : '✗ missing'}`)
+        console.error(`   Password: ${settings.password ? '✓ set' : '✗ missing'}`)
+      } else {
+        console.error('❌ IMAP connection error:', err)
+      }
       if (idleInterval) clearInterval(idleInterval)
       if (keepAliveInterval) clearInterval(keepAliveInterval)
       reject(err)
@@ -393,7 +410,9 @@ export async function startWatcher(): Promise<void> {
       }
 
       if (!settings.email || !settings.password) {
-        console.warn('⚠️ IMAP credentials not configured, waiting 30 seconds...')
+        console.warn('⚠️ IMAP credentials not configured!')
+        console.warn('   Please set email and password in the active requisite (BotRequisite with isActive=true)')
+        console.warn('   Waiting 30 seconds...')
         await new Promise((resolve) => setTimeout(resolve, 30000))
         continue
       }
@@ -404,8 +423,17 @@ export async function startWatcher(): Promise<void> {
       try {
         await startIdleMode(settings)
       } catch (error: any) {
-        console.error('❌ IDLE mode error, reconnecting in 10 seconds...', error.message)
-        await new Promise((resolve) => setTimeout(resolve, 10000))
+        if (error.textCode === 'AUTHENTICATIONFAILED') {
+          console.error('❌ IMAP Authentication Failed!')
+          console.error('   Please check email and password in the active requisite')
+          console.error(`   Email: ${settings.email ? '✓ set' : '✗ missing'}`)
+          console.error(`   Password: ${settings.password ? '✓ set' : '✗ missing'}`)
+          console.error('   Waiting 60 seconds before retry...')
+          await new Promise((resolve) => setTimeout(resolve, 60000))
+        } else {
+          console.error('❌ IDLE mode error, reconnecting in 10 seconds...', error.message)
+          await new Promise((resolve) => setTimeout(resolve, 10000))
+        }
       }
     } catch (error: any) {
       console.error('❌ Error in watcher:', error)
