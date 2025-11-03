@@ -201,6 +201,16 @@ export default function WalletPage() {
 
   const activeWallet = wallets.find(w => w.isActive)
 
+  // Функция для обрезки длинного hash/реквизита
+  const truncateValue = (value: string, maxLength: number = 50) => {
+    if (!value) return ''
+    if (value.length <= maxLength) return value
+    // Показываем первые 20 символов и последние 20 символов с многоточием
+    const start = value.slice(0, 20)
+    const end = value.slice(-20)
+    return `${start}...${end}`
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -322,7 +332,9 @@ export default function WalletPage() {
                     {wallet.bank === 'BAKAI' ? 'Hash' : 'Реквизит (16 цифр)'}
                   </label>
                   <div className="bg-gray-900 p-2 rounded-lg border border-gray-700">
-                    <p className="text-sm text-white font-mono">{wallet.value}</p>
+                    <p className="text-sm text-white font-mono break-all" title={wallet.value}>
+                      {wallet.bank === 'BAKAI' ? truncateValue(wallet.value, 50) : wallet.value}
+                    </p>
                   </div>
                 </div>
                 {wallet.bank && (
