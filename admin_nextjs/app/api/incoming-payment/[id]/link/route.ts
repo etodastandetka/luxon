@@ -54,6 +54,46 @@ export async function POST(
       },
     })
 
+    // Проверяем, совпадает ли сумма платежа с суммой заявки
+    const linkedRequest = await prisma.request.findUnique({
+      where: { id: parseInt(requestId) },
+    })
+
+    if (linkedRequest) {
+      const paymentAmount = parseFloat(updatedPayment.amount.toString())
+      const requestAmount = parseFloat(linkedRequest.amount?.toString() || '0')
+      
+      // Если сумма совпадает (с точностью до 1 копейки), автоматически обновляем статус заявки
+      if (Math.abs(paymentAmount - requestAmount) < 0.01) {
+        // Обновляем статус заявки на completed (успешно)
+        await prisma.request.update({
+          where: { id: parseInt(requestId) },
+          data: {
+            status: 'completed',
+            statusDetail: null, // "успешно" - без statusDetail
+            processedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        })
+        
+        // Если это депозит, пополняем баланс через казино API
+        if (linkedRequest.requestType === 'deposit' && linkedRequest.bookmaker && linkedRequest.accountId) {
+          try {
+            const { depositToCasino } = await import('@/lib/deposit-balance')
+            await depositToCasino(
+              linkedRequest.bookmaker,
+              linkedRequest.accountId,
+              requestAmount
+            )
+            console.log(`✅ Auto-deposit successful after linking payment: Request ${requestId}, Account ${linkedRequest.accountId}`)
+          } catch (error: any) {
+            console.error(`❌ Auto-deposit failed after linking payment:`, error)
+            // Не возвращаем ошибку, т.к. платеж уже привязан
+          }
+        }
+      }
+    }
+
     return NextResponse.json(
       createApiResponse({
         id: updatedPayment.id,
