@@ -16,7 +16,7 @@ npm install
 
 ## 2. Настройка базы данных
 
-### Вариант 1: Использовать готовый SQL скрипт (рекомендуется)
+### Создание таблицы и включение ватчера
 
 Выполните SQL скрипт:
 
@@ -31,35 +31,43 @@ psql -d default_db -f scripts/setup-watcher.sql
 psql -d default_db
 ```
 
-Затем выполните содержимое файла `scripts/setup-watcher.sql`.
-
-### Вариант 2: Использовать Prisma миграции
-
-```bash
-cd /var/www/luxon/admin_nextjs
-npx prisma db push
-```
-
-Затем выполните SQL для вставки настроек:
+Затем выполните:
 
 ```sql
+-- Создать таблицу если её нет
+CREATE TABLE IF NOT EXISTS bot_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Включить ватчер (значение '1' = включен, '0' или отсутствие = выключен)
 INSERT INTO bot_settings (key, value, created_at, updated_at)
-VALUES 
-    ('autodeposit_enabled', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('autodeposit_imap', 'imap.timeweb.ru', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('autodeposit_folder', 'INBOX', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('autodeposit_bank', 'DEMIRBANK', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('autodeposit_interval_sec', '60', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (key) 
-DO UPDATE SET 
-    value = EXCLUDED.value,
-    updated_at = CURRENT_TIMESTAMP;
+VALUES ('autodeposit_enabled', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (key) DO UPDATE SET value = '1', updated_at = CURRENT_TIMESTAMP;
 ```
 
-**Важно:** Email и пароль берутся из активного реквизита (`BotRequisite` с `isActive = true`).
-Убедитесь, что в активном реквизите указаны:
-- `email` - адрес почты
+**Важно:** 
+- В базе данных хранится **только флаг включен/выключен** (`autodeposit_enabled`)
+- **Email и пароль** автоматически берутся из активного реквизита (`BotRequisite` с `isActive = true`)
+- **IMAP сервер** всегда `imap.timeweb.ru` (фиксировано в коде)
+- **Папка** всегда `INBOX` (фиксировано в коде)
+- **Интервал проверки** 60 секунд (фиксировано в коде)
+
+**Убедитесь, что в активном реквизите указаны:**
+- `email` - адрес почты Timeweb
 - `password` - пароль от почты
+
+### Включение/выключение ватчера
+
+```sql
+-- Включить
+UPDATE bot_settings SET value = '1', updated_at = CURRENT_TIMESTAMP WHERE key = 'autodeposit_enabled';
+
+-- Выключить
+UPDATE bot_settings SET value = '0', updated_at = CURRENT_TIMESTAMP WHERE key = 'autodeposit_enabled';
+```
 
 ## 3. Проверка работы (одна проверка)
 
