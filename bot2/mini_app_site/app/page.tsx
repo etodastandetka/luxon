@@ -119,12 +119,12 @@ export default function HomePage() {
       {/* Основные действия */}
       <div className="grid grid-cols-2 gap-3">
         <ServiceStatus service="deposits">
-          <a href="/deposit" className="card btn btn-primary text-center p-4 fade-in delay-500">
+          <a href="/deposit" className="card btn btn-primary text-center p-4">
             <div className="font-semibold text-lg">{t.deposit}</div>
           </a>
         </ServiceStatus>
         <ServiceStatus service="withdrawals">
-          <a href="/withdraw" className="card btn btn-primary text-center p-4 fade-in delay-600">
+          <a href="/withdraw" className="card btn btn-primary text-center p-4">
             <div className="font-semibold text-lg">{t.withdraw}</div>
           </a>
         </ServiceStatus>
@@ -132,20 +132,20 @@ export default function HomePage() {
       
       {/* Дополнительные разделы */}
       <div className="grid grid-cols-2 gap-3">
-        <a href="/referral" className="card btn btn-ghost text-center p-4 fade-in delay-700">
+        <a href="/referral" className="card btn btn-ghost text-center p-4">
           <div className="font-semibold text-lg">{t.referral}</div>
         </a>
-        <a href="/history" className="card btn btn-ghost text-center p-4 fade-in delay-800">
+        <a href="/history" className="card btn btn-ghost text-center p-4">
           <div className="font-semibold text-lg">{t.history}</div>
         </a>
       </div>
       
       {/* Помощь и инструкции */}
       <div className="grid grid-cols-2 gap-3">
-        <a href="/instruction" className="card btn btn-ghost text-center p-4 fade-in delay-800">
+        <a href="/instruction" className="card btn btn-ghost text-center p-4">
           <div className="font-semibold text-lg">{t.instruction}</div>
         </a>
-        <a href="/support" className="card btn btn-ghost text-center p-4 fade-in delay-800">
+        <a href="/support" className="card btn btn-ghost text-center p-4">
           <div className="font-semibold text-lg">{t.support}</div>
         </a>
       </div>
