@@ -520,7 +520,7 @@ export default function DepositStep4() {
   }
 
   // Функция для получения активного реквизита из админки
-  const getActiveRequisite = async (): Promise<string | null> => {
+  const getActiveRequisite = async (): Promise<{ value: string; bank: string | null; name: string | null } | null> => {
     try {
       const apiUrl = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3001' 
@@ -536,15 +536,23 @@ export default function DepositStep4() {
           if (data.active_id) {
             const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id)
             if (activeRequisite) {
-              console.log('✅ Found active requisite by active_id:', activeRequisite.value)
-              return activeRequisite.value
+              console.log('✅ Found active requisite by active_id:', activeRequisite.value, 'Bank:', activeRequisite.bank)
+              return { 
+                value: activeRequisite.value, 
+                bank: activeRequisite.bank || null,
+                name: activeRequisite.name || null
+              }
             }
           }
           // Если не нашли, пробуем найти по is_active
           const activeRequisite = data.requisites.find((req: any) => req.is_active === true)
           if (activeRequisite) {
-            console.log('✅ Found active requisite by is_active:', activeRequisite.value)
-            return activeRequisite.value
+            console.log('✅ Found active requisite by is_active:', activeRequisite.value, 'Bank:', activeRequisite.bank)
+            return { 
+              value: activeRequisite.value, 
+              bank: activeRequisite.bank || null,
+              name: activeRequisite.name || null
+            }
           }
         }
       } else {
@@ -556,14 +564,67 @@ export default function DepositStep4() {
     return null
   }
 
+  // Функция для генерации Bakai QR кода
+  const generateBakaiQR = async (baseHash: string, amount: number): Promise<string> => {
+    // Конвертируем сумму в копейки
+    const amountCents = Math.round(parseFloat(String(amount)) * 100)
+    const amountStr = amountCents.toString()
+    const amountLen = amountStr.length.toString().padStart(2, '0')
+    
+    // Находим поле 54 в формате 54{len}{value}
+    // Ищем паттерн: 54 за которым следуют 2 цифры (длина) и затем значение
+    const field54Pattern = /54(\d{2})(\d+)/g
+    const match54 = field54Pattern.exec(baseHash)
+    
+    if (!match54) {
+      throw new Error('Не найдено поле 54 в base_hash')
+    }
+    
+    // Заменяем поле 54 на новое значение
+    const oldField54 = match54[0] // например "540510053"
+    const newField54 = `54${amountLen}${amountStr}` // например "0510053" или "046533"
+    
+    // Заменяем поле 54 в base_hash
+    let updatedHash = baseHash.replace(oldField54, newField54)
+    
+    // Находим поле 63 (контрольная сумма)
+    // Ищем паттерн: 6304 за которым следуют 4 символа (контрольная сумма)
+    const field63Pattern = /6304([A-Fa-f0-9]{4})/
+    const match63 = field63Pattern.exec(updatedHash)
+    
+    if (!match63) {
+      throw new Error('Не найдено поле 63 в base_hash')
+    }
+    
+    // Извлекаем данные до объекта 63 (ID "00" - "90", исключая ID 63)
+    const dataBefore63 = updatedHash.substring(0, updatedHash.indexOf('6304'))
+    
+    // Вычисляем SHA256 от данных до объекта 63
+    const checksumFull = await calculateSHA256(dataBefore63)
+    
+    // Удаляем все символы "-" если есть
+    const checksumCleaned = checksumFull.replace(/-/g, '')
+    
+    // Берем последние 4 символа
+    const checksum = checksumCleaned.slice(-4)
+    
+    // Заменяем контрольную сумму в поле 63
+    const oldField63 = match63[0] // например "63044F76"
+    const newField63 = `6304${checksum}` // например "6304F76A"
+    
+    const finalHash = updatedHash.replace(oldField63, newField63)
+    
+    return finalHash
+  }
+
   // Функция для генерации fallback QR кода
   const generateFallbackQR = async (currentBank: string) => {
     try {
       // Получаем активный реквизит из админки
-      let requisite = await getActiveRequisite()
+      let requisiteData = await getActiveRequisite()
       
       // Если реквизит не найден, показываем ошибку
-      if (!requisite) {
+      if (!requisiteData) {
         console.error('❌ Не найден активный реквизит в админке! Пожалуйста, выберите активный кошелек в админ-панели.')
         showAlert({
           type: 'error',
@@ -575,13 +636,54 @@ export default function DepositStep4() {
         return
       }
       
-      console.log('✅ Используется активный реквизит из админки:', requisite.slice(0, 4) + '****' + requisite.slice(-4))
-
+      const { value: requisite, bank } = requisiteData
+      
+      console.log('✅ Используется активный реквизит из админки:', requisite.slice(0, 4) + '****' + requisite.slice(-4), 'Bank:', bank)
+      
+      // Если банк Bakai, используем другую логику генерации
+      if (bank === 'BAKAI') {
+        try {
+          const qrHash = await generateBakaiQR(requisite, amount)
+          
+          // Создаем ссылки для всех банков
+          const bankLinks = {
+            'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
+            'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
+            'Balance.kg': `https://balance.kg/#${qrHash}`,
+            'Bakai': `https://bakai24.app/#${qrHash}`,
+            'MegaPay': `https://megapay.kg/get#${qrHash}`,
+            'MBank': `https://app.mbank.kg/qr/#${qrHash}`,
+            'demirbank': `https://retail.demirbank.kg/#${qrHash}`,
+            'omoney': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
+            'balance': `https://balance.kg/#${qrHash}`,
+            'bakai': `https://bakai24.app/#${qrHash}`,
+            'megapay': `https://megapay.kg/get#${qrHash}`,
+            'mbank': `https://app.mbank.kg/qr/#${qrHash}`
+          }
+          
+          setPaymentUrl(bankLinks[currentBank] || bankLinks['Bakai'])
+          setAllBankUrls(bankLinks)
+          setQrHash(qrHash)
+          return
+        } catch (error) {
+          console.error('❌ Ошибка генерации Bakai QR:', error)
+          showAlert({
+            type: 'error',
+            title: language === 'ru' ? 'Ошибка' : 'Error',
+            message: language === 'ru'
+              ? 'Ошибка генерации QR кода для Bakai. Обратитесь в поддержку.'
+              : 'Error generating QR code for Bakai. Please contact support.'
+          })
+          return
+        }
+      }
+      
+      // Для Demir Bank используем существующую логику
+      const requisiteLen = requisite.length.toString().padStart(2, '0')
+      
       const amountCents = Math.round(parseFloat(String(amount)) * 100)
       const amountStr = amountCents.toString().padStart(5, '0')
       const amountLen = amountStr.length.toString().padStart(2, '0')
-      
-      const requisiteLen = requisite.length.toString().padStart(2, '0')
       
       // Создаем TLV структуру до контрольной суммы (БЕЗ 6304)
       // Структура как в Django API для совместимости
