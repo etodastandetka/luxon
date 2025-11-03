@@ -18,29 +18,11 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
   allBankUrls?: Record<string, string>;
   enabledBanks?: string[];
 }) {
-  // Определяем, это вывод (без ссылок) или депозит (со ссылками)
-  // Проверяем не только на undefined, но и на пустые значения
-  const isWithdrawal = (!paymentUrl || paymentUrl === '') && 
-                       (!allBankUrls || Object.keys(allBankUrls).length === 0)
-  
   const handleBankClick = (bankCode: string) => {
     // Сначала выбираем банк
     onPick(bankCode)
     
-    // Для вывода просто выбираем банк без открытия ссылок
-    // Если paymentUrl и allBankUrls не переданы или пустые - это вывод
-    if (isWithdrawal) {
-      console.log('🏦 Bank selected for withdrawal:', bankCode)
-      return // Просто выбор, без ссылок и без ошибок
-    }
-    
-    // Если мы здесь - это депозит, но проверяем еще раз для безопасности
-    if (!paymentUrl && (!allBankUrls || Object.keys(allBankUrls).length === 0)) {
-      console.log('🏦 Bank selected (no payment URLs available):', bankCode)
-      return // Просто выбор, без ошибок
-    }
-    
-    // Для депозита - ищем и открываем ссылку для оплаты
+    // Определяем ссылку для банка
     let bankUrl = paymentUrl // По умолчанию используем общую ссылку
     
     console.log('🏦 Bank clicked:', bankCode)
@@ -83,9 +65,9 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
       }
     }
     
-    // Если есть ссылка для оплаты, открываем её (только для депозита)
+    // Если есть ссылка для оплаты, открываем её
     if (bankUrl) {
-      console.log('🚀 Opening URL for deposit:', bankUrl)
+      console.log('🚀 Opening URL:', bankUrl)
       // Используем Telegram WebApp API для открытия ссылки вне мини-приложения
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         console.log('✅ Opening with Telegram WebApp API')
@@ -95,10 +77,17 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
         window.open(bankUrl, '_blank')
       }
     } else {
-      // Только для депозита показываем ошибку, если нет ссылки
-      if (!isWithdrawal) {
+      // Проверяем еще раз - это точно депозит?
+      const hasPaymentUrl = paymentUrl && paymentUrl.trim() !== ''
+      const hasAllBankUrls = allBankUrls && Object.keys(allBankUrls).length > 0
+      
+      if (hasPaymentUrl || hasAllBankUrls) {
+        // Это депозит, но ссылка не найдена - показываем ошибку
         console.error('❌ No payment URL available for deposit!')
         alert('Ссылка для оплаты не найдена. Попробуйте обновить страницу.')
+      } else {
+        // Это вывод - просто выбираем банк без ошибки
+        console.log('🏦 Bank selected (withdrawal, no URL needed):', bankCode)
       }
     }
   }
