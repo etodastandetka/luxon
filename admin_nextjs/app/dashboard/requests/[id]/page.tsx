@@ -24,7 +24,17 @@ interface RequestDetail {
   updatedAt: string
   processedAt: string | null
   incomingPayments: any[]
+  matchingPayments?: any[]
   casinoTransactions?: any[]
+}
+
+interface MatchingPayment {
+  id: number
+  amount: string
+  bank: string | null
+  paymentDate: string
+  requestId: number | null
+  isProcessed: boolean
 }
 
 interface Payment {
@@ -47,6 +57,8 @@ export default function RequestDetailPage() {
   const [searchId, setSearchId] = useState('')
   const [deferring, setDeferring] = useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+  const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null)
+  const [linkingPayment, setLinkingPayment] = useState(false)
   const isMountedRef = useRef(true)
 
   useEffect(() => {
@@ -306,6 +318,15 @@ export default function RequestDetailPage() {
         // Если подтверждаем депозит, сначала пополняем баланс через API казино
         if ((newStatus === 'completed' || newStatus === 'approved') && request.requestType === 'deposit' && request.bookmaker && request.accountId && request.amount) {
           try {
+            // Если выбран платеж, используем его сумму, иначе сумму заявки
+            let depositAmount = request.amount
+            if (selectedPaymentId && request.matchingPayments) {
+              const selectedPayment = request.matchingPayments.find((p: MatchingPayment) => p.id === selectedPaymentId)
+              if (selectedPayment) {
+                depositAmount = selectedPayment.amount
+              }
+            }
+            
             const depositResponse = await fetch('/api/deposit-balance', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -313,7 +334,7 @@ export default function RequestDetailPage() {
                 requestId: request.id,
                 bookmaker: request.bookmaker,
                 accountId: request.accountId,
-                amount: request.amount,
+                amount: depositAmount,
               }),
             })
 
@@ -324,9 +345,24 @@ export default function RequestDetailPage() {
               return
             }
 
-            // Если пополнение успешно, обновляем заявку
+            // Если пополнение успешно, обновляем заявку и статус на profile-1
             if (depositData.data?.request) {
-              setRequest(prevRequest => prevRequest ? { ...prevRequest, ...depositData.data.request } : depositData.data.request)
+              // Обновляем статус заявки на completed со статусом profile-1
+              const updateResponse = await fetch(`/api/requests/${request.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  status: 'completed',
+                  statusDetail: 'profile-1'
+                }),
+              })
+              
+              const updateData = await updateResponse.json()
+              if (updateData.success) {
+                setRequest(prevRequest => prevRequest ? { ...prevRequest, ...updateData.data, status: 'completed', statusDetail: 'profile-1' } : { ...updateData.data, status: 'completed', statusDetail: 'profile-1' })
+              } else {
+                setRequest(prevRequest => prevRequest ? { ...prevRequest, ...depositData.data.request } : depositData.data.request)
+              }
               
               // Уведомляем другие вкладки об обновлении
               localStorage.setItem('request_updated', request.id.toString())
@@ -701,6 +737,106 @@ export default function RequestDetailPage() {
             </svg>
             <span>Отклонить</span>
           </button>
+        </div>
+      )}
+
+      {/* Входящие платежи */}
+      {request.requestType === 'deposit' && request.matchingPayments && request.matchingPayments.length > 0 && (
+        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-3">Переводы по QR</h3>
+          <div className="space-y-2">
+            {request.matchingPayments.map((payment: MatchingPayment) => {
+              const isAttached = payment.requestId === request.id
+              const isAutoCompleted = request.status === 'autodeposit_success' || request.status === 'auto_completed'
+              const isDisabled = isAutoCompleted || (payment.isProcessed && payment.requestId !== null && payment.requestId !== request.id)
+              const isSelected = selectedPaymentId === payment.id
+              
+              return (
+                <div
+                  key={payment.id}
+                  className={`bg-gray-900 rounded-xl p-4 border transition-colors ${
+                    isDisabled 
+                      ? 'border-gray-700 opacity-50 cursor-not-allowed' 
+                      : isSelected
+                        ? 'border-green-500 bg-green-900/20'
+                        : 'border-gray-700 hover:border-gray-600 cursor-pointer'
+                  }`}
+                  onClick={() => !isDisabled && setSelectedPaymentId(isSelected ? null : payment.id)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-1 h-12 rounded-full ${isDisabled ? 'bg-gray-600' : 'bg-green-500'}`}></div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <p className="text-sm font-medium text-white">Перевод по QR</p>
+                        {isAttached && (
+                          <span className="px-2 py-0.5 bg-green-500 text-black rounded text-xs font-medium">
+                            Привязан
+                          </span>
+                        )}
+                        {payment.isProcessed && payment.requestId !== request.id && (
+                          <span className="px-2 py-0.5 bg-gray-600 text-gray-300 rounded text-xs font-medium">
+                            Обработан
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400">{formatDate(payment.paymentDate)}</p>
+                      {payment.bank && (
+                        <p className="text-xs text-gray-500 mt-1">{payment.bank}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <p className={`text-lg font-bold ${isDisabled ? 'text-gray-500' : 'text-green-500'}`}>
+                        +{parseFloat(payment.amount).toFixed(2).replace('.', ',')}
+                      </p>
+                      {isSelected && !isDisabled && (
+                        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {selectedPaymentId && !request.matchingPayments?.find((p: MatchingPayment) => p.id === selectedPaymentId && (p.isProcessed && p.requestId !== request.id)) && (
+            <button
+              onClick={async () => {
+                if (!request || !selectedPaymentId) return
+                setLinkingPayment(true)
+                try {
+                  const response = await fetch(`/api/incoming-payment/${selectedPaymentId}/link`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requestId: request.id }),
+                  })
+                  
+                  const data = await response.json()
+                  if (data.success) {
+                    // Обновляем заявку
+                    const fetchResponse = await fetch(`/api/requests/${request.id}`)
+                    const fetchData = await fetchResponse.json()
+                    if (fetchData.success) {
+                      setRequest(fetchData.data)
+                    }
+                    setSelectedPaymentId(null)
+                    alert('Платеж привязан к заявке')
+                  } else {
+                    alert(data.error || 'Ошибка при привязке платежа')
+                  }
+                } catch (error) {
+                  console.error('Failed to link payment:', error)
+                  alert('Ошибка при привязке платежа')
+                } finally {
+                  setLinkingPayment(false)
+                }
+              }}
+              disabled={linkingPayment}
+              className="mt-3 w-full bg-green-500 hover:bg-green-600 text-black font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {linkingPayment ? 'Привязка...' : 'Привязать выбранный платеж'}
+            </button>
+          )}
         </div>
       )}
 

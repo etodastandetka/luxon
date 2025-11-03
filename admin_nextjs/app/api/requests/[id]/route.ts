@@ -25,6 +25,30 @@ export async function GET(
       )
     }
 
+    // Получаем все входящие платежи с совпадающей суммой (по целой части)
+    // Если заявка на 100.23, показываем все платежи на 100.XX
+    let matchingPayments: any[] = []
+    if (requestData.amount) {
+      const requestAmountInt = Math.floor(parseFloat(requestData.amount.toString()))
+      
+      // Получаем все платежи с той же целой частью суммы
+      const allPayments = await prisma.incomingPayment.findMany({
+        where: {
+          amount: {
+            gte: requestAmountInt,
+            lt: requestAmountInt + 1,
+          },
+        },
+        orderBy: { paymentDate: 'desc' },
+        take: 50,
+      })
+
+      matchingPayments = allPayments.map(p => ({
+        ...p,
+        amount: p.amount.toString(),
+      }))
+    }
+
     // Получаем все транзакции по accountId (ID казино), если он есть
     // Включаем все заявки с таким же accountId и букмекером от всех пользователей
     let casinoTransactions: any[] = []
@@ -62,6 +86,7 @@ export async function GET(
           ...p,
           amount: p.amount.toString(),
         })),
+        matchingPayments, // Все платежи с совпадающей суммой (по целой части)
         casinoTransactions: casinoTransactions.map(t => ({
           ...t,
           userId: t.userId.toString(),
