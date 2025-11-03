@@ -8,6 +8,17 @@ import { processWithdraw } from '@/lib/casino-withdraw'
  * POST /api/withdraw-check
  * Body: { bookmaker, playerId, code }
  */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -17,7 +28,12 @@ export async function POST(request: NextRequest) {
     if (!bookmaker || !playerId || !code) {
       return NextResponse.json(
         createApiResponse(null, 'Missing required fields: bookmaker, playerId, code'),
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
       )
     }
 
@@ -134,7 +150,12 @@ export async function POST(request: NextRequest) {
     if (!config) {
       return NextResponse.json(
         createApiResponse(null, `Unsupported bookmaker or missing configuration: ${bookmaker}`),
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
       )
     }
 
@@ -144,7 +165,12 @@ export async function POST(request: NextRequest) {
     if (!result.success) {
       return NextResponse.json(
         createApiResponse(null, result.message || 'Failed to check withdrawal'),
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
       )
     }
 
@@ -156,13 +182,23 @@ export async function POST(request: NextRequest) {
           message: result.message,
         },
         'Withdrawal checked successfully'
-      )
+      ),
+      {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        }
+      }
     )
   } catch (error: any) {
     console.error('❌ Error checking withdrawal:', error)
     return NextResponse.json(
       createApiResponse(null, `Error: ${error.message}`),
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        }
+      }
     )
   }
 }

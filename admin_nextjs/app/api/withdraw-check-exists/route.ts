@@ -7,6 +7,17 @@ import { checkWithdrawsExistMostbet } from '@/lib/casino-withdraw'
  * API для проверки наличия выводов для игрока (без кода)
  * GET /api/withdraw-check-exists?bookmaker=...&playerId=...
  */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -16,7 +27,12 @@ export async function GET(request: NextRequest) {
     if (!bookmaker || !playerId) {
       return NextResponse.json(
         createApiResponse(null, 'Missing required parameters: bookmaker, playerId'),
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
       )
     }
 
@@ -32,7 +48,12 @@ export async function GET(request: NextRequest) {
         createApiResponse(
           { hasWithdrawals: true, canCheck: true },
           'Code required to check withdrawal'
-        )
+        ),
+        {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
       )
     }
 
@@ -68,7 +89,12 @@ export async function GET(request: NextRequest) {
       if (!result.success) {
         return NextResponse.json(
           createApiResponse(null, result.message || 'Failed to check withdrawals'),
-          { status: 400 }
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
         )
       }
 
@@ -79,19 +105,34 @@ export async function GET(request: NextRequest) {
             canCheck: true,
           },
           result.message
-        )
+        ),
+        {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
       )
     }
 
     return NextResponse.json(
       createApiResponse(null, `Unsupported bookmaker: ${bookmaker}`),
-      { status: 400 }
+      { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        }
+      }
     )
   } catch (error: any) {
     console.error('❌ Error checking withdrawals:', error)
     return NextResponse.json(
       createApiResponse(null, `Error: ${error.message}`),
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        }
+      }
     )
   }
 }
