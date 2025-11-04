@@ -25,8 +25,11 @@ export async function POST(
       telegram_message_id,
     } = body
 
+    console.log(`📨 Chat ingest: userId=${userId}, message_text="${message_text?.substring(0, 50)}", message_type=${message_type}, media_url=${media_url ? 'present' : 'none'}, telegram_message_id=${telegram_message_id}`)
+
     // Проверяем, что сообщение не пустое или есть медиа
     if (!message_text?.trim() && !media_url) {
+      console.log('⚠️ Chat ingest: Empty message (no text and no media)')
       return NextResponse.json(
         { success: false, error: 'Message text or media is required' },
         { status: 400 }
@@ -83,6 +86,8 @@ export async function POST(
         mediaUrl: finalMediaUrl || null,
       },
     })
+
+    console.log(`✅ Chat ingest: Сообщение сохранено в БД с ID ${message.id}, direction='in'`)
 
     return NextResponse.json({
       success: true,
