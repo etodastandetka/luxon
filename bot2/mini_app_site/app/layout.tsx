@@ -1,7 +1,6 @@
 'use client'
 
 import './globals.css'
-import type { Metadata } from 'next'
 import TelegramInit from '../components/TelegramInit'
 import { LanguageProvider } from '../components/LanguageContext'
 import NotificationSystem from '../components/NotificationSystem'
