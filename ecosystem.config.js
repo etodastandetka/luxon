@@ -65,6 +65,23 @@ module.exports = {
       restart_delay: 5000,
       max_restarts: 10,
       min_uptime: '10s'
+    },
+    {
+      name: 'luxon-support-bot',
+      cwd: '/var/www/luxon/bot_simple',
+      script: '/var/www/luxon/django_admin/venv/bin/python3',
+      args: 'support_bot.py',
+      interpreter: 'none',
+      env: {
+        SUPPORT_BOT_TOKEN: '8390085986:AAH9iS53RgIleXC-JfExWv8SxwvJR1rPdbI'
+      },
+      error_file: '/var/log/pm2/luxon-support-bot-error.log',
+      out_file: '/var/log/pm2/luxon-support-bot-out.log',
+      log_file: '/var/log/pm2/luxon-support-bot.log',
+      time: true,
+      restart_delay: 5000,
+      max_restarts: 10,
+      min_uptime: '10s'
     }
   ]
 }
