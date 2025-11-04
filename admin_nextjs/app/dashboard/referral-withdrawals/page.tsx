@@ -183,16 +183,6 @@ export default function ReferralWithdrawalsPage() {
         >
           Выполнено
         </button>
-        <button
-          onClick={() => setStatusFilter('rejected')}
-          className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
-            statusFilter === 'rejected'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-700 text-white/70 hover:bg-gray-600'
-          }`}
-        >
-          Отклонено
-        </button>
       </div>
 
       {/* Список заявок */}
