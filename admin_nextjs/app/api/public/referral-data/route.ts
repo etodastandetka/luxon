@@ -72,78 +72,47 @@ export async function GET(request: NextRequest) {
       return sum + (e.commissionAmount ? parseFloat(e.commissionAmount.toString()) : 0)
     }, 0)
     
-    // Получаем всех пользователей, которые заходили на сайт (из BotUser или Request)
-    // Получаем всех пользователей из Request (кто создавал заявки)
-    const allRequests = await prisma.request.findMany({
-      select: {
-        userId: true,
-        username: true,
-        firstName: true,
+    // НОВАЯ ЛОГИКА: Топ-5 реферов по сумме пополнений их рефералов
+    // Получаем всех реферов и их рефералов
+    const allReferrers = await prisma.botReferral.findMany({
+      include: {
+        referrer: true,
+        referred: true
       }
     })
     
-    // Убираем дубликаты по userId
-    const uniqueUsersFromRequests = Array.from(
-      new Map(allRequests.map(r => [r.userId.toString(), r])).values()
-    )
+    // Группируем рефералов по реферам
+    const referrerMap = new Map<string, {
+      referrerId: string,
+      referrerUsername: string,
+      referredUserIds: Set<string>,
+      totalDeposits: number
+    }>()
     
-    // Также получаем пользователей из BotUser (кто заходил на сайт)
-    const allUsersFromBot = await prisma.botUser.findMany({
-      select: {
-        userId: true,
-        username: true,
-        firstName: true,
-      }
-    })
-    
-    // Объединяем пользователей из обоих источников
-    const userStatsMap = new Map<string, { userId: string, username: string, totalDeposits: number, referralCount: number }>()
-    
-    // Добавляем всех пользователей из BotUser (все, кто заходил на сайт)
-    for (const user of allUsersFromBot) {
-      const userIdStr = user.userId.toString()
-      const displayName = user.username 
-        ? `@${user.username}` 
-        : user.firstName 
-          ? user.firstName 
-          : `Игрок #${userIdStr}`
+    // Заполняем карту реферов
+    for (const referral of allReferrers) {
+      const referrerIdStr = referral.referrer.userId.toString()
+      const referredIdStr = referral.referred.userId.toString()
       
-      if (!userStatsMap.has(userIdStr)) {
-        userStatsMap.set(userIdStr, {
-          userId: userIdStr,
-          username: displayName,
-          totalDeposits: 0,
-          referralCount: 0
+      if (!referrerMap.has(referrerIdStr)) {
+        const displayName = referral.referrer.username 
+          ? `@${referral.referrer.username}` 
+          : referral.referrer.firstName 
+            ? referral.referrer.firstName 
+            : `Игрок #${referrerIdStr}`
+        
+        referrerMap.set(referrerIdStr, {
+          referrerId: referrerIdStr,
+          referrerUsername: displayName,
+          referredUserIds: new Set(),
+          totalDeposits: 0
         })
       }
-    }
-    
-    // Добавляем пользователей из Request (могут быть новые, которых нет в BotUser)
-    for (const user of uniqueUsersFromRequests) {
-      const userIdStr = user.userId.toString()
-      const displayName = user.username 
-        ? `@${user.username}` 
-        : user.firstName 
-          ? user.firstName 
-          : `Игрок #${userIdStr}`
       
-      if (!userStatsMap.has(userIdStr)) {
-        userStatsMap.set(userIdStr, {
-          userId: userIdStr,
-          username: displayName,
-          totalDeposits: 0,
-          referralCount: 0
-        })
-      } else {
-        // Обновляем имя, если оно есть в Request
-        const existing = userStatsMap.get(userIdStr)!
-        if (user.username && !existing.username.startsWith('@')) {
-          existing.username = displayName
-        }
-      }
+      referrerMap.get(referrerIdStr)!.referredUserIds.add(referredIdStr)
     }
     
-    // Получаем завершенные депозиты и считаем суммы для каждого пользователя
+    // Получаем все завершенные депозиты
     const allDeposits = await prisma.request.findMany({
       where: {
         requestType: 'deposit',
@@ -151,80 +120,74 @@ export async function GET(request: NextRequest) {
       }
     })
     
+    // Считаем сумму пополнений для каждого рефера (от всех его рефералов)
     for (const deposit of allDeposits) {
-      const userIdStr = deposit.userId.toString()
-      if (userStatsMap.has(userIdStr)) {
-        const userStats = userStatsMap.get(userIdStr)!
-        userStats.totalDeposits += deposit.amount ? parseFloat(deposit.amount.toString()) : 0
-      }
-    }
-    
-    // Считаем количество рефералов для каждого пользователя
-    const allReferrals = await prisma.botReferral.findMany({
-      include: {
-        referrer: true
-      }
-    })
-    
-    for (const referral of allReferrals) {
-      const userIdStr = referral.referrer.userId.toString()
-      if (userStatsMap.has(userIdStr)) {
-        const userStats = userStatsMap.get(userIdStr)!
-        userStats.referralCount += 1
-      }
-    }
-    
-    // Сортируем по сумме депозитов (от большей к меньшей), затем по количеству рефералов
-    // Включаем всех пользователей, даже с 0 депозитов
-    const allPlayers = Array.from(userStatsMap.values())
-      .sort((a, b) => {
-        // Сначала по сумме депозитов
-        if (b.totalDeposits !== a.totalDeposits) {
-          return b.totalDeposits - a.totalDeposits
+      const depositUserIdStr = deposit.userId.toString()
+      
+      // Находим всех реферов, у которых этот пользователь является рефералом
+      for (const [referrerId, referrerData] of referrerMap.entries()) {
+        if (referrerData.referredUserIds.has(depositUserIdStr)) {
+          referrerData.totalDeposits += deposit.amount ? parseFloat(deposit.amount.toString()) : 0
         }
-        // Затем по количеству рефералов
-        return b.referralCount - a.referralCount
-      })
-      .map((p, index) => ({
-        id: p.userId,
-        username: p.username,
-        total_deposits: p.totalDeposits,
-        referral_count: p.referralCount,
+      }
+    }
+    
+    // Сортируем по сумме пополнений рефералов и берем топ-5
+    const topReferrers = Array.from(referrerMap.values())
+      .sort((a, b) => b.totalDeposits - a.totalDeposits)
+      .slice(0, 5)
+      .map((ref, index) => ({
+        id: ref.referrerId,
+        username: ref.referrerUsername,
+        total_deposits: ref.totalDeposits,
+        referral_count: ref.referredUserIds.size,
         rank: index + 1
       }))
     
-    // Берем топ-3, но если пользователей меньше 3, показываем всех
-    const topPlayers = allPlayers.slice(0, 3)
-    
-    // Находим место пользователя во всем списке (не только в топ-3)
+    // Находим место текущего пользователя (как рефера)
     let userRank = 0
-    for (let i = 0; i < allPlayers.length; i++) {
-      if (allPlayers[i].id === userId) {
+    const allReferrersSorted = Array.from(referrerMap.values())
+      .sort((a, b) => b.totalDeposits - a.totalDeposits)
+    
+    for (let i = 0; i < allReferrersSorted.length; i++) {
+      if (allReferrersSorted[i].referrerId === userId) {
         userRank = i + 1
         break
       }
     }
     
-    // Если пользователь не в топ-3, но есть в списке, убеждаемся что он виден
-    // Добавляем текущего пользователя в топ, если его там нет
-    const userInTop = topPlayers.find(p => p.id === userId)
-    if (!userInTop && userRank > 0) {
-      const userData = allPlayers.find(p => p.id === userId)
-      if (userData && topPlayers.length < 3) {
-        // Если топ не полный, добавляем пользователя
-        topPlayers.push(userData)
-      } else if (userData && userRank <= 10) {
-        // Если пользователь в топ-10, заменяем последнего в топ-3 на него
-        topPlayers[2] = userData
-      }
-    }
+    // Настройки призового фонда: 20,000 сом распределены между 5 местами
+    const prizeDistribution = [
+      10000, // 1 место
+      5000,  // 2 место
+      2500,  // 3 место
+      1500,  // 4 место
+      1000   // 5 место
+    ]
+    
+    // Добавляем призы к топ-5 реферам
+    const topReferrersWithPrizes = topReferrers.map((ref, index) => ({
+      ...ref,
+      prize: prizeDistribution[index] || 0
+    }))
     
     const response = NextResponse.json({
       success: true,
       earned: earned,
       referral_count: activeReferralCount,
-      top_players: topPlayers,
-      user_rank: userRank
+      top_players: topReferrersWithPrizes, // Топ-5 реферов
+      user_rank: userRank,
+      settings: {
+        referral_percentage: 5,
+        min_payout: 100,
+        first_place_prize: prizeDistribution[0],
+        second_place_prize: prizeDistribution[1],
+        third_place_prize: prizeDistribution[2],
+        fourth_place_prize: prizeDistribution[3],
+        fifth_place_prize: prizeDistribution[4],
+        total_prize_pool: 20000,
+        next_payout_date: '1 ноября'
+      }
     })
     response.headers.set('Access-Control-Allow-Origin', '*')
     return response
