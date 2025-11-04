@@ -175,9 +175,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 headers={"Content-Type": "application/json"}
             )
             
-            response_text = await response.aread()
-            logger.debug(f"Ответ API: {response.status_code} - {response_text.decode('utf-8')[:200]}")
-            
             if response.status_code == 200:
                 try:
                     response_data = response.json()
@@ -185,10 +182,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         logger.info(f"✅ Сообщение от пользователя {user_id} сохранено в чат (ID: {response_data.get('messageId')})")
                     else:
                         logger.warning(f"⚠️ API вернул success=false: {response_data.get('error')}")
-                except:
-                    logger.warning(f"⚠️ Не удалось распарсить ответ API")
+                except Exception as parse_error:
+                    logger.warning(f"⚠️ Не удалось распарсить ответ API: {parse_error}")
             else:
-                logger.error(f"❌ Ошибка API при сохранении сообщения: {response.status_code} - {response_text.decode('utf-8')[:200]}")
+                try:
+                    error_text = response.text
+                    logger.error(f"❌ Ошибка API при сохранении сообщения: {response.status_code} - {error_text[:200]}")
+                except:
+                    logger.error(f"❌ Ошибка API при сохранении сообщения: {response.status_code}")
     except httpx.TimeoutException:
         logger.error(f"❌ Таймаут при сохранении сообщения в чат")
     except Exception as e:
