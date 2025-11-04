@@ -20,6 +20,7 @@ interface RequestDetail {
   bank: string | null
   phone: string | null
   photoFileUrl: string | null
+  userNote: string | null
   createdAt: string
   updatedAt: string
   processedAt: string | null
@@ -760,6 +761,12 @@ export default function RequestDetailPage() {
             <span className="text-sm text-gray-400">Пользователь:</span>
             <span className="text-sm font-medium text-white">{userName}</span>
           </div>
+          {request.userNote && (
+            <div className="pt-2 border-t border-gray-700">
+              <span className="text-sm text-gray-400 block mb-1">Заметка:</span>
+              <span className="text-sm font-medium text-red-400 whitespace-pre-wrap">{request.userNote}</span>
+            </div>
+          )}
           {request.accountId && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">ID счета:</span>
