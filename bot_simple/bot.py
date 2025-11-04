@@ -117,7 +117,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик всех текстовых сообщений от пользователей"""
+    """Обработчик всех текстовых сообщений от пользователей (не команд)"""
     if not update.message or not update.message.from_user:
         return
     
@@ -125,6 +125,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = user.id
     message_text = update.message.text or update.message.caption or ''
     telegram_message_id = update.message.message_id
+    
+    # Пропускаем команды (они обрабатываются отдельными обработчиками)
+    if message_text.startswith('/'):
+        return
     
     # Определяем тип сообщения и медиа URL
     message_type = 'text'
@@ -168,11 +172,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 logger.warning(f"⚠️ Не удалось сохранить сообщение: {response.status_code}")
     except Exception as e:
         logger.error(f"❌ Ошибка при сохранении сообщения в чат: {e}")
-    
-    # Если это не команда, отправляем стандартный ответ
-    if not message_text.startswith('/'):
-        # Можно отправить автоматический ответ или просто проигнорировать
-        pass
 
 async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /referral для просмотра реферальной статистики"""
