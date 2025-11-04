@@ -419,7 +419,14 @@ export default function RequestDetailPage() {
                 const updatedRequest = { ...request, ...updateData.data, status: 'completed', statusDetail: statusDetail }
                 setRequest(updatedRequest)
                 // Перезагружаем данные для получения актуального состояния
-                await fetchRequest(false)
+                // Используем setTimeout для асинхронной перезагрузки после обновления состояния
+                setTimeout(async () => {
+                  const refreshResponse = await fetch(`/api/requests/${request.id}`)
+                  const refreshData = await refreshResponse.json()
+                  if (refreshData.success && isMountedRef.current) {
+                    setRequest(refreshData.data)
+                  }
+                }, 500)
               } else {
                 // Если обновление статуса не удалось, но баланс пополнен, обновляем только данные из depositData
                 if (depositData.data?.request) {
