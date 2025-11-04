@@ -2,13 +2,14 @@
 import { useState, useEffect } from 'react'
 import { useLanguage } from '../../components/LanguageContext'
 import { getTelegramUserId } from '../../utils/telegram'
+import LanguageSelector from '../../components/LanguageSelector'
 
 interface Transaction {
   id: string
   type: 'deposit' | 'withdraw'
   bookmaker: string
   amount: number
-  status: 'pending' | 'completed' | 'failed'
+  status: string
   date: string
 }
 
@@ -29,7 +30,12 @@ export default function HistoryPage(){
       withdraw: 'Вывод',
       pending: 'Ожидает',
       completed: 'Завершено',
+      approved: 'Подтверждено',
+      rejected: 'Отклонено',
       failed: 'Ошибка',
+      deferred: 'Отложено',
+      auto_completed: 'Автозавершено',
+      autodeposit_success: 'Автопополнение',
       loading: 'Загружаем...',
       amount: 'Сумма',
       status: 'Статус',
@@ -43,7 +49,12 @@ export default function HistoryPage(){
       withdraw: 'Withdraw',
       pending: 'Pending',
       completed: 'Completed',
+      approved: 'Approved',
+      rejected: 'Rejected',
       failed: 'Failed',
+      deferred: 'Deferred',
+      auto_completed: 'Auto Completed',
+      autodeposit_success: 'Auto Deposit',
       loading: 'Loading...',
       amount: 'Amount',
       status: 'Status',
@@ -57,7 +68,12 @@ export default function HistoryPage(){
       withdraw: 'Чыгаруу',
       pending: 'Күтүүдө',
       completed: 'Аякталды',
+      approved: 'Ырасталды',
+      rejected: 'Токтотулду',
       failed: 'Ката',
+      deferred: 'Кечиктирилди',
+      auto_completed: 'Авто аякталды',
+      autodeposit_success: 'Авто депозит',
       loading: 'Жүктөөдө...',
       amount: 'Сумма',
       status: 'Статус',
@@ -71,7 +87,12 @@ export default function HistoryPage(){
       withdraw: 'Chiqarish',
       pending: 'Kutilmoqda',
       completed: 'Tugallandi',
+      approved: 'Tasdiqlandi',
+      rejected: 'Rad etildi',
       failed: 'Xatolik',
+      deferred: 'Keiktirildi',
+      auto_completed: 'Avto tugallandi',
+      autodeposit_success: 'Avto depozit',
       loading: 'Yuklanmoqda...',
       amount: 'Miqdor',
       status: 'Holat',
@@ -142,21 +163,77 @@ export default function HistoryPage(){
     (window as any).displayRealTransactions = displayRealTransactions
   }, [])
 
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      const today = new Date()
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+
+      // Проверяем, сегодня ли это
+      if (date.toDateString() === today.toDateString()) {
+        return `Сегодня ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+      }
+      // Проверяем, вчера ли это
+      else if (date.toDateString() === yesterday.toDateString()) {
+        return `Вчера ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+      }
+      // Иначе показываем полную дату
+      else {
+        return date.toLocaleDateString('ru-RU', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      }
+    } catch (error) {
+      // Если не удалось распарсить дату, возвращаем как есть
+      return dateString
+    }
+  }
+
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'text-green-400'
-      case 'pending': return 'text-yellow-400'
-      case 'failed': return 'text-red-400'
-      default: return 'text-white/60'
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'approved':
+      case 'auto_completed':
+      case 'autodeposit_success':
+        return 'text-green-400'
+      case 'pending':
+      case 'deferred':
+        return 'text-yellow-400'
+      case 'failed':
+      case 'rejected':
+        return 'text-red-400'
+      default:
+        return 'text-white/60'
     }
   }
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case 'completed': return t.completed
-      case 'pending': return t.pending
-      case 'failed': return t.failed
-      default: return status
+    const statusLower = status.toLowerCase()
+    switch (statusLower) {
+      case 'completed':
+        return t.completed
+      case 'approved':
+        return t.approved
+      case 'pending':
+        return t.pending
+      case 'rejected':
+        return t.rejected
+      case 'failed':
+        return t.failed
+      case 'deferred':
+        return t.deferred
+      case 'auto_completed':
+        return t.auto_completed
+      case 'autodeposit_success':
+        return t.autodeposit_success
+      default:
+        // Если статус не найден, возвращаем первую букву заглавной
+        return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
     }
   }
 
@@ -164,37 +241,81 @@ export default function HistoryPage(){
     return type === 'deposit' ? t.deposit : t.withdraw
   }
 
+  const getBookmakerName = (bookmaker: string) => {
+    const names: Record<string, string> = {
+      '1xbet': '1xBet',
+      '1win': '1WIN',
+      'melbet': 'Melbet',
+      'mostbet': 'Mostbet',
+    }
+    return names[bookmaker?.toLowerCase()] || bookmaker || 'N/A'
+  }
+
   return (
-    <main className="space-y-4">
-      <h1 className="text-xl font-bold">{t.title}</h1>
-      
-      <section className="card space-y-3">
+    <main className="space-y-6">
+      {/* Заголовок */}
+      <div className="text-center space-y-3">
+        <div className="flex items-center justify-center space-x-2 mb-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-white">{t.title}</h1>
+        </div>
+        <div className="flex justify-center">
+          <LanguageSelector />
+        </div>
+      </div>
+
+      {/* Список транзакций */}
+      <section className="space-y-3">
         {loading ? (
-          <div className="text-center text-white/60">
-            {t.loading}
+          <div className="card text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+            <div className="text-white/70">{t.loading}</div>
           </div>
         ) : transactions.length === 0 ? (
-          <div className="text-center text-white/60">
-            {t.empty}
+          <div className="card text-center py-12">
+            <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-white/70 text-lg">{t.empty}</p>
           </div>
         ) : (
           <div className="space-y-3">
             {transactions.map((transaction) => (
-              <div key={transaction.id} className="card">
+              <div key={transaction.id} className="card hover:bg-white/5 transition-colors">
                 <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <div className="font-semibold">
-                      {getTypeText(transaction.type)} • {transaction.bookmaker}
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        transaction.type === 'deposit' ? 'bg-green-400' : 'bg-red-400'
+                      }`}></div>
+                      <div className="font-semibold text-white text-base">
+                        {getTypeText(transaction.type)}
+                      </div>
+                      <div className="text-white/60 text-sm">
+                        • {getBookmakerName(transaction.bookmaker)}
+                      </div>
                     </div>
-                    <div className="text-sm text-white/60">
-                      {transaction.date}
+                    <div className="text-xs text-white/50">
+                      {formatDate(transaction.date)}
                     </div>
                   </div>
-                  <div className="text-right space-y-1">
-                    <div className="font-semibold">
-                      {transaction.amount.toLocaleString()} ₽
+                  <div className="text-right space-y-1 ml-4">
+                    <div className={`font-bold text-lg ${
+                      transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {transaction.type === 'deposit' ? '+' : '-'}{transaction.amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} сом
                     </div>
-                    <div className={`text-sm ${getStatusColor(transaction.status)}`}>
+                    <div className={`text-xs font-medium px-2 py-1 rounded-full inline-block ${
+                      (() => {
+                        const color = getStatusColor(transaction.status)
+                        const bgColor = color.replace('text-green-400', 'bg-green-500/20').replace('text-yellow-400', 'bg-yellow-500/20').replace('text-red-400', 'bg-red-500/20').replace('text-white/60', 'bg-gray-500/20')
+                        return `${bgColor} ${color} border ${color.replace('text-', 'border-').replace('400', '500/30')}`
+                      })()
+                    }`}>
                       {getStatusText(transaction.status)}
                     </div>
                   </div>
