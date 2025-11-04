@@ -38,10 +38,10 @@ export default function ChatPage() {
   useEffect(() => {
     if (params.userId) {
       fetchChatData()
-      // Обновляем чат каждые 5 секунд
+      // Обновляем чат каждые 3 секунды для более быстрого получения новых сообщений
       const interval = setInterval(() => {
         fetchChatData()
-      }, 5000)
+      }, 3000)
       return () => clearInterval(interval)
     }
   }, [params.userId])
