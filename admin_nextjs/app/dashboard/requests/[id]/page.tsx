@@ -89,7 +89,7 @@ export default function RequestDetailPage() {
           
           const data = await response.json()
 
-          console.log('📋 Request detail data:', data)
+          // console.log('📋 Request detail data:', data)
 
           if (!isMountedRef.current) return
 
@@ -415,9 +415,16 @@ export default function RequestDetailPage() {
               
               const updateData = await updateResponse.json()
               if (updateData.success) {
-                setRequest(prevRequest => prevRequest ? { ...prevRequest, ...updateData.data, status: 'completed', statusDetail: statusDetail } : { ...updateData.data, status: 'completed', statusDetail: statusDetail })
+                // Обновляем заявку с новым статусом
+                const updatedRequest = { ...request, ...updateData.data, status: 'completed', statusDetail: statusDetail }
+                setRequest(updatedRequest)
+                // Перезагружаем данные для получения актуального состояния
+                await fetchRequest(false)
               } else {
-                setRequest(prevRequest => prevRequest ? { ...prevRequest, ...depositData.data.request } : depositData.data.request)
+                // Если обновление статуса не удалось, но баланс пополнен, обновляем только данные из depositData
+                if (depositData.data?.request) {
+                  setRequest(prevRequest => prevRequest ? { ...prevRequest, ...depositData.data.request } : depositData.data.request)
+                }
               }
               
               // Уведомляем другие вкладки об обновлении
@@ -774,9 +781,18 @@ export default function RequestDetailPage() {
       )}
 
       {/* Кнопки действий для отложенных и ожидающих заявок */}
-      {/* Скрываем кнопки если есть привязанный платеж или заявка уже обработана */}
-      {((request.status === 'deferred' || request.status === 'pending') && 
-       !request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)) && (
+      {/* Скрываем кнопки если заявка уже обработана */}
+      {(() => {
+        const isPendingOrDeferred = request.status === 'deferred' || request.status === 'pending'
+        const isProcessed = request.status === 'completed' || 
+                          request.status === 'approved' || 
+                          request.status === 'rejected' || 
+                          request.status === 'auto_completed' || 
+                          request.status === 'autodeposit_success'
+        const hasProcessedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
+        
+        return isPendingOrDeferred && !isProcessed && !hasProcessedPayment
+      })() && (
         <div className="mx-4 mb-4 flex space-x-3">
           <button
             onClick={() => updateRequestStatus('approved')}
