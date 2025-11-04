@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 interface PlatformLimit {
@@ -30,11 +30,7 @@ export default function LimitsPage() {
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState('')
 
-  useEffect(() => {
-    fetchStats()
-  }, [searchParams])
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true)
     try {
       const start = searchParams.get('start') || ''
@@ -62,7 +58,11 @@ export default function LimitsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchParams])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
 
   const handlePeriodSubmit = (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 
 interface Request {
@@ -59,9 +59,9 @@ export default function RequestsPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [filter])
+  }, [fetchRequests, filter])
 
-  const fetchRequests = async (showLoading = true) => {
+  const fetchRequests = useCallback(async (showLoading = true) => {
     if (showLoading) {
       setLoading(true)
     }
@@ -83,7 +83,7 @@ export default function RequestsPage() {
         setLoading(false)
       }
     }
-  }
+  }, [filter])
 
   const getStatusColor = (status: string) => {
     switch (status) {

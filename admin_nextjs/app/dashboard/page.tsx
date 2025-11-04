@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Request {
   id: number
@@ -65,7 +66,7 @@ export default function DashboardPage() {
     }
   }, [activeTab])
 
-  const fetchRequests = async (showLoading = true) => {
+  const fetchRequests = useCallback(async (showLoading = true) => {
     if (showLoading) {
       setLoading(true)
     }
@@ -308,11 +309,12 @@ export default function DashboardPage() {
                     <div className="flex items-start space-x-3 flex-1">
                       {/* Иконка банка */}
                       {getBankImage(request.bank) ? (
-                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900">
-                          <img
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900 relative">
+                          <Image
                             src={getBankImage(request.bank) || ''}
                             alt={request.bank || 'Bank'}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
                           />
                         </div>
                       ) : (

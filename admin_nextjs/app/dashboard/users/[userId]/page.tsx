@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface UserDetail {
   userId: string
@@ -56,13 +57,7 @@ export default function UserDetailPage() {
   const [isActive, setIsActive] = useState(true)
   const [savingActive, setSavingActive] = useState(false)
 
-  useEffect(() => {
-    if (params.userId) {
-      fetchUser()
-    }
-  }, [params.userId])
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const [userRes, photoRes] = await Promise.all([
         fetch(`/api/users/${params.userId}`),
@@ -86,7 +81,13 @@ export default function UserDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.userId])
+
+  useEffect(() => {
+    if (params.userId) {
+      fetchUser()
+    }
+  }, [params.userId, fetchUser])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -176,11 +177,14 @@ export default function UserDetailPage() {
       <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-6 border border-gray-700">
         <div className="flex items-center space-x-4 mb-4">
           {photoUrl ? (
-            <img
-              src={photoUrl}
-              alt={displayName}
-              className="w-16 h-16 rounded-full object-cover border-2 border-green-500"
-            />
+            <div className="w-16 h-16 rounded-full overflow-hidden relative flex-shrink-0 border-2 border-green-500">
+              <Image
+                src={photoUrl}
+                alt={displayName}
+                fill
+                className="object-cover"
+              />
+            </div>
           ) : (
             <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center border-2 border-green-500">
               <span className="text-white text-2xl font-bold">{displayName.charAt(0).toUpperCase()}</span>
