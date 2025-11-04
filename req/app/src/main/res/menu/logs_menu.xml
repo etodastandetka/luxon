@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_search"
+        android:icon="@android:drawable/ic_menu_search"
+        android:title="Поиск"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"
+        app:showAsAction="ifRoom|collapseActionView" />
+
+    <item
+        android:id="@+id/action_filter_all"
+        android:title="Все" />
+
+    <item
+        android:id="@+id/action_filter_errors"
+        android:title="Ошибки" />
+
+    <item
+        android:id="@+id/action_filter_payments"
+        android:title="Платежи" />
+
+    <item
+        android:id="@+id/action_copy_all"
+        android:icon="@android:drawable/ic_menu_share"
+        android:title="Копировать все" />
+
+    <item
+        android:id="@+id/action_clear_logs"
+        android:icon="@android:drawable/ic_menu_delete"
+        android:title="Очистить логи" />
+
+</menu>
+

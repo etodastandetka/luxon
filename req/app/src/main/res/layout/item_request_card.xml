@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp"
+    android:background="@drawable/card_elevated"
+    android:stateListAnimator="@null">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="20dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <!-- Иконка банка (розовая/фиолетовая) -->
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="12dp">
+
+            <ImageView
+                android:id="@+id/bankIcon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:scaleType="centerCrop"
+                android:background="@drawable/card_modern"
+                android:padding="4dp"
+                android:visibility="gone" />
+
+            <FrameLayout
+                android:id="@+id/defaultIcon"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/icon_gradient_pink"
+                android:visibility="visible"
+                android:elevation="4dp">
+
+                <View
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/icon_inner_gradient"
+                    android:padding="10dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@android:drawable/ic_menu_myplaces"
+                        android:tint="@android:color/white"
+                        android:scaleType="fitCenter" />
+
+                </View>
+
+            </FrameLayout>
+
+        </FrameLayout>
+
+        <!-- Информация -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/userNameText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Username"
+                android:textSize="17sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:letterSpacing="0.02"
+                android:layout_marginBottom="6dp" />
+
+            <TextView
+                android:id="@+id/userNameText2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ID: -"
+                android:textSize="13sp"
+                android:textColor="#9CA3AF"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Синяя кнопка с "-" -->
+            <TextView
+                android:id="@+id/transactionTypeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-"
+                android:textSize="13sp"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:background="@drawable/badge_blue"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:gravity="center"
+                android:minWidth="36dp"
+                android:minHeight="36dp" />
+
+        </LinearLayout>
+
+        <!-- Правая часть -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="end"
+            android:layout_marginStart="8dp">
+
+            <TextView
+                android:id="@+id/timeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="01.01.2024 • 12:00"
+                android:textSize="12sp"
+                android:textColor="#9CA3AF"
+                android:letterSpacing="0.01"
+                android:layout_marginBottom="10dp" />
+
+            <TextView
+                android:id="@+id/amountText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="+0,00"
+                android:textSize="18sp"
+                android:textColor="#22C55E"
+                android:textStyle="bold"
+                android:letterSpacing="0.02"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Желтый бейдж статуса -->
+            <LinearLayout
+                android:id="@+id/statusBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/badge_yellow"
+                android:elevation="2dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:gravity="center_vertical"
+                android:minWidth="80dp">
+
+                <View
+                    android:id="@+id/statusDot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/status_dot"
+                    android:elevation="1dp" />
+
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ожидает"
+                    android:textSize="13sp"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.01" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
