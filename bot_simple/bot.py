@@ -294,6 +294,12 @@ def main() -> None:
         filters.PHOTO | filters.VIDEO | filters.Document.ALL | filters.VOICE | filters.AUDIO,
         handle_message
     ))
+    # Обработчик для всех остальных сообщений (включая стикеры, локации и т.д.)
+    # Используем ~ чтобы исключить уже обработанные типы
+    application.add_handler(MessageHandler(
+        ~filters.COMMAND & ~filters.TEXT & ~filters.PHOTO & ~filters.VIDEO & ~filters.Document.ALL & ~filters.VOICE & ~filters.AUDIO,
+        handle_message
+    ))
     
     # Добавляем обработчик ошибок
     application.add_error_handler(error_handler)
