@@ -146,15 +146,32 @@ export async function GET(request: NextRequest) {
     
     // Находим место текущего пользователя (как рефера)
     let userRank = 0
+    let userTotalDeposits = 0
     const allReferrersSorted = Array.from(referrerMap.values())
       .sort((a, b) => b.totalDeposits - a.totalDeposits)
     
     for (let i = 0; i < allReferrersSorted.length; i++) {
       if (allReferrersSorted[i].referrerId === userId) {
         userRank = i + 1
+        userTotalDeposits = allReferrersSorted[i].totalDeposits
         break
       }
     }
+    
+    // Определяем причину, почему пользователь не в топе (если не в топе)
+    let notInTopReason: string | null = null
+    if (userRank === 0) {
+      if (referrals.length === 0) {
+        notInTopReason = 'no_referrals' // Нет рефералов
+      } else if (totalDeposits === 0) {
+        notInTopReason = 'no_deposits' // Рефералы не делали депозиты
+      } else {
+        notInTopReason = 'low_amount' // Сумма депозитов меньше, чем у топ-5
+      }
+    }
+    
+    // Если пользователь не в топ-5, но есть данные, показываем его место
+    const userInTop5 = userRank > 0 && userRank <= 5
     
     // Настройки призового фонда: 20,000 сом распределены между 5 местами
     const prizeDistribution = [
@@ -200,9 +217,17 @@ export async function GET(request: NextRequest) {
       earned: earned,
       available_balance: availableBalance, // Доступный баланс для вывода
       has_pending_withdrawal: hasPendingWithdrawal, // Есть ли pending заявка
-      referral_count: activeReferralCount,
+      referral_count: activeReferralCount, // Количество рефералов, которые сделали депозиты
+      total_referrals: referrals.length, // Общее количество рефералов (включая тех, кто не делал депозиты)
       top_players: topReferrersWithPrizes, // Топ-5 реферов
-      user_rank: userRank,
+      user_rank: userRank > 0 ? userRank : null, // Место в рейтинге (null если не в топе)
+      user_in_top5: userInTop5, // В топ-5 или нет
+      user_total_deposits: userTotalDeposits, // Сумма всех депозитов рефералов пользователя
+      not_in_top_reason: notInTopReason, // Причина, почему не в топе (если не в топе)
+      // Минимальная сумма для попадания в топ-5 (сумма 5-го места)
+      min_amount_for_top5: topReferrersWithPrizes.length >= 5 
+        ? topReferrersWithPrizes[4].total_deposits 
+        : 0,
       settings: {
         referral_percentage: 5,
         min_payout: 100,
