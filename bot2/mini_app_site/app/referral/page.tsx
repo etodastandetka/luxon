@@ -17,6 +17,9 @@ export default function ReferralPage() {
     first_place_prize: 10000,
     second_place_prize: 5000,
     third_place_prize: 2500,
+    fourth_place_prize: 1500,
+    fifth_place_prize: 1000,
+    total_prize_pool: 20000,
     next_payout_date: '1 ноября'
   })
   const { language, setLanguage } = useLanguage()
@@ -102,6 +105,9 @@ export default function ReferralPage() {
             first_place_prize: data.settings.first_place_prize || 10000,
             second_place_prize: data.settings.second_place_prize || 5000,
             third_place_prize: data.settings.third_place_prize || 2500,
+            fourth_place_prize: data.settings.fourth_place_prize || 1500,
+            fifth_place_prize: data.settings.fifth_place_prize || 1000,
+            total_prize_pool: data.settings.total_prize_pool || 20000,
             next_payout_date: data.settings.next_payout_date || '1 ноября'
           })
         }
@@ -137,6 +143,8 @@ export default function ReferralPage() {
       firstPlace: () => `1 место: ${referralSettings.first_place_prize.toLocaleString()} сом`,
       secondPlace: () => `2 место: ${referralSettings.second_place_prize.toLocaleString()} сом`,
       thirdPlace: () => `3 место: ${referralSettings.third_place_prize.toLocaleString()} сом`,
+      fourthPlace: () => `4 место: ${referralSettings.fourth_place_prize.toLocaleString()} сом`,
+      fifthPlace: () => `5 место: ${referralSettings.fifth_place_prize.toLocaleString()} сом`,
       steps: () => [
         'Поделитесь ссылкой с друзьями',
         `За каждое пополнение реферала вы получаете ${referralSettings.referral_percentage}%`,
@@ -164,6 +172,8 @@ export default function ReferralPage() {
       firstPlace: () => `1st place: ${referralSettings.first_place_prize.toLocaleString()} som`,
       secondPlace: () => `2nd place: ${referralSettings.second_place_prize.toLocaleString()} som`,
       thirdPlace: () => `3rd place: ${referralSettings.third_place_prize.toLocaleString()} som`,
+      fourthPlace: () => `4th place: ${referralSettings.fourth_place_prize.toLocaleString()} som`,
+      fifthPlace: () => `5th place: ${referralSettings.fifth_place_prize.toLocaleString()} som`,
       steps: () => [
         'Share the link with friends',
         `You get ${referralSettings.referral_percentage}% for each referral deposit`,
@@ -303,25 +313,37 @@ export default function ReferralPage() {
           <h2 className="text-lg font-semibold text-white">{t.topPlayers}</h2>
         </div>
         
-        {/* Призы */}
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-3 space-y-1">
-            <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-black font-bold text-sm">1</span>
+        {/* Призы - Топ-5 */}
+        <div className="grid grid-cols-5 gap-2 text-center">
+          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-2 space-y-1">
+            <div className="w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-black font-bold text-xs">1</span>
             </div>
-            <div className="text-xs text-white/80 font-medium">{t.firstPlace()}</div>
+            <div className="text-xs text-white/80 font-medium leading-tight">{t.firstPlace()}</div>
           </div>
-          <div className="bg-gray-500/20 border border-gray-500/30 rounded-lg p-3 space-y-1">
-            <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-white font-bold text-sm">2</span>
+          <div className="bg-gray-500/20 border border-gray-500/30 rounded-lg p-2 space-y-1">
+            <div className="w-7 h-7 bg-gray-400 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-white font-bold text-xs">2</span>
             </div>
-            <div className="text-xs text-white/80 font-medium">{t.secondPlace()}</div>
+            <div className="text-xs text-white/80 font-medium leading-tight">{t.secondPlace()}</div>
           </div>
-          <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg p-3 space-y-1">
-            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-white font-bold text-sm">3</span>
+          <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg p-2 space-y-1">
+            <div className="w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-white font-bold text-xs">3</span>
             </div>
-            <div className="text-xs text-white/80 font-medium">{t.thirdPlace()}</div>
+            <div className="text-xs text-white/80 font-medium leading-tight">{t.thirdPlace()}</div>
+          </div>
+          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-2 space-y-1">
+            <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-white font-bold text-xs">4</span>
+            </div>
+            <div className="text-xs text-white/80 font-medium leading-tight">{t.fourthPlace()}</div>
+          </div>
+          <div className="bg-purple-500/20 border border-purple-500/30 rounded-lg p-2 space-y-1">
+            <div className="w-7 h-7 bg-purple-500 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-white font-bold text-xs">5</span>
+            </div>
+            <div className="text-xs text-white/80 font-medium leading-tight">{t.fifthPlace()}</div>
           </div>
         </div>
 
@@ -337,27 +359,32 @@ export default function ReferralPage() {
           </div>
         )}
 
-        {/* Топ-3 игроки */}
+        {/* Топ-5 реферов */}
         <div className="space-y-2">
-          {topPlayers.length > 0 ? topPlayers.slice(0, 3).map((player: any, index: number) => (
+          {topPlayers.length > 0 ? topPlayers.slice(0, 5).map((player: any, index: number) => (
             <div key={player.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
               <div className="flex items-center space-x-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                   index === 0 ? 'bg-yellow-500 text-black' :
                   index === 1 ? 'bg-gray-400 text-white' :
                   index === 2 ? 'bg-orange-500 text-white' :
+                  index === 3 ? 'bg-blue-500 text-white' :
+                  index === 4 ? 'bg-purple-500 text-white' :
                   'bg-gray-600 text-white'
                 }`}>
                   {index + 1}
                 </div>
                 <div>
                   <div className="text-white font-semibold text-base">{player.username || `Игрок #${player.id}`}</div>
-                  <div className="text-sm text-white/70">{player.referral_count} рефералов</div>
+                  <div className="text-sm text-white/70">{player.referral_count || 0} рефералов</div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-green-400 font-bold text-lg">{player.total_deposits.toLocaleString()} сом</div>
-                <div className="text-sm text-white/60">пополнений</div>
+                <div className="text-green-400 font-bold text-lg">{player.total_deposits?.toLocaleString() || 0} сом</div>
+                <div className="text-sm text-white/60">пополнений рефералов</div>
+                {player.prize && (
+                  <div className="text-xs text-yellow-400 font-medium mt-1">Приз: {player.prize.toLocaleString()} сом</div>
+                )}
               </div>
             </div>
           )) : (
