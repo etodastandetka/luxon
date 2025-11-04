@@ -11,6 +11,7 @@ interface UserDetail {
   lastName: string | null
   language: string
   selectedBookmaker: string | null
+  note: string | null
   createdAt: string
   transactions: Array<{
     id: number
@@ -48,6 +49,9 @@ export default function UserDetailPage() {
   const [user, setUser] = useState<UserDetail | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [note, setNote] = useState<string>('')
+  const [isEditingNote, setIsEditingNote] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
 
   useEffect(() => {
     if (params.userId) {
@@ -67,6 +71,7 @@ export default function UserDetailPage() {
 
       if (userData.success) {
         setUser(userData.data)
+        setNote(userData.data.note || '')
       }
 
       if (photoData.success && photoData.data.photoUrl) {
@@ -210,15 +215,72 @@ export default function UserDetailPage() {
       <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-bold text-white">Заметка</h3>
-          <button className="p-1 hover:bg-gray-700 rounded transition-colors">
+          <button
+            onClick={() => setIsEditingNote(!isEditingNote)}
+            className="p-1 hover:bg-gray-700 rounded transition-colors"
+          >
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </button>
         </div>
-        <p className="text-xs text-gray-400">
-          Нажмите на иконку редактирования, чтобы добавить заметку о пользователе
-        </p>
+        {isEditingNote ? (
+          <div className="space-y-2">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Введите заметку о пользователе..."
+              className="w-full bg-gray-900 text-white rounded-lg p-3 text-sm border border-gray-700 focus:border-blue-500 focus:outline-none resize-none"
+              rows={4}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  setSavingNote(true)
+                  try {
+                    const response = await fetch(`/api/users/${params.userId}/note`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ note: note.trim() || null }),
+                    })
+                    const data = await response.json()
+                    if (data.success) {
+                      setIsEditingNote(false)
+                      if (user) {
+                        setUser({ ...user, note: data.data.note })
+                      }
+                    } else {
+                      alert('Ошибка при сохранении заметки')
+                    }
+                  } catch (error) {
+                    console.error('Failed to save note:', error)
+                    alert('Ошибка при сохранении заметки')
+                  } finally {
+                    setSavingNote(false)
+                  }
+                }}
+                disabled={savingNote}
+                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {savingNote ? 'Сохранение...' : 'Сохранить'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditingNote(false)
+                  setNote(user?.note || '')
+                }}
+                disabled={savingNote}
+                className="bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 whitespace-pre-wrap">
+            {note || 'Нажмите на иконку редактирования, чтобы добавить заметку о пользователе'}
+          </p>
+        )}
       </div>
 
       {/* Статус безопасности */}

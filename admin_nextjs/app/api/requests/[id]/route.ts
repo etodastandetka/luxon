@@ -76,12 +76,19 @@ export async function GET(
       })
     }
 
+    // Получаем заметку пользователя
+    const user = await prisma.botUser.findUnique({
+      where: { userId: requestData.userId },
+      select: { note: true },
+    })
+
     return NextResponse.json(
       createApiResponse({
         ...requestData,
         userId: requestData.userId.toString(), // Преобразуем BigInt в строку
         amount: requestData.amount ? requestData.amount.toString() : null,
         photoFileUrl: requestData.photoFileUrl, // Фото чека (base64 или URL)
+        userNote: user?.note || null, // Заметка пользователя
         incomingPayments: requestData.incomingPayments.map(p => ({
           ...p,
           amount: p.amount.toString(),
