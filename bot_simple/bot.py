@@ -127,8 +127,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     telegram_message_id = update.message.message_id
     
     # Пропускаем команды (они обрабатываются отдельными обработчиками)
-    if message_text.startswith('/'):
+    if message_text and message_text.startswith('/'):
+        logger.debug(f"Пропускаем команду: {message_text}")
         return
+    
+    logger.info(f"📨 Получено сообщение от пользователя {user_id}: {message_text[:50] if message_text else 'медиа'}")
     
     # Определяем тип сообщения и медиа URL
     message_type = 'text'
@@ -156,22 +159,40 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     # Сохраняем сообщение в админку через API
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            payload = {
+                "message_text": message_text,
+                "message_type": message_type,
+                "media_url": media_url,
+                "telegram_message_id": telegram_message_id
+            }
+            logger.debug(f"Отправка в API: {API_URL}/api/users/{user_id}/chat/ingest")
+            logger.debug(f"Payload: {payload}")
+            
             response = await client.post(
                 f"{API_URL}/api/users/{user_id}/chat/ingest",
-                json={
-                    "message_text": message_text,
-                    "message_type": message_type,
-                    "media_url": media_url,
-                    "telegram_message_id": telegram_message_id
-                }
+                json=payload,
+                headers={"Content-Type": "application/json"}
             )
+            
+            response_text = await response.aread()
+            logger.debug(f"Ответ API: {response.status_code} - {response_text.decode('utf-8')[:200]}")
+            
             if response.status_code == 200:
-                logger.info(f"✅ Сообщение от пользователя {user_id} сохранено в чат")
+                try:
+                    response_data = response.json()
+                    if response_data.get('success'):
+                        logger.info(f"✅ Сообщение от пользователя {user_id} сохранено в чат (ID: {response_data.get('messageId')})")
+                    else:
+                        logger.warning(f"⚠️ API вернул success=false: {response_data.get('error')}")
+                except:
+                    logger.warning(f"⚠️ Не удалось распарсить ответ API")
             else:
-                logger.warning(f"⚠️ Не удалось сохранить сообщение: {response.status_code}")
+                logger.error(f"❌ Ошибка API при сохранении сообщения: {response.status_code} - {response_text.decode('utf-8')[:200]}")
+    except httpx.TimeoutException:
+        logger.error(f"❌ Таймаут при сохранении сообщения в чат")
     except Exception as e:
-        logger.error(f"❌ Ошибка при сохранении сообщения в чат: {e}")
+        logger.error(f"❌ Ошибка при сохранении сообщения в чат: {e}", exc_info=True)
 
 async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /referral для просмотра реферальной статистики"""
@@ -263,8 +284,18 @@ def main() -> None:
     # Добавляем обработчик всех сообщений (для сохранения в чат)
     # Важно: должен быть добавлен последним, чтобы не перехватывать команды
     from telegram.ext import MessageHandler, filters
+    # Обработчик для текстовых сообщений (не команд)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    application.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.Document.ALL | filters.VOICE | filters.AUDIO | filters.STICKER, handle_message))
+    # Обработчик для медиа (фото, видео, документы, голосовые, аудио, стикеры)
+    application.add_handler(MessageHandler(
+        filters.PHOTO | filters.VIDEO | filters.Document.ALL | filters.VOICE | filters.AUDIO | filters.STICKER,
+        handle_message
+    ))
+    # Обработчик для всех остальных типов сообщений (на случай, если что-то пропустили)
+    application.add_handler(MessageHandler(
+        filters.ALL & ~filters.COMMAND & ~filters.TEXT & ~filters.PHOTO & ~filters.VIDEO & ~filters.Document.ALL & ~filters.VOICE & ~filters.AUDIO & ~filters.STICKER,
+        handle_message
+    ))
     
     # Добавляем обработчик ошибок
     application.add_error_handler(error_handler)

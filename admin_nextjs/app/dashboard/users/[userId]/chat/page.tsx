@@ -72,7 +72,10 @@ export default function ChatPage() {
       if (chatData.success && chatData.data.messages) {
         // Разворачиваем, чтобы старые были сверху
         const reversedMessages = [...chatData.data.messages].reverse()
+        console.log(`📨 Chat: Загружено ${reversedMessages.length} сообщений, из них входящих: ${reversedMessages.filter(m => m.direction === 'in').length}`)
         setMessages(reversedMessages)
+      } else {
+        console.warn('⚠️ Chat: Не удалось загрузить сообщения:', chatData)
       }
 
       if (userData.success && userData.data) {
