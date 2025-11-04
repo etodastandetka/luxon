@@ -15,6 +15,24 @@ module.exports = {
       time: true
     },
     {
+      name: 'luxon-admin-nextjs',
+      cwd: '/var/www/luxon/admin_nextjs',
+      script: 'npm',
+      args: 'run start',
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3001
+      },
+      error_file: '/var/log/pm2/luxon-admin-nextjs-error.log',
+      out_file: '/var/log/pm2/luxon-admin-nextjs-out.log',
+      log_file: '/var/log/pm2/luxon-admin-nextjs.log',
+      time: true,
+      restart_delay: 5000,
+      max_restarts: 10,
+      min_uptime: '10s'
+    },
+    {
       name: 'luxon-nextjs',
       cwd: '/var/www/luxon/bot2/mini_app_site',
       script: 'npm',
