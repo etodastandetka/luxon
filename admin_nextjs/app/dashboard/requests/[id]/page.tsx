@@ -798,7 +798,7 @@ export default function RequestDetailPage() {
               style={{ width: 'auto', height: 'auto' }}
               onError={(e) => {
                 // Если фото не загрузилось, скрываем блок
-                const target = e.target as HTMLImageElement
+                const target = e.target as HTMLElement
                 target.style.display = 'none'
                 const parent = target.closest('.bg-gray-800')
                 if (parent) {
