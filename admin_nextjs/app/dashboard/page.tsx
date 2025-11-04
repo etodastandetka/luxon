@@ -61,7 +61,48 @@ export default function DashboardPage() {
         setLoading(false)
       }
     }
-  }
+  }, [activeTab])
+
+  useEffect(() => {
+    fetchRequests()
+    
+    // Автоматическое обновление каждые 3 секунды
+    const interval = setInterval(() => {
+      fetchRequests(false) // Не показываем loading при автообновлении
+    }, 3000)
+    
+    // Обновление при фокусе страницы
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchRequests(false)
+      }
+    }
+    
+    // Обновление при возврате фокуса
+    const handleFocus = () => {
+      fetchRequests(false)
+    }
+    
+    // Синхронизация между вкладками через storage event
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'request_updated' && e.newValue) {
+        const updatedRequestId = parseInt(e.newValue)
+        console.log('🔄 Request updated in another tab:', updatedRequestId)
+        fetchRequests(false)
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('storage', handleStorageChange)
+    
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [fetchRequests])
 
   const getTypeLabel = (type: string) => {
     return type === 'deposit' ? 'Пополнение' : 'Вывод'
