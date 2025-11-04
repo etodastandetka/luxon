@@ -70,6 +70,8 @@ export async function GET(
           lastName: latestRequest.lastName,
           language: 'ru',
           selectedBookmaker: latestRequest.bookmaker,
+          note: null,
+          isActive: true,
           createdAt: latestRequest.createdAt,
           transactions,
           referralMade: [],
@@ -113,3 +115,41 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { userId: string } }
+) {
+  try {
+    requireAuth(request)
+
+    const userId = BigInt(params.userId)
+    const body = await request.json()
+    const { isActive } = body
+
+    // Обновляем или создаем пользователя с новым статусом
+    const user = await prisma.botUser.upsert({
+      where: { userId },
+      update: {
+        isActive: isActive !== undefined ? isActive : true,
+      },
+      create: {
+        userId,
+        isActive: isActive !== undefined ? isActive : true,
+        language: 'ru',
+      },
+    })
+
+    return NextResponse.json(
+      createApiResponse({
+        ...user,
+        userId: user.userId.toString(),
+        isActive: user.isActive,
+      })
+    )
+  } catch (error: any) {
+    return NextResponse.json(
+      createApiResponse(null, error.message || 'Failed to update user'),
+      { status: error.message === 'Unauthorized' ? 401 : 500 }
+    )
+  }
+}

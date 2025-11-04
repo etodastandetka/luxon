@@ -12,6 +12,7 @@ interface UserDetail {
   language: string
   selectedBookmaker: string | null
   note: string | null
+  isActive: boolean
   createdAt: string
   transactions: Array<{
     id: number
@@ -52,6 +53,8 @@ export default function UserDetailPage() {
   const [note, setNote] = useState<string>('')
   const [isEditingNote, setIsEditingNote] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
+  const [isActive, setIsActive] = useState(true)
+  const [savingActive, setSavingActive] = useState(false)
 
   useEffect(() => {
     if (params.userId) {
@@ -72,6 +75,7 @@ export default function UserDetailPage() {
       if (userData.success) {
         setUser(userData.data)
         setNote(userData.data.note || '')
+        setIsActive(userData.data.isActive !== false) // По умолчанию true, если не указано
       }
 
       if (photoData.success && photoData.data.photoUrl) {
@@ -287,21 +291,55 @@ export default function UserDetailPage() {
       <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 ${isActive ? 'text-green-500' : 'text-red-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
             <div>
-              <p className="text-sm font-medium text-white">Активен</p>
-              <p className="text-xs text-gray-400">Все операции доступны</p>
+              <p className="text-sm font-medium text-white">{isActive ? 'Активен' : 'Заблокирован'}</p>
+              <p className="text-xs text-gray-400">{isActive ? 'Все операции доступны' : 'Пользователь заблокирован'}</p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
-              defaultChecked
+              checked={isActive}
+              onChange={async (e) => {
+                const newValue = e.target.checked
+                setSavingActive(true)
+                try {
+                  const response = await fetch(`/api/users/${params.userId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isActive: newValue }),
+                  })
+                  const data = await response.json()
+                  if (data.success) {
+                    setIsActive(newValue)
+                    if (user) {
+                      setUser({ ...user, isActive: newValue })
+                    }
+                  } else {
+                    alert('Ошибка при обновлении статуса')
+                    setIsActive(!newValue) // Откатываем изменение
+                  }
+                } catch (error) {
+                  console.error('Failed to update active status:', error)
+                  alert('Ошибка при обновлении статуса')
+                  setIsActive(!newValue) // Откатываем изменение
+                } finally {
+                  setSavingActive(false)
+                }
+              }}
+              disabled={savingActive}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            <div className={`w-11 h-6 rounded-full peer peer-focus:outline-none transition-colors ${
+              isActive ? 'bg-green-500' : 'bg-gray-700'
+            } ${savingActive ? 'opacity-50' : ''}`}>
+              <div className={`absolute top-[2px] left-[2px] bg-white rounded-full h-5 w-5 transition-all ${
+                isActive ? 'translate-x-full' : ''
+              }`}></div>
+            </div>
           </label>
         </div>
       </div>
