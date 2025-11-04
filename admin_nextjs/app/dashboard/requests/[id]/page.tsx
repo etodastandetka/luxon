@@ -459,7 +459,18 @@ export default function RequestDetailPage() {
         const data = await response.json()
 
         if (data.success) {
-          setRequest(prevRequest => prevRequest ? { ...prevRequest, ...data.data } : data.data)
+          // Обновляем заявку с новым статусом
+          const updatedRequest = { ...request, ...data.data, status: newStatus }
+          setRequest(updatedRequest)
+          
+          // Перезагружаем данные для получения актуального состояния
+          setTimeout(async () => {
+            const refreshResponse = await fetch(`/api/requests/${request.id}`)
+            const refreshData = await refreshResponse.json()
+            if (refreshData.success && isMountedRef.current) {
+              setRequest(refreshData.data)
+            }
+          }, 500)
           
           // Уведомляем другие вкладки об обновлении
           localStorage.setItem('request_updated', request.id.toString())
