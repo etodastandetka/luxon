@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import LanguageSelector from '../../components/LanguageSelector'
 import { useLanguage } from '../../components/LanguageContext'
 
@@ -11,6 +12,8 @@ export default function ReferralPage() {
   const [topPlayers, setTopPlayers] = useState([])
   const [userRank, setUserRank] = useState(0)
   const [isFromBot, setIsFromBot] = useState(true)
+  const [availableBalance, setAvailableBalance] = useState(0)
+  const [hasPendingWithdrawal, setHasPendingWithdrawal] = useState(false)
   const [referralSettings, setReferralSettings] = useState({
     referral_percentage: 5,
     min_payout: 100,
@@ -23,6 +26,7 @@ export default function ReferralPage() {
     next_payout_date: '1 ноября'
   })
   const { language, setLanguage } = useLanguage()
+  const router = useRouter()
   
   const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage)
@@ -93,6 +97,8 @@ export default function ReferralPage() {
       
       if (data.success) {
         setEarned(data.earned || 0)
+        setAvailableBalance(data.available_balance || 0)
+        setHasPendingWithdrawal(data.has_pending_withdrawal || false)
         setReferralCount(data.referral_count || 0)
         setTopPlayers(data.top_players || [])
         setUserRank(data.user_rank || 0)
@@ -303,6 +309,30 @@ export default function ReferralPage() {
           <div className="text-sm text-white/70">{t.referrals}</div>
         </div>
       </div>
+
+      {/* Кнопка вывода */}
+      {availableBalance > 0 && !hasPendingWithdrawal && (
+        <section className="card text-center space-y-3">
+          <div className="text-lg font-semibold text-white">Доступно для вывода</div>
+          <div className="text-3xl font-bold text-green-400">{availableBalance.toLocaleString()} сом</div>
+          <button
+            onClick={() => router.push('/referral/withdraw/step1')}
+            className="w-full bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors"
+          >
+            Вывести средства
+          </button>
+          <p className="text-xs text-white/60">
+            Можно вывести только весь баланс сразу
+          </p>
+        </section>
+      )}
+
+      {hasPendingWithdrawal && (
+        <section className="card bg-yellow-500/20 border border-yellow-500/30 text-center space-y-2">
+          <div className="text-yellow-400 font-semibold">Заявка на вывод в обработке</div>
+          <div className="text-sm text-white/80">Ожидайте подтверждения администратора</div>
+        </section>
+      )}
 
       {/* Топ игроков */}
       <section className="card space-y-4">

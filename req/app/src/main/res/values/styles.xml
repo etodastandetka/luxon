@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="BottomNavActiveIndicator">
+        <item name="android:width">40dp</item>
+        <item name="android:height">3dp</item>
+        <item name="android:color">#22C55E</item>
+        <item name="cornerRadius">2dp</item>
+    </style>
+</resources>
+

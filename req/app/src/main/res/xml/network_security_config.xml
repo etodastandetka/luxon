@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Разрешаем HTTP (cleartext) трафик для нашего сервера PostgreSQL API -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">89.23.117.61</domain>
+    </domain-config>
+    
+    <!-- По умолчанию HTTPS для остальных доменов -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+

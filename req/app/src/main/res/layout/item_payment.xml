@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:layout_marginEnd="12dp"
+    android:layout_marginTop="6dp"
+    android:layout_marginBottom="6dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@color/card_background_light"
+    app:cardUseCompatPadding="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/bankNameText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Банк"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary_light"
+                    android:letterSpacing="0.01" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/amountText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.00 ₽"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary_light"
+                android:layout_gravity="center_vertical"
+                android:letterSpacing="0.01" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider_light"
+            android:layout_marginBottom="12dp"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/cardNumberText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Номер карты"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary_light"
+            android:layout_marginBottom="6dp"
+            android:letterSpacing="0.01" />
+
+        <TextView
+            android:id="@+id/dateText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Дата"
+            android:textSize="12sp"
+            android:textColor="@color/text_hint_light"
+            android:letterSpacing="0.01" />
+
+        <TextView
+            android:id="@+id/packageNameText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Клонированное приложение"
+            android:textSize="11sp"
+            android:textColor="@color/text_hint_light"
+            android:layout_marginTop="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp"
+            android:textStyle="italic"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
+

@@ -382,58 +382,80 @@ class AutoDepositWatcher:
                     amount, iso_dt = parsed
                     logger.info(f"AutoDepositWatcher parsed email: bank=DEMIRBANK amount={amount} dt={iso_dt}")
                     
-                    # Сохраняем все поступления в Django БД (IncomingPayment)
+                    # Сохраняем все поступления в новую админку через API
                     try:
-                        from django.apps import apps
-                        from django.utils import timezone
+                        import requests
+                        import json
                         from datetime import datetime
                         
-                        # Пробуем импортировать модель
-                        try:
-                            IncomingPayment = apps.get_model('bot_control', 'IncomingPayment')
+                        # Парсим дату из ISO формата
+                        payment_date = datetime.now().isoformat()
+                        if iso_dt:
+                            try:
+                                # Преобразуем формат 2025-09-22T22:13:24 в ISO
+                                dt = datetime.fromisoformat(iso_dt.replace('Z', '+00:00'))
+                                payment_date = dt.isoformat()
+                            except Exception:
+                                payment_date = datetime.now().isoformat()
+                        
+                        # URL новой админки
+                        admin_api_url = os.environ.get('ADMIN_API_URL', 'http://localhost:3001')
+                        api_endpoint = f"{admin_api_url}/api/incoming-payment"
+                        
+                        # Отправляем данные в новую админку
+                        payload = {
+                            'amount': amount,
+                            'bank': 'demirbank',
+                            'paymentDate': payment_date,
+                            'notificationText': body[:500]  # Первые 500 символов
+                        }
+                        
+                        response = requests.post(
+                            api_endpoint,
+                            json=payload,
+                            headers={'Content-Type': 'application/json'},
+                            timeout=10
+                        )
+                        
+                        if response.status_code == 200:
+                            logger.info(f"✅ Сохранено поступление в новую админку: {amount} сом от {iso_dt}")
+                        else:
+                            logger.warning(f"⚠️ Не удалось сохранить поступление в новую админку: {response.status_code} - {response.text}")
                             
-                            # Парсим дату из ISO формата
-                            payment_date = timezone.now()
-                            if iso_dt:
-                                try:
-                                    payment_date = datetime.fromisoformat(iso_dt.replace('Z', '+00:00'))
-                                    if timezone.is_naive(payment_date):
-                                        payment_date = timezone.make_aware(payment_date)
-                                except Exception:
-                                    payment_date = timezone.now()
-                            
-                            # Создаем запись о поступлении
-                            IncomingPayment.objects.create(
-                                amount=amount,
-                                bank='demirbank',
-                                payment_date=payment_date,
-                                notification_text=body[:500],  # Первые 500 символов
-                                is_processed=False
-                            )
-                            logger.info(f"✅ Сохранено поступление в БД: {amount} сом от {iso_dt}")
-                        except Exception as e:
-                            logger.warning(f"⚠️ Не удалось сохранить поступление в Django БД: {e}")
+                            # Fallback: пробуем сохранить в Django БД
+                            try:
+                                from django.apps import apps
+                                from django.utils import timezone
+                                
+                                IncomingPayment = apps.get_model('bot_control', 'IncomingPayment')
+                                payment_date_obj = timezone.now()
+                                if iso_dt:
+                                    try:
+                                        payment_date_obj = datetime.fromisoformat(iso_dt.replace('Z', '+00:00'))
+                                        if timezone.is_naive(payment_date_obj):
+                                            payment_date_obj = timezone.make_aware(payment_date_obj)
+                                    except Exception:
+                                        payment_date_obj = timezone.now()
+                                
+                                IncomingPayment.objects.create(
+                                    amount=amount,
+                                    bank='demirbank',
+                                    payment_date=payment_date_obj,
+                                    notification_text=body[:500],
+                                    is_processed=False
+                                )
+                                logger.info(f"✅ Сохранено поступление в Django БД (fallback): {amount} сом")
+                            except Exception as e:
+                                logger.warning(f"⚠️ Не удалось сохранить поступление в Django БД (fallback): {e}")
                     except Exception as e:
                         logger.warning(f"⚠️ Ошибка при сохранении поступления: {e}")
                     
-                    # Небольшая задержка, чтобы дать времени хендлерам записать заявку в БД
+                    # Помечаем письмо как прочитанное (сопоставление и пополнение теперь делает API новой админки)
                     try:
-                        import time
-                        time.sleep(2)
-                    except Exception:
-                        pass
-
-                    # Try match to pending request in DB
-                    matched = self._match_and_confirm(amount)
-                    if matched:
-                        # Mark as seen (already default) and add a flag
                         mail.store(num, '+FLAGS', '\\Seen')
-                        # Log success
-                        self._log_event(bank='DEMIRBANK', amount=amount, matched=1, note='matched')
-                    else:
-                        # leave unseen for manual check
-                        # Log miss
-                        self._log_event(bank='DEMIRBANK', amount=amount, matched=0, note='no_match')
+                        self._log_event(bank='DEMIRBANK', amount=amount, matched=1, note='saved_to_api')
+                    except Exception as e:
+                        logger.warning(f"Failed to mark email as seen: {e}")
                 except Exception as e:
                     logger.error(f"AutoDepositWatcher message error: {e}")
                     try:

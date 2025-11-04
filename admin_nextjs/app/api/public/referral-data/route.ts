@@ -171,9 +171,35 @@ export async function GET(request: NextRequest) {
       prize: prizeDistribution[index] || 0
     }))
     
+    // Получаем уже выведенные средства для расчета доступного баланса
+    const completedWithdrawals = await prisma.referralWithdrawalRequest.findMany({
+      where: {
+        userId: userIdBigInt,
+        status: 'completed'
+      }
+    })
+    
+    const totalWithdrawn = completedWithdrawals.reduce((sum, w) => {
+      return sum + (w.amount ? parseFloat(w.amount.toString()) : 0)
+    }, 0)
+    
+    const availableBalance = earned - totalWithdrawn
+    
+    // Проверяем, есть ли pending заявка
+    const pendingWithdrawal = await prisma.referralWithdrawalRequest.findFirst({
+      where: {
+        userId: userIdBigInt,
+        status: 'pending'
+      }
+    })
+    
+    const hasPendingWithdrawal = !!pendingWithdrawal
+    
     const response = NextResponse.json({
       success: true,
       earned: earned,
+      available_balance: availableBalance, // Доступный баланс для вывода
+      has_pending_withdrawal: hasPendingWithdrawal, // Есть ли pending заявка
       referral_count: activeReferralCount,
       top_players: topReferrersWithPrizes, // Топ-5 реферов
       user_rank: userRank,
