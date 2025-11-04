@@ -293,11 +293,12 @@ export default function ChatPage() {
         {previewUrl && selectedFile && (
           <div className="mb-2 relative">
             {selectedFile.type.startsWith('image/') ? (
-              <div className="relative">
-                <img 
+              <div className="relative w-full h-32">
+                <Image 
                   src={previewUrl} 
                   alt="Preview" 
-                  className="w-full max-h-32 object-cover rounded-lg"
+                  fill
+                  className="object-cover rounded-lg"
                 />
                 <button
                   onClick={removeFile}
