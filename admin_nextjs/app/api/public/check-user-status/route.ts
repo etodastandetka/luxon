@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
 
     const user = await prisma.botUser.findUnique({
       where: { userId: userIdBigInt },
-      select: { isActive: true },
+      select: {
+        isActive: true,
+      },
     })
 
     // Если пользователь не найден, считаем его активным (по умолчанию)
