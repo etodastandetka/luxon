@@ -12,6 +12,7 @@ export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(0)
+  const [isBlocked, setIsBlocked] = useState(false)
   const { language } = useLanguage()
   const { settings, loading: settingsLoading, error: settingsError } = useBotSettings()
 
@@ -20,6 +21,28 @@ export default function HomePage() {
     const telegramUser = initTelegramWebApp()
     if (telegramUser) {
       setUser(telegramUser)
+      
+      // Проверяем статус пользователя
+      const checkUserStatus = async () => {
+        try {
+          const apiUrl = process.env.NODE_ENV === 'development' 
+            ? 'http://localhost:3001' 
+            : 'https://xendro.pro'
+          const response = await fetch(`${apiUrl}/api/public/check-user-status?user_id=${telegramUser.id}`)
+          const data = await response.json()
+          
+          if (data.success && data.data.isBlocked) {
+            setIsBlocked(true)
+            window.location.href = '/blocked'
+            return
+          }
+        } catch (error) {
+          console.error('Error checking user status:', error)
+          // В случае ошибки продолжаем работу
+        }
+      }
+      
+      checkUserStatus()
       
       // Синхронизируем с ботом при первом входе
       syncWithBot(telegramUser, 'app_opened', {
