@@ -116,6 +116,64 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=reply_markup
     )
 
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик всех текстовых сообщений от пользователей"""
+    if not update.message or not update.message.from_user:
+        return
+    
+    user = update.message.from_user
+    user_id = user.id
+    message_text = update.message.text or update.message.caption or ''
+    telegram_message_id = update.message.message_id
+    
+    # Определяем тип сообщения и медиа URL
+    message_type = 'text'
+    media_url = None
+    
+    if update.message.photo:
+        message_type = 'photo'
+        # Берем самое большое фото (последнее в массиве)
+        media_url = update.message.photo[-1].file_id
+    elif update.message.video:
+        message_type = 'video'
+        media_url = update.message.video.file_id
+    elif update.message.document:
+        message_type = 'document'
+        media_url = update.message.document.file_id
+    elif update.message.voice:
+        message_type = 'voice'
+        media_url = update.message.voice.file_id
+    elif update.message.audio:
+        message_type = 'audio'
+        media_url = update.message.audio.file_id
+    elif update.message.sticker:
+        message_type = 'sticker'
+        media_url = update.message.sticker.file_id
+    
+    # Сохраняем сообщение в админку через API
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                f"{API_URL}/api/users/{user_id}/chat/ingest",
+                json={
+                    "message_text": message_text,
+                    "message_type": message_type,
+                    "media_url": media_url,
+                    "telegram_message_id": telegram_message_id
+                }
+            )
+            if response.status_code == 200:
+                logger.info(f"✅ Сообщение от пользователя {user_id} сохранено в чат")
+            else:
+                logger.warning(f"⚠️ Не удалось сохранить сообщение: {response.status_code}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при сохранении сообщения в чат: {e}")
+    
+    # Если это не команда, отправляем стандартный ответ
+    if not message_text.startswith('/'):
+        # Можно отправить автоматический ответ или просто проигнорировать
+        pass
+
 async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /referral для просмотра реферальной статистики"""
     user = update.effective_user
@@ -202,6 +260,12 @@ def main() -> None:
     
     # Добавляем обработчик команды /referral для просмотра реферальной статистики
     application.add_handler(CommandHandler("referral", referral_command))
+    
+    # Добавляем обработчик всех сообщений (для сохранения в чат)
+    # Важно: должен быть добавлен последним, чтобы не перехватывать команды
+    from telegram.ext import MessageHandler, filters
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.Document.ALL | filters.VOICE | filters.AUDIO | filters.STICKER, handle_message))
     
     # Добавляем обработчик ошибок
     application.add_error_handler(error_handler)
