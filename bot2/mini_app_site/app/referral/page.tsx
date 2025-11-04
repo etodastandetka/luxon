@@ -122,7 +122,7 @@ export default function ReferralPage() {
 
   const translations = {
     ru: {
-      title: '👥 Реферальная программа',
+      title: 'Реферальная программа',
       subtitle: 'Приглашайте друзей и зарабатывайте вместе',
       yourLink: 'Ваша реферальная ссылка',
       copyLink: 'Скопировать ссылку',
@@ -131,7 +131,7 @@ export default function ReferralPage() {
       referrals: 'Количество рефералов',
       nextPayout: 'Следующая выплата',
       howItWorks: 'Как это работает',
-      topPlayers: '🏆 Топ игроков',
+      topPlayers: 'Топ игроков',
       yourRank: 'Ваше место',
       prizes: 'Призы',
       firstPlace: () => `1 место: ${referralSettings.first_place_prize.toLocaleString()} сом`,
@@ -143,13 +143,13 @@ export default function ReferralPage() {
         'Выплаты происходят автоматически в конце месяца',
         `Минимальная сумма для выплаты: ${referralSettings.min_payout} сом`
       ],
-      shareText: 'Присоединяйся к платформе пополнений и выводов! 💸\nБыстро пополняй 1xBet, Melbet, Mostbet, 1Win и выводи средства без задержек 🚀\nРегистрируйся по моей ссылке',
+      shareText: 'Присоединяйся к платформе пополнений и выводов!\nБыстро пополняй 1xBet, Melbet, Mostbet, 1Win и выводи средства без задержек\nРегистрируйся по моей ссылке',
       copied: 'Ссылка скопирована!',
       error: 'Ошибка при копировании',
-      backToMain: '🔙 На главную'
+      backToMain: 'На главную'
     },
     en: {
-      title: '👥 Referral Program',
+      title: 'Referral Program',
       subtitle: 'Invite friends and earn together',
       yourLink: 'Your referral link',
       copyLink: 'Copy link',
@@ -158,7 +158,7 @@ export default function ReferralPage() {
       referrals: 'Number of referrals',
       nextPayout: 'Next payout',
       howItWorks: 'How it works',
-      topPlayers: '🏆 Top Players',
+      topPlayers: 'Top Players',
       yourRank: 'Your rank',
       prizes: 'Prizes',
       firstPlace: () => `1st place: ${referralSettings.first_place_prize.toLocaleString()} som`,
@@ -170,10 +170,10 @@ export default function ReferralPage() {
         'Payouts happen automatically at the end of the month',
         `Minimum payout amount: ${referralSettings.min_payout} som`
       ],
-      shareText: 'Join the deposit and withdrawal platform! 💸\nQuickly top up 1xBet, Melbet, Mostbet, 1Win and withdraw funds without delays 🚀\nRegister using my link',
+      shareText: 'Join the deposit and withdrawal platform!\nQuickly top up 1xBet, Melbet, Mostbet, 1Win and withdraw funds without delays\nRegister using my link',
       copied: 'Link copied!',
       error: 'Error copying',
-      backToMain: '🔙 Back to main'
+      backToMain: 'Back to main'
     }
   }
 
