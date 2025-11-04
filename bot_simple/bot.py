@@ -103,8 +103,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 📤 Вывод — 0%
 🕒 Работаем 24/7
 
-👨‍💻 Поддержка: @luxon_support
-💬 Чат для всех: @luxkassa_chat
+👨‍💻 Техподдержка: @operator_luxon_bot
+💬 Чат для всех: https://t.me/luxon_chat
 
 🔒 Финансовый контроль обеспечен личным отделом безопасности
 
