@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { cookies } from 'next/headers'
+import { requireAuth } from '@/lib/api-helpers'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Проверка авторизации
-    const cookieStore = await cookies()
-    const sessionId = cookieStore.get('session_id')?.value
-    if (!sessionId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 })
-    }
+    requireAuth(request)
     
     const requestId = parseInt(params.id)
     

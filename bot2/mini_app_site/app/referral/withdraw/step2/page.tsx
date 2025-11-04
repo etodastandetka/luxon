@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import LanguageSelector from '../../../../components/LanguageSelector'
 import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
 
-export default function ReferralWithdrawStep2() {
+function ReferralWithdrawStep2Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { language } = useLanguage()
@@ -234,6 +234,18 @@ export default function ReferralWithdrawStep2() {
         </div>
       </main>
     </PageTransition>
+  )
+}
+
+export default function ReferralWithdrawStep2() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-white">Загрузка...</div>
+      </div>
+    }>
+      <ReferralWithdrawStep2Content />
+    </Suspense>
   )
 }
 
