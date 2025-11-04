@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 
@@ -17,11 +17,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchUser()
-  }, [])
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/me')
       const data = await response.json()
@@ -36,7 +32,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    fetchUser()
+  }, [fetchUser])
 
   const handleLogout = async () => {
     try {

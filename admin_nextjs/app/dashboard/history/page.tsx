@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Transaction {
   id: number
@@ -24,11 +25,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw'>('all')
 
-  useEffect(() => {
-    fetchHistory()
-  }, [activeTab])
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -47,7 +44,11 @@ export default function HistoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab])
+
+  useEffect(() => {
+    fetchHistory()
+  }, [fetchHistory])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -250,11 +251,12 @@ export default function HistoryPage() {
                   <div className="flex items-start space-x-3 flex-1">
                     {/* Иконка банка */}
                     {getBankImage(tx.bank) ? (
-                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900">
-                        <img
+                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900 relative">
+                        <Image
                           src={getBankImage(tx.bank) || ''}
                           alt={tx.bank || 'Bank'}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
                         />
                       </div>
                     ) : (

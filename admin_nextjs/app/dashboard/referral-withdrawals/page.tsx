@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface WithdrawalRequest {
@@ -30,11 +30,7 @@ export default function ReferralWithdrawalsPage() {
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
-  useEffect(() => {
-    fetchRequests()
-  }, [statusFilter])
-
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       setLoading(true)
       const url = statusFilter === 'all' 
@@ -52,7 +48,11 @@ export default function ReferralWithdrawalsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter])
+
+  useEffect(() => {
+    fetchRequests()
+  }, [fetchRequests])
 
   const handleApprove = async (requestId: number) => {
     if (!confirm('Подтвердить вывод и пополнить баланс игрока?')) {

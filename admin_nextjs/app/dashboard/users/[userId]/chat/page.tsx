@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface ChatMessage {
   id: number
@@ -35,29 +36,11 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (params.userId) {
-      fetchChatData()
-      // Обновляем чат каждые 3 секунды для более быстрого получения новых сообщений
-      const interval = setInterval(() => {
-        fetchChatData()
-      }, 3000)
-      return () => clearInterval(interval)
-    }
-  }, [params.userId])
-
-  useEffect(() => {
-    // Используем setTimeout для корректного скролла после рендера
-    setTimeout(() => {
-      scrollToBottom()
-    }, 100)
-  }, [messages])
-
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  }, [])
 
-  const fetchChatData = async () => {
+  const fetchChatData = useCallback(async () => {
     try {
       const [chatRes, userRes, photoRes] = await Promise.all([
         fetch(`/api/users/${params.userId}/chat`),
@@ -93,7 +76,25 @@ export default function ChatPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.userId])
+
+  useEffect(() => {
+    if (params.userId) {
+      fetchChatData()
+      // Обновляем чат каждые 3 секунды для более быстрого получения новых сообщений
+      const interval = setInterval(() => {
+        fetchChatData()
+      }, 3000)
+      return () => clearInterval(interval)
+    }
+  }, [params.userId, fetchChatData])
+
+  useEffect(() => {
+    // Используем setTimeout для корректного скролла после рендера
+    setTimeout(() => {
+      scrollToBottom()
+    }, 100)
+  }, [messages, scrollToBottom])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -205,11 +206,14 @@ export default function ChatPage() {
           className="flex items-center space-x-3 flex-1 ml-4"
         >
           {user.photoUrl ? (
-            <img
-              src={user.photoUrl}
-              alt={displayName}
-              className="w-10 h-10 rounded-full object-cover"
-            />
+            <div className="w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0">
+              <Image
+                src={user.photoUrl}
+                alt={displayName}
+                fill
+                className="object-cover"
+              />
+            </div>
           ) : (
             <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
               <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
@@ -253,11 +257,14 @@ export default function ChatPage() {
                 {message.mediaUrl && (
                   <div className="mb-2 rounded-lg overflow-hidden">
                     {message.messageType === 'photo' ? (
-                      <img 
-                        src={message.mediaUrl} 
-                        alt="Photo" 
-                        className="w-full max-h-64 object-cover rounded-lg"
-                      />
+                      <div className="relative w-full h-64">
+                        <Image 
+                          src={message.mediaUrl} 
+                          alt="Photo" 
+                          fill
+                          className="object-cover rounded-lg"
+                        />
+                      </div>
                     ) : message.messageType === 'video' ? (
                       <video 
                         src={message.mediaUrl} 

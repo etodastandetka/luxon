@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface RequestDetail {
   id: number
@@ -591,11 +592,12 @@ export default function RequestDetailPage() {
             className="flex items-center space-x-2 flex-1"
           >
             {profilePhotoUrl ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-gray-600">
-                <img
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-gray-600 relative">
+                <Image
                   src={profilePhotoUrl}
                   alt={displayName}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                   onError={() => {
                     // Если фото не загрузилось, показываем букву
                     setProfilePhotoUrl(null)
@@ -786,11 +788,14 @@ export default function RequestDetailPage() {
       {request.photoFileUrl && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-base font-semibold text-white mb-3">Фото чека</h3>
-          <div className="relative w-full flex justify-center">
-            <img
+          <div className="relative w-full flex justify-center" style={{ minHeight: '200px', maxHeight: '500px' }}>
+            <Image
               src={request.photoFileUrl}
               alt="Фото чека об оплате"
+              width={800}
+              height={500}
               className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
+              style={{ width: 'auto', height: 'auto' }}
               onError={(e) => {
                 // Если фото не загрузилось, скрываем блок
                 const target = e.target as HTMLImageElement
