@@ -33,9 +33,9 @@ module.exports = {
       min_uptime: '10s'
     },
     {
-      name: 'luxon-telegram-bot',
+      name: 'luxon-bot',
       cwd: '/var/www/luxon/bot_simple',
-      script: 'python3',
+      script: '/var/www/luxon/django_admin/venv/bin/python3',
       args: 'bot.py',
       interpreter: 'none',
       error_file: '/var/log/pm2/luxon-bot-error.log',
