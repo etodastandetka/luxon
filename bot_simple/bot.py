@@ -156,6 +156,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     elif update.message.sticker:
         message_type = 'sticker'
         media_url = update.message.sticker.file_id
+    # Обрабатываем стикеры, если они есть (через общий обработчик)
     
     # Сохраняем сообщение в админку через API
     try:
@@ -287,14 +288,10 @@ def main() -> None:
     from telegram.ext import MessageHandler, filters
     # Обработчик для текстовых сообщений (не команд)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    # Обработчик для медиа (фото, видео, документы, голосовые, аудио, стикеры)
+    # Обработчик для медиа (фото, видео, документы, голосовые, аудио)
+    # Примечание: стикеры пропускаем, так как filters.STICKER не поддерживается в версии 20.7
     application.add_handler(MessageHandler(
-        filters.PHOTO | filters.VIDEO | filters.Document.ALL | filters.VOICE | filters.AUDIO | filters.STICKER,
-        handle_message
-    ))
-    # Обработчик для всех остальных типов сообщений (на случай, если что-то пропустили)
-    application.add_handler(MessageHandler(
-        filters.ALL & ~filters.COMMAND & ~filters.TEXT & ~filters.PHOTO & ~filters.VIDEO & ~filters.Document.ALL & ~filters.VOICE & ~filters.AUDIO & ~filters.STICKER,
+        filters.PHOTO | filters.VIDEO | filters.Document.ALL | filters.VOICE | filters.AUDIO,
         handle_message
     ))
     
