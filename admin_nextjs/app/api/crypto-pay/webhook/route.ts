@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyWebhookSignature, getInvoice } from '@/lib/crypto-pay'
 import { prisma } from '@/lib/prisma'
-import { depositBalance } from '@/lib/deposit-balance'
+import { depositToCasino } from '@/lib/deposit-balance'
 
 export const dynamic = 'force-dynamic'
 
@@ -173,12 +173,16 @@ export async function POST(request: NextRequest) {
 
         // Выполняем автоматическое пополнение
         try {
-          await depositBalance({
-            bookmaker: botRequest.bookmaker || '',
-            playerId: botRequest.accountId || botRequest.userId.toString(),
-            amount: parseFloat(invoice.paid_amount || invoice.amount),
-            requestId: botRequest.id.toString()
-          })
+          const depositResult = await depositToCasino(
+            botRequest.bookmaker || '',
+            botRequest.accountId || botRequest.userId.toString(),
+            parseFloat(invoice.paid_amount || invoice.amount)
+          )
+          
+          if (!depositResult.success) {
+            console.error('❌ Deposit failed:', depositResult.message)
+            throw new Error(depositResult.message)
+          }
           
           // Обновляем статус заявки на успешное автопополнение
           await prisma.request.update({
@@ -193,7 +197,6 @@ export async function POST(request: NextRequest) {
           console.error('❌ Auto-deposit failed for crypto payment:', error)
           // Оставляем заявку в статусе auto_completed для ручной проверки
         }
-      }
     }
 
     return NextResponse.json({ ok: true })

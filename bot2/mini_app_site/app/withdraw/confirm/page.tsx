@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
-import FixedHeaderControls from '../../components/FixedHeaderControls'
+import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 

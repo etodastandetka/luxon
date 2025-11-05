@@ -125,24 +125,6 @@ export default function DepositStep4() {
     }
   }, [])
 
-  // Генерируем QR код или крипто invoice в зависимости от типа оплаты
-  useEffect(() => {
-    if (bookmaker && playerId && amount > 0) {
-      // Сохраняем время начала таймера при генерации (если еще не сохранено)
-      if (!localStorage.getItem('deposit_timer_start')) {
-        localStorage.setItem('deposit_timer_start', Date.now().toString())
-      }
-      
-      if (paymentType === 'crypto') {
-        // Создаем крипто invoice
-        createCryptoInvoice()
-      } else {
-        // Генерируем QR код для банковского перевода
-        generateQRCode()
-      }
-    }
-  }, [bookmaker, playerId, amount, paymentType])
-  
   // Функция для создания крипто invoice
   const createCryptoInvoice = async () => {
     if (cryptoLoading || cryptoInvoice) return
@@ -209,6 +191,25 @@ export default function DepositStep4() {
       setCryptoLoading(false)
     }
   }
+
+  // Генерируем QR код или крипто invoice в зависимости от типа оплаты
+  useEffect(() => {
+    if (bookmaker && playerId && amount > 0) {
+      // Сохраняем время начала таймера при генерации (если еще не сохранено)
+      if (!localStorage.getItem('deposit_timer_start')) {
+        localStorage.setItem('deposit_timer_start', Date.now().toString())
+      }
+      
+      if (paymentType === 'crypto') {
+        // Создаем крипто invoice
+        createCryptoInvoice()
+      } else {
+        // Генерируем QR код для банковского перевода
+        generateQRCode()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookmaker, playerId, amount, paymentType])
 
   // Таймер обратного отсчета и проверка почты
   useEffect(() => {
