@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLanguage } from './LanguageContext'
 
 const languages = [
@@ -9,9 +9,36 @@ const languages = [
   { code: 'uz', name: 'O\'zbekcha', flag: '🇺🇿' }
 ]
 
-export default function LanguageSelector() {
+interface LanguageSelectorProps {
+  onOpenChange?: (isOpen: boolean) => void
+}
+
+export default function LanguageSelector({ onOpenChange }: LanguageSelectorProps) {
   const { language: currentLanguage, setLanguage } = useLanguage()
   const [isOpen, setIsOpen] = useState(false)
+
+  useEffect(() => {
+    onOpenChange?.(isOpen)
+  }, [isOpen, onOpenChange])
+
+  // Закрываем при клике вне области
+  useEffect(() => {
+    if (!isOpen) return
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('[data-language-selector]')) {
+        setIsOpen(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
+
+  const handleToggle = () => {
+    setIsOpen(!isOpen)
+  }
 
   const handleLanguageChange = (languageCode: string) => {
     setLanguage(languageCode)
@@ -21,9 +48,9 @@ export default function LanguageSelector() {
   const currentLang = languages.find(lang => lang.code === currentLanguage)
 
   return (
-    <div className="relative" style={{ zIndex: 99999 }}>
+    <div className="relative" style={{ zIndex: 99999 }} data-language-selector>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="bg-black/20 backdrop-blur border border-white/20 rounded-lg px-2 py-1.5 text-xs flex items-center gap-1 text-white hover:bg-black/30 transition-all whitespace-nowrap"
         style={{ zIndex: 99999, minWidth: 'auto' }}
       >
@@ -33,7 +60,7 @@ export default function LanguageSelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 min-w-[200px]"
+        <div className="absolute top-full right-0 mt-1 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 w-[180px]"
           style={{ zIndex: 99999, position: 'absolute' }}
         >
           <div className="p-2 space-y-1">
