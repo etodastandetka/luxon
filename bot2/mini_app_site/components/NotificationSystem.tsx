@@ -157,23 +157,8 @@ export default function NotificationSystem() {
       return updated
     })
 
-    // Показываем уведомление через Telegram WebApp
-    const tg = getTelegramWebApp()
-    if (tg) {
-      switch (notification.type) {
-        case 'success':
-          tg.showAlert(notification.message)
-          break
-        case 'error':
-          tg.showAlert(notification.message)
-          break
-        case 'warning':
-          tg.showAlert(notification.message)
-          break
-        default:
-          tg.showAlert(notification.message)
-      }
-    }
+    // Убрано показ всплывающих уведомлений через Telegram WebApp
+    // Уведомления теперь только сохраняются в список и отображаются в иконке уведомлений
   }
 
   const markAsRead = (id: string) => {
