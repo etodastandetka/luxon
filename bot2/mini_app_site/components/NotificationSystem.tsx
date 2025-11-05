@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { getTelegramWebApp } from '../utils/telegram'
+import { getTelegramWebApp, getTelegramUserId } from '../utils/telegram'
 
 interface Notification {
   id: string
@@ -9,11 +9,95 @@ interface Notification {
   message: string
   timestamp: Date
   read: boolean
+  transaction?: {
+    id: string
+    type: 'deposit' | 'withdraw'
+    bookmaker: string
+    amount: number
+    status: string
+  }
 }
 
 export default function NotificationSystem() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isVisible, setIsVisible] = useState(false)
+  const [lastTransactions, setLastTransactions] = useState<any[]>([])
+
+  // Загружаем последние операции
+  const loadRecentTransactions = async () => {
+    try {
+      const userId = getTelegramUserId()
+      if (!userId) return
+
+      const apiUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3001' 
+        : 'https://xendro.pro'
+      
+      const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}&limit=5`)
+      const data = await response.json()
+      
+      const transactionsData = data.data?.transactions || data.transactions || []
+      
+      if (transactionsData.length > 0) {
+        // Проверяем, есть ли новые транзакции
+        const savedNotifications = localStorage.getItem('notifications')
+        const existingNotifications = savedNotifications ? JSON.parse(savedNotifications) : []
+        
+        const newTransactions = transactionsData.filter((tx: any) => {
+          // Проверяем, не было ли уже уведомления об этой транзакции
+          const existingNotification = existingNotifications.find((n: any) => 
+            n.transaction?.id === tx.id?.toString()
+          )
+          return !existingNotification
+        })
+
+        // Создаем уведомления для новых транзакций
+        newTransactions.forEach((tx: any) => {
+          const statusMessages: Record<string, { type: 'success' | 'error' | 'info' | 'warning', title: string }> = {
+            'completed': { type: 'success', title: 'Операция завершена' },
+            'approved': { type: 'success', title: 'Операция одобрена' },
+            'auto_completed': { type: 'success', title: 'Автозавершение' },
+            'autodeposit_success': { type: 'success', title: 'Автопополнение' },
+            'rejected': { type: 'error', title: 'Операция отклонена' },
+            'failed': { type: 'error', title: 'Ошибка операции' },
+            'pending': { type: 'info', title: 'Ожидает обработки' },
+            'deferred': { type: 'warning', title: 'Операция отложена' }
+          }
+
+          const statusInfo = statusMessages[tx.status?.toLowerCase()] || { type: 'info' as const, title: 'Обновление операции' }
+          
+          const bookmakerNames: Record<string, string> = {
+            '1xbet': '1xBet',
+            '1win': '1WIN',
+            'melbet': 'Melbet',
+            'mostbet': 'Mostbet',
+          }
+
+          const notification: Notification = {
+            id: `tx_${tx.id}_${Date.now()}`,
+            type: statusInfo.type,
+            title: statusInfo.title,
+            message: `${tx.type === 'deposit' ? 'Пополнение' : 'Вывод'} ${tx.amount} сом в ${bookmakerNames[tx.bookmaker?.toLowerCase()] || tx.bookmaker}`,
+            timestamp: new Date(tx.created_at || tx.date || Date.now()),
+            read: false,
+            transaction: {
+              id: tx.id?.toString() || '',
+              type: tx.type || tx.request_type || 'deposit',
+              bookmaker: tx.bookmaker || '',
+              amount: tx.amount || 0,
+              status: tx.status || 'pending'
+            }
+          }
+
+          addNotification(notification)
+        })
+
+        setLastTransactions(transactionsData)
+      }
+    } catch (error) {
+      console.error('Error loading recent transactions:', error)
+    }
+  }
 
   useEffect(() => {
     // Загружаем уведомления из localStorage
@@ -30,6 +114,14 @@ export default function NotificationSystem() {
       }
     }
 
+    // Загружаем последние операции
+    loadRecentTransactions()
+
+    // Обновляем каждые 30 секунд
+    const interval = setInterval(() => {
+      loadRecentTransactions()
+    }, 30000)
+
     // Слушаем события от Telegram WebApp
     const tg = getTelegramWebApp()
     if (tg) {
@@ -38,6 +130,7 @@ export default function NotificationSystem() {
     }
 
     return () => {
+      clearInterval(interval)
       if (tg) {
         tg.offEvent('notification', () => handleNotification({}))
       }
@@ -112,11 +205,11 @@ export default function NotificationSystem() {
   const unreadCount = notifications.filter(n => !n.read).length
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <>
       {/* Кнопка уведомлений */}
       <button
         onClick={() => setIsVisible(!isVisible)}
-        className="relative bg-black/20 backdrop-blur border border-white/20 rounded-full p-3 hover:bg-black/30 transition-all"
+        className="fixed top-4 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-full p-3 hover:bg-black/30 transition-all z-[9999]"
       >
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -130,7 +223,8 @@ export default function NotificationSystem() {
 
       {/* Список уведомлений */}
       {isVisible && (
-        <div className="bg-black/20 backdrop-blur border border-white/20 rounded-xl p-4 w-80 max-h-96 overflow-y-auto">
+        <div className="fixed top-16 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-xl p-4 w-80 max-h-96 overflow-y-auto z-[9999] shadow-2xl"
+        >
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-white font-semibold">Уведомления</h3>
             {unreadCount > 0 && (
@@ -174,8 +268,30 @@ export default function NotificationSystem() {
                       <p className="text-white/80 text-sm">
                         {notification.message}
                       </p>
+                      {notification.transaction && (
+                        <div className="mt-2 pt-2 border-t border-white/10">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-white/60">
+                              {notification.transaction.type === 'deposit' ? 'Пополнение' : 'Вывод'}
+                            </span>
+                            <span className={`font-semibold ${
+                              notification.transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
+                            }`}>
+                              {notification.transaction.type === 'deposit' ? '+' : '-'}{notification.transaction.amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} сом
+                            </span>
+                          </div>
+                          <div className="text-white/50 text-xs mt-1">
+                            Статус: {notification.transaction.status}
+                          </div>
+                        </div>
+                      )}
                       <p className="text-white/50 text-xs mt-1">
-                        {notification.timestamp.toLocaleString()}
+                        {notification.timestamp.toLocaleString('ru-RU', { 
+                          day: '2-digit', 
+                          month: '2-digit', 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
                       </p>
                     </div>
                     <div className="flex gap-1 ml-2">
@@ -201,7 +317,7 @@ export default function NotificationSystem() {
           )}
         </div>
       )}
-    </div>
+    </>
   )
 }
 
