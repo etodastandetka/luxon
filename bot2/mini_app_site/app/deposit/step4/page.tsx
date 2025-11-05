@@ -1179,69 +1179,157 @@ export default function DepositStep4() {
           </p>
           
           <button
-            onClick={() => {
-              const tg = (window as any).Telegram?.WebApp
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
               
-              // Согласно документации Crypto Bot API:
-              // - bot_invoice_url используется для openInvoice() в Telegram WebApp API
-              // - mini_app_invoice_url предназначен для встраивания через iframe в Mini App
-              // - web_app_invoice_url для веб-версии
+              console.log('🔘 Button clicked!')
+              console.log('📦 cryptoInvoice:', cryptoInvoice)
               
-              // Для открытия внутри Telegram через openInvoice() используем bot_invoice_url
-              const invoiceUrl = cryptoInvoice.bot_invoice_url
-              
-              if (!invoiceUrl) {
+              try {
+                const tg = (window as any).Telegram?.WebApp
+                
+                console.log('🔍 Telegram WebApp check:', {
+                  hasTelegram: !!(window as any).Telegram,
+                  hasWebApp: !!tg,
+                  hasOpenInvoice: !!(tg && tg.openInvoice),
+                  hasOpenLink: !!(tg && tg.openLink),
+                  fullTg: tg
+                })
+                
+                // Согласно документации Crypto Bot API:
+                // - bot_invoice_url используется для openInvoice() в Telegram WebApp API
+                // - mini_app_invoice_url предназначен для встраивания через iframe в Mini App
+                // - web_app_invoice_url для веб-версии
+                
+                // Проверяем наличие invoice данных
+                if (!cryptoInvoice) {
+                  console.error('❌ cryptoInvoice is null or undefined')
+                  showAlert({
+                    type: 'error',
+                    title: language === 'ru' ? 'Ошибка' : 'Error',
+                    message: language === 'ru' 
+                      ? 'Invoice не загружен. Попробуйте обновить страницу.'
+                      : 'Invoice not loaded. Please refresh the page.'
+                  })
+                  return
+                }
+                
+                // Для открытия внутри Telegram через openInvoice() используем bot_invoice_url
+                const invoiceUrl = cryptoInvoice.bot_invoice_url || 
+                                  cryptoInvoice.mini_app_invoice_url || 
+                                  cryptoInvoice.web_app_invoice_url
+                
+                console.log('📋 Invoice URLs:', {
+                  bot_invoice_url: cryptoInvoice.bot_invoice_url,
+                  mini_app_invoice_url: cryptoInvoice.mini_app_invoice_url,
+                  web_app_invoice_url: cryptoInvoice.web_app_invoice_url,
+                  selected: invoiceUrl
+                })
+                
+                if (!invoiceUrl) {
+                  console.error('❌ No invoice URL available')
+                  showAlert({
+                    type: 'error',
+                    title: language === 'ru' ? 'Ошибка' : 'Error',
+                    message: language === 'ru' 
+                      ? 'Не удалось получить ссылку на счет. Попробуйте создать заявку заново.'
+                      : 'Failed to get invoice URL. Please try creating a new request.'
+                  })
+                  return
+                }
+
+                console.log('✅ Opening invoice with URL:', invoiceUrl)
+
+                // Используем Telegram WebApp API метод openInvoice() с bot_invoice_url
+                // Это откроет invoice внутри Telegram как отдельное мини-приложение Crypto Bot
+                if (tg && tg.openInvoice) {
+                  console.log('✅ Using openInvoice() method')
+                  try {
+                    // openInvoice открывает invoice внутри Telegram, создавая новое мини-приложение
+                    tg.openInvoice(invoiceUrl, (status: string) => {
+                      console.log('📊 Invoice payment status:', status)
+                      if (status === 'paid' || status === 'completed') {
+                        // Платеж успешен
+                        console.log('✅ Payment successful!')
+                        setIsPaid(true)
+                        // Проверяем статус через API и перенаправляем
+                        setTimeout(() => {
+                          router.push('/deposit/waiting')
+                        }, 1000)
+                      } else if (status === 'cancelled' || status === 'failed') {
+                        console.log('⚠️ Invoice was cancelled or failed:', status)
+                        showAlert({
+                          type: 'info',
+                          title: language === 'ru' ? 'Информация' : 'Info',
+                          message: language === 'ru' 
+                            ? 'Оплата была отменена'
+                            : 'Payment was cancelled'
+                        })
+                      }
+                    })
+                  } catch (error) {
+                    console.error('❌ Error calling openInvoice:', error)
+                    showAlert({
+                      type: 'error',
+                      title: language === 'ru' ? 'Ошибка' : 'Error',
+                      message: language === 'ru' 
+                        ? 'Ошибка при открытии invoice. Попробуйте еще раз.'
+                        : 'Error opening invoice. Please try again.'
+                    })
+                  }
+                } else if (tg && tg.openLink) {
+                  console.log('⚠️ openInvoice not available, using openLink()')
+                  // Если openInvoice не доступен, используем openLink с mini_app_invoice_url
+                  const miniAppUrl = cryptoInvoice.mini_app_invoice_url || invoiceUrl
+                  try {
+                    tg.openLink(miniAppUrl, { try_instant_view: true })
+                  } catch (error) {
+                    console.error('❌ Error calling openLink:', error)
+                    showAlert({
+                      type: 'error',
+                      title: language === 'ru' ? 'Ошибка' : 'Error',
+                      message: language === 'ru' 
+                        ? 'Ошибка при открытии ссылки. Попробуйте еще раз.'
+                        : 'Error opening link. Please try again.'
+                    })
+                  }
+                } else {
+                  console.warn('⚠️ Telegram WebApp not available, using fallback')
+                  // Fallback: если Telegram WebApp недоступен, открываем в новой вкладке
+                  try {
+                    window.open(invoiceUrl, '_blank')
+                    showAlert({
+                      type: 'info',
+                      title: language === 'ru' ? 'Информация' : 'Info',
+                      message: language === 'ru' 
+                        ? 'Invoice открыт в новой вкладке'
+                        : 'Invoice opened in new tab'
+                    })
+                  } catch (error) {
+                    console.error('❌ Error opening in new tab:', error)
+                    showAlert({
+                      type: 'error',
+                      title: language === 'ru' ? 'Ошибка' : 'Error',
+                      message: language === 'ru' 
+                        ? 'Не удалось открыть invoice. Попробуйте скопировать ссылку вручную.'
+                        : 'Failed to open invoice. Please copy the link manually.'
+                    })
+                  }
+                }
+              } catch (error) {
+                console.error('❌ Unexpected error in button click handler:', error)
                 showAlert({
                   type: 'error',
                   title: language === 'ru' ? 'Ошибка' : 'Error',
                   message: language === 'ru' 
-                    ? 'Не удалось получить ссылку на счет'
-                    : 'Failed to get invoice URL'
+                    ? 'Произошла неожиданная ошибка. Попробуйте обновить страницу.'
+                    : 'An unexpected error occurred. Please refresh the page.'
                 })
-                return
-              }
-
-              console.log('Opening invoice with bot_invoice_url:', invoiceUrl)
-              console.log('Telegram WebApp available:', !!tg)
-              console.log('openInvoice method available:', !!(tg && tg.openInvoice))
-              console.log('Available URLs:', {
-                bot_invoice_url: cryptoInvoice.bot_invoice_url,
-                mini_app_invoice_url: cryptoInvoice.mini_app_invoice_url,
-                web_app_invoice_url: cryptoInvoice.web_app_invoice_url
-              })
-
-              // Используем Telegram WebApp API метод openInvoice() с bot_invoice_url
-              // Это откроет invoice внутри Telegram как отдельное мини-приложение Crypto Bot
-              // Пользователь увидит интерфейс выбора монет прямо внутри Telegram
-              if (tg && tg.openInvoice) {
-                // openInvoice открывает invoice внутри Telegram, создавая новое мини-приложение
-                // Это правильный способ согласно документации Telegram WebApp API
-                // Метод принимает bot_invoice_url, который открывает invoice внутри Telegram
-                tg.openInvoice(invoiceUrl, (status: string) => {
-                  console.log('Invoice payment status:', status)
-                  if (status === 'paid' || status === 'completed') {
-                    // Платеж успешен
-                    setIsPaid(true)
-                    // Проверяем статус через API и перенаправляем
-                    setTimeout(() => {
-                      router.push('/deposit/waiting')
-                    }, 1000)
-                  } else if (status === 'cancelled' || status === 'failed') {
-                    console.log('Invoice was cancelled or failed:', status)
-                  }
-                })
-              } else if (tg && tg.openLink) {
-                // Если openInvoice не доступен, используем openLink с mini_app_invoice_url
-                // Это попытается открыть invoice внутри Telegram как мини-приложение
-                const miniAppUrl = cryptoInvoice.mini_app_invoice_url || invoiceUrl
-                tg.openLink(miniAppUrl, { try_instant_view: true })
-              } else {
-                // Fallback: если Telegram WebApp недоступен, открываем в новой вкладке
-                console.warn('Telegram WebApp not available, opening in new tab')
-                window.open(invoiceUrl, '_blank')
               }
             }}
-            className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+            className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!cryptoInvoice || !cryptoInvoice.bot_invoice_url}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1259,6 +1347,15 @@ export default function DepositStep4() {
               ? 'Invoice откроется внутри Telegram'
               : 'Invoice will open inside Telegram'}
           </div>
+          
+          {/* Debug info (only in development) */}
+          {process.env.NODE_ENV === 'development' && cryptoInvoice && (
+            <div className="text-xs text-white/30 text-center mt-2 p-2 bg-black/20 rounded">
+              <div>Invoice ID: {cryptoInvoice.invoice_id}</div>
+              <div>Has bot_invoice_url: {cryptoInvoice.bot_invoice_url ? '✅' : '❌'}</div>
+              <div>Has mini_app_invoice_url: {cryptoInvoice.mini_app_invoice_url ? '✅' : '❌'}</div>
+            </div>
+          )}
         </div>
       )}
 
