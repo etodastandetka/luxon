@@ -13,8 +13,8 @@ CASHDESK_CONFIG = {
     },
     'melbet': {
         'hash': '5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1',
-        'cashierpass': 'ScgOQgUzZs',
-        'login': 'bakhtark',
+        'cashierpass': 'ScgOQgUzZs',  # Старый cashierpass (Eldiyar.07 не работает)
+        'login': 'bakhtark',  # Старый login (1180846111 не работает)
         'cashdeskid': 1350588
     }
 }

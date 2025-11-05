@@ -29,10 +29,10 @@ const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
     cashdeskid: parseInt(process.env.XBET_CASHDESKID || '1388580'),
   },
   melbet: {
-    hash: process.env.MELBET_HASH || 'd34f03473c467b538f685f933b2dc7a3ea8c877901231235693c10be014eb6f4',
-    cashierpass: process.env.MELBET_CASHIERPASS || 'd1WRq!ke',
-    login: process.env.MELBET_LOGIN || 'uuuadetz',
-    cashdeskid: parseInt(process.env.MELBET_CASHDESKID || '1390018'),
+    hash: process.env.MELBET_HASH || '5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1',
+    cashierpass: process.env.MELBET_CASHIERPASS || 'ScgOQgUzZs',
+    login: process.env.MELBET_LOGIN || 'bakhtark',
+    cashdeskid: parseInt(process.env.MELBET_CASHDESKID || '1350588'),
   },
 }
 
