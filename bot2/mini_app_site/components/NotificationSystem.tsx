@@ -196,7 +196,13 @@ export default function NotificationSystem() {
       {/* Контейнер для языкового селектора и уведомлений */}
       <div 
         className="fixed top-4 right-4 flex items-center gap-2 pointer-events-none"
-        style={{ zIndex: 99999, position: 'fixed' }}
+        style={{ 
+          zIndex: 99999, 
+          position: 'fixed',
+          top: '1rem',
+          right: '1rem',
+          willChange: 'transform'
+        }}
       >
         {/* Языковой селектор */}
         <div style={{ zIndex: 99999, pointerEvents: 'auto' }}>
@@ -246,8 +252,16 @@ export default function NotificationSystem() {
             style={{ zIndex: 99998 }}
             onClick={() => setIsVisible(false)}
           />
-          <div className="fixed top-14 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-xl p-2.5 w-68 max-h-72 overflow-y-auto shadow-2xl"
-            style={{ zIndex: 99999, position: 'fixed', width: '280px' }}
+          <div 
+            className="fixed top-14 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-xl p-2.5 w-68 max-h-72 overflow-y-auto shadow-2xl"
+            style={{ 
+              zIndex: 99999, 
+              position: 'fixed', 
+              width: '280px',
+              top: '3.5rem',
+              right: '1rem',
+              willChange: 'transform'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
           <div className="flex justify-between items-center mb-2">
