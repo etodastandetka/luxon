@@ -1,9 +1,9 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLanguage } from '../../../../components/LanguageContext'
-import LanguageSelector from '../../../../components/LanguageSelector'
-import PageTransition from '../../../../components/PageTransition'
+import { useLanguage } from '../../../components/LanguageContext'
+import LanguageSelector from '../../../components/LanguageSelector'
+import PageTransition from '../../../components/PageTransition'
 
 export default function DepositWaitingPage() {
   const router = useRouter()
