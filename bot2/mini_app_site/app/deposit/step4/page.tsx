@@ -1166,87 +1166,99 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Crypto Bot Invoice - встроенный интерфейс (как на видео) */}
+      {/* Crypto Bot Invoice - открытие через Telegram WebApp API внутри Telegram */}
       {paymentType === 'crypto' && cryptoInvoice && !isPaid && (
-        <div className="card space-y-4 p-0 overflow-hidden">
-          {/* Встраиваем Crypto Bot invoice через iframe для полного интерфейса */}
-          {cryptoInvoice.mini_app_invoice_url ? (
-            <div className="w-full" style={{ minHeight: '600px', height: '70vh' }}>
-              <iframe
-                src={cryptoInvoice.mini_app_invoice_url}
-                className="w-full border-0"
-                style={{ 
-                  width: '100%',
-                  height: '100%',
-                  minHeight: '600px',
-                  border: 'none',
-                  display: 'block'
-                }}
-                allow="payment; fullscreen"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-                title="Crypto Bot Invoice"
-              />
-            </div>
-          ) : cryptoInvoice.web_app_invoice_url ? (
-            <div className="w-full" style={{ minHeight: '600px', height: '70vh' }}>
-              <iframe
-                src={cryptoInvoice.web_app_invoice_url}
-                className="w-full border-0"
-                style={{ 
-                  width: '100%',
-                  height: '100%',
-                  minHeight: '600px',
-                  border: 'none',
-                  display: 'block'
-                }}
-                allow="payment; fullscreen"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-                title="Crypto Bot Invoice"
-              />
-            </div>
-          ) : (
-            <div className="p-4 space-y-4">
-              <h2 className="text-lg font-semibold text-white text-center">
-                {language === 'ru' ? 'Оплата через Crypto Bot' : 'Pay via Crypto Bot'}
-              </h2>
-              <button
-                onClick={() => {
-                  const tg = (window as any).Telegram?.WebApp
-                  const invoiceUrl = cryptoInvoice.bot_invoice_url
-                  
-                  if (!invoiceUrl) {
-                    showAlert({
-                      type: 'error',
-                      title: language === 'ru' ? 'Ошибка' : 'Error',
-                      message: language === 'ru' 
-                        ? 'Не удалось получить ссылку на счет'
-                        : 'Failed to get invoice URL'
-                    })
-                    return
-                  }
+        <div className="card space-y-4">
+          <h2 className="text-lg font-semibold text-white text-center">
+            {language === 'ru' ? 'Оплата через Crypto Bot' : 'Pay via Crypto Bot'}
+          </h2>
+          <p className="text-sm text-white/70 text-center">
+            {language === 'ru' 
+              ? 'Нажмите на кнопку ниже для оплаты'
+              : 'Click the button below to pay'}
+          </p>
+          
+          <button
+            onClick={() => {
+              const tg = (window as any).Telegram?.WebApp
+              
+              // Согласно документации Crypto Bot API:
+              // - bot_invoice_url используется для openInvoice() в Telegram WebApp API
+              // - mini_app_invoice_url предназначен для встраивания через iframe в Mini App
+              // - web_app_invoice_url для веб-версии
+              
+              // Для открытия внутри Telegram через openInvoice() используем bot_invoice_url
+              const invoiceUrl = cryptoInvoice.bot_invoice_url
+              
+              if (!invoiceUrl) {
+                showAlert({
+                  type: 'error',
+                  title: language === 'ru' ? 'Ошибка' : 'Error',
+                  message: language === 'ru' 
+                    ? 'Не удалось получить ссылку на счет'
+                    : 'Failed to get invoice URL'
+                })
+                return
+              }
 
-                  if (tg && tg.openInvoice) {
-                    tg.openInvoice(invoiceUrl, (status: string) => {
-                      if (status === 'paid' || status === 'completed') {
-                        setIsPaid(true)
-                        router.push('/deposit/waiting')
-                      }
-                    })
-                  } else if (tg && tg.openLink) {
-                    tg.openLink(invoiceUrl, { try_instant_view: true })
-                  } else {
-                    window.open(invoiceUrl, '_blank')
+              console.log('Opening invoice with bot_invoice_url:', invoiceUrl)
+              console.log('Telegram WebApp available:', !!tg)
+              console.log('openInvoice method available:', !!(tg && tg.openInvoice))
+              console.log('Available URLs:', {
+                bot_invoice_url: cryptoInvoice.bot_invoice_url,
+                mini_app_invoice_url: cryptoInvoice.mini_app_invoice_url,
+                web_app_invoice_url: cryptoInvoice.web_app_invoice_url
+              })
+
+              // Используем Telegram WebApp API метод openInvoice() с bot_invoice_url
+              // Это откроет invoice внутри Telegram как отдельное мини-приложение Crypto Bot
+              // Пользователь увидит интерфейс выбора монет прямо внутри Telegram
+              if (tg && tg.openInvoice) {
+                // openInvoice открывает invoice внутри Telegram, создавая новое мини-приложение
+                // Это правильный способ согласно документации Telegram WebApp API
+                // Метод принимает bot_invoice_url, который открывает invoice внутри Telegram
+                tg.openInvoice(invoiceUrl, (status: string) => {
+                  console.log('Invoice payment status:', status)
+                  if (status === 'paid' || status === 'completed') {
+                    // Платеж успешен
+                    setIsPaid(true)
+                    // Проверяем статус через API и перенаправляем
+                    setTimeout(() => {
+                      router.push('/deposit/waiting')
+                    }, 1000)
+                  } else if (status === 'cancelled' || status === 'failed') {
+                    console.log('Invoice was cancelled or failed:', status)
                   }
-                }}
-                className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {language === 'ru' ? 'Оплатить через Crypto Bot' : 'Pay via Crypto Bot'}
-              </button>
-            </div>
-          )}
+                })
+              } else if (tg && tg.openLink) {
+                // Если openInvoice не доступен, используем openLink с mini_app_invoice_url
+                // Это попытается открыть invoice внутри Telegram как мини-приложение
+                const miniAppUrl = cryptoInvoice.mini_app_invoice_url || invoiceUrl
+                tg.openLink(miniAppUrl, { try_instant_view: true })
+              } else {
+                // Fallback: если Telegram WebApp недоступен, открываем в новой вкладке
+                console.warn('Telegram WebApp not available, opening in new tab')
+                window.open(invoiceUrl, '_blank')
+              }
+            }}
+            className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {language === 'ru' ? 'Оплатить через Crypto Bot' : 'Pay via Crypto Bot'}
+          </button>
+          
+          <div className="text-xs text-white/50 text-center">
+            {language === 'ru' 
+              ? `Сумма: ${amount} сом`
+              : `Amount: ${amount} KGS`}
+          </div>
+          <div className="text-xs text-white/40 text-center">
+            {language === 'ru' 
+              ? 'Invoice откроется внутри Telegram'
+              : 'Invoice will open inside Telegram'}
+          </div>
         </div>
       )}
 
