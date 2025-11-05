@@ -88,50 +88,53 @@ export default function DepositStep3() {
     }
   }
 
-  const translations = {
-    ru: {
-      title: 'Пополнение - Шаг 3',
-      subtitle: 'Введите сумму',
-      instruction: 'Введите сумму пополнения',
-      placeholder: paymentType === 'crypto' ? 'Введите сумму в долларах' : 'Введите сумму',
-      limits: paymentType === 'crypto' ? 'От 1 до 1000 долларов' : 'От 35 до 100000 сом',
-      currency: paymentType === 'crypto' ? 'долларов' : 'сом',
-      next: 'Далее',
-      back: 'Назад'
-    },
-    en: {
-      title: 'Deposit - Step 3',
-      subtitle: 'Enter amount',
-      instruction: 'Enter deposit amount',
-      placeholder: paymentType === 'crypto' ? 'Enter amount in dollars' : 'Enter amount',
-      limits: paymentType === 'crypto' ? 'From $1 to $1000' : 'From 35 to 100000 som',
-      currency: paymentType === 'crypto' ? 'dollars' : 'som',
-      next: 'Next',
-      back: 'Back'
-    },
-    ky: {
-      title: 'Толтуруу - 3-чү кадам',
-      subtitle: 'Сумманы киргизиңиз',
-      instruction: 'Толтуруу суммасын киргизиңиз',
-      placeholder: paymentType === 'crypto' ? 'Доллар суммасын киргизиңиз' : 'Сумма киргизиңиз',
-      limits: paymentType === 'crypto' ? '1 доллардан 1000 долларга чейин' : '35дөн 100000 сом чейин',
-      currency: paymentType === 'crypto' ? 'доллар' : 'сом',
-      next: 'Кийинки',
-      back: 'Артка'
-    },
-    uz: {
-      title: 'To\'ldirish - 3-qadam',
-      subtitle: 'Summani kiriting',
-      instruction: 'To\'ldirish summasini kiriting',
-      placeholder: paymentType === 'crypto' ? 'Dollar summasini kiriting' : 'Summa kiriting',
-      limits: paymentType === 'crypto' ? '1 dollardan 1000 dollargacha' : '35 dan 100000 som gacha',
-      currency: paymentType === 'crypto' ? 'dollar' : 'som',
-      next: 'Keyingi',
-      back: 'Orqaga'
+  const getTranslations = () => {
+    const base = {
+      ru: {
+        title: 'Пополнение - Шаг 3',
+        subtitle: 'Введите сумму',
+        instruction: 'Введите сумму пополнения',
+        placeholder: paymentType === 'crypto' ? 'Введите сумму в долларах' : 'Введите сумму',
+        limits: paymentType === 'crypto' ? 'От 1 до 1000 долларов' : 'От 35 до 100000 сом',
+        currency: paymentType === 'crypto' ? 'долларов' : 'сом',
+        next: 'Далее',
+        back: 'Назад'
+      },
+      en: {
+        title: 'Deposit - Step 3',
+        subtitle: 'Enter amount',
+        instruction: 'Enter deposit amount',
+        placeholder: paymentType === 'crypto' ? 'Enter amount in dollars' : 'Enter amount',
+        limits: paymentType === 'crypto' ? 'From $1 to $1000' : 'From 35 to 100000 som',
+        currency: paymentType === 'crypto' ? 'dollars' : 'som',
+        next: 'Next',
+        back: 'Back'
+      },
+      ky: {
+        title: 'Толтуруу - 3-чү кадам',
+        subtitle: 'Сумманы киргизиңиз',
+        instruction: 'Толтуруу суммасын киргизиңиз',
+        placeholder: paymentType === 'crypto' ? 'Доллар суммасын киргизиңиз' : 'Сумма киргизиңиз',
+        limits: paymentType === 'crypto' ? '1 доллардан 1000 долларга чейин' : '35дөн 100000 сом чейин',
+        currency: paymentType === 'crypto' ? 'доллар' : 'сом',
+        next: 'Кийинки',
+        back: 'Артка'
+      },
+      uz: {
+        title: 'To\'ldirish - 3-qadam',
+        subtitle: 'Summani kiriting',
+        instruction: 'To\'ldirish summasini kiriting',
+        placeholder: paymentType === 'crypto' ? 'Dollar summasini kiriting' : 'Summa kiriting',
+        limits: paymentType === 'crypto' ? '1 dollardan 1000 dollargacha' : '35 dan 100000 som gacha',
+        currency: paymentType === 'crypto' ? 'dollar' : 'som',
+        next: 'Keyingi',
+        back: 'Orqaga'
+      }
     }
+    return base[language as keyof typeof base] || base.ru
   }
 
-  const t = translations[language as keyof typeof translations] || translations.ru
+  const t = getTranslations()
 
   return (
     <PageTransition direction="backward">
