@@ -12,12 +12,26 @@ from datetime import datetime, timezone
 
 class MelbetDeposit:
     def __init__(self):
-        # Данные для Melbet API (нужно получить у менеджера)
-        self.hash_key = "fcd5fde906d55505bb5c7153a14631bb87f71ac4206d9b6f45bcdb97583fc4d7"
-        self.cashierpass = "LxhE5uQ2"
-        self.login = "bakhtark"
+        # Данные для Melbet API (обновлено 05.11.2025)
+        # Пробуем вариант со старыми данными (bakhtark), так как новые не работают
+        self.hash_key = "5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1"
+        self.cashierpass = "ScgOQgUzZs"  # Старый cashierpass
+        self.login = "bakhtark"  # Старый login
         self.cashdesk_id = "1350588"
         self.base_url = "https://partners.servcul.com/CashdeskBotAPI"
+        
+        # Альтернативные варианты (закомментированы):
+        # Вариант 1: Новый login + новый cashierpass
+        # self.login = "1180846111"
+        # self.cashierpass = "Eldiyar.07"
+        
+        # Вариант 2: Новый login + старый cashierpass
+        # self.login = "1180846111"
+        # self.cashierpass = "ScgOQgUzZs"
+        
+        # Вариант 3: Старый login + новый cashierpass
+        # self.login = "bakhtark"
+        # self.cashierpass = "Eldiyar.07"
     
     def get_timestamp(self):
         """Получить текущее время в UTC формате"""
@@ -106,7 +120,24 @@ class MelbetDeposit:
         confirm = self.generate_confirm(self.cashdesk_id, self.hash_key)
         
         url = f"{self.base_url}/Cashdesk/{self.cashdesk_id}/Balance?confirm={confirm}&dt={dt}"
-        headers = {'sign': signature}
+        
+        # Пробуем с Basic Auth (как в melbet_client.py)
+        import base64
+        auth_string = f"{self.login}:{self.cashierpass}"
+        auth_bytes = auth_string.encode('ascii')
+        auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+        auth_header = f"Basic {auth_b64}"
+        
+        headers = {
+            'sign': signature,
+            'Authorization': auth_header
+        }
+        
+        print(f"🔑 Используемые данные:")
+        print(f"   Login: {self.login}")
+        print(f"   Cashdesk ID: {self.cashdesk_id}")
+        print(f"   Hash: {self.hash_key[:20]}...")
+        print(f"   URL: {url}")
         
         try:
             response = requests.get(url, headers=headers, timeout=30)
