@@ -21,11 +21,11 @@ export default function LanguageSelector() {
   const currentLang = languages.find(lang => lang.code === currentLanguage)
 
   return (
-    <div className="relative" style={{ zIndex: 99999, position: 'relative' }}>
+    <div className="relative" style={{ zIndex: 99999 }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="btn btn-ghost text-sm flex items-center gap-2"
-        style={{ zIndex: 99999, position: 'relative' }}
+        className="bg-black/20 backdrop-blur border border-white/20 rounded-lg px-3 py-2 text-sm flex items-center gap-2 text-white hover:bg-black/30 transition-all"
+        style={{ zIndex: 99999 }}
       >
         <span>{currentLang?.flag}</span>
         <span>{currentLang?.name}</span>
