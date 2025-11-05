@@ -80,7 +80,16 @@ async function getCashdeskBalance(
     const sign = crypto.createHash('sha256').update(combined).digest('hex')
 
     const url = `https://partners.servcul.com/CashdeskBotAPI/Cashdesk/${cfg.cashdeskid}/Balance?confirm=${confirm}&dt=${formattedDt}`
-    const headers = { sign }
+    
+    // Добавляем Basic Auth (как в melbet_client.py)
+    const authString = `${cfg.login}:${cfg.cashierpass}`
+    const authBase64 = Buffer.from(authString).toString('base64')
+    const authHeader = `Basic ${authBase64}`
+    
+    const headers = {
+      sign,
+      Authorization: authHeader
+    }
 
     const response = await fetch(url, { headers, method: 'GET' })
 
