@@ -6,38 +6,71 @@ import QuickAmounts from '../../../components/QuickAmounts'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 
+// Примерный курс USD/KGS (можно обновить или получать через API)
+const USD_TO_KGS_RATE = 95
+
 export default function DepositStep3() {
   const [amount, setAmount] = useState('')
+  const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
   const { language } = useLanguage()
-    const router = useRouter()
+  const router = useRouter()
 
   useEffect(() => {
     // Проверяем, что пользователь прошел предыдущие шаги
     const bookmaker = localStorage.getItem('deposit_bookmaker')
     const userId = localStorage.getItem('deposit_user_id')
+    const savedPaymentType = localStorage.getItem('deposit_payment_type') as 'bank' | 'crypto' || 'bank'
+    
     if (!bookmaker || !userId) {
       router.push('/deposit/step1')
+      return
     }
+    
+    setPaymentType(savedPaymentType)
   }, [router])
+
+  // Конвертация USD в KGS
+  const usdToKgs = (usd: number) => usd * USD_TO_KGS_RATE
+  
+  // Конвертация KGS в USD
+  const kgsToUsd = (kgs: number) => kgs / USD_TO_KGS_RATE
 
   const handleNext = () => {
     const numAmount = parseFloat(amount)
-    if (!amount.trim() || isNaN(numAmount)) {
-      alert('Введите корректную сумму')
+    if (!amount.trim() || isNaN(numAmount) || numAmount <= 0) {
+      alert(paymentType === 'crypto' ? 'Введите корректную сумму в долларах' : 'Введите корректную сумму')
       return
     }
     
-    if (numAmount < 35 || numAmount > 100000) {
-      alert('Сумма должна быть от 35 до 100000 сом')
-      return
+    if (paymentType === 'crypto') {
+      // Для крипты: валидация в долларах (от $1 до $1000)
+      if (numAmount < 1 || numAmount > 1000) {
+        alert('Сумма должна быть от 1 до 1000 долларов')
+        return
+      }
+      
+      // Конвертируем доллары в сомы для сохранения
+      const amountInKgs = usdToKgs(numAmount)
+      // Добавляем случайные копейки к сумме (1-99 копеек)
+      const randomKopecks = Math.floor(Math.random() * 99) + 1
+      const amountWithKopecks = amountInKgs + (randomKopecks / 100)
+      
+      // Сохраняем сумму в сомах (для совместимости с существующим кодом)
+      localStorage.setItem('deposit_amount', amountWithKopecks.toString())
+    } else {
+      // Для банковских переводов: валидация в сомах
+      if (numAmount < 35 || numAmount > 100000) {
+        alert('Сумма должна быть от 35 до 100000 сом')
+        return
+      }
+      
+      // Добавляем случайные копейки к сумме (1-99 копеек)
+      const randomKopecks = Math.floor(Math.random() * 99) + 1
+      const amountWithKopecks = numAmount + (randomKopecks / 100)
+      
+      // Сохраняем сумму с копейками
+      localStorage.setItem('deposit_amount', amountWithKopecks.toString())
     }
-    
-    // Добавляем случайные копейки к сумме (1-99 копеек)
-    const randomKopecks = Math.floor(Math.random() * 99) + 1
-    const amountWithKopecks = numAmount + (randomKopecks / 100)
-    
-    // Сохраняем сумму с копейками
-    localStorage.setItem('deposit_amount', amountWithKopecks.toString())
     
     // Переходим к оплате (step4 теперь страница оплаты)
     router.push('/deposit/step4')
@@ -60,8 +93,9 @@ export default function DepositStep3() {
       title: 'Пополнение - Шаг 3',
       subtitle: 'Введите сумму',
       instruction: 'Введите сумму пополнения',
-      placeholder: 'Введите сумму',
-      limits: 'От 35 до 100000 сом',
+      placeholder: paymentType === 'crypto' ? 'Введите сумму в долларах' : 'Введите сумму',
+      limits: paymentType === 'crypto' ? 'От 1 до 1000 долларов' : 'От 35 до 100000 сом',
+      currency: paymentType === 'crypto' ? 'долларов' : 'сом',
       next: 'Далее',
       back: 'Назад'
     },
@@ -69,8 +103,9 @@ export default function DepositStep3() {
       title: 'Deposit - Step 3',
       subtitle: 'Enter amount',
       instruction: 'Enter deposit amount',
-      placeholder: 'Enter amount',
-      limits: 'From 35 to 100000 som',
+      placeholder: paymentType === 'crypto' ? 'Enter amount in dollars' : 'Enter amount',
+      limits: paymentType === 'crypto' ? 'From $1 to $1000' : 'From 35 to 100000 som',
+      currency: paymentType === 'crypto' ? 'dollars' : 'som',
       next: 'Next',
       back: 'Back'
     },
@@ -78,8 +113,9 @@ export default function DepositStep3() {
       title: 'Толтуруу - 3-чү кадам',
       subtitle: 'Сумманы киргизиңиз',
       instruction: 'Толтуруу суммасын киргизиңиз',
-      placeholder: 'Сумма киргизиңиз',
-      limits: '35дөн 100000 сом чейин',
+      placeholder: paymentType === 'crypto' ? 'Доллар суммасын киргизиңиз' : 'Сумма киргизиңиз',
+      limits: paymentType === 'crypto' ? '1 доллардан 1000 долларга чейин' : '35дөн 100000 сом чейин',
+      currency: paymentType === 'crypto' ? 'доллар' : 'сом',
       next: 'Кийинки',
       back: 'Артка'
     },
@@ -87,8 +123,9 @@ export default function DepositStep3() {
       title: 'To\'ldirish - 3-qadam',
       subtitle: 'Summani kiriting',
       instruction: 'To\'ldirish summasini kiriting',
-      placeholder: 'Summa kiriting',
-      limits: '35 dan 100000 som gacha',
+      placeholder: paymentType === 'crypto' ? 'Dollar summasini kiriting' : 'Summa kiriting',
+      limits: paymentType === 'crypto' ? '1 dollardan 1000 dollargacha' : '35 dan 100000 som gacha',
+      currency: paymentType === 'crypto' ? 'dollar' : 'som',
       next: 'Keyingi',
       back: 'Orqaga'
     }
@@ -124,8 +161,9 @@ export default function DepositStep3() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder={t.placeholder}
-                min="35"
-                max="100000"
+                min={paymentType === 'crypto' ? '1' : '35'}
+                max={paymentType === 'crypto' ? '1000' : '100000'}
+                step="0.01"
                 style={{'MozAppearance': 'textfield'}}
               />
               <style jsx>{`
@@ -141,7 +179,11 @@ export default function DepositStep3() {
               <p className="text-sm text-white/70 mt-1">{t.limits}</p>
             </div>
             
-            <QuickAmounts onPick={(value) => setAmount(value.toString())} selected={amount} />
+            <QuickAmounts 
+              onPick={(value) => setAmount(value.toString())} 
+              selected={amount} 
+              currency={paymentType === 'crypto' ? 'usd' : 'kgs'}
+            />
           </div>
           
           <div className="flex gap-2 slide-in-right delay-400">
