@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createInvoice } from '@/lib/crypto-pay'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    // Проверка авторизации (можно сделать публичным для клиентской части)
-    // const session = await getServerSession(authOptions)
-    // if (!session) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    // }
+    // Публичный endpoint для клиентской части
 
     const body = await request.json()
     const { amount, description, payload, currency_type = 'crypto', asset = 'USDT', expires_in } = body
