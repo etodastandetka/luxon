@@ -472,20 +472,8 @@ export default function DepositStep4() {
       
       console.log('✅ Таймер остановлен после отправки заявки')
       
-      // Уведомляем пользователя
-      showAlert({
-        type: 'success',
-        title: language === 'ru' ? 'Заявка отправлена!' : 'Request submitted!',
-        message: language === 'ru'
-          ? 'Мы проверим вашу оплату и зачислим средства в течение 5-10 минут.\n\nВы получите уведомление, когда пополнение будет выполнено.'
-          : 'We will verify your payment and credit funds within 5-10 minutes.\n\nYou will receive a notification when the deposit is completed.',
-        autoClose: 3000
-      })
-      
-      // Перенаправляем на главную страницу
-      setTimeout(() => {
-        router.push('/')
-      }, 3000)
+      // Перенаправляем на страницу ожидания
+      router.push('/deposit/waiting')
     } catch (e) {
       console.error(e)
       showAlert({
