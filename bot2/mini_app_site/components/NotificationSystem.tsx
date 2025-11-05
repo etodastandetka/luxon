@@ -195,12 +195,8 @@ export default function NotificationSystem() {
     <>
       {/* Контейнер для языкового селектора и уведомлений */}
       <div 
-        className="fixed top-4 right-4 flex items-center gap-2 pointer-events-none"
+        className="fixed-header-controls flex items-center gap-2 pointer-events-none"
         style={{ 
-          zIndex: 99999, 
-          position: 'fixed',
-          top: '1rem',
-          right: '1rem',
           willChange: 'transform'
         }}
       >
@@ -253,13 +249,9 @@ export default function NotificationSystem() {
             onClick={() => setIsVisible(false)}
           />
           <div 
-            className="fixed top-14 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-xl p-2.5 w-68 max-h-72 overflow-y-auto shadow-2xl"
+            className="fixed-notification-list bg-black/20 backdrop-blur border border-white/20 rounded-xl p-2.5 w-68 max-h-72 overflow-y-auto shadow-2xl"
             style={{ 
-              zIndex: 99999, 
-              position: 'fixed', 
               width: '280px',
-              top: '3.5rem',
-              right: '1rem',
               willChange: 'transform'
             }}
             onClick={(e) => e.stopPropagation()}

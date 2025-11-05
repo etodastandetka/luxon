@@ -69,7 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
       </head>
-      <body>
+      <body style={{ position: 'relative' }}>
         <LanguageProvider>
           <TelegramInit />
           <BlockedChecker>

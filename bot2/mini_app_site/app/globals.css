@@ -42,6 +42,28 @@ body::before {
   50% { opacity: 0.8; }
 }
 
+/* Фиксированное позиционирование для языкового селектора и уведомлений */
+.fixed-header-controls {
+  position: fixed !important;
+  top: 1rem !important;
+  right: 1rem !important;
+  z-index: 99999 !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.fixed-notification-list {
+  position: fixed !important;
+  top: 3.5rem !important;
+  right: 1rem !important;
+  z-index: 99999 !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+}
+
 .container { @apply max-w-md mx-auto px-4; }
 
 .card { 
