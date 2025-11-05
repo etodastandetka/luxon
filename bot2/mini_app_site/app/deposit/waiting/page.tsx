@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
-import LanguageSelector from '../../../components/LanguageSelector'
 import PageTransition from '../../../components/PageTransition'
 
 export default function DepositWaitingPage() {
@@ -177,10 +176,6 @@ export default function DepositWaitingPage() {
   return (
     <PageTransition direction="forward">
       <div className="min-h-screen bg-gradient-to-b from-green-950 to-green-900 flex flex-col items-center justify-center p-4">
-        {/* Языковой селектор */}
-        <div className="absolute top-4 right-4">
-          <LanguageSelector />
-        </div>
 
         {status === 'waiting' && (
           <div className="text-center space-y-6 max-w-md">

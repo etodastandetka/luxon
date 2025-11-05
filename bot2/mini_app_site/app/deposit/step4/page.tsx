@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import BankButtons from '../../../components/BankButtons'
-import LanguageSelector from '../../../components/LanguageSelector'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getTelegramUser, syncWithBot, notifyUser } from '../../../utils/telegram'
@@ -1008,9 +1007,6 @@ export default function DepositStep4() {
       <div className="text-center space-y-2 fade-in">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold text-white">{t.title}</h1>
-          <div className="scale-75">
-            <LanguageSelector />
-          </div>
         </div>
         <p className="text-sm text-white/70">{t.subtitle}</p>
       </div>
