@@ -23,6 +23,7 @@ export default function NotificationSystem() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isVisible, setIsVisible] = useState(false)
   const [lastTransactions, setLastTransactions] = useState<any[]>([])
+  const [languageSelectorOpen, setLanguageSelectorOpen] = useState(false)
 
   // Загружаем последние операции
   const loadRecentTransactions = async () => {
@@ -199,12 +200,29 @@ export default function NotificationSystem() {
       >
         {/* Языковой селектор */}
         <div style={{ zIndex: 99999, pointerEvents: 'auto' }}>
-          <LanguageSelector />
+          <LanguageSelector 
+            onOpenChange={(isOpen) => {
+              setLanguageSelectorOpen(isOpen)
+              if (isOpen) {
+                // Закрываем уведомления при открытии языкового селектора
+                setIsVisible(false)
+              }
+            }}
+          />
         </div>
 
         {/* Кнопка уведомлений */}
         <button
-          onClick={() => setIsVisible(!isVisible)}
+          onClick={() => {
+            const newVisibility = !isVisible
+            setIsVisible(newVisibility)
+            if (newVisibility) {
+              // Закрываем языковой селектор через небольшой таймаут, чтобы дать ему время закрыться
+              setTimeout(() => {
+                setLanguageSelectorOpen(false)
+              }, 100)
+            }
+          }}
           className="bg-black/20 backdrop-blur border border-white/20 rounded-full hover:bg-black/30 transition-all relative flex-shrink-0 pointer-events-auto"
           style={{ zIndex: 99999, width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}
         >
@@ -221,90 +239,89 @@ export default function NotificationSystem() {
 
       {/* Список уведомлений */}
       {isVisible && (
-        <div className="fixed top-16 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-xl p-4 w-80 max-h-96 overflow-y-auto shadow-2xl"
-          style={{ zIndex: 99999, position: 'fixed' }}
-        >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-white font-semibold">Уведомления</h3>
+        <>
+          {/* Overlay для закрытия при клике вне */}
+          <div 
+            className="fixed inset-0" 
+            style={{ zIndex: 99998 }}
+            onClick={() => setIsVisible(false)}
+          />
+          <div className="fixed top-14 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-xl p-2.5 w-68 max-h-72 overflow-y-auto shadow-2xl"
+            style={{ zIndex: 99999, position: 'fixed', width: '280px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-white font-semibold text-sm">Уведомления</h3>
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-green-400 text-sm hover:text-green-300"
+                className="text-green-400 text-xs hover:text-green-300"
               >
-                Отметить все как прочитанные
+                Прочитать все
               </button>
             )}
           </div>
 
           {notifications.length === 0 ? (
-            <div className="text-white/70 text-center py-4">
+            <div className="text-white/70 text-center py-3 text-sm">
               Нет уведомлений
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {notifications.map(notification => (
                 <div
                   key={notification.id}
-                  className={`p-3 rounded-lg border transition-all ${
+                  className={`p-2 rounded-lg border transition-all ${
                     notification.read 
                       ? 'bg-white/5 border-white/10' 
                       : 'bg-green-500/10 border-green-500/30'
                   }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className={`w-2 h-2 rounded-full ${
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                           notification.type === 'success' ? 'bg-green-500' :
                           notification.type === 'error' ? 'bg-red-500' :
                           notification.type === 'warning' ? 'bg-yellow-500' :
                           'bg-blue-500'
                         }`} />
-                        <span className="text-white font-medium text-sm">
+                        <span className="text-white font-medium text-xs truncate">
                           {notification.title}
                         </span>
                       </div>
-                      <p className="text-white/80 text-sm">
+                      <p className="text-white/80 text-xs line-clamp-2">
                         {notification.message}
                       </p>
                       {notification.transaction && (
-                        <div className="mt-2 pt-2 border-t border-white/10">
-                          <div className="flex items-center justify-between text-xs">
+                        <div className="mt-1.5 pt-1.5 border-t border-white/10">
+                          <div className="flex items-center justify-between text-[10px]">
                             <span className="text-white/60">
                               {notification.transaction.type === 'deposit' ? 'Пополнение' : 'Вывод'}
                             </span>
                             <span className={`font-semibold ${
                               notification.transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
                             }`}>
-                              {notification.transaction.type === 'deposit' ? '+' : '-'}{notification.transaction.amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} сом
+                              {notification.transaction.type === 'deposit' ? '+' : '-'}{notification.transaction.amount.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} сом
                             </span>
-                          </div>
-                          <div className="text-white/50 text-xs mt-1">
-                            Статус: {notification.transaction.status}
                           </div>
                         </div>
                       )}
-                      <p className="text-white/50 text-xs mt-1">
-                        {notification.timestamp.toLocaleString('ru-RU', { 
-                          day: '2-digit', 
-                          month: '2-digit', 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </p>
                     </div>
-                    <div className="flex gap-1 ml-2">
+                    <div className="flex gap-1 ml-1 flex-shrink-0">
                       {!notification.read && (
                         <button
                           onClick={() => markAsRead(notification.id)}
-                          className="text-green-400 hover:text-green-300 text-xs"
+                          className="text-green-400 hover:text-green-300 text-xs w-4 h-4 flex items-center justify-center"
+                          title="Прочитано"
                         >
                           ✓
                         </button>
                       )}
                       <button
                         onClick={() => removeNotification(notification.id)}
-                        className="text-red-400 hover:text-red-300 text-xs"
+                        className="text-red-400 hover:text-red-300 text-xs w-4 h-4 flex items-center justify-center"
+                        title="Удалить"
                       >
                         ×
                       </button>
@@ -314,7 +331,8 @@ export default function NotificationSystem() {
               ))}
             </div>
           )}
-        </div>
+          </div>
+        </>
       )}
     </>
   )
