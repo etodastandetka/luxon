@@ -181,6 +181,13 @@ export default function DepositStep4() {
         if (data.success && data.data) {
           setCryptoInvoice(data.data)
           console.log('✅ Crypto invoice created:', data.data)
+          
+          // После создания invoice автоматически создаем заявку
+          try {
+            await createDepositRequest()
+          } catch (error) {
+            console.error('❌ Error creating deposit request after invoice:', error)
+          }
         }
       } else {
         console.error('❌ Failed to create crypto invoice')
@@ -201,8 +208,13 @@ export default function DepositStep4() {
       }
       
       if (paymentType === 'crypto') {
-        // Создаем крипто invoice
-        createCryptoInvoice()
+        // Создаем крипто invoice и автоматически создаем заявку
+        createCryptoInvoice().then(() => {
+          // После создания invoice создаем заявку
+          if (cryptoInvoice) {
+            createDepositRequest()
+          }
+        })
       } else {
         // Генерируем QR код для банковского перевода
         generateQRCode()
@@ -211,8 +223,13 @@ export default function DepositStep4() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookmaker, playerId, amount, paymentType])
 
-  // Таймер обратного отсчета и проверка почты
+  // Таймер обратного отсчета и проверка почты (только для банковских переводов)
   useEffect(() => {
+    // Для крипты не нужен таймер
+    if (paymentType === 'crypto') {
+      return
+    }
+    
     if (timeLeft > 0 && !isPaid) {
       const timer = setTimeout(() => {
         // Вычисляем оставшееся время от сохраненного времени начала
@@ -245,7 +262,42 @@ export default function DepositStep4() {
       // Время истекло - автоматически отклоняем заявку
       handleTimeExpired()
     }
-  }, [timeLeft, isPaid])
+  }, [timeLeft, isPaid, paymentType])
+
+  // Проверка статуса крипто-платежа
+  useEffect(() => {
+    if (paymentType === 'crypto' && cryptoInvoice && !isPaid) {
+      const checkCryptoStatus = async () => {
+        try {
+          const requestId = localStorage.getItem('deposit_request_id')
+          if (!requestId) return
+
+          const apiUrl = process.env.NODE_ENV === 'development' 
+            ? 'http://localhost:3001' 
+            : 'https://xendro.pro'
+
+          const response = await fetch(`${apiUrl}/api/requests/${requestId}`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.data && data.data.status) {
+              const status = data.data.status
+              // Если платеж оплачен, перенаправляем на waiting страницу
+              if (status === 'completed' || status === 'auto_completed' || status === 'autodeposit_success') {
+                setIsPaid(true)
+                router.push('/deposit/waiting')
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка проверки статуса крипто-платежа:', error)
+        }
+      }
+
+      // Проверяем каждые 5 секунд
+      const interval = setInterval(checkCryptoStatus, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [paymentType, cryptoInvoice, isPaid, router])
 
   // Функция обработки истечения времени
   const handleTimeExpired = async () => {
@@ -485,8 +537,13 @@ export default function DepositStep4() {
     }
   }
 
-  // Кнопка "Я оплатил" — отправляем заявку в админку только по нажатию
+  // Кнопка "Я оплатил" — отправляем заявку в админку только по нажатию (только для банковских переводов)
   const handleIPaid = async () => {
+    // Для крипты заявка создается автоматически при создании invoice
+    if (paymentType === 'crypto') {
+      return
+    }
+
     // Проверяем, требуется ли фото чека
     if (requireReceiptPhoto && !receiptPhoto) {
       showAlert({
@@ -1092,13 +1149,52 @@ export default function DepositStep4() {
         <p className="text-sm text-white/70">{t.subtitle}</p>
       </div>
 
-      {/* Таймер */}
-      <div className="card text-center pulse">
-        <div className="text-3xl font-bold text-red-500 mb-2">
-          {formatTime(timeLeft)}
+      {/* Таймер (только для банковских переводов) */}
+      {paymentType === 'bank' && (
+        <div className="card text-center pulse">
+          <div className="text-3xl font-bold text-red-500 mb-2">
+            {formatTime(timeLeft)}
+          </div>
+          <p className="text-sm text-white/70">{t.timer}</p>
         </div>
-        <p className="text-sm text-white/70">{t.timer}</p>
-      </div>
+      )}
+
+      {/* Индикатор загрузки крипто invoice */}
+      {paymentType === 'crypto' && cryptoLoading && (
+        <div className="card text-center">
+          <div className="text-white/70">Создание счета на оплату...</div>
+        </div>
+      )}
+
+      {/* Кнопка оплаты через Crypto Bot */}
+      {paymentType === 'crypto' && cryptoInvoice && !isPaid && (
+        <div className="card space-y-4">
+          <h2 className="text-lg font-semibold text-white text-center">
+            {language === 'ru' ? 'Оплата через Crypto Bot' : 'Pay via Crypto Bot'}
+          </h2>
+          <p className="text-sm text-white/70 text-center">
+            {language === 'ru' 
+              ? 'Нажмите на кнопку ниже, чтобы открыть Crypto Bot и оплатить счет'
+              : 'Click the button below to open Crypto Bot and pay the invoice'}
+          </p>
+          <a
+            href={cryptoInvoice.web_app_invoice_url || cryptoInvoice.bot_invoice_url || cryptoInvoice.mini_app_invoice_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {language === 'ru' ? 'Оплатить через Crypto Bot' : 'Pay via Crypto Bot'}
+          </a>
+          <div className="text-xs text-white/50 text-center">
+            {language === 'ru' 
+              ? `Сумма: ${amount} сом (USDT)`
+              : `Amount: ${amount} KGS (USDT)`}
+          </div>
+        </div>
+      )}
 
       {/* Информация о заявке */}
       <div className="card space-y-3 slide-in-left delay-100">
@@ -1121,17 +1217,19 @@ export default function DepositStep4() {
 
 
 
-      {/* Выбор банка */}
-      <div className="card space-y-4 slide-in-right delay-300">
-        <h2 className="text-lg font-semibold text-white">{t.selectBank}</h2>
-        <BankButtons 
-          onPick={handleBankSelect} 
-          selected={bank} 
-          paymentUrl={paymentUrl}
-          allBankUrls={qrData?.all_bank_urls}
-          enabledBanks={qrData?.settings?.enabled_banks}
-        />
-      </div>
+      {/* Выбор банка (только для банковских переводов) */}
+      {paymentType === 'bank' && (
+        <div className="card space-y-4 slide-in-right delay-300">
+          <h2 className="text-lg font-semibold text-white">{t.selectBank}</h2>
+          <BankButtons 
+            onPick={handleBankSelect} 
+            selected={bank} 
+            paymentUrl={paymentUrl}
+            allBankUrls={qrData?.all_bank_urls}
+            enabledBanks={qrData?.settings?.enabled_banks}
+          />
+        </div>
+      )}
 
       {/* Статус оплаты */}
       {isPaid && (
@@ -1145,8 +1243,8 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Загрузка фото чека (если требуется) */}
-      {!isPaid && requireReceiptPhoto && (
+      {/* Загрузка фото чека (если требуется, только для банковских переводов) */}
+      {!isPaid && requireReceiptPhoto && paymentType === 'bank' && (
         <div className="card space-y-3">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">
@@ -1224,8 +1322,8 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Большая кнопка "Я оплатил" */}
-      {!isPaid && (
+      {/* Большая кнопка "Я оплатил" (только для банковских переводов) */}
+      {!isPaid && paymentType === 'bank' && (
         <button
           onClick={handleIPaid}
           className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
@@ -1237,7 +1335,7 @@ export default function DepositStep4() {
         </button>
       )}
 
-      {/* Кнопка "Назад" сразу под "Я оплатил" */}
+      {/* Кнопка "Назад" */}
       {!isPaid && (
         <button
           onClick={handleBack}
@@ -1247,20 +1345,63 @@ export default function DepositStep4() {
         </button>
       )}
 
-      {/* Инструкция */}
-      <div className="card space-y-4">
-        <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>
-        <div className="space-y-2">
-          {t.instructionSteps.map((step, index) => (
-            <div key={index} className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                {index + 1}
+      {/* Инструкция (только для банковских переводов) */}
+      {paymentType === 'bank' && (
+        <div className="card space-y-4">
+          <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>
+          <div className="space-y-2">
+            {t.instructionSteps.map((step, index) => (
+              <div key={index} className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                  {index + 1}
+                </div>
+                <p className="text-sm text-white/80 leading-relaxed">{step}</p>
               </div>
-              <p className="text-sm text-white/80 leading-relaxed">{step}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Инструкция для крипты */}
+      {paymentType === 'crypto' && cryptoInvoice && (
+        <div className="card space-y-4">
+          <h2 className="text-lg font-semibold text-white">
+            {language === 'ru' ? 'Как оплатить:' : 'How to pay:'}
+          </h2>
+          <div className="space-y-2">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                1
+              </div>
+              <p className="text-sm text-white/80 leading-relaxed">
+                {language === 'ru' 
+                  ? 'Нажмите на кнопку "Оплатить через Crypto Bot" выше'
+                  : 'Click the "Pay via Crypto Bot" button above'}
+              </p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                2
+              </div>
+              <p className="text-sm text-white/80 leading-relaxed">
+                {language === 'ru' 
+                  ? 'В открывшемся Crypto Bot подтвердите оплату'
+                  : 'In the opened Crypto Bot, confirm the payment'}
+              </p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                3
+              </div>
+              <p className="text-sm text-white/80 leading-relaxed">
+                {language === 'ru' 
+                  ? 'После оплаты средства будут автоматически зачислены на ваш счет'
+                  : 'After payment, funds will be automatically credited to your account'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Кастомный алерт */}
       {AlertComponent}
