@@ -20,7 +20,8 @@ export default function DepositWaitingPage() {
       successMessage: 'Ваш баланс пополнен!',
       error: 'Ошибка',
       errorMessage: 'Произошла ошибка при обработке платежа',
-      back: 'Назад'
+      back: 'На главную',
+      backHome: 'На главную'
     },
     en: {
       waiting: 'Waiting for confirmation',
@@ -29,7 +30,8 @@ export default function DepositWaitingPage() {
       successMessage: 'Your balance has been topped up!',
       error: 'Error',
       errorMessage: 'An error occurred while processing the payment',
-      back: 'Back'
+      back: 'Back',
+      backHome: 'Back to home'
     },
     ky: {
       waiting: 'Ырастоо күтүү',
@@ -38,7 +40,8 @@ export default function DepositWaitingPage() {
       successMessage: 'Балансыңыз толукталды!',
       error: 'Ката',
       errorMessage: 'Төлөмдү иштетүүдө ката кетти',
-      back: 'Артка'
+      back: 'Артка',
+      backHome: 'Башкы бетке'
     },
     uz: {
       waiting: 'Tasdiqlash kutilmoqda',
@@ -47,7 +50,8 @@ export default function DepositWaitingPage() {
       successMessage: 'Balansingiz to\'ldirildi!',
       error: 'Xatolik',
       errorMessage: 'To\'lovni qayta ishlashda xatolik yuz berdi',
-      back: 'Orqaga'
+      back: 'Orqaga',
+      backHome: 'Bosh sahifaga'
     }
   }
 
@@ -111,11 +115,6 @@ export default function DepositWaitingPage() {
           localStorage.removeItem('deposit_bookmaker')
           localStorage.removeItem('deposit_user_id')
           localStorage.removeItem('deposit_amount')
-          
-          // Перенаправляем на главную через 5 секунд
-          setTimeout(() => {
-            router.push('/')
-          }, 5000)
         } else if (['rejected', 'declined', 'failed'].includes(requestStatus)) {
           setStatus('error')
         }
@@ -255,9 +254,12 @@ export default function DepositWaitingPage() {
               <p className="text-white text-xl">{t.successMessage}</p>
             </div>
 
-            <p className="text-white/60 text-sm">
-              {language === 'ru' ? 'Перенаправление на главную страницу...' : 'Redirecting to home page...'}
-            </p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors"
+            >
+              {t.back}
+            </button>
           </div>
         )}
 
