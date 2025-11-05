@@ -84,7 +84,7 @@ export default function InstructionPage() {
     <main className="space-y-6">
       {/* Заголовок */}
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
+        <h1 className="text-2xl font-bold text-white pr-20">{t.title}</h1>
         <p className="text-sm text-white/70">{t.subtitle}</p>
         <div className="flex justify-center">
         </div>

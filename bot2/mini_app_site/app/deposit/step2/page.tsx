@@ -101,7 +101,7 @@ export default function DepositStep2() {
   return (
     <PageTransition direction="backward">
       <main className="space-y-4">
-        <div className="flex justify-between items-center fade-in">
+        <div className="fade-in pr-20">
           <h1 className="text-xl font-bold">{t.title}</h1>
         </div>
         

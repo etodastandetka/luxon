@@ -109,7 +109,7 @@ export default function WithdrawStep1() {
 
   return (
     <main className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="pr-20">
         <h1 className="text-xl font-bold">{t.title}</h1>
       </div>
       

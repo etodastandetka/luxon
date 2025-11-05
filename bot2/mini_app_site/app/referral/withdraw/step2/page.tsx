@@ -175,7 +175,7 @@ function ReferralWithdrawStep2Content() {
       <main className="space-y-6 min-h-screen flex flex-col p-4">
         {/* Заголовок */}
         <div className="text-center space-y-2">
-          <div className="flex justify-between items-center">
+          <div className="pr-20">
             <h1 className="text-xl font-bold text-white">{t.title}</h1>
             <div className="scale-75">
             </div>
