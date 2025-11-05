@@ -49,7 +49,11 @@ export default function DepositStep3() {
         return
       }
       
-      // Конвертируем доллары в сомы для сохранения
+      // Для крипты сохраняем сумму в долларах (для Crypto Bot API)
+      // Также сохраняем в сомах для совместимости с существующим кодом
+      localStorage.setItem('deposit_amount_usd', numAmount.toString())
+      
+      // Конвертируем доллары в сомы для внутреннего использования
       const amountInKgs = usdToKgs(numAmount)
       // Добавляем случайные копейки к сумме (1-99 копеек)
       const randomKopecks = Math.floor(Math.random() * 99) + 1
