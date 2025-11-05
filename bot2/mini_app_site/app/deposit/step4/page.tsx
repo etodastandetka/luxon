@@ -170,7 +170,7 @@ export default function DepositStep4() {
           amount: amount.toString(),
           asset: 'USDT',
           currency_type: 'crypto',
-          description: `Пополнение баланса ${bookmaker} - ID: ${playerId}`,
+          description: `Пополнение баланса ${bookmaker} - ID: ${playerId}\n\n⚠️ Рекомендуется выбрать сеть TRC20 (TRON) для оплаты`,
           payload: payload,
           expires_in: 3600 // 1 час
         })

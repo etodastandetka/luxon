@@ -15,11 +15,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаем invoice через Crypto Pay API
+    // Примечание: Crypto Bot API не позволяет указать сеть по умолчанию (TRC20/ERC20)
+    // Пользователь должен выбрать сеть вручную при оплате
+    // Рекомендуется выбрать TRC20 (TRON) для оплаты
+    const invoiceDescription = description || 'Пополнение баланса LUXON'
     const invoice = await createInvoice({
       asset,
       amount: amount.toString(),
       currency_type,
-      description: description || 'Пополнение баланса LUXON',
+      description: invoiceDescription,
       payload: payload || '',
       expires_in: expires_in || 3600, // 1 час по умолчанию
       paid_btn_name: 'callback',
