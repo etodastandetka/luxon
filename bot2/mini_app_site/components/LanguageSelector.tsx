@@ -24,12 +24,12 @@ export default function LanguageSelector() {
     <div className="relative" style={{ zIndex: 99999 }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-black/20 backdrop-blur border border-white/20 rounded-lg px-3 py-2 text-sm flex items-center gap-2 text-white hover:bg-black/30 transition-all"
-        style={{ zIndex: 99999 }}
+        className="bg-black/20 backdrop-blur border border-white/20 rounded-lg px-2 py-1.5 text-xs flex items-center gap-1 text-white hover:bg-black/30 transition-all whitespace-nowrap"
+        style={{ zIndex: 99999, minWidth: 'auto' }}
       >
-        <span>{currentLang?.flag}</span>
-        <span>{currentLang?.name}</span>
-        <span className="text-xs">▼</span>
+        <span className="text-sm leading-none">{currentLang?.flag}</span>
+        <span className="font-medium text-[11px] leading-none">{currentLang?.code.toUpperCase()}</span>
+        <span className="text-[9px] opacity-70 leading-none">▼</span>
       </button>
 
       {isOpen && (
