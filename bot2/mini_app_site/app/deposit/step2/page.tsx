@@ -1,7 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import LanguageSelector from '../../../components/LanguageSelector'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 
@@ -104,7 +103,6 @@ export default function DepositStep2() {
       <main className="space-y-4">
         <div className="flex justify-between items-center fade-in">
           <h1 className="text-xl font-bold">{t.title}</h1>
-          <LanguageSelector />
         </div>
         
         <div className="card space-y-4 slide-in-left delay-100">

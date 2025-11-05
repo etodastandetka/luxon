@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import BankButtons from '../../../components/BankButtons'
-import LanguageSelector from '../../../components/LanguageSelector'
 import { useLanguage } from '../../../components/LanguageContext'
 
 export default function WithdrawStep1() {
@@ -112,7 +111,6 @@ export default function WithdrawStep1() {
     <main className="space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold">{t.title}</h1>
-        <LanguageSelector />
       </div>
       
       <div className="card space-y-4">

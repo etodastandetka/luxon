@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import LanguageSelector from '../../../../components/LanguageSelector'
 import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
 
@@ -179,7 +178,6 @@ function ReferralWithdrawStep2Content() {
           <div className="flex justify-between items-center">
             <h1 className="text-xl font-bold text-white">{t.title}</h1>
             <div className="scale-75">
-              <LanguageSelector />
             </div>
           </div>
           <p className="text-sm text-white/70">{t.subtitle}</p>

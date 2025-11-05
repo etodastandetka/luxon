@@ -1,6 +1,5 @@
 "use client"
 import { useEffect, useState } from 'react'
-import LanguageSelector from '../components/LanguageSelector'
 import AnimatedHeader from '../components/AnimatedHeader'
 import LoadingScreen from '../components/LoadingScreen'
 import ServiceStatus from '../components/ServiceStatus'
@@ -111,9 +110,6 @@ export default function HomePage() {
             👋 {user.first_name} {user.last_name}
           </p>
         )}
-        <div className="flex justify-center scale-in delay-400">
-          <LanguageSelector />
-        </div>
       </div>
       
       {/* Основные действия */}

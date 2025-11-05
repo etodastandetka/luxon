@@ -1,6 +1,5 @@
 "use client"
 import { useState, useEffect } from 'react'
-import LanguageSelector from '../../components/LanguageSelector'
 import { useLanguage } from '../../components/LanguageContext'
 
 export default function InstructionPage() {
@@ -88,7 +87,6 @@ export default function InstructionPage() {
         <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         <p className="text-sm text-white/70">{t.subtitle}</p>
         <div className="flex justify-center">
-          <LanguageSelector />
         </div>
       </div>
 
