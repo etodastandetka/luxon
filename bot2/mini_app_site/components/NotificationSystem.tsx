@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { getTelegramWebApp, getTelegramUserId } from '../utils/telegram'
 import LanguageSelector from './LanguageSelector'
 
@@ -191,7 +192,18 @@ export default function NotificationSystem() {
 
   const unreadCount = notifications.filter(n => !n.read).length
 
-  return (
+  // Используем portal для рендеринга напрямую в body, чтобы избежать проблем с позиционированием
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return null
+  }
+
+  const headerControls = (
     <>
       {/* Контейнер для языкового селектора и уведомлений */}
       <div 
@@ -342,6 +354,8 @@ export default function NotificationSystem() {
       )}
     </>
   )
+
+  return createPortal(headerControls, document.body)
 }
 
 
