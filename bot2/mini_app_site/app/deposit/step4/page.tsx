@@ -973,7 +973,7 @@ export default function DepositStep4() {
       <PageTransition direction="backward">
         <main className="space-y-4 min-h-screen flex flex-col">
           <div className="text-center space-y-2 fade-in">
-            <div className="flex justify-between items-center">
+            <div className="pr-20">
               <h1 className="text-xl font-bold text-white">{t.title}</h1>
             </div>
             <p className="text-sm text-white/70">{t.subtitle}</p>
@@ -1002,7 +1002,7 @@ export default function DepositStep4() {
       <main className="space-y-4 min-h-screen flex flex-col">
       {/* Заголовок */}
       <div className="text-center space-y-2 fade-in">
-        <div className="flex justify-between items-center">
+        <div className="pr-20">
           <h1 className="text-xl font-bold text-white">{t.title}</h1>
         </div>
         <p className="text-sm text-white/70">{t.subtitle}</p>

@@ -79,7 +79,7 @@ export default function LanguagePage(){
 
   return (
     <main className="space-y-4">
-      <h1 className="text-xl font-bold">{t.title}</h1>
+      <h1 className="text-xl font-bold pr-20">{t.title}</h1>
       
       <section className="card space-y-3">
         <div className="text-white/80">{t.description}</div>

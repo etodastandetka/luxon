@@ -293,7 +293,7 @@ export default function HistoryPage(){
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">{t.title}</h1>
+          <h1 className="text-2xl font-bold text-white pr-20">{t.title}</h1>
         </div>
         <div className="flex justify-center">
         </div>
