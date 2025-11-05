@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
       telegram_first_name,
       telegram_last_name,
       receipt_photo, // base64 строка фото чека
+      payment_method, // 'bank' или 'crypto'
+      crypto_invoice_id, // ID крипто invoice
     } = body
 
     // Определяем user_id (пробуем разные варианты)
@@ -107,6 +109,17 @@ export async function POST(request: NextRequest) {
       bank
     })
 
+    // Если есть crypto_invoice_id, находим крипто-платеж и связываем его
+    let cryptoPaymentId: number | null = null
+    if (payment_method === 'crypto' && crypto_invoice_id) {
+      const cryptoPayment = await prisma.cryptoPayment.findUnique({
+        where: { invoice_id: crypto_invoice_id.toString() }
+      })
+      if (cryptoPayment) {
+        cryptoPaymentId = cryptoPayment.id
+      }
+    }
+
     const newRequest = await prisma.request.create({
       data: {
         userId: userIdBigInt,
@@ -121,8 +134,18 @@ export async function POST(request: NextRequest) {
         phone,
         status: 'pending',
         photoFileUrl: receipt_photo || null, // Сохраняем base64 фото чека
+        paymentMethod: payment_method || 'bank', // 'bank' или 'crypto'
+        cryptoPaymentId: cryptoPaymentId,
       },
     })
+    
+    // Если есть crypto_invoice_id, обновляем крипто-платеж с request_id
+    if (payment_method === 'crypto' && crypto_invoice_id) {
+      await prisma.cryptoPayment.updateMany({
+        where: { invoice_id: crypto_invoice_id.toString() },
+        data: { request_id: newRequest.id.toString() }
+      })
+    }
 
     console.log('✅ Payment API - Request created successfully:', {
       id: newRequest.id,

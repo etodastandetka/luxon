@@ -1,6 +1,6 @@
 "use client"
-
 import { useState } from 'react'
+import FixedHeaderControls from '../../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
@@ -45,6 +45,7 @@ export default function ReferralWithdrawStep1() {
   return (
     <PageTransition direction="forward">
       <main className="space-y-6 min-h-screen flex flex-col p-4">
+        <FixedHeaderControls />
         {/* Заголовок */}
         <div className="text-center space-y-2">
           <div className="pr-20">
@@ -106,4 +107,5 @@ export default function ReferralWithdrawStep1() {
     </PageTransition>
   )
 }
+
 

@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useLanguage } from '../../components/LanguageContext'
+import FixedHeaderControls from '../../components/FixedHeaderControls'
 import { getTelegramUserId } from '../../utils/telegram'
 
 interface Transaction {
@@ -285,6 +286,7 @@ export default function HistoryPage(){
 
   return (
     <main className="space-y-6">
+      <FixedHeaderControls />
       {/* Заголовок */}
       <div className="text-center space-y-3">
         <div className="flex items-center justify-center space-x-2 mb-2">
@@ -359,3 +361,4 @@ export default function HistoryPage(){
     </main>
   )
 }
+

@@ -1,5 +1,6 @@
 "use client"
 import { useLanguage } from '../../components/LanguageContext'
+import FixedHeaderControls from '../../components/FixedHeaderControls'
 
 export default function SupportPage() {
   const { language } = useLanguage()
@@ -85,6 +86,7 @@ export default function SupportPage() {
 
   return (
     <main className="space-y-6">
+      <FixedHeaderControls />
       {/* Заголовок */}
       <div className="text-center space-y-2">
         <h1 className="text-2xl font-bold text-white pr-20">{t.title}</h1>

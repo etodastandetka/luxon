@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
+import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import PageTransition from '../../../components/PageTransition'
@@ -81,7 +82,7 @@ export default function DepositWaitingPage() {
       }
     }, 5000)
 
-    return () => clearInterval(interval)
+      return () => clearInterval(interval)
   }, [requestId, status])
 
   const checkPaymentStatus = async () => {
@@ -176,6 +177,7 @@ export default function DepositWaitingPage() {
   return (
     <PageTransition direction="forward">
       <div className="min-h-screen bg-gradient-to-b from-green-950 to-green-900 flex flex-col items-center justify-center p-4">
+        <FixedHeaderControls />
 
         {status === 'waiting' && (
           <div className="text-center space-y-6 max-w-md">
@@ -333,4 +335,5 @@ export default function DepositWaitingPage() {
     </PageTransition>
   )
 }
+
 

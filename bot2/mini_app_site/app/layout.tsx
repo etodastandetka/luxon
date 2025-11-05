@@ -3,7 +3,6 @@
 import './globals.css'
 import TelegramInit from '../components/TelegramInit'
 import { LanguageProvider } from '../components/LanguageContext'
-import NotificationSystem from '../components/NotificationSystem'
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -77,7 +76,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </div>
           </BlockedChecker>
-          <NotificationSystem />
         </LanguageProvider>
       </body>
     </html>

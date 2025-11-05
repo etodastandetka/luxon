@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import AnimatedHeader from '../components/AnimatedHeader'
 import LoadingScreen from '../components/LoadingScreen'
 import ServiceStatus from '../components/ServiceStatus'
+import FixedHeaderControls from '../components/FixedHeaderControls'
 import { useLanguage } from '../components/LanguageContext'
 import { useBotSettings } from '../components/SettingsLoader'
 import { initTelegramWebApp, getTelegramUser, syncWithBot, TelegramUser } from '../utils/telegram'
@@ -95,6 +96,7 @@ export default function HomePage() {
 
   return (
     <main className="space-y-6">
+      <FixedHeaderControls />
       {/* Анимированный заголовок */}
       <AnimatedHeader />
       

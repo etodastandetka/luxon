@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
+import FixedHeaderControls from '../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import BankButtons from '../../../components/BankButtons'
 import { useLanguage } from '../../../components/LanguageContext'
@@ -109,6 +110,7 @@ export default function WithdrawStep1() {
 
   return (
     <main className="space-y-4">
+      <FixedHeaderControls />
       <div className="pr-20">
         <h1 className="text-xl font-bold">{t.title}</h1>
       </div>

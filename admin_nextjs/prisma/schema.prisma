@@ -81,11 +81,14 @@ model Request {
   photoFileUrl  String?   @map("photo_file_url") @db.Text
   bank          String?   @db.VarChar(100)
   phone         String?   @db.VarChar(20)
+  paymentMethod String?   @map("payment_method") @db.VarChar(20) // 'bank', 'crypto'
+  cryptoPaymentId Int?    @map("crypto_payment_id")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   processedAt   DateTime? @map("processed_at")
 
   incomingPayments IncomingPayment[]
+  cryptoPayment CryptoPayment? @relation(fields: [cryptoPaymentId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([status])
@@ -316,5 +319,32 @@ model ReferralWithdrawalRequest {
   @@index([status])
   @@index([userId])
   @@map("referral_withdrawal_requests")
+}
+
+// Crypto Payments
+model CryptoPayment {
+  id              Int       @id @default(autoincrement())
+  invoice_id      String    @unique @map("invoice_id") @db.VarChar(255)
+  hash            String    @db.VarChar(255)
+  amount          Decimal   @db.Decimal(12, 2)
+  asset           String    @db.VarChar(20) // USDT, TON, BTC, etc.
+  currency_type   String    @map("currency_type") @db.VarChar(10) // 'crypto' or 'fiat'
+  status          String    @default("pending") @db.VarChar(20) // 'pending', 'paid', 'expired'
+  paid_at         DateTime? @map("paid_at")
+  request_id      String?   @map("request_id") @db.VarChar(255)
+  telegram_user_id String?  @map("telegram_user_id") @db.VarChar(255)
+  payload         String?  @db.Text
+  fee_amount      Decimal?  @map("fee_amount") @db.Decimal(12, 2)
+  fee_asset       String?   @map("fee_asset") @db.VarChar(20)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  request Request?
+
+  @@index([invoice_id])
+  @@index([status])
+  @@index([request_id])
+  @@index([telegram_user_id])
+  @@map("crypto_payments")
 }
 
