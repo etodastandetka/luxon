@@ -209,7 +209,7 @@ export default function NotificationSystem() {
       {/* Кнопка уведомлений */}
       <button
         onClick={() => setIsVisible(!isVisible)}
-        className="fixed top-4 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-full p-3 hover:bg-black/30 transition-all"
+        className="fixed top-4 right-16 bg-black/20 backdrop-blur border border-white/20 rounded-full p-3 hover:bg-black/30 transition-all"
         style={{ zIndex: 99999, position: 'fixed' }}
       >
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,7 +224,7 @@ export default function NotificationSystem() {
 
       {/* Список уведомлений */}
       {isVisible && (
-        <div className="fixed top-16 right-4 bg-black/20 backdrop-blur border border-white/20 rounded-xl p-4 w-80 max-h-96 overflow-y-auto shadow-2xl"
+        <div className="fixed top-16 right-16 bg-black/20 backdrop-blur border border-white/20 rounded-xl p-4 w-80 max-h-96 overflow-y-auto shadow-2xl"
           style={{ zIndex: 99999, position: 'fixed' }}
         >
           <div className="flex justify-between items-center mb-3">
