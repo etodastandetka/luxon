@@ -27,14 +27,16 @@ export default function HistoryPage(){
       empty: 'История операций пуста',
       deposit: 'Пополнение',
       withdraw: 'Вывод',
-      pending: 'Ожидает',
-      completed: 'Завершено',
-      approved: 'Подтверждено',
+      pending: 'Отменено',
+      completed: 'Успешно',
+      approved: 'Успешно',
       rejected: 'Отклонено',
-      failed: 'Ошибка',
-      deferred: 'Отложено',
-      auto_completed: 'Автозавершено',
-      autodeposit_success: 'Автопополнение',
+      failed: 'Отклонено',
+      deferred: 'Отменено',
+      auto_completed: 'Успешно',
+      autodeposit_success: 'Успешно',
+      cancelled: 'Отменено',
+      'profile-5': 'Отклонено',
       loading: 'Загружаем...',
       amount: 'Сумма',
       status: 'Статус',
@@ -46,14 +48,16 @@ export default function HistoryPage(){
       empty: 'Transaction history is empty',
       deposit: 'Deposit',
       withdraw: 'Withdraw',
-      pending: 'Pending',
-      completed: 'Completed',
-      approved: 'Approved',
+      pending: 'Cancelled',
+      completed: 'Success',
+      approved: 'Success',
       rejected: 'Rejected',
-      failed: 'Failed',
-      deferred: 'Deferred',
-      auto_completed: 'Auto Completed',
-      autodeposit_success: 'Auto Deposit',
+      failed: 'Rejected',
+      deferred: 'Cancelled',
+      auto_completed: 'Success',
+      autodeposit_success: 'Success',
+      cancelled: 'Cancelled',
+      'profile-5': 'Rejected',
       loading: 'Loading...',
       amount: 'Amount',
       status: 'Status',
@@ -65,14 +69,16 @@ export default function HistoryPage(){
       empty: 'Операциялар тарыхы бош',
       deposit: 'Депозит',
       withdraw: 'Чыгаруу',
-      pending: 'Күтүүдө',
-      completed: 'Аякталды',
-      approved: 'Ырасталды',
+      pending: 'Жокко чыгарылды',
+      completed: 'Ийгиликтүү',
+      approved: 'Ийгиликтүү',
       rejected: 'Токтотулду',
-      failed: 'Ката',
-      deferred: 'Кечиктирилди',
-      auto_completed: 'Авто аякталды',
-      autodeposit_success: 'Авто депозит',
+      failed: 'Токтотулду',
+      deferred: 'Жокко чыгарылды',
+      auto_completed: 'Ийгиликтүү',
+      autodeposit_success: 'Ийгиликтүү',
+      cancelled: 'Жокко чыгарылды',
+      'profile-5': 'Токтотулду',
       loading: 'Жүктөөдө...',
       amount: 'Сумма',
       status: 'Статус',
@@ -84,14 +90,16 @@ export default function HistoryPage(){
       empty: 'Operatsiyalar tarixi bo\'sh',
       deposit: 'Depozit',
       withdraw: 'Chiqarish',
-      pending: 'Kutilmoqda',
-      completed: 'Tugallandi',
-      approved: 'Tasdiqlandi',
+      pending: 'Bekor qilindi',
+      completed: 'Muvaffaqiyatli',
+      approved: 'Muvaffaqiyatli',
       rejected: 'Rad etildi',
-      failed: 'Xatolik',
-      deferred: 'Keiktirildi',
-      auto_completed: 'Avto tugallandi',
-      autodeposit_success: 'Avto depozit',
+      failed: 'Rad etildi',
+      deferred: 'Bekor qilindi',
+      auto_completed: 'Muvaffaqiyatli',
+      autodeposit_success: 'Muvaffaqiyatli',
+      cancelled: 'Bekor qilindi',
+      'profile-5': 'Rad etildi',
       loading: 'Yuklanmoqda...',
       amount: 'Miqdor',
       status: 'Holat',
@@ -130,14 +138,28 @@ export default function HistoryPage(){
       
       if (data.success !== false && transactionsData.length >= 0) {
         // Преобразуем данные в формат для отображения
-        const formattedTransactions = transactionsData.map((tx: any) => ({
-          id: tx.id?.toString() || '',
-          type: tx.type || tx.request_type || 'deposit',
-          bookmaker: tx.bookmaker || '',
-          amount: tx.amount || 0,
-          status: tx.status || 'pending',
-          date: tx.date || tx.created_at || new Date().toISOString()
-        }))
+        const formattedTransactions = transactionsData.map((tx: any) => {
+          // Определяем статус: если pending/deferred и прошло больше 5 минут - это отменено
+          let finalStatus = tx.status || 'pending'
+          if ((finalStatus === 'pending' || finalStatus === 'deferred') && tx.date) {
+            const txDate = new Date(tx.date || tx.created_at)
+            const now = new Date()
+            const diffMinutes = (now.getTime() - txDate.getTime()) / (1000 * 60)
+            // Если прошло больше 5 минут и статус pending - это отменено
+            if (diffMinutes > 5 && finalStatus === 'pending') {
+              finalStatus = 'cancelled'
+            }
+          }
+          
+          return {
+            id: tx.id?.toString() || '',
+            type: tx.type || tx.request_type || 'deposit',
+            bookmaker: tx.bookmaker || '',
+            amount: tx.amount || 0,
+            status: finalStatus,
+            date: tx.date || tx.created_at || new Date().toISOString()
+          }
+        })
         
         setTransactions(formattedTransactions)
       } else {
@@ -194,7 +216,8 @@ export default function HistoryPage(){
   }
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    const statusLower = status.toLowerCase()
+    switch (statusLower) {
       case 'completed':
       case 'approved':
       case 'auto_completed':
@@ -202,37 +225,47 @@ export default function HistoryPage(){
         return 'text-green-400'
       case 'pending':
       case 'deferred':
+      case 'cancelled':
         return 'text-yellow-400'
       case 'failed':
       case 'rejected':
+      case 'profile-5':
         return 'text-red-400'
       default:
-        return 'text-white/60'
+        // Для неизвестных статусов проверяем, содержит ли он "profile"
+        if (statusLower.includes('profile')) {
+          return 'text-red-400' // Отклонено
+        }
+        return 'text-yellow-400' // По умолчанию отменено
     }
   }
 
   const getStatusText = (status: string) => {
     const statusLower = status.toLowerCase()
     switch (statusLower) {
+      // Успешно
       case 'completed':
-        return t.completed
       case 'approved':
-        return t.approved
-      case 'pending':
-        return t.pending
-      case 'rejected':
-        return t.rejected
-      case 'failed':
-        return t.failed
-      case 'deferred':
-        return t.deferred
       case 'auto_completed':
-        return t.auto_completed
       case 'autodeposit_success':
-        return t.autodeposit_success
+        return t.completed // "Успешно"
+      // Отклонено
+      case 'rejected':
+      case 'failed':
+      case 'profile-5':
+        return t.rejected // "Отклонено"
+      // Отменено (таймер истек, не нажал "Я оплатил")
+      case 'pending':
+      case 'deferred':
+      case 'cancelled':
+        return t.pending // "Отменено"
       default:
-        // Если статус не найден, возвращаем первую букву заглавной
-        return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+        // Для неизвестных статусов проверяем, содержит ли он "profile" или другие ошибки
+        if (statusLower.includes('profile') || statusLower.includes('error') || statusLower.includes('fail')) {
+          return t.rejected // "Отклонено"
+        }
+        // По умолчанию считаем отменено
+        return t.pending // "Отменено"
     }
   }
 
