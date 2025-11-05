@@ -20,6 +20,30 @@ export default function RequestsPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<{ type?: string; status?: string }>({})
 
+  const fetchRequests = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true)
+    }
+    try {
+      const params = new URLSearchParams()
+      if (filter.type) params.append('type', filter.type)
+      if (filter.status) params.append('status', filter.status)
+
+      const response = await fetch(`/api/requests?${params.toString()}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setRequests(data.data.requests || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch requests:', error)
+    } finally {
+      if (showLoading) {
+        setLoading(false)
+      }
+    }
+  }, [filter])
+
   useEffect(() => {
     fetchRequests()
     
@@ -60,30 +84,6 @@ export default function RequestsPage() {
       window.removeEventListener('storage', handleStorageChange)
     }
   }, [fetchRequests, filter])
-
-  const fetchRequests = useCallback(async (showLoading = true) => {
-    if (showLoading) {
-      setLoading(true)
-    }
-    try {
-      const params = new URLSearchParams()
-      if (filter.type) params.append('type', filter.type)
-      if (filter.status) params.append('status', filter.status)
-
-      const response = await fetch(`/api/requests?${params.toString()}`)
-      const data = await response.json()
-
-      if (data.success) {
-        setRequests(data.data.requests || [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch requests:', error)
-    } finally {
-      if (showLoading) {
-        setLoading(false)
-      }
-    }
-  }, [filter])
 
   const getStatusColor = (status: string) => {
     switch (status) {
