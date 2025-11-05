@@ -1,7 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import LanguageSelector from '../../components/LanguageSelector'
 import { useLanguage } from '../../components/LanguageContext'
 
 export default function ReferralPage() {
@@ -223,7 +222,6 @@ export default function ReferralPage() {
         </div>
         <p className="text-sm text-white/70">{t.subtitle}</p>
         <div className="flex justify-center">
-          <LanguageSelector />
         </div>
       </div>
 

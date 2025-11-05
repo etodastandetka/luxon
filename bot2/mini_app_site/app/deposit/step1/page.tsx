@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import BookmakerGrid from '../../../components/BookmakerGrid'
-import LanguageSelector from '../../../components/LanguageSelector'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 
@@ -105,7 +104,6 @@ export default function DepositStep1() {
         <main className="space-y-4">
           <div className="flex justify-between items-center fade-in">
             <h1 className="text-xl font-bold">{t.title}</h1>
-            <LanguageSelector />
           </div>
           <div className="card text-center">
             <div className="text-white/70">Загрузка...</div>
@@ -121,7 +119,6 @@ export default function DepositStep1() {
         <main className="space-y-4">
           <div className="flex justify-between items-center fade-in">
             <h1 className="text-xl font-bold">{t.title}</h1>
-            <LanguageSelector />
           </div>
           <div className="card text-center bg-orange-900/20 border-orange-500">
             <div className="text-orange-300 text-lg font-semibold mb-2">
@@ -145,9 +142,8 @@ export default function DepositStep1() {
   return (
     <PageTransition direction="backward">
       <main className="space-y-4">
-        <div className="flex justify-between items-center fade-in">
+        <div className="fade-in pr-24">
           <h1 className="text-xl font-bold">{t.title}</h1>
-          <LanguageSelector />
         </div>
         
         <div className="card space-y-4 slide-in-left delay-100">

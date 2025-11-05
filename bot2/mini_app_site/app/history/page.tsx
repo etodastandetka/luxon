@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { useLanguage } from '../../components/LanguageContext'
 import { getTelegramUserId } from '../../utils/telegram'
-import LanguageSelector from '../../components/LanguageSelector'
 
 interface Transaction {
   id: string
@@ -264,7 +263,6 @@ export default function HistoryPage(){
           <h1 className="text-2xl font-bold text-white">{t.title}</h1>
         </div>
         <div className="flex justify-center">
-          <LanguageSelector />
         </div>
       </div>
 
