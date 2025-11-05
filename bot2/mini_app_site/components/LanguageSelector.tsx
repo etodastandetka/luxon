@@ -21,10 +21,11 @@ export default function LanguageSelector() {
   const currentLang = languages.find(lang => lang.code === currentLanguage)
 
   return (
-    <div className="relative">
+    <div className="relative" style={{ zIndex: 99999, position: 'relative' }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="btn btn-ghost text-sm flex items-center gap-2"
+        style={{ zIndex: 99999, position: 'relative' }}
       >
         <span>{currentLang?.flag}</span>
         <span>{currentLang?.name}</span>
@@ -32,8 +33,8 @@ export default function LanguageSelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 z-[9999] min-w-[200px]"
-          style={{ zIndex: 9999 }}
+        <div className="absolute top-full left-0 mt-1 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 min-w-[200px]"
+          style={{ zIndex: 99999, position: 'absolute' }}
         >
           <div className="p-2 space-y-1">
             {languages.map((lang) => (
