@@ -135,6 +135,22 @@ export default function DepositStep4() {
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
       
+      // Для крипты берем сумму в долларах из localStorage
+      // Если нет сохраненной суммы в долларах, конвертируем из сомов
+      const USD_TO_KGS_RATE = 95
+      let amountInUsd: number
+      const savedAmountUsd = localStorage.getItem('deposit_amount_usd')
+      
+      if (savedAmountUsd) {
+        // Используем сохраненную сумму в долларах
+        amountInUsd = parseFloat(savedAmountUsd)
+        console.log('✅ Using saved USD amount:', amountInUsd)
+      } else {
+        // Fallback: конвертируем из сомов (если старая версия)
+        amountInUsd = amount / USD_TO_KGS_RATE
+        console.log('⚠️ Converting from KGS to USD:', amount, '->', amountInUsd)
+      }
+      
       // Получаем Telegram ID пользователя для payload
       const tg = (window as any).Telegram?.WebApp
       let telegramUserId: string | null = null
@@ -157,7 +173,8 @@ export default function DepositStep4() {
       const payload = JSON.stringify({
         bookmaker,
         playerId,
-        amount,
+        amount: amount, // В сомах для внутреннего использования
+        amount_usd: amountInUsd, // В долларах для крипто-платежа
         telegram_user_id: telegramUserId
       })
       
@@ -167,7 +184,7 @@ export default function DepositStep4() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: amount.toString(),
+          amount: amountInUsd.toString(), // Отправляем в долларах для Crypto Bot API
           asset: 'USDT',
           currency_type: 'crypto',
           description: `Пополнение баланса ${bookmaker} - ID: ${playerId}\n\n⚠️ Рекомендуется выбрать сеть TRC20 (TRON) для оплаты`,
