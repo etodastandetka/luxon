@@ -48,7 +48,14 @@ export default function LanguageSelector({ onOpenChange }: LanguageSelectorProps
   const currentLang = languages.find(lang => lang.code === currentLanguage)
 
   return (
-    <div className="relative" style={{ zIndex: 99999 }} data-language-selector>
+    <div 
+      className="relative" 
+      style={{ 
+        zIndex: 99999,
+        position: 'relative'
+      }} 
+      data-language-selector
+    >
       <button
         onClick={handleToggle}
         className="bg-black/20 backdrop-blur border border-white/20 rounded-lg px-2 py-1.5 text-xs flex items-center gap-1 text-white hover:bg-black/30 transition-all whitespace-nowrap"
@@ -60,8 +67,14 @@ export default function LanguageSelector({ onOpenChange }: LanguageSelectorProps
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-1 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 w-[180px]"
-          style={{ zIndex: 99999, position: 'absolute' }}
+        <div 
+          className="absolute top-full right-0 mt-1 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 w-[180px]"
+          style={{ 
+            zIndex: 99999, 
+            position: 'absolute',
+            top: '100%',
+            right: 0
+          }}
         >
           <div className="p-2 space-y-1">
             {languages.map((lang) => (
