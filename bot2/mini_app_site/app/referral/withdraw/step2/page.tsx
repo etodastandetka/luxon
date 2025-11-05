@@ -1,6 +1,6 @@
 "use client"
-
 import { useState, useEffect, Suspense } from 'react'
+import FixedHeaderControls from '../../../../components/FixedHeaderControls'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
@@ -173,6 +173,7 @@ function ReferralWithdrawStep2Content() {
   return (
     <PageTransition direction="forward">
       <main className="space-y-6 min-h-screen flex flex-col p-4">
+        <FixedHeaderControls />
         {/* Заголовок */}
         <div className="text-center space-y-2">
           <div className="pr-20">
@@ -239,6 +240,7 @@ export default function ReferralWithdrawStep2() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-screen">
+        <FixedHeaderControls />
         <div className="text-white">Загрузка...</div>
       </div>
     }>
@@ -246,4 +248,5 @@ export default function ReferralWithdrawStep2() {
     </Suspense>
   )
 }
+
 

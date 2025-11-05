@@ -22,6 +22,8 @@ interface RequestDetail {
   phone: string | null
   photoFileUrl: string | null
   userNote: string | null
+  paymentMethod: string | null
+  cryptoPayment: any | null
   createdAt: string
   updatedAt: string
   processedAt: string | null
@@ -779,6 +781,24 @@ export default function RequestDetailPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Банк:</span>
               <span className="text-sm font-medium text-white">{request.bank}</span>
+            </div>
+          )}
+          {request.paymentMethod && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Способ оплаты:</span>
+              <span className={`text-sm font-medium ${
+                request.paymentMethod === 'crypto' ? 'text-purple-400' : 'text-white'
+              }`}>
+                {request.paymentMethod === 'crypto' ? '₿ Криптовалюта' : '💳 Банковский перевод'}
+              </span>
+            </div>
+          )}
+          {request.paymentMethod === 'crypto' && request.cryptoPayment && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Крипто-платеж:</span>
+              <span className="text-sm font-medium text-purple-400">
+                {request.cryptoPayment.amount} {request.cryptoPayment.asset}
+              </span>
             </div>
           )}
         </div>

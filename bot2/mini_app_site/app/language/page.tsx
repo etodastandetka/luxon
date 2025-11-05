@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
+import FixedHeaderControls from '../../components/FixedHeaderControls'
 
 export default function LanguagePage(){
   const [currentLanguage, setCurrentLanguage] = useState('ru')
@@ -79,6 +80,7 @@ export default function LanguagePage(){
 
   return (
     <main className="space-y-4">
+      <FixedHeaderControls />
       <h1 className="text-xl font-bold pr-20">{t.title}</h1>
       
       <section className="card space-y-3">
@@ -110,3 +112,4 @@ export default function LanguagePage(){
     </main>
   )
 }
+

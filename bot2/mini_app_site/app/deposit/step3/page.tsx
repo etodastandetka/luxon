@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
+import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import QuickAmounts from '../../../components/QuickAmounts'
 import PageTransition from '../../../components/PageTransition'
@@ -98,6 +99,7 @@ export default function DepositStep3() {
   return (
     <PageTransition direction="backward">
       <main className="space-y-4">
+        <FixedHeaderControls />
         <div className="fade-in pr-24">
           <h1 className="text-xl font-bold">{t.title}</h1>
         </div>
@@ -162,3 +164,4 @@ export default function DepositStep3() {
     </PageTransition>
   )
 }
+

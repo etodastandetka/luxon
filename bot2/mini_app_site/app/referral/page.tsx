@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../components/LanguageContext'
+import FixedHeaderControls from '../../components/FixedHeaderControls'
 
 export default function ReferralPage() {
   const [referralLink, setReferralLink] = useState('')
@@ -210,6 +211,7 @@ export default function ReferralPage() {
 
   return (
     <main className="space-y-6">
+      <FixedHeaderControls />
       {/* Заголовок */}
       <div className="text-center space-y-3">
         <div className="flex items-center justify-center space-x-2 mb-2">

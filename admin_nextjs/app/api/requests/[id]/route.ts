@@ -15,6 +15,7 @@ export async function GET(
       where: { id },
       include: {
         incomingPayments: true,
+        cryptoPayment: true,
       },
     })
 
@@ -89,6 +90,12 @@ export async function GET(
         amount: requestData.amount ? requestData.amount.toString() : null,
         photoFileUrl: requestData.photoFileUrl, // Фото чека (base64 или URL)
         userNote: user?.note || null, // Заметка пользователя
+        paymentMethod: requestData.paymentMethod || null,
+        cryptoPayment: requestData.cryptoPayment ? {
+          ...requestData.cryptoPayment,
+          amount: requestData.cryptoPayment.amount.toString(),
+          fee_amount: requestData.cryptoPayment.fee_amount?.toString() || null,
+        } : null,
         incomingPayments: requestData.incomingPayments.map(p => ({
           ...p,
           amount: p.amount.toString(),

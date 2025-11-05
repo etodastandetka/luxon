@@ -75,13 +75,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
     
     elif callback_data == "withdraw_issue":
-        user_states[user_id] = {'step': 'withdraw_amount', 'data': {'issue_type': 'withdraw'}}
+        user_states[user_id] = {'step': 'withdraw_qr_photo', 'data': {'issue_type': 'withdraw'}}
         await query.edit_message_text(
             "💸 Проблема с выводом\n\n"
-            "Вы отправляли средства с копейками?",
+            "Вы отправили правильное фото с QR кодом?\n\n"
+            "QR код должен быть четким, полностью видимым и соответствовать выбранному банку.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Да", callback_data="yes_cents")],
-                [InlineKeyboardButton("❌ Нет", callback_data="no_cents")],
+                [InlineKeyboardButton("✅ Да, фото правильное", callback_data="qr_photo_ok")],
+                [InlineKeyboardButton("❌ Нет, проблема с фото", callback_data="qr_photo_issue")],
                 [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
             ])
         )
@@ -111,6 +112,119 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.edit_message_text(
             "❓ Другая проблема\n\n"
             "Опишите вашу проблему текстом, и мы поможем вам разобраться.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            ])
+        )
+    
+    elif callback_data == "qr_photo_ok":
+        state = user_states.get(user_id, {})
+        state['data']['qr_photo_ok'] = True
+        state['step'] = 'withdraw_code'
+        user_states[user_id] = state
+        
+        await query.edit_message_text(
+            "✅ Хорошо, фото QR кода правильное.\n\n"
+            "Вы правильно ввели код подтверждения с сайта букмекера?\n\n"
+            "Код обычно находится в личном кабинете на сайте букмекера в разделе вывода средств.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Да, код правильный", callback_data="code_ok")],
+                [InlineKeyboardButton("❌ Нет, проблема с кодом", callback_data="code_issue")],
+                [InlineKeyboardButton("❓ Не знаю, где найти код", callback_data="code_unknown")],
+                [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            ])
+        )
+    
+    elif callback_data == "qr_photo_issue":
+        state = user_states.get(user_id, {})
+        state['data']['qr_photo_ok'] = False
+        state['step'] = 'request_qr_photo'
+        user_states[user_id] = state
+        
+        await query.edit_message_text(
+            "📤 Пожалуйста, отправьте новое фото QR кода.\n\n"
+            "Убедитесь, что:\n"
+            "• QR код четкий и полностью виден\n"
+            "• Фото не размытое\n"
+            "• Выбран правильный банк\n"
+            "• QR код соответствует сумме вывода",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            ])
+        )
+    
+    elif callback_data == "code_ok":
+        state = user_states.get(user_id, {})
+        state['data']['code_ok'] = True
+        state['step'] = 'withdraw_additional'
+        user_states[user_id] = state
+        
+        await query.edit_message_text(
+            "✅ Хорошо, код введен правильно.\n\n"
+            "Какая именно проблема возникла с выводом?\n\n"
+            "Выберите вариант или опишите проблему текстом:",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⏰ Долго не приходят средства", callback_data="withdraw_delay")],
+                [InlineKeyboardButton("❌ Заявка отклонена", callback_data="withdraw_rejected")],
+                [InlineKeyboardButton("💳 Неправильные реквизиты", callback_data="withdraw_wrong_details")],
+                [InlineKeyboardButton("❓ Другая проблема", callback_data="withdraw_other")],
+                [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            ])
+        )
+    
+    elif callback_data == "code_issue":
+        state = user_states.get(user_id, {})
+        state['data']['code_ok'] = False
+        state['step'] = 'request_code_info'
+        user_states[user_id] = state
+        
+        await query.edit_message_text(
+            "📝 Опишите проблему с кодом:\n\n"
+            "• Код не принимается?\n"
+            "• Неправильный формат?\n"
+            "• Код не найден на сайте?\n\n"
+            "Опишите вашу ситуацию текстом:",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            ])
+        )
+    
+    elif callback_data == "code_unknown":
+        state = user_states.get(user_id, {})
+        state['data']['code_unknown'] = True
+        state['step'] = 'request_receipt'
+        user_states[user_id] = state
+        
+        await query.edit_message_text(
+            "ℹ️ Инструкция по поиску кода:\n\n"
+            "1. Зайдите в личный кабинет на сайте букмекера\n"
+            "2. Перейдите в раздел 'Вывод средств' или 'Касса'\n"
+            "3. Найдите активную заявку на вывод\n"
+            "4. Код подтверждения обычно показывается в деталях заявки\n\n"
+            "Если код не найден, отправьте скриншот раздела вывода или опишите проблему:",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            ])
+        )
+    
+    elif callback_data in ["withdraw_delay", "withdraw_rejected", "withdraw_wrong_details", "withdraw_other"]:
+        state = user_states.get(user_id, {})
+        state['data']['withdraw_problem'] = callback_data
+        state['step'] = 'request_receipt'
+        user_states[user_id] = state
+        
+        problem_texts = {
+            "withdraw_delay": "⏰ Долго не приходят средства",
+            "withdraw_rejected": "❌ Заявка отклонена",
+            "withdraw_wrong_details": "💳 Неправильные реквизиты",
+            "withdraw_other": "❓ Другая проблема"
+        }
+        
+        await query.edit_message_text(
+            f"📤 {problem_texts.get(callback_data, 'Проблема с выводом')}\n\n"
+            "Пожалуйста, отправьте скриншот:\n"
+            "• Заявки на вывод в личном кабинете\n"
+            "• Или любую другую информацию, связанную с проблемой",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
             ])
@@ -217,6 +331,57 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             user_states[user_id] = {'step': 'main_menu', 'data': {}}
             await start(update, context)
     
+    elif step == 'request_qr_photo':
+        # Пользователь отправляет новое фото QR кода
+        if message_text and message_text.lower() not in ['/start', 'start', 'привет', 'hi', 'hello', 'начать', 'меню']:
+            state['data']['qr_photo_description'] = message_text
+            state['step'] = 'request_receipt'
+            user_states[user_id] = state
+            
+            await update.message.reply_text(
+                "📤 Пожалуйста, отправьте фото QR кода.\n\n"
+                "Если у вас есть дополнительные вопросы, опишите их текстом."
+            )
+        else:
+            # Возвращаем в главное меню
+            user_states[user_id] = {'step': 'main_menu', 'data': {}}
+            await start(update, context)
+    
+    elif step == 'request_code_info':
+        # Пользователь описывает проблему с кодом
+        if message_text and message_text.lower() not in ['/start', 'start', 'привет', 'hi', 'hello', 'начать', 'меню']:
+            state['data']['code_description'] = message_text
+            state['step'] = 'request_receipt'
+            user_states[user_id] = state
+            
+            await update.message.reply_text(
+                "📤 Пожалуйста, отправьте скриншот:\n"
+                "• Заявки на вывод в личном кабинете\n"
+                "• Или раздела с кодом подтверждения\n\n"
+                "Это поможет нам быстрее разобраться в проблеме."
+            )
+        else:
+            # Возвращаем в главное меню
+            user_states[user_id] = {'step': 'main_menu', 'data': {}}
+            await start(update, context)
+    
+    elif step == 'withdraw_additional':
+        # Пользователь описывает дополнительную проблему с выводом
+        if message_text and message_text.lower() not in ['/start', 'start', 'привет', 'hi', 'hello', 'начать', 'меню']:
+            state['data']['additional_withdraw_info'] = message_text
+            state['step'] = 'request_receipt'
+            user_states[user_id] = state
+            
+            await update.message.reply_text(
+                "📤 Пожалуйста, отправьте скриншот:\n"
+                "• Заявки на вывод в личном кабинете\n"
+                "• Или любую другую информацию, связанную с проблемой"
+            )
+        else:
+            # Возвращаем в главное меню
+            user_states[user_id] = {'step': 'main_menu', 'data': {}}
+            await start(update, context)
+    
     else:
         # Неизвестное состояние, возвращаем в главное меню
         user_states[user_id] = {'step': 'main_menu', 'data': {}}
@@ -234,12 +399,15 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     state = user_states.get(user_id, {})
     step = state.get('step', 'main_menu')
     
-    if step == 'request_receipt':
+    if step in ['request_receipt', 'request_qr_photo']:
         # Сохраняем информацию о фото
         photo = update.message.photo[-1] if update.message.photo else None
         if photo:
             state['data']['has_receipt'] = True
             state['data']['receipt_file_id'] = photo.file_id
+            
+            if step == 'request_qr_photo':
+                state['data']['qr_photo_received'] = True
         
         # Завершаем сбор информации
         await finish_support_request(update, context, user_id, state['data'])
@@ -268,15 +436,56 @@ async def finish_support_request(update: Update, context: ContextTypes.DEFAULT_T
     summary = "✅ Ваша заявка принята!\n\n"
     summary += f"Тип проблемы: {get_issue_type_name(issue_type)}\n"
     
-    if has_cents is not None:
-        summary += f"Средства с копейками: {'Да' if has_cents else 'Нет'}\n"
+    # Информация для пополнения
+    if issue_type == 'deposit':
+        has_cents = data.get('has_cents', None)
+        if has_cents is not None:
+            summary += f"Средства с копейками: {'Да' if has_cents else 'Нет'}\n"
+    
+    # Информация для вывода
+    if issue_type == 'withdraw':
+        qr_photo_ok = data.get('qr_photo_ok')
+        if qr_photo_ok is not None:
+            summary += f"Фото QR кода: {'✅ Правильное' if qr_photo_ok else '❌ Проблема'}\n"
+        
+        code_ok = data.get('code_ok')
+        if code_ok is not None:
+            summary += f"Код подтверждения: {'✅ Правильный' if code_ok else '❌ Проблема'}\n"
+        
+        code_unknown = data.get('code_unknown')
+        if code_unknown:
+            summary += "Код подтверждения: ❓ Не знаю, где найти\n"
+        
+        withdraw_problem = data.get('withdraw_problem')
+        if withdraw_problem:
+            problem_names = {
+                "withdraw_delay": "⏰ Долго не приходят средства",
+                "withdraw_rejected": "❌ Заявка отклонена",
+                "withdraw_wrong_details": "💳 Неправильные реквизиты",
+                "withdraw_other": "❓ Другая проблема"
+            }
+            summary += f"Проблема: {problem_names.get(withdraw_problem, 'Не указано')}\n"
+        
+        code_description = data.get('code_description')
+        if code_description:
+            summary += f"\nОписание проблемы с кодом: {code_description}\n"
+        
+        qr_photo_description = data.get('qr_photo_description')
+        if qr_photo_description:
+            summary += f"\nОписание проблемы с фото: {qr_photo_description}\n"
+        
+        additional_withdraw_info = data.get('additional_withdraw_info')
+        if additional_withdraw_info:
+            summary += f"\nДополнительная информация: {additional_withdraw_info}\n"
     
     if has_receipt:
-        summary += "Чек отправлен: ✅\n"
+        summary += "\nФото/скриншот отправлен: ✅\n"
     
+    description = data.get('description')
     if description:
         summary += f"\nОписание: {description}\n"
     
+    additional_info = data.get('additional_info')
     if additional_info:
         summary += f"\nДополнительная информация: {additional_info}\n"
     
@@ -303,6 +512,13 @@ async def finish_support_request(update: Update, context: ContextTypes.DEFAULT_T
     logger.info(f"📋 Новая заявка в техподдержку от пользователя {user_id}")
     logger.info(f"   Тип: {issue_type}")
     logger.info(f"   Данные: {data}")
+    
+    # Дополнительное логирование для вывода
+    if issue_type == 'withdraw':
+        logger.info(f"   QR фото: {'OK' if data.get('qr_photo_ok') else 'Issue'}")
+        logger.info(f"   Код: {'OK' if data.get('code_ok') else 'Issue' if data.get('code_ok') is not None else 'Unknown'}")
+        if data.get('withdraw_problem'):
+            logger.info(f"   Проблема: {data.get('withdraw_problem')}")
 
 def get_issue_type_name(issue_type: str) -> str:
     """Получает название типа проблемы"""

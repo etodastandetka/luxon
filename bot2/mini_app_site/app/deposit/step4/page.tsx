@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
+import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import BankButtons from '../../../components/BankButtons'
 import PageTransition from '../../../components/PageTransition'
@@ -13,6 +14,9 @@ export default function DepositStep4() {
   const [qrData, setQrData] = useState<any>(null)
   const [timeLeft, setTimeLeft] = useState(300) // 5 минут в секундах
   const [isPaid, setIsPaid] = useState(false)
+  const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
+  const [cryptoInvoice, setCryptoInvoice] = useState<any>(null)
+  const [cryptoLoading, setCryptoLoading] = useState(false)
   const router = useRouter()
   const { showAlert, AlertComponent } = useAlert()
 
@@ -31,10 +35,12 @@ export default function DepositStep4() {
     const savedBookmaker = localStorage.getItem('deposit_bookmaker') || ''
     const savedPlayerId = localStorage.getItem('deposit_user_id') || ''
     const savedAmount = parseFloat(localStorage.getItem('deposit_amount') || '0')
+    const savedPaymentType = localStorage.getItem('deposit_payment_type') as 'bank' | 'crypto' || 'bank'
     
     setBookmaker(savedBookmaker)
     setPlayerId(savedPlayerId)
     setAmount(savedAmount)
+    setPaymentType(savedPaymentType)
     
     // Получаем Telegram ID пользователя
     const tg = (window as any).Telegram?.WebApp
@@ -119,17 +125,90 @@ export default function DepositStep4() {
     }
   }, [])
 
-  // Только генерируем QR код, заявка создается только после нажатия "Я оплатил"
+  // Генерируем QR код или крипто invoice в зависимости от типа оплаты
   useEffect(() => {
     if (bookmaker && playerId && amount > 0) {
-      // Сохраняем время начала таймера при генерации QR (если еще не сохранено)
+      // Сохраняем время начала таймера при генерации (если еще не сохранено)
       if (!localStorage.getItem('deposit_timer_start')) {
         localStorage.setItem('deposit_timer_start', Date.now().toString())
       }
-      // Генерируем только QR код
-      generateQRCode()
+      
+      if (paymentType === 'crypto') {
+        // Создаем крипто invoice
+        createCryptoInvoice()
+      } else {
+        // Генерируем QR код для банковского перевода
+        generateQRCode()
+      }
     }
-  }, [bookmaker, playerId, amount])
+  }, [bookmaker, playerId, amount, paymentType])
+  
+  // Функция для создания крипто invoice
+  const createCryptoInvoice = async () => {
+    if (cryptoLoading || cryptoInvoice) return
+    
+    setCryptoLoading(true)
+    try {
+      const apiUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3001' 
+        : 'https://xendro.pro'
+      
+      // Получаем Telegram ID пользователя для payload
+      const tg = (window as any).Telegram?.WebApp
+      let telegramUserId: string | null = null
+      
+      if (tg?.initDataUnsafe?.user?.id) {
+        telegramUserId = String(tg.initDataUnsafe.user.id)
+      } else if (tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          if (userParam) {
+            const user = JSON.parse(decodeURIComponent(userParam))
+            telegramUserId = String(user.id)
+          }
+        } catch (e) {
+          console.log('❌ Error parsing initData:', e)
+        }
+      }
+      
+      const payload = JSON.stringify({
+        bookmaker,
+        playerId,
+        amount,
+        telegram_user_id: telegramUserId
+      })
+      
+      const response = await fetch(`${apiUrl}/api/crypto-pay/create-invoice`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amount.toString(),
+          asset: 'USDT',
+          currency_type: 'crypto',
+          description: `Пополнение баланса ${bookmaker} - ID: ${playerId}`,
+          payload: payload,
+          expires_in: 3600 // 1 час
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          setCryptoInvoice(data.data)
+          console.log('✅ Crypto invoice created:', data.data)
+        }
+      } else {
+        console.error('❌ Failed to create crypto invoice')
+      }
+    } catch (error) {
+      console.error('❌ Error creating crypto invoice:', error)
+    } finally {
+      setCryptoLoading(false)
+    }
+  }
 
   // Таймер обратного отсчета и проверка почты
   useEffect(() => {
@@ -160,7 +239,7 @@ export default function DepositStep4() {
         checkPaymentStatus()
       }
       
-      return () => clearTimeout(timer)
+        return () => clearTimeout(timer)
     } else if (timeLeft === 0 && !isPaid) {
       // Время истекло - автоматически отклоняем заявку
       handleTimeExpired()
@@ -320,6 +399,8 @@ export default function DepositStep4() {
           bookmaker: bookmaker,
           bank: bank,
           playerId: playerId, // Добавляем playerId для совместимости
+          payment_method: paymentType, // 'bank' или 'crypto'
+          crypto_invoice_id: paymentType === 'crypto' && cryptoInvoice ? cryptoInvoice.invoice_id : null,
           // Данные пользователя Telegram
           telegram_user_id: telegramUser?.id,
           telegram_username: telegramUser?.username,
@@ -972,6 +1053,7 @@ export default function DepositStep4() {
     return (
       <PageTransition direction="backward">
         <main className="space-y-4 min-h-screen flex flex-col">
+          <FixedHeaderControls />
           <div className="text-center space-y-2 fade-in">
             <div className="pr-20">
               <h1 className="text-xl font-bold text-white">{t.title}</h1>
@@ -1000,6 +1082,7 @@ export default function DepositStep4() {
   return (
     <PageTransition direction="backward">
       <main className="space-y-4 min-h-screen flex flex-col">
+      <FixedHeaderControls />
       {/* Заголовок */}
       <div className="text-center space-y-2 fade-in">
         <div className="pr-20">

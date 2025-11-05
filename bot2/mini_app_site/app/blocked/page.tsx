@@ -1,6 +1,7 @@
 "use client"
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import FixedHeaderControls from '../../components/FixedHeaderControls'
 
 export default function BlockedPage() {
   const router = useRouter()
@@ -51,6 +52,7 @@ export default function BlockedPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-950 to-green-900 flex items-center justify-center p-4">
+      <FixedHeaderControls />
       <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full border border-gray-700 text-center">
         <div className="mb-6">
           <svg className="w-20 h-20 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,4 +70,5 @@ export default function BlockedPage() {
     </div>
   )
 }
+
 
