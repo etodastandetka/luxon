@@ -32,7 +32,9 @@ export default function LanguageSelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 z-50 min-w-[200px]">
+        <div className="absolute top-full left-0 mt-1 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 z-[9999] min-w-[200px]"
+          style={{ zIndex: 9999 }}
+        >
           <div className="p-2 space-y-1">
             {languages.map((lang) => (
               <button
