@@ -1241,19 +1241,70 @@ export default function DepositStep4() {
 
                 console.log('✅ Opening invoice with URL:', invoiceUrl)
 
-                // Используем Telegram WebApp API метод openInvoice() с bot_invoice_url
-                // Это откроет invoice внутри Telegram как отдельное мини-приложение Crypto Bot
-                if (tg && tg.openInvoice) {
-                  console.log('✅ Using openInvoice() method')
+                // Пробуем использовать mini_app_invoice_url для открытия через openLink
+                // Это более надежный способ для открытия invoice внутри Telegram Mini App
+                const miniAppUrl = cryptoInvoice.mini_app_invoice_url
+                
+                if (tg && tg.openLink && miniAppUrl) {
+                  console.log('✅ Using openLink() with mini_app_invoice_url')
                   try {
-                    // openInvoice открывает invoice внутри Telegram, создавая новое мини-приложение
+                    // openLink с mini_app_invoice_url откроет invoice внутри Telegram
+                    tg.openLink(miniAppUrl, { try_instant_view: true })
+                    console.log('✅ Invoice opened via openLink')
+                  } catch (error) {
+                    console.error('❌ Error calling openLink with mini_app_invoice_url:', error)
+                    
+                    // Fallback: пробуем openInvoice с bot_invoice_url
+                    if (tg && tg.openInvoice && invoiceUrl) {
+                      console.log('⚠️ Trying fallback: openInvoice() with bot_invoice_url')
+                      try {
+                        tg.openInvoice(invoiceUrl, (status: string) => {
+                          console.log('📊 Invoice payment status:', status)
+                          if (status === 'paid' || status === 'completed') {
+                            console.log('✅ Payment successful!')
+                            setIsPaid(true)
+                            setTimeout(() => {
+                              router.push('/deposit/waiting')
+                            }, 1000)
+                          } else if (status === 'cancelled' || status === 'failed') {
+                            console.log('⚠️ Invoice was cancelled or failed:', status)
+                            showAlert({
+                              type: 'info',
+                              title: language === 'ru' ? 'Информация' : 'Info',
+                              message: language === 'ru' 
+                                ? 'Оплата была отменена'
+                                : 'Payment was cancelled'
+                            })
+                          }
+                        })
+                      } catch (invoiceError) {
+                        console.error('❌ Error calling openInvoice:', invoiceError)
+                        showAlert({
+                          type: 'error',
+                          title: language === 'ru' ? 'Ошибка' : 'Error',
+                          message: language === 'ru' 
+                            ? 'Ошибка при открытии invoice. Попробуйте еще раз.'
+                            : 'Error opening invoice. Please try again.'
+                        })
+                      }
+                    } else {
+                      showAlert({
+                        type: 'error',
+                        title: language === 'ru' ? 'Ошибка' : 'Error',
+                        message: language === 'ru' 
+                          ? 'Ошибка при открытии invoice. Попробуйте еще раз.'
+                          : 'Error opening invoice. Please try again.'
+                      })
+                    }
+                  }
+                } else if (tg && tg.openInvoice && invoiceUrl) {
+                  console.log('✅ Using openInvoice() method with bot_invoice_url')
+                  try {
                     tg.openInvoice(invoiceUrl, (status: string) => {
                       console.log('📊 Invoice payment status:', status)
                       if (status === 'paid' || status === 'completed') {
-                        // Платеж успешен
                         console.log('✅ Payment successful!')
                         setIsPaid(true)
-                        // Проверяем статус через API и перенаправляем
                         setTimeout(() => {
                           router.push('/deposit/waiting')
                         }, 1000)
@@ -1278,27 +1329,12 @@ export default function DepositStep4() {
                         : 'Error opening invoice. Please try again.'
                     })
                   }
-                } else if (tg && tg.openLink) {
-                  console.log('⚠️ openInvoice not available, using openLink()')
-                  // Если openInvoice не доступен, используем openLink с mini_app_invoice_url
-                  const miniAppUrl = cryptoInvoice.mini_app_invoice_url || invoiceUrl
-                  try {
-                    tg.openLink(miniAppUrl, { try_instant_view: true })
-                  } catch (error) {
-                    console.error('❌ Error calling openLink:', error)
-                    showAlert({
-                      type: 'error',
-                      title: language === 'ru' ? 'Ошибка' : 'Error',
-                      message: language === 'ru' 
-                        ? 'Ошибка при открытии ссылки. Попробуйте еще раз.'
-                        : 'Error opening link. Please try again.'
-                    })
-                  }
                 } else {
                   console.warn('⚠️ Telegram WebApp not available, using fallback')
                   // Fallback: если Telegram WebApp недоступен, открываем в новой вкладке
                   try {
-                    window.open(invoiceUrl, '_blank')
+                    const fallbackUrl = miniAppUrl || invoiceUrl
+                    window.open(fallbackUrl, '_blank')
                     showAlert({
                       type: 'info',
                       title: language === 'ru' ? 'Информация' : 'Info',
