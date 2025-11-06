@@ -12,7 +12,7 @@ interface CashdeskConfig {
 interface MostbetConfig {
   api_key: string
   secret: string
-  cashpoint_id: number
+  cashpoint_id: string
 }
 
 interface BalanceResult {
@@ -29,17 +29,17 @@ const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
     cashdeskid: parseInt(process.env.XBET_CASHDESKID || '1388580'),
   },
   melbet: {
-    hash: process.env.MELBET_HASH || '5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1',
-    cashierpass: process.env.MELBET_CASHIERPASS || 'ScgOQgUzZs',
-    login: process.env.MELBET_LOGIN || 'bakhtark',
-    cashdeskid: parseInt(process.env.MELBET_CASHDESKID || '1350588'),
+    hash: process.env.MELBET_HASH || 'f788cc308d9de930b292873b2cf79526da363cb24a85883575426cc7f3c4553d',
+    cashierpass: process.env.MELBET_CASHIERPASS || '3nKS3!b7',
+    login: process.env.MELBET_LOGIN || 'burgoevk',
+    cashdeskid: parseInt(process.env.MELBET_CASHDESKID || '1415842'),
   },
 }
 
 const MOSTBET_CONFIG: MostbetConfig = {
-  api_key: process.env.MOSTBET_API_KEY || 'api-key:0522f4fb-0a18-4ec2-8e27-428643602db4',
-  secret: process.env.MOSTBET_SECRET || '7b6c63ae-2615-4466-a3eb-f5fca2c5c6dc',
-  cashpoint_id: parseInt(process.env.MOSTBET_CASHPOINT_ID || '117753'),
+  api_key: process.env.MOSTBET_API_KEY || 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
+  secret: process.env.MOSTBET_SECRET || 'Kana312',
+  cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'F125160',
 }
 
 /**
@@ -222,7 +222,7 @@ export async function getPlatformLimits(): Promise<
 
     // Mostbet
     const mostbetCfg = MOSTBET_CONFIG
-    if (mostbetCfg.cashpoint_id > 0) {
+    if (mostbetCfg.cashpoint_id && mostbetCfg.cashpoint_id.length > 0) {
       const mostbetBal = await getMostbetBalance(mostbetCfg)
       // Для Mostbet лимит недоступен в API, показываем 0
       limits.push({ key: 'mostbet', name: 'Mostbet', limit: mostbetBal.limit })
