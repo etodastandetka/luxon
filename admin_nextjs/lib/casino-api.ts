@@ -132,20 +132,39 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
   try {
     const crypto = require('crypto')
 
-    // Получаем timestamp в UTC
-    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19)
+    // Получаем timestamp в UTC в формате YYYY-MM-DD HH:MM:SS (UTC+0)
+    const now = new Date()
+    const year = now.getUTCFullYear()
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(now.getUTCDate()).padStart(2, '0')
+    const hours = String(now.getUTCHours()).padStart(2, '0')
+    const minutes = String(now.getUTCMinutes()).padStart(2, '0')
+    const seconds = String(now.getUTCSeconds()).padStart(2, '0')
+    const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     const path = `/mbc/gateway/v1/api/cashpoint/${cfg.cashpoint_id}/balance`
     const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cfg.cashpoint_id}/balance`
 
     // Подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
+    // Для GET запросов REQUEST_BODY пустой
     const signString = `${cfg.api_key}${path}${timestamp}`
     
-    // Используем SHA256 как fallback (SHA3-256 требует дополнительную библиотеку)
-    const signature = crypto
-      .createHmac('sha256', cfg.secret)
-      .update(signString)
-      .digest('hex')
+    // Используем SHA3-256 согласно документации Mostbet API
+    // В Node.js 18+ поддерживается sha3-256
+    let signature: string
+    try {
+      signature = crypto
+        .createHmac('sha3-256', cfg.secret)
+        .update(signString)
+        .digest('hex')
+    } catch (e) {
+      // Fallback на SHA256 если SHA3-256 не поддерживается (старые версии Node.js)
+      console.warn('SHA3-256 not available, using SHA256 fallback. This may not work with real API!')
+      signature = crypto
+        .createHmac('sha256', cfg.secret)
+        .update(signString)
+        .digest('hex')
+    }
 
     const headers = {
       'X-Api-Key': cfg.api_key,

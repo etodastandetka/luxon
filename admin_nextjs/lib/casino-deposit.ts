@@ -186,20 +186,27 @@ export async function depositMostbetAPI(
     // userId здесь - это ID казино (accountId), не Telegram ID
     console.log(`[Mostbet Deposit] Casino Player ID: ${userId}, Amount: ${amount}`)
     
-    // Получаем timestamp
+    // Получаем timestamp в UTC в формате YYYY-MM-DD HH:MM:SS (UTC+0)
     const now = new Date()
-    const timestamp = now.toISOString().slice(0, 19).replace('T', ' ')
+    const year = now.getUTCFullYear()
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(now.getUTCDate()).padStart(2, '0')
+    const hours = String(now.getUTCHours()).padStart(2, '0')
+    const minutes = String(now.getUTCMinutes()).padStart(2, '0')
+    const seconds = String(now.getUTCSeconds()).padStart(2, '0')
+    const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // Формируем путь и тело запроса
     const cashpointIdStr = String(cashpointId)
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/player/deposit`
     const requestBodyData = {
-      brandId: 1,
+      brandId: 1, // Всегда 1 для Mostbet согласно документации
       playerId: String(userId), // ID игрока в казино
       amount: amount,
-      currency: 'KGS',
+      currency: 'KGS', // Можно изменить на RUB если нужно
     }
-    const requestBody = JSON.stringify(requestBodyData)
+    // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
+    const requestBody = JSON.stringify(requestBodyData, null, 0).replace(/\s+/g, '')
 
     // API key может быть с префиксом или без
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
@@ -207,11 +214,25 @@ export async function depositMostbetAPI(
       : `api-key:${apiKey}`
 
     // Генерируем подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
+    // Согласно документации: конкатенируем без разделителей
     const signatureString = `${apiKeyFormatted}${path}${requestBody}${timestamp}`
-    const signature = crypto
-      .createHmac('sha3-256', secret)
-      .update(signatureString)
-      .digest('hex')
+    
+    // Используем SHA3-256 согласно документации Mostbet API
+    // В Node.js 18+ поддерживается sha3-256
+    let signature: string
+    try {
+      signature = crypto
+        .createHmac('sha3-256', secret)
+        .update(signatureString)
+        .digest('hex')
+    } catch (e) {
+      // Fallback на SHA256 если SHA3-256 не поддерживается (старые версии Node.js)
+      console.warn('SHA3-256 not available, using SHA256 fallback. This may not work with real API!')
+      signature = crypto
+        .createHmac('sha256', secret)
+        .update(signatureString)
+        .digest('hex')
+    }
 
     const url = `${baseUrl}${path}`
     
