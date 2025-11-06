@@ -143,15 +143,17 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // Убеждаемся, что cashpoint_id - строка (как в Django)
-    // Если cashpoint_id содержит буквы (например "F125160"), используем как есть
-    // Если это число, преобразуем в строку
     let cashpointIdStr = String(cfg.cashpoint_id)
     
-    // Если cashpoint_id начинается с буквы (например "F125160"), возможно API ожидает только числовую часть
-    // Но в Django используется как есть, так что оставляем как есть
-    // Если проблема сохранится, можно попробовать извлечь числовую часть:
-    // const numericMatch = cashpointIdStr.match(/\d+/)
-    // if (numericMatch) cashpointIdStr = numericMatch[0]
+    // Если cashpoint_id начинается с буквы (например "F125160"), извлекаем числовую часть
+    // API может ожидать только числовую часть в URL
+    // Попробуем извлечь числовую часть, если есть буквы
+    const numericMatch = cashpointIdStr.match(/\d+/)
+    if (numericMatch && cashpointIdStr.match(/^[A-Z]/)) {
+      // Если начинается с буквы, используем только числовую часть
+      cashpointIdStr = numericMatch[0]
+      console.log(`[Mostbet Balance] Extracted numeric part from cashpoint_id: ${String(cfg.cashpoint_id)} -> ${cashpointIdStr}`)
+    }
     
     // Путь для подписи (как в Django: path = f"/mbc/gateway/v1/api/cashpoint/{self.cashpoint_id}/balance")
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
