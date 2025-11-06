@@ -219,20 +219,35 @@ export async function depositMostbetAPI(
     const signatureString = `${apiKeyFormatted}${path}${requestBody}${timestamp}`
     
     // Используем SHA3-256 согласно документации Mostbet API
-    // В Node.js 18+ поддерживается sha3-256
+    // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
     let signature: string
     try {
-      signature = crypto
-        .createHmac('sha3-256', secret)
-        .update(signatureString)
-        .digest('hex')
-    } catch (e) {
-      // Fallback на SHA256 если SHA3-256 не поддерживается (старые версии Node.js)
-      console.warn('SHA3-256 not available, using SHA256 fallback. This may not work with real API!')
-      signature = crypto
-        .createHmac('sha256', secret)
-        .update(signatureString)
-        .digest('hex')
+      // Пробуем разные варианты названия алгоритма
+      const algorithms = ['sha3-256', 'SHA3-256', 'sha3_256']
+      let hmac: any = null
+      
+      for (const algo of algorithms) {
+        try {
+          hmac = crypto.createHmac(algo, secret)
+          break
+        } catch (e) {
+          // Пробуем следующий вариант
+          continue
+        }
+      }
+      
+      if (!hmac) {
+        throw new Error('SHA3-256 not supported')
+      }
+      
+      signature = hmac.update(signatureString).digest('hex')
+      console.log(`[Mostbet Deposit] Using SHA3-256 for signature`)
+    } catch (e: any) {
+      // Если SHA3-256 не поддерживается, выводим ошибку
+      console.error(`❌ SHA3-256 not available: ${e.message}`)
+      console.error(`❌ Mostbet API requires SHA3-256. Please use Node.js 18+ or install crypto-js library.`)
+      // Не используем SHA256 fallback - это не будет работать с реальным API
+      throw new Error('SHA3-256 is required for Mostbet API but not available')
     }
 
     const url = `${baseUrl}${path}`
