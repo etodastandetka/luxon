@@ -143,14 +143,12 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // Убеждаемся, что cashpoint_id - строка (как в Django)
-    // Используем полный cashpoint_id как есть (например "F125160"), не извлекаем числовую часть
-    // API ожидает полный идентификатор с буквой
+    // В Django используется: path = f"/mbc/gateway/v1/api/cashpoint/{self.cashpoint_id}/balance"
+    // и url = f"{self.base_url}/cashpoint/{self.cashpoint_id}/balance"
+    // где self.cashpoint_id = "F125160" (строка)
+    // НЕ используем encodeURIComponent - Django использует f-string напрямую
     const cashpointIdStr = String(cfg.cashpoint_id)
-    
-    // Путь для подписи (как в Django: path = f"/mbc/gateway/v1/api/cashpoint/{self.cashpoint_id}/balance")
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
-    // URL для запроса (как в Django: url = f"{self.base_url}/cashpoint/{self.cashpoint_id}/balance")
-    // где base_url = "https://apimb.com/mbc/gateway/v1/api"
     const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
 
     // Подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
@@ -208,6 +206,8 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
       cashpoint_id_original: cfg.cashpoint_id,
       cashpoint_id_type: typeof cfg.cashpoint_id,
       cashpoint_id_string: cashpointIdStr,
+      cashpoint_id_length: cashpointIdStr.length,
+      cashpoint_id_char_code: cashpointIdStr.split('').map(c => c.charCodeAt(0)),
       api_key: cfg.api_key.substring(0, 40) + '...',
       secret: cfg.secret.substring(0, 10) + '...',
       url,
