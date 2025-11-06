@@ -143,17 +143,9 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // Убеждаемся, что cashpoint_id - строка (как в Django)
-    let cashpointIdStr = String(cfg.cashpoint_id)
-    
-    // Если cashpoint_id начинается с буквы (например "F125160"), извлекаем числовую часть
-    // API может ожидать только числовую часть в URL
-    // Попробуем извлечь числовую часть, если есть буквы
-    const numericMatch = cashpointIdStr.match(/\d+/)
-    if (numericMatch && cashpointIdStr.match(/^[A-Z]/)) {
-      // Если начинается с буквы, используем только числовую часть
-      cashpointIdStr = numericMatch[0]
-      console.log(`[Mostbet Balance] Extracted numeric part from cashpoint_id: ${String(cfg.cashpoint_id)} -> ${cashpointIdStr}`)
-    }
+    // Используем полный cashpoint_id как есть (например "F125160"), не извлекаем числовую часть
+    // API ожидает полный идентификатор с буквой
+    const cashpointIdStr = String(cfg.cashpoint_id)
     
     // Путь для подписи (как в Django: path = f"/mbc/gateway/v1/api/cashpoint/{self.cashpoint_id}/balance")
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
@@ -188,7 +180,14 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
       }
       
       signature = hmac.update(signString).digest('hex')
-      console.log(`[Mostbet Balance] Using SHA3-256 for signature`)
+      console.log(`[Mostbet Balance] Using SHA3-256 for signature, algorithm: ${algorithms.find(a => {
+        try {
+          crypto.createHmac(a, cfg.secret)
+          return true
+        } catch {
+          return false
+        }
+      })}`)
     } catch (e: any) {
       // Если SHA3-256 не поддерживается, используем библиотеку crypto-js или выводим ошибку
       console.error(`❌ SHA3-256 not available: ${e.message}`)
@@ -209,10 +208,12 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
       cashpoint_id_original: cfg.cashpoint_id,
       cashpoint_id_type: typeof cfg.cashpoint_id,
       cashpoint_id_string: cashpointIdStr,
+      api_key: cfg.api_key.substring(0, 40) + '...',
+      secret: cfg.secret.substring(0, 10) + '...',
       url,
       path,
       timestamp,
-      signString: `${signString.substring(0, 80)}...`,
+      signString: `${signString.substring(0, 100)}...`,
       signature: `${signature.substring(0, 20)}...`,
       headers: {
         'X-Api-Key': cfg.api_key.substring(0, 30) + '...',
