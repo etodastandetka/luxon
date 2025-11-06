@@ -142,9 +142,12 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
-    // Убеждаемся, что cashpoint_id - строка
+    // Убеждаемся, что cashpoint_id - строка (как в Django)
     const cashpointIdStr = String(cfg.cashpoint_id)
+    // Путь для подписи (как в Django: path = f"/mbc/gateway/v1/api/cashpoint/{self.cashpoint_id}/balance")
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
+    // URL для запроса (как в Django: url = f"{self.base_url}/cashpoint/{self.cashpoint_id}/balance")
+    // где base_url = "https://apimb.com/mbc/gateway/v1/api"
     const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
 
     // Подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
@@ -214,17 +217,17 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
       
       if (data) {
         // Парсим balance (может быть строкой или числом)
+        // Согласно Django коду, API возвращает {'balance': float, 'currency': str}
         const balanceValue = data.balance ?? data.Balance ?? 0
         const balance = typeof balanceValue === 'string' ? parseFloat(balanceValue) : (typeof balanceValue === 'number' ? balanceValue : 0)
         
-        // Парсим limit - проверяем разные варианты названий полей
-        const limitValue = data.limit ?? data.Limit ?? data.cashpoint_limit ?? data.cashpointLimit ?? data.max_limit ?? data.maxLimit ?? 0
-        const limit = typeof limitValue === 'string' ? parseFloat(limitValue) : (typeof limitValue === 'number' ? limitValue : 0)
+        // Лимит недоступен в Mostbet Cash API (согласно Django коду)
+        const limit = 0
         
-        console.log(`✅ Mostbet: Balance=${balance}, Limit=${limit} (raw: ${JSON.stringify(data)})`)
+        console.log(`✅ Mostbet: Balance=${balance}, Currency=${data.currency || 'N/A'} (raw: ${JSON.stringify(data)})`)
         return {
           balance: isNaN(balance) ? 0 : balance,
-          limit: isNaN(limit) ? 0 : limit,
+          limit: 0, // Лимит недоступен в Mostbet Cash API
         }
       }
     } else {
