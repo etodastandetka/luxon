@@ -12,10 +12,10 @@ from datetime import datetime, timezone
 
 class MostbetDeposit:
     def __init__(self):
-        # Ваши данные из сообщения (ОБНОВЛЕННЫЕ)
-        self.api_key = "api-key:1b896249-f0dc-45ff-826e-4175c72d1e0e"
-        self.secret = "a5cce17876708d9a3506b41ecf1f68dfc1658e9521d48c5a227340f24b99bfe8"
-        self.cashpoint_id = "1343871"  # Правильный ID кассы
+        # Ваши данные из сообщения (ОБНОВЛЕННЫЕ 05.11.2025)
+        self.api_key = "api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d"
+        self.secret = "Kana312"
+        self.cashpoint_id = "F125160"  # Первый cashpoint_id
         self.base_url = "https://apimb.com"
     
     def get_timestamp(self):

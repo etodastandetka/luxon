@@ -12,21 +12,24 @@ CASHDESK_CONFIG = {
         'cashdeskid': 1343871
     },
     'melbet': {
-        'hash': '5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1',
-        'cashierpass': 'ScgOQgUzZs',  # Старый cashierpass (Eldiyar.07 не работает)
-        'login': 'bakhtark',  # Старый login (1180846111 не работает)
-        'cashdeskid': 1350588
+        'hash': 'f788cc308d9de930b292873b2cf79526da363cb24a85883575426cc7f3c4553d',
+        'cashierpass': '3nKS3!b7',
+        'login': 'burgoevk',
+        'cashdeskid': 1415842
     }
 }
 
 # ===== Mostbet Cash API =====
 MOSTBET_CONFIG = {
-    'api_key': 'api-key:0522f4fb-0a18-4ec2-8e27-428643602db4',
-    'secret': 'Eldiyar.07',
-    'cashpoint_id': 'C92905'
+    'api_key': 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
+    'secret': 'Kana312',
+    'cashpoint_id': 'F125160'  # Используем первый cashpoint_id
 }
 
 # ===== 1WIN API =====
 ONEWIN_CONFIG = {
-    'api_key': '0ad11eda9f40c2e05c34dc81c24ebe7f53eabe606c6cc5e553cfe66cd7fa9c8e'
+    'api_key': 'f69190bced227b4d2ee16f614c64f777d1414435570efb430a6008242da0244c',
+    'login': 'burgoev06@gmail.com',
+    'password': 'Pp^w4w#X4D',
+    'cashdesk_id': 6572
 }

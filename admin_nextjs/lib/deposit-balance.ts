@@ -51,10 +51,10 @@ export async function getCasinoConfig(bookmaker: string) {
     }
 
     return {
-      hash: process.env.MELBET_HASH || '5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1',
-      cashierpass: process.env.MELBET_CASHIERPASS || 'ScgOQgUzZs',
-      login: process.env.MELBET_LOGIN || 'bakhtark',
-      cashdeskid: process.env.MELBET_CASHDESKID || '1350588',
+      hash: process.env.MELBET_HASH || 'f788cc308d9de930b292873b2cf79526da363cb24a85883575426cc7f3c4553d',
+      cashierpass: process.env.MELBET_CASHIERPASS || '3nKS3!b7',
+      login: process.env.MELBET_LOGIN || 'burgoevk',
+      cashdeskid: process.env.MELBET_CASHDESKID || '1415842',
     }
   }
   
@@ -76,9 +76,9 @@ export async function getCasinoConfig(bookmaker: string) {
     }
 
     return {
-      api_key: process.env.MOSTBET_API_KEY || 'api-key:0522f4fb-0a18-4ec2-8e27-428643602db4',
-      secret: process.env.MOSTBET_SECRET || 'Eldiyar.07',
-      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C92905',
+      api_key: process.env.MOSTBET_API_KEY || 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
+      secret: process.env.MOSTBET_SECRET || 'Kana312',
+      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'F125160',
     }
   }
 
