@@ -142,23 +142,12 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
-    // Пробуем использовать числовую часть cashpoint_id, если он начинается с буквы
-    // API может ожидать числовой cashpoint_id в URL path
-    let cashpointIdStr = String(cfg.cashpoint_id)
-    let cashpointIdForPath = cashpointIdStr
-    
-    // Если cashpoint_id начинается с буквы (например "F125160"), извлекаем числовую часть
-    // API может ожидать числовой ID в URL path
-    const numericMatch = cashpointIdStr.match(/\d+/)
-    if (numericMatch && /^[A-Z]/.test(cashpointIdStr)) {
-      // Используем числовую часть для path и url (подпись должна соответствовать фактическому пути)
-      cashpointIdForPath = numericMatch[0]
-      console.log(`[Mostbet Balance] Extracting numeric part: ${cashpointIdStr} -> ${cashpointIdForPath} for path and URL`)
-    }
-    
-    // Путь для подписи и URL используем числовую часть (если извлекли)
-    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForPath}/balance`
-    const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdForPath}/balance`
+    // Используем полную строку как есть (как в Django)
+    // В Django: path = f"/mbc/gateway/v1/api/cashpoint/{self.cashpoint_id}/balance"
+    // где self.cashpoint_id = "F125160" (строка)
+    const cashpointIdStr = String(cfg.cashpoint_id)
+    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
+    const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
 
     // Подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Для GET запросов REQUEST_BODY пустой
@@ -215,14 +204,13 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
       cashpoint_id_original: cfg.cashpoint_id,
       cashpoint_id_type: typeof cfg.cashpoint_id,
       cashpoint_id_string: cashpointIdStr,
-      cashpoint_id_for_path: cashpointIdForPath,
-      cashpoint_id_length: cashpointIdForPath.length,
+      cashpoint_id_length: cashpointIdStr.length,
       api_key: cfg.api_key.substring(0, 40) + '...',
       secret: cfg.secret.substring(0, 10) + '...',
       url,
       path,
       timestamp,
-      signString: `${signString.substring(0, 100)}...`,
+      signString_full: signString, // Полная строка для подписи для отладки
       signature: `${signature.substring(0, 20)}...`,
       headers: {
         'X-Api-Key': cfg.api_key.substring(0, 30) + '...',

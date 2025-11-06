@@ -197,21 +197,9 @@ export async function depositMostbetAPI(
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // Формируем путь и тело запроса
-    // Пробуем использовать числовую часть cashpoint_id, если он начинается с буквы
-    // API может ожидать числовой cashpoint_id в URL path
-    let cashpointIdStr = String(cashpointId)
-    let cashpointIdForPath = cashpointIdStr
-    
-    // Если cashpoint_id начинается с буквы (например "F125160"), извлекаем числовую часть
-    const numericMatch = cashpointIdStr.match(/\d+/)
-    if (numericMatch && /^[A-Z]/.test(cashpointIdStr)) {
-      // Используем числовую часть для path и url (подпись должна соответствовать фактическому пути)
-      cashpointIdForPath = numericMatch[0]
-      console.log(`[Mostbet Deposit] Extracting numeric part: ${cashpointIdStr} -> ${cashpointIdForPath} for path and URL`)
-    }
-    
-    // Путь для подписи и URL используем числовую часть (если извлекли)
-    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForPath}/player/deposit`
+    // Используем полную строку как есть (как в Django)
+    const cashpointIdStr = String(cashpointId)
+    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/player/deposit`
     const requestBodyData = {
       brandId: 1, // Всегда 1 для Mostbet согласно документации
       playerId: String(userId), // ID игрока в казино
