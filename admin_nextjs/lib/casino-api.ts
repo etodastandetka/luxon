@@ -143,7 +143,16 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // Убеждаемся, что cashpoint_id - строка (как в Django)
-    const cashpointIdStr = String(cfg.cashpoint_id)
+    // Если cashpoint_id содержит буквы (например "F125160"), используем как есть
+    // Если это число, преобразуем в строку
+    let cashpointIdStr = String(cfg.cashpoint_id)
+    
+    // Если cashpoint_id начинается с буквы (например "F125160"), возможно API ожидает только числовую часть
+    // Но в Django используется как есть, так что оставляем как есть
+    // Если проблема сохранится, можно попробовать извлечь числовую часть:
+    // const numericMatch = cashpointIdStr.match(/\d+/)
+    // if (numericMatch) cashpointIdStr = numericMatch[0]
+    
     // Путь для подписи (как в Django: path = f"/mbc/gateway/v1/api/cashpoint/{self.cashpoint_id}/balance")
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
     // URL для запроса (как в Django: url = f"{self.base_url}/cashpoint/{self.cashpoint_id}/balance")
@@ -194,11 +203,14 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
       'Accept': '*/*',
     }
 
-    console.log(`[Mostbet Balance] Request:`, {
+    console.log(`[Mostbet Balance] Request details:`, {
+      cashpoint_id_original: cfg.cashpoint_id,
+      cashpoint_id_type: typeof cfg.cashpoint_id,
+      cashpoint_id_string: cashpointIdStr,
       url,
       path,
       timestamp,
-      signString: `${signString.substring(0, 50)}...`,
+      signString: `${signString.substring(0, 80)}...`,
       signature: `${signature.substring(0, 20)}...`,
       headers: {
         'X-Api-Key': cfg.api_key.substring(0, 30) + '...',
