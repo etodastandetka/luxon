@@ -142,28 +142,45 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
-    const path = `/mbc/gateway/v1/api/cashpoint/${cfg.cashpoint_id}/balance`
-    const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cfg.cashpoint_id}/balance`
+    // Убеждаемся, что cashpoint_id - строка
+    const cashpointIdStr = String(cfg.cashpoint_id)
+    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
+    const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
 
     // Подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Для GET запросов REQUEST_BODY пустой
     const signString = `${cfg.api_key}${path}${timestamp}`
     
     // Используем SHA3-256 согласно документации Mostbet API
-    // В Node.js 18+ поддерживается sha3-256
+    // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
     let signature: string
     try {
-      signature = crypto
-        .createHmac('sha3-256', cfg.secret)
-        .update(signString)
-        .digest('hex')
-    } catch (e) {
-      // Fallback на SHA256 если SHA3-256 не поддерживается (старые версии Node.js)
-      console.warn('SHA3-256 not available, using SHA256 fallback. This may not work with real API!')
-      signature = crypto
-        .createHmac('sha256', cfg.secret)
-        .update(signString)
-        .digest('hex')
+      // Пробуем разные варианты названия алгоритма
+      const algorithms = ['sha3-256', 'SHA3-256', 'sha3_256']
+      let hmac: any = null
+      
+      for (const algo of algorithms) {
+        try {
+          hmac = crypto.createHmac(algo, cfg.secret)
+          break
+        } catch (e) {
+          // Пробуем следующий вариант
+          continue
+        }
+      }
+      
+      if (!hmac) {
+        throw new Error('SHA3-256 not supported')
+      }
+      
+      signature = hmac.update(signString).digest('hex')
+      console.log(`[Mostbet Balance] Using SHA3-256 for signature`)
+    } catch (e: any) {
+      // Если SHA3-256 не поддерживается, используем библиотеку crypto-js или выводим ошибку
+      console.error(`❌ SHA3-256 not available: ${e.message}`)
+      console.error(`❌ Mostbet API requires SHA3-256. Please use Node.js 18+ or install crypto-js library.`)
+      // Не используем SHA256 fallback - это не будет работать с реальным API
+      throw new Error('SHA3-256 is required for Mostbet API but not available')
     }
 
     const headers = {
@@ -174,7 +191,22 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
       'Accept': '*/*',
     }
 
+    console.log(`[Mostbet Balance] Request:`, {
+      url,
+      path,
+      timestamp,
+      signString: `${signString.substring(0, 50)}...`,
+      signature: `${signature.substring(0, 20)}...`,
+      headers: {
+        'X-Api-Key': cfg.api_key.substring(0, 30) + '...',
+        'X-Timestamp': timestamp,
+        'X-Signature': signature.substring(0, 20) + '...',
+      }
+    })
+
     const response = await fetch(url, { headers, method: 'GET' })
+
+    console.log(`[Mostbet Balance] Response status: ${response.status} ${response.statusText}`)
 
     if (response.ok) {
       const data = await response.json()
@@ -196,9 +228,17 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
         }
       }
     } else {
-      console.error(`❌ Mostbet API error: ${response.status} ${response.statusText}`)
       const text = await response.text()
-      console.error(`Response:`, text)
+      console.error(`❌ Mostbet API error: ${response.status} ${response.statusText}`)
+      console.error(`Response body:`, text)
+      
+      // Пытаемся распарсить ошибку
+      try {
+        const errorData = JSON.parse(text)
+        console.error(`Error details:`, errorData)
+      } catch (e) {
+        // Не JSON ответ
+      }
     }
   } catch (error) {
     console.error('❌ Error getting Mostbet balance:', error)

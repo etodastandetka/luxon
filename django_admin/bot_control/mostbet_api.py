@@ -15,18 +15,18 @@ logger = logging.getLogger(__name__)
 class MostbetAPI:
     """Клиент для работы с Mostbet Cash API"""
     
-    def __init__(self, api_key: str, secret: str, cashpoint_id: int):
+    def __init__(self, api_key: str, secret: str, cashpoint_id: str):
         """
         Инициализация API клиента
         
         Args:
             api_key: API ключ в формате "api-key:uuid"
             secret: Секретный ключ для подписи
-            cashpoint_id: ID кассы (cashpoint ID)
+            cashpoint_id: ID кассы (cashpoint ID) - может быть строкой типа "F125160" или числом
         """
         self.api_key = api_key
         self.secret = secret
-        self.cashpoint_id = cashpoint_id
+        self.cashpoint_id = str(cashpoint_id)  # Преобразуем в строку для использования в URL
         self.base_url = "https://apimb.com/mbc/gateway/v1/api"
     
     def _get_timestamp(self) -> str:

@@ -601,7 +601,7 @@ def _get_cashdesk_balance_mostbet(cfg: Dict[str, Any]) -> Dict[str, Any]:
         api = MostbetAPI(
             api_key=cfg.get('api_key', ''),
             secret=cfg.get('secret', ''),
-            cashpoint_id=int(cfg.get('cashpoint_id') or 0)
+            cashpoint_id=str(cfg.get('cashpoint_id') or '0')  # Преобразуем в строку
         )
         result = api.get_balance()
         # API возвращает напрямую {'balance': ..., 'currency': ...} или {'balance': 0, 'currency': 'RUB'} при ошибке
