@@ -8,16 +8,23 @@
 import hashlib
 import json
 import requests
+import base64
 from datetime import datetime, timezone
 
 class OneXBetDeposit:
     def __init__(self):
         # Ваши данные из сообщения
-        self.hash_key = "a5cce17876708d9a3506b41ecf1f68dfc1658e9521d48c5a227340f24b99bfe8"
-        self.cashierpass = "wGiFTLJ3"
+        self.hash_key = "f7ff9a23821a0dd19276392f80d43fd2e481986bebb7418fef11e03bba038101"
+        self.cashierpass = "i3EBqvV1hB"
         self.login = "kurbanaevb"
         self.cashdesk_id = 1343871
         self.base_url = "https://partners.servcul.com/CashdeskBotAPI"
+        
+        # Создаем заголовок Basic Auth
+        auth_string = f"{self.login}:{self.cashierpass}"
+        auth_bytes = auth_string.encode('ascii')
+        auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+        self.auth_header = f"Basic {auth_b64}"
     
     def get_timestamp(self):
         """Получить текущее время в UTC формате"""
@@ -109,7 +116,10 @@ class OneXBetDeposit:
             confirm = hashlib.md5(f"{self.cashdesk_id}:{self.hash_key}".encode()).hexdigest()
             
             url = f"{self.base_url}/Cashdesk/{self.cashdesk_id}/Balance?confirm={confirm}&dt={dt}"
-            headers = {'sign': signature}
+            headers = {
+                'Authorization': self.auth_header,
+                'sign': signature
+            }
             
             print(f"🔗 URL: {url}")
             print(f"⏰ Время: {dt}")
@@ -140,7 +150,10 @@ class OneXBetDeposit:
             confirm = self.generate_confirm(user_id, self.hash_key)
             
             url = f"{self.base_url}/Users/{user_id}?confirm={confirm}&cashdeskId={self.cashdesk_id}"
-            headers = {'sign': signature}
+            headers = {
+                'Authorization': self.auth_header,
+                'sign': signature
+            }
             
             print(f"🔗 URL: {url}")
             print(f"🔐 Подпись: {signature[:20]}...")
@@ -171,7 +184,11 @@ class OneXBetDeposit:
             confirm = self.generate_confirm_deposit(user_id)
             
             url = f"{self.base_url}/Deposit/{user_id}/Add"
-            headers = {'sign': signature, 'Content-Type': 'application/json'}
+            headers = {
+                'Authorization': self.auth_header,
+                'sign': signature,
+                'Content-Type': 'application/json'
+            }
             
             request_body = {
                 "cashdeskId": self.cashdesk_id,
