@@ -13,10 +13,10 @@ from datetime import datetime, timezone
 class MelbetDeposit:
     def __init__(self):
         # Данные для Melbet API (Team cash - обновлено 05.11.2025)
-        self.hash_key = "f788cc308d9de930b292873b2cf79526da363cb24a85883575426cc7f3c4553d"
-        self.cashierpass = "3nKS3!b7"
-        self.login = "burgoevk"
-        self.cashdesk_id = "1415842"
+        self.hash_key = "5c6459e67bde6c8ace972e2a4d7e1f83d05e2b68c0741474b0fa57e46a19bda1"
+        self.cashierpass = "ScgOQgUzZs"
+        self.login = "bakhtark"
+        self.cashdesk_id = "1350588"
         self.base_url = "https://partners.servcul.com/CashdeskBotAPI"
         
         # Альтернативные варианты (закомментированы):
