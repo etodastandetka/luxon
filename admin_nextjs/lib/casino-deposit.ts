@@ -211,6 +211,9 @@ export async function depositMostbetAPI(
     
     // Path для подписи используем с полным cashpoint_id (как в Django)
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForPath}/player/deposit`
+    // URL используем с числовым cashpoint_id
+    const url = `${baseUrl}/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/deposit`
+    
     const requestBodyData = {
       brandId: 1, // Всегда 1 для Mostbet согласно документации
       playerId: String(userId), // ID игрока в казино
@@ -263,10 +266,7 @@ export async function depositMostbetAPI(
       throw new Error('SHA3-256 is required for Mostbet API but not available')
     }
 
-    // URL для запроса (используем encodeURIComponent для безопасности в URL)
-    const url = `${baseUrl}${path}`
-    
-    console.log(`[Mostbet Deposit] URL: ${url}, Request body:`, requestBodyData)
+    console.log(`[Mostbet Deposit] URL: ${url}, Path for signature: ${path}, Request body:`, requestBodyData)
 
     const response = await fetch(url, {
       method: 'POST',
