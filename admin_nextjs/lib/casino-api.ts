@@ -184,14 +184,22 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
       }
       
       signature = hmac.update(signString).digest('hex')
-      console.log(`[Mostbet Balance] Using SHA3-256 for signature, algorithm: ${algorithms.find(a => {
+      const usedAlgorithm = algorithms.find(a => {
         try {
           crypto.createHmac(a, cfg.secret)
           return true
         } catch {
           return false
         }
-      })}`)
+      })
+      console.log(`[Mostbet Balance] Using SHA3-256 for signature, algorithm: ${usedAlgorithm}`)
+      console.log(`[Mostbet Balance] Signature calculation:`, {
+        secret_length: cfg.secret.length,
+        signString_length: signString.length,
+        signature_length: signature.length,
+        signature_first_20: signature.substring(0, 20),
+        signString_preview: signString.substring(0, 100) + '...'
+      })
     } catch (e: any) {
       // Если SHA3-256 не поддерживается, используем библиотеку crypto-js или выводим ошибку
       console.error(`❌ SHA3-256 not available: ${e.message}`)
