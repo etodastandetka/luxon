@@ -22,7 +22,7 @@ CASHDESK_CONFIG = {
 # ===== Mostbet Cash API =====
 MOSTBET_CONFIG = {
     'api_key': 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
-    'secret': 'Kana312',
+    'secret': '94f63f7e-b7ff-4ef9-bccc-d05efa22301d',
     'cashpoint_id': 'C131864'  # Полный cashpoint_id с буквой C
 }
 

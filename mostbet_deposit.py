@@ -14,7 +14,7 @@ class MostbetDeposit:
     def __init__(self):
         # Ваши данные из сообщения (ОБНОВЛЕННЫЕ 05.11.2025)
         self.api_key = "api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d"
-        self.secret = "Kana312"
+        self.secret = "94f63f7e-b7ff-4ef9-bccc-d05efa22301d"
         self.cashpoint_id = "C131864"  # Полный cashpoint_id с буквой C
         self.base_url = "https://apimb.com"
     
