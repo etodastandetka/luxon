@@ -142,18 +142,11 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
-    // API ожидает числовой cashpoint_id в URL (согласно документации)
-    // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
-    let cashpointIdForUrl = String(cfg.cashpoint_id)
+    // Используем cashpoint_id как есть (как в Django)
+    // В Django используется полный cashpoint_id (например "C131864") в path и URL
+    const cashpointIdForUrl = String(cfg.cashpoint_id)
     
-    // Если cashpoint_id содержит буквы, извлекаем только числовую часть
-    const numericMatch = cashpointIdForUrl.match(/\d+/)
-    if (numericMatch) {
-      cashpointIdForUrl = numericMatch[0]
-      console.log(`[Mostbet Balance] Using numeric cashpoint_id in URL: ${cfg.cashpoint_id} -> ${cashpointIdForUrl}`)
-    }
-    
-    // Формируем path и URL с числовым cashpoint_id (как в документации)
+    // Формируем path и URL с полным cashpoint_id (как в Django)
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
     const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
 
