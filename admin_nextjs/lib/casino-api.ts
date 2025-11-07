@@ -39,7 +39,7 @@ const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
 const MOSTBET_CONFIG: MostbetConfig = {
   api_key: process.env.MOSTBET_API_KEY || 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
   secret: process.env.MOSTBET_SECRET || 'Kana312',
-  cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'F125160', // Полный cashpoint_id с буквой F (из исходных данных)
+  cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C131864', // Полный cashpoint_id с буквой C
 }
 
 /**
@@ -144,7 +144,7 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
 
     // Согласно документации и примеру curl, API ожидает числовой cashpoint_id в URL
     // Пример: /mbc/gateway/v1/api/cashpoint/48436/balance
-    // Извлекаем числовую часть из cashpoint_id (например "F125160" -> "125160")
+    // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
     let cashpointIdForUrl = String(cfg.cashpoint_id)
     
     // Если cashpoint_id содержит буквы, извлекаем только числовую часть
