@@ -78,7 +78,7 @@ export async function getCasinoConfig(bookmaker: string) {
     return {
       api_key: process.env.MOSTBET_API_KEY || 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
       secret: process.env.MOSTBET_SECRET || 'Kana312',
-      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'F125160',
+      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'F125160', // Используем F125160 из исходных данных
     }
   }
 
