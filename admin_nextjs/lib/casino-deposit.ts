@@ -197,8 +197,17 @@ export async function depositMostbetAPI(
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // Формируем путь и тело запроса
-    // Используем cashpoint_id как есть (как в Django)
-    const cashpointIdForUrl = String(cashpointId)
+    // Согласно документации и примеру curl, API ожидает числовой cashpoint_id в URL
+    // Извлекаем числовую часть из cashpoint_id (например "F125160" -> "125160")
+    let cashpointIdForUrl = String(cashpointId)
+    
+    // Если cashpoint_id содержит буквы, извлекаем только числовую часть
+    const numericMatch = cashpointIdForUrl.match(/\d+/)
+    if (numericMatch) {
+      cashpointIdForUrl = numericMatch[0]
+      console.log(`[Mostbet Deposit] Using numeric cashpoint_id in URL: ${cashpointId} -> ${cashpointIdForUrl}`)
+    }
+    
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/deposit`
     const requestBodyData = {
       brandId: 1, // Всегда 1 для Mostbet согласно документации
@@ -207,8 +216,8 @@ export async function depositMostbetAPI(
       currency: 'KGS', // Можно изменить на RUB если нужно
     }
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
-    // Используем JSON.stringify без форматирования (без пробелов)
-    const requestBody = JSON.stringify(requestBodyData)
+    // Используем JSON.stringify с separators для удаления пробелов (как в Python json.dumps(..., separators=(',', ':')))
+    const requestBody = JSON.stringify(requestBodyData, null, 0).replace(/\s+/g, '')
 
     // API key может быть с префиксом или без
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
