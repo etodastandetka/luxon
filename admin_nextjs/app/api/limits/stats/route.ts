@@ -126,7 +126,50 @@ export async function GET(request: NextRequest) {
     // Лимиты - это текущие лимиты кассы из API казино, не зависят от периода
     const { getPlatformLimits } = await import('@/lib/casino-api')
     console.log(`📊 Fetching platform limits (fresh data, no cache)...`)
-    const platformLimits = await getPlatformLimits()
+    let platformLimits = await getPlatformLimits()
+    
+    // Фильтруем лимиты по настройкам казино (показываем только включенные)
+    const casinoSettingsConfig = await prisma.botConfiguration.findFirst({
+      where: { key: 'casinos' },
+    })
+    
+    let casinoSettings: Record<string, boolean> = {
+      '1xbet': true,
+      '1win': true,
+      melbet: true,
+      mostbet: true,
+      winwin: true,
+    }
+    
+    if (casinoSettingsConfig) {
+      try {
+        const parsed = typeof casinoSettingsConfig.value === 'string' 
+          ? JSON.parse(casinoSettingsConfig.value) 
+          : casinoSettingsConfig.value
+        casinoSettings = { ...casinoSettings, ...parsed }
+      } catch (e) {
+        console.error('Failed to parse casino settings:', e)
+      }
+    }
+    
+    // Фильтруем платформы: показываем только те, которые включены в настройках
+    platformLimits = platformLimits.filter((platform) => {
+      const key = platform.key.toLowerCase()
+      // Маппинг ключей платформ на настройки
+      const settingKey = key === '1xbet' ? '1xbet' 
+        : key === '1win' ? '1win'
+        : key === 'melbet' ? 'melbet'
+        : key === 'mostbet' ? 'mostbet'
+        : key === 'winwin' ? 'winwin'
+        : key
+      
+      const isEnabled = casinoSettings[settingKey] !== false
+      if (!isEnabled) {
+        console.log(`🚫 Platform ${platform.name} (${key}) is disabled in settings, hiding from limits`)
+      }
+      return isEnabled
+    })
+    
     console.log(`✅ Platform limits received:`, platformLimits.map(p => `${p.name}=${p.limit}`).join(', '))
 
     return NextResponse.json(

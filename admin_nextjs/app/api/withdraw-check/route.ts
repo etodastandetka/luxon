@@ -99,6 +99,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (normalizedBookmaker.includes('winwin') || normalizedBookmaker === 'winwin') {
+      const setting = await prisma.botConfiguration.findFirst({
+        where: { key: 'winwin_api_config' },
+      })
+
+      if (setting) {
+        const settingConfig = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+        if (settingConfig.hash && settingConfig.cashierpass && settingConfig.login && settingConfig.cashdeskid) {
+          config = {
+            hash: settingConfig.hash,
+            cashierpass: settingConfig.cashierpass,
+            login: settingConfig.login,
+            cashdeskid: String(settingConfig.cashdeskid),
+          }
+        }
+      }
+
+      if (!config) {
+        config = {
+          hash: process.env.WINWIN_HASH || 'ca4c49cea830e2fbebf7e3894659df1cd74abb2e0e79d58b17ecf82ea148cf2d',
+          cashierpass: process.env.WINWIN_CASHIERPASS || 'yYRbyQeX',
+          login: process.env.WINWIN_LOGIN || 'burgoevkan',
+          cashdeskid: process.env.WINWIN_CASHDESKID || '1416579',
+        }
+      }
+    }
+
     // Для Mostbet
     if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
       const setting = await prisma.botConfiguration.findFirst({

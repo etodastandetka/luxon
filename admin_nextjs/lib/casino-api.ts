@@ -34,6 +34,12 @@ const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
     login: process.env.MELBET_LOGIN || 'burgoevk',
     cashdeskid: parseInt(process.env.MELBET_CASHDESKID || '1415842'),
   },
+  winwin: {
+    hash: process.env.WINWIN_HASH || 'ca4c49cea830e2fbebf7e3894659df1cd74abb2e0e79d58b17ecf82ea148cf2d',
+    cashierpass: process.env.WINWIN_CASHIERPASS || 'yYRbyQeX',
+    login: process.env.WINWIN_LOGIN || 'burgoevkan',
+    cashdeskid: parseInt(process.env.WINWIN_CASHDESKID || '1416579'),
+  },
 }
 
 const MOSTBET_CONFIG: MostbetConfig = {
@@ -43,10 +49,10 @@ const MOSTBET_CONFIG: MostbetConfig = {
 }
 
 /**
- * Получение баланса и лимита через Cashdesk API (1xbet, Melbet)
+ * Получение баланса и лимита через Cashdesk API (1xbet, Melbet, Winwin)
  */
 async function getCashdeskBalance(
-  casino: '1xbet' | 'melbet',
+  casino: '1xbet' | 'melbet' | 'winwin',
   cfg: CashdeskConfig
 ): Promise<BalanceResult> {
   try {
@@ -307,6 +313,16 @@ export async function getPlatformLimits(): Promise<
 
     // 1WIN (пока нет API)
     limits.push({ key: '1win', name: '1WIN', limit: 0 })
+
+    // Winwin
+    const winwinCfg = CASHDESK_CONFIG.winwin
+    if (winwinCfg && winwinCfg.cashdeskid > 0) {
+      const winwinBal = await getCashdeskBalance('winwin', winwinCfg)
+      console.log(`📊 Winwin result: balance=${winwinBal.balance}, limit=${winwinBal.limit}`)
+      limits.push({ key: 'winwin', name: 'Winwin', limit: winwinBal.limit })
+    } else {
+      limits.push({ key: 'winwin', name: 'Winwin', limit: 0 })
+    }
 
     // Mostbet
     const mostbetCfg = MOSTBET_CONFIG

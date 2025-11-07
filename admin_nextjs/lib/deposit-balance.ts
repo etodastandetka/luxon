@@ -58,6 +58,31 @@ export async function getCasinoConfig(bookmaker: string) {
     }
   }
   
+  if (normalizedBookmaker.includes('winwin')) {
+    const setting = await prisma.botConfiguration.findFirst({
+      where: { key: 'winwin_api_config' },
+    })
+
+    if (setting) {
+      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        return {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: String(config.cashdeskid),
+        }
+      }
+    }
+
+    return {
+      hash: process.env.WINWIN_HASH || 'ca4c49cea830e2fbebf7e3894659df1cd74abb2e0e79d58b17ecf82ea148cf2d',
+      cashierpass: process.env.WINWIN_CASHIERPASS || 'yYRbyQeX',
+      login: process.env.WINWIN_LOGIN || 'burgoevkan',
+      cashdeskid: process.env.WINWIN_CASHDESKID || '1416579',
+    }
+  }
+  
   // Mostbet нужны: api_key, secret, cashpoint_id
   if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
     const setting = await prisma.botConfiguration.findFirst({
@@ -94,8 +119,8 @@ export async function depositToCasino(
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
 
   try {
-    // 1xbet и Melbet используют Cashdesk API
-    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet')) {
+    // 1xbet, Melbet и Winwin используют Cashdesk API
+    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin')) {
       const config = await getCasinoConfig(bookmaker)
       
       if (!config) {
