@@ -39,7 +39,7 @@ const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
 const MOSTBET_CONFIG: MostbetConfig = {
   api_key: process.env.MOSTBET_API_KEY || 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
   secret: process.env.MOSTBET_SECRET || 'Kana312',
-  cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || '131864', // Пробуем числовой cashpoint_id без буквы
+  cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || '125160', // Числовая часть из F125160
 }
 
 /**
