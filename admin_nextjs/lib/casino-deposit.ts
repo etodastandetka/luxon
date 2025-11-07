@@ -216,8 +216,9 @@ export async function depositMostbetAPI(
       currency: 'KGS', // Можно изменить на RUB если нужно
     }
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
-    // Используем JSON.stringify с separators для удаления пробелов (как в Python json.dumps(..., separators=(',', ':')))
-    const requestBody = JSON.stringify(requestBodyData, null, 0).replace(/\s+/g, '')
+    // Используем JSON.stringify с replacer для удаления пробелов (как в Python json.dumps(..., separators=(',', ':')))
+    // JSON.stringify по умолчанию добавляет пробелы, поэтому используем replace для их удаления
+    const requestBody = JSON.stringify(requestBodyData).replace(/\s+/g, '')
 
     // API key может быть с префиксом или без
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
