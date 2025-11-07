@@ -142,22 +142,17 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
-    // В Django используется полный cashpoint_id в path для подписи
-    // Но в URL может требоваться числовой формат
-    // Пробуем использовать полный cashpoint_id в path для подписи (как в Django)
-    const cashpointIdForPath = String(cfg.cashpoint_id) // Полный cashpoint_id для подписи (C131864)
-    
-    // Для URL извлекаем числовую часть (если есть буквы)
-    let cashpointIdForUrl = cashpointIdForPath
+    // В URL всегда должны быть цифры (131864), без буквы C
+    // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
+    let cashpointIdForUrl = String(cfg.cashpoint_id)
     const numericMatch = cashpointIdForUrl.match(/\d+/)
-    if (numericMatch && cashpointIdForUrl !== numericMatch[0]) {
+    if (numericMatch) {
       cashpointIdForUrl = numericMatch[0]
       console.log(`[Mostbet Balance] Using numeric cashpoint_id in URL: ${cfg.cashpoint_id} -> ${cashpointIdForUrl}`)
     }
     
-    // Path для подписи используем с полным cashpoint_id (как в Django)
-    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForPath}/balance`
-    // URL используем с числовым cashpoint_id
+    // Path для подписи и URL используем с числовым cashpoint_id (131864)
+    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
     const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
 
     // Подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
