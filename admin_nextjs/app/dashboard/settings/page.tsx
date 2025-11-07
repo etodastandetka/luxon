@@ -15,6 +15,7 @@ interface Settings {
     '1win': boolean
     melbet: boolean
     mostbet: boolean
+    winwin: boolean
   }
 }
 
@@ -283,7 +284,7 @@ export default function SettingsPage() {
         <h2 className="text-base font-bold text-white mb-4">Настройки казино</h2>
         
         <div className="space-y-3">
-          {(['1xbet', '1win', 'melbet', 'mostbet'] as const).map((casino) => (
+          {(['1xbet', '1win', 'melbet', 'mostbet', 'winwin'] as const).map((casino) => (
             <div key={casino} className="flex items-center justify-between">
               <span className="text-sm font-medium text-white uppercase">{casino}</span>
               <label className="relative inline-flex items-center cursor-pointer">

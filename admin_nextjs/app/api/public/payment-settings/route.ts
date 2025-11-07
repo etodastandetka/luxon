@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
       '1xbet': true,
       '1win': true,
       melbet: true,
-      mostbet: true
+      mostbet: true,
+      winwin: true
     }
 
     // Формируем ответ в формате, который ожидает клиентский сайт
@@ -78,7 +79,8 @@ export async function GET(request: NextRequest) {
         '1xbet': true,
         '1win': true,
         melbet: true,
-        mostbet: true
+        mostbet: true,
+        winwin: true
       },
       pause: false,
       maintenance_message: 'Технические работы. Попробуйте позже.',

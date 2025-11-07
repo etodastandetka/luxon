@@ -60,8 +60,8 @@ export async function checkWithdrawAmountCashdesk(
     const normalizedBookmaker = bookmaker.toLowerCase()
     const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI'
     
-    // Для Melbet userid должен быть в нижнем регистре
-    const userIdForApi = normalizedBookmaker.includes('melbet') 
+    // Для Melbet и Winwin userid должен быть в нижнем регистре
+    const userIdForApi = (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin'))
       ? userId.toLowerCase() 
       : userId
 
@@ -348,8 +348,8 @@ export async function processWithdraw(
 ): Promise<{ success: boolean; amount?: number; message?: string; transactionId?: number }> {
   const normalizedBookmaker = bookmaker.toLowerCase()
 
-  // 1xbet и Melbet используют Cashdesk API
-  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet')) {
+  // 1xbet, Melbet и Winwin используют Cashdesk API
+  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin')) {
     return await checkWithdrawAmountCashdesk(bookmaker, userId, code, config)
   }
 

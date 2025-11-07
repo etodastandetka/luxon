@@ -31,6 +31,7 @@ export default function WithdrawStep0() {
           if (data.casinos['1win'] === false) disabled.push('1win')
           if (data.casinos['melbet'] === false) disabled.push('melbet')
           if (data.casinos['mostbet'] === false) disabled.push('mostbet')
+          if (data.casinos['winwin'] === false) disabled.push('winwin')
           setDisabledCasinos(disabled)
         }
       } catch (error) {

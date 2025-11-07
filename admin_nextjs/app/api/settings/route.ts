@@ -40,7 +40,8 @@ export async function GET(request: NextRequest) {
       '1xbet': true,
       '1win': true,
       melbet: true,
-      mostbet: true
+      mostbet: true,
+      winwin: true
     }
 
     const settings = {

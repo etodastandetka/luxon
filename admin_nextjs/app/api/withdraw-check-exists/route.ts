@@ -40,9 +40,10 @@ export async function GET(request: NextRequest) {
 
     const normalizedBookmaker = bookmaker.toLowerCase()
     
-    // Для 1xbet/Melbet/1win - нет метода проверки без кода, возвращаем что проверка возможна
+    // Для 1xbet/Melbet/Winwin/1win - нет метода проверки без кода, возвращаем что проверка возможна
     if (normalizedBookmaker.includes('1xbet') || 
         normalizedBookmaker.includes('melbet') || 
+        normalizedBookmaker.includes('winwin') ||
         normalizedBookmaker.includes('1win')) {
       return NextResponse.json(
         createApiResponse(
