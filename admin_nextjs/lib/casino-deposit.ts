@@ -198,7 +198,7 @@ export async function depositMostbetAPI(
 
     // Формируем путь и тело запроса
     // Согласно документации и примеру curl, API ожидает числовой cashpoint_id в URL
-    // Извлекаем числовую часть из cashpoint_id (например "F125160" -> "125160")
+    // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
     let cashpointIdForUrl = String(cashpointId)
     
     // Если cashpoint_id содержит буквы, извлекаем только числовую часть
