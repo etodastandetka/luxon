@@ -15,7 +15,7 @@ class MostbetDeposit:
         # Ваши данные из сообщения (ОБНОВЛЕННЫЕ 05.11.2025)
         self.api_key = "api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d"
         self.secret = "Kana312"
-        self.cashpoint_id = "125160"  # Числовая часть из F125160
+        self.cashpoint_id = "F125160"  # Полный cashpoint_id с буквой
         self.base_url = "https://apimb.com"
     
     def get_timestamp(self):

@@ -39,7 +39,7 @@ const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
 const MOSTBET_CONFIG: MostbetConfig = {
   api_key: process.env.MOSTBET_API_KEY || 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
   secret: process.env.MOSTBET_SECRET || 'Kana312',
-  cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || '125160', // Числовая часть из F125160
+  cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'F125160', // Полный cashpoint_id с буквой
 }
 
 /**
@@ -142,23 +142,11 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
-    // Согласно документации Mostbet API, cashpointId должен быть числом в URL
-    // Пример из документации: /mbc/gateway/v1/api/cashpoint/48436/balance
-    // Убеждаемся, что cashpoint_id - числовой формат (без букв)
-    let cashpointIdForUrl = String(cfg.cashpoint_id)
+    // Используем cashpoint_id как есть (может быть "F125160" или числом)
+    // Secret может быть привязан к полному идентификатору с буквой
+    const cashpointIdForUrl = String(cfg.cashpoint_id)
     
-    // Если cashpoint_id содержит буквы (например "F125160" или "C131864"), извлекаем только числовую часть
-    const numericMatch = cashpointIdForUrl.match(/^\d+$/)
-    if (!numericMatch) {
-      // Если есть нецифровые символы, извлекаем числовую часть
-      const extracted = cashpointIdForUrl.match(/\d+/)
-      if (extracted) {
-        cashpointIdForUrl = extracted[0]
-        console.log(`[Mostbet Balance] Extracted numeric cashpoint_id: ${cfg.cashpoint_id} -> ${cashpointIdForUrl}`)
-      }
-    }
-    
-    // Формируем path и URL с числовым cashpoint_id (как в документации)
+    // Формируем path и URL с cashpoint_id как есть
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
     const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
 
