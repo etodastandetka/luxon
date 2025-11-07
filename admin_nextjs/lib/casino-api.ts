@@ -142,12 +142,25 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
-    // Используем полную строку как есть (как в Django)
-    // В Django: path = f"/mbc/gateway/v1/api/cashpoint/{self.cashpoint_id}/balance"
-    // где self.cashpoint_id = "F125160" (строка)
-    const cashpointIdStr = String(cfg.cashpoint_id)
-    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
-    const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/balance`
+    // Согласно документации Mostbet API, cashpointId должен быть числом в URL
+    // Пример из документации: /mbc/gateway/v1/api/cashpoint/48436/balance
+    // Убеждаемся, что cashpoint_id - числовой формат (без букв)
+    let cashpointIdForUrl = String(cfg.cashpoint_id)
+    
+    // Если cashpoint_id содержит буквы (например "F125160" или "C131864"), извлекаем только числовую часть
+    const numericMatch = cashpointIdForUrl.match(/^\d+$/)
+    if (!numericMatch) {
+      // Если есть нецифровые символы, извлекаем числовую часть
+      const extracted = cashpointIdForUrl.match(/\d+/)
+      if (extracted) {
+        cashpointIdForUrl = extracted[0]
+        console.log(`[Mostbet Balance] Extracted numeric cashpoint_id: ${cfg.cashpoint_id} -> ${cashpointIdForUrl}`)
+      }
+    }
+    
+    // Формируем path и URL с числовым cashpoint_id (как в документации)
+    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
+    const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
 
     // Подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Для GET запросов REQUEST_BODY пустой
@@ -203,8 +216,8 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     console.log(`[Mostbet Balance] Request details:`, {
       cashpoint_id_original: cfg.cashpoint_id,
       cashpoint_id_type: typeof cfg.cashpoint_id,
-      cashpoint_id_string: cashpointIdStr,
-      cashpoint_id_length: cashpointIdStr.length,
+      cashpoint_id_for_url: cashpointIdForUrl,
+      cashpoint_id_is_numeric: /^\d+$/.test(cashpointIdForUrl),
       api_key: cfg.api_key.substring(0, 40) + '...',
       secret: cfg.secret.substring(0, 10) + '...',
       url,
