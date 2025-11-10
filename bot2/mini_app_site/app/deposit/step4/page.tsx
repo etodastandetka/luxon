@@ -1382,10 +1382,15 @@ export default function DepositStep4() {
           
           <div className="text-xs text-white/50 text-center">
             {(() => {
-              const usdtAmount: number = cryptoInvoice?.amount || kgsToUsdt(parseFloat(amount));
+              // Вычисляем значение и преобразуем в строку
+              const invoiceAmount = cryptoInvoice?.amount;
+              const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
+              const calculatedAmount = kgsToUsdt(amountNum);
+              const usdtAmountNum = invoiceAmount !== undefined && invoiceAmount !== null ? invoiceAmount : calculatedAmount;
+              const usdtAmountStr = String(usdtAmountNum);
               return language === 'ru' 
-                ? `Сумма: ${formatKgs(amount)} (≈ ${formatUsdt(usdtAmount as number | string)})`
-                : `Amount: ${formatKgs(amount)} (≈ ${formatUsdt(usdtAmount as number | string)})`;
+                ? `Сумма: ${formatKgs(amount)} (≈ ${formatUsdt(usdtAmountStr)})`
+                : `Amount: ${formatKgs(amount)} (≈ ${formatUsdt(usdtAmountStr)})`;
             })()}
           </div>
           <div className="text-xs text-white/40 text-center">
@@ -1423,7 +1428,7 @@ export default function DepositStep4() {
               <span className="text-white font-bold text-lg">{formatKgs(amount)}</span>
               {paymentType === 'crypto' && cryptoInvoice && (
                 <div className="text-sm text-white/60">
-                  ≈ {formatUsdt((cryptoInvoice.amount || kgsToUsdt(parseFloat(amount))) as number | string)}
+                  ≈ {formatUsdt(String(cryptoInvoice.amount ?? kgsToUsdt(typeof amount === 'string' ? parseFloat(amount) : amount)))}
                 </div>
               )}
             </div>
