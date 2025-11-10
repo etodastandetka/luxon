@@ -7,6 +7,7 @@ import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getTelegramUser, syncWithBot, notifyUser } from '../../../utils/telegram'
 import { useAlert } from '../../../components/useAlert'
+import { kgsToUsdt, formatKgs, formatUsdt } from '../../../utils/crypto-pay'
 
 export default function DepositStep4() {
   const [bank, setBank] = useState('omoney') // По умолчанию O!Money
@@ -137,19 +138,10 @@ export default function DepositStep4() {
       
       // Для крипты берем сумму в долларах из localStorage
       // Если нет сохраненной суммы в долларах, конвертируем из сомов
+      // Конвертируем сумму в USDT для payload (если нужно)
       const USD_TO_KGS_RATE = 95
-      let amountInUsd: number
       const savedAmountUsd = localStorage.getItem('deposit_amount_usd')
-      
-      if (savedAmountUsd) {
-        // Используем сохраненную сумму в долларах
-        amountInUsd = parseFloat(savedAmountUsd)
-        console.log('✅ Using saved USD amount:', amountInUsd)
-      } else {
-        // Fallback: конвертируем из сомов (если старая версия)
-        amountInUsd = amount / USD_TO_KGS_RATE
-        console.log('⚠️ Converting from KGS to USD:', amount, '->', amountInUsd)
-      }
+      const amountInUsd = savedAmountUsd ? parseFloat(savedAmountUsd) : (amount / USD_TO_KGS_RATE)
       
       // Получаем Telegram ID пользователя для payload
       const tg = (window as any).Telegram?.WebApp
@@ -174,7 +166,7 @@ export default function DepositStep4() {
         bookmaker,
         playerId,
         amount: amount, // В сомах для внутреннего использования
-        amount_usd: amountInUsd, // В долларах для крипто-платежа
+        amount_usd: amountInUsd, // В долларах для совместимости
         telegram_user_id: telegramUserId
       })
       
@@ -184,12 +176,10 @@ export default function DepositStep4() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: amountInUsd.toString(), // Отправляем в долларах для Crypto Bot API
+          amountKgs: amount, // Отправляем сумму в сомах (API конвертирует в USDT)
           asset: 'USDT',
-          currency_type: 'crypto',
           description: `Пополнение баланса ${bookmaker} - ID: ${playerId}\n\n⚠️ Рекомендуется выбрать сеть TRC20 (TRON) для оплаты`,
           payload: payload,
-          expires_in: 3600 // 1 час
         })
       })
       
@@ -1391,9 +1381,12 @@ export default function DepositStep4() {
           </button>
           
           <div className="text-xs text-white/50 text-center">
-            {language === 'ru' 
-              ? `Сумма: ${amount} сом`
-              : `Amount: ${amount} KGS`}
+            {(() => {
+              const usdtAmount: number = cryptoInvoice?.amount || kgsToUsdt(parseFloat(amount));
+              return language === 'ru' 
+                ? `Сумма: ${formatKgs(amount)} (≈ ${formatUsdt(usdtAmount as number | string)})`
+                : `Amount: ${formatKgs(amount)} (≈ ${formatUsdt(usdtAmount as number | string)})`;
+            })()}
           </div>
           <div className="text-xs text-white/40 text-center">
             {language === 'ru' 
@@ -1426,7 +1419,14 @@ export default function DepositStep4() {
           </div>
           <div className="flex justify-between">
             <span className="text-white/70">{t.amount}:</span>
-            <span className="text-white font-bold text-lg">{amount} сом</span>
+            <div className="text-right">
+              <span className="text-white font-bold text-lg">{formatKgs(amount)}</span>
+              {paymentType === 'crypto' && cryptoInvoice && (
+                <div className="text-sm text-white/60">
+                  ≈ {formatUsdt((cryptoInvoice.amount || kgsToUsdt(parseFloat(amount))) as number | string)}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

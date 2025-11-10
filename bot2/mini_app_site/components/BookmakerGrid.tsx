@@ -1,10 +1,10 @@
 "use client"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 
 type Item = { key: string; name: string; logo?: string; emoji?: string }
 
-const BOOKMAKERS: Item[] = [
+const ALL_BOOKMAKERS: Item[] = [
   { key: '1xbet', name: '1XBET', emoji: '🎯', logo: '/images/1xbet.jpg' },
   { key: '1win', name: '1WIN', emoji: '🏆', logo: '/images/1win.jpg' },
   { key: 'melbet', name: 'MELBET', emoji: '🎲', logo: '/images/melbet.jpg' },
@@ -22,6 +22,34 @@ export default function BookmakerGrid({
   disabledCasinos?: string[]
 }) {
   const [showModal, setShowModal] = useState<string | null>(null)
+  const [bookmakers, setBookmakers] = useState<Item[]>(ALL_BOOKMAKERS)
+
+  // Проверяем, является ли это ботом только для 1xbet
+  useEffect(() => {
+    // Проверяем параметр в URL (если бот передает ?bot=1xbet)
+    const urlParams = new URLSearchParams(window.location.search)
+    const botType = urlParams.get('bot')
+    
+    // Также проверяем в localStorage (для сохранения при переходах)
+    const savedBotType = localStorage.getItem('bot_type') || botType
+    
+    // Если это бот для 1xbet, показываем только 1xbet
+    if (savedBotType === '1xbet' || botType === '1xbet') {
+      // Сохраняем в localStorage для последующих переходов
+      if (botType === '1xbet') {
+        localStorage.setItem('bot_type', '1xbet')
+      }
+      
+      setBookmakers([{ key: '1xbet', name: '1XBET', emoji: '🎯', logo: '/images/1xbet.jpg' }])
+      // Автоматически выбираем 1xbet
+      if (!value) {
+        onChange('1xbet')
+      }
+    } else {
+      // Если это не бот для 1xbet, очищаем сохраненный тип
+      localStorage.removeItem('bot_type')
+    }
+  }, [value, onChange])
 
   const handleClick = (key: string) => {
     // Проверяем, отключено ли казино
@@ -33,14 +61,14 @@ export default function BookmakerGrid({
   }
 
   const getCasinoName = (key: string) => {
-    const casino = BOOKMAKERS.find(b => b.key === key)
+    const casino = bookmakers.find(b => b.key === key) || ALL_BOOKMAKERS.find(b => b.key === key)
     return casino?.name || key.toUpperCase()
   }
 
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
-        {BOOKMAKERS.map(b => {
+        {bookmakers.map(b => {
           const isDisabled = disabledCasinos && disabledCasinos.includes(b.key)
           return (
             <button 

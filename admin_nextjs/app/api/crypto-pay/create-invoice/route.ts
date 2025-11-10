@@ -1,50 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createInvoice } from '@/lib/crypto-pay'
+// @ts-ignore - @koo0ki/send types may not be available
+import { CryptoPayClient, Networks } from "@koo0ki/send";
+
+const USD_TO_KGS_RATE = 95;
+
+// Инициализация клиента
+const cryptoPay = new CryptoPayClient({
+    token: process.env.CRYPTO_PAY_TOKEN || process.env.NEXT_PUBLIC_CRYPTO_PAY_TOKEN || process.env.CRYPTO_PAY_API_TOKEN || "",
+    net: process.env.NODE_ENV === 'production' ? Networks.MAINNET : Networks.TESTNET,
+    pollingEnabled: true,
+    pollingInterval: 15000,
+});
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    // Публичный endpoint для клиентской части
-
     const body = await request.json()
-    const { amount, description, payload, currency_type = 'crypto', asset = 'USDT', expires_in } = body
+    const { amount, amountKgs, description, payload, asset = 'USDT' } = body
 
-    if (!amount) {
-      return NextResponse.json({ error: 'Amount is required' }, { status: 400 })
+    // Если передана сумма в сомах, конвертируем в USDT
+    let amountUsdt: number;
+    if (amountKgs !== undefined && amountKgs !== null) {
+      amountUsdt = amountKgs / USD_TO_KGS_RATE;
+    } else if (amount) {
+      // Если передана сумма напрямую, считаем что это USDT
+      amountUsdt = parseFloat(amount);
+    } else {
+      return NextResponse.json({ error: 'Amount or amountKgs is required' }, { status: 400 })
     }
 
-    // Создаем invoice через Crypto Pay API
-    // Примечание: Crypto Bot API не позволяет указать сеть по умолчанию (TRC20/ERC20)
-    // Пользователь должен выбрать сеть вручную при оплате
-    // Рекомендуется выбрать TRC20 (TRON) для оплаты
-    const invoiceDescription = description || 'Пополнение баланса LUXON'
-    const invoice = await createInvoice({
-      asset,
-      amount: amount.toString(),
-      currency_type,
-      description: invoiceDescription,
-      payload: payload || '',
-      expires_in: expires_in || 3600, // 1 час по умолчанию
-      paid_btn_name: 'callback',
-      paid_btn_url: process.env.NEXT_PUBLIC_APP_URL || 'https://luxservice.online'
+    // Валидация суммы
+    if (amountUsdt < 1) {
+      return NextResponse.json({ error: 'Минимальная сумма: 1 USDT (95 сом)' }, { status: 400 })
+    }
+    
+    if (amountUsdt > 1000) {
+      return NextResponse.json({ error: 'Максимальная сумма: 1000 USDT (95,000 сом)' }, { status: 400 })
+    }
+
+    // Создаем invoice через @koo0ki/send
+    const invoice = await cryptoPay.createInvoice({
+      amount: amountUsdt,
+      asset: asset,
+      description: description || 'Пополнение баланса LUXON',
     })
 
     if (!invoice) {
       return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 })
     }
 
+    // Адаптируем ответ под формат, который ожидает клиент
     return NextResponse.json({
       success: true,
       data: {
-        invoice_id: invoice.invoice_id,
+        invoice_id: invoice.invoiceId || invoice.id || invoice.invoice_id,
         hash: invoice.hash,
-        bot_invoice_url: invoice.bot_invoice_url,
-        mini_app_invoice_url: invoice.mini_app_invoice_url,
-        web_app_invoice_url: invoice.web_app_invoice_url,
-        amount: invoice.amount,
-        asset: invoice.asset,
-        status: invoice.status
+        bot_invoice_url: invoice.botInvoiceUrl || invoice.url || invoice.bot_invoice_url,
+        mini_app_invoice_url: invoice.miniAppInvoiceUrl || invoice.url || invoice.mini_app_invoice_url,
+        web_app_invoice_url: invoice.webAppInvoiceUrl || invoice.url || invoice.web_app_invoice_url,
+        amount: amountUsdt,
+        amountKgs: amountKgs || (amountUsdt * USD_TO_KGS_RATE),
+        asset: invoice.asset || asset,
+        status: invoice.status || 'active'
       }
     })
   } catch (error: any) {
