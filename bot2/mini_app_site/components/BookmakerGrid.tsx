@@ -31,23 +31,26 @@ export default function BookmakerGrid({
     const botType = urlParams.get('bot')
     
     // Также проверяем в localStorage (для сохранения при переходах)
-    const savedBotType = localStorage.getItem('bot_type') || botType
+    const savedBotType = localStorage.getItem('bot_type')
+    const finalBotType = botType || savedBotType
     
     // Если это бот для 1xbet, показываем только 1xbet
-    if (savedBotType === '1xbet' || botType === '1xbet') {
+    if (finalBotType === '1xbet') {
       // Сохраняем в localStorage для последующих переходов
-      if (botType === '1xbet') {
-        localStorage.setItem('bot_type', '1xbet')
-      }
+      localStorage.setItem('bot_type', '1xbet')
       
       setBookmakers([{ key: '1xbet', name: '1XBET', emoji: '🎯', logo: '/images/1xbet.jpg' }])
-      // Автоматически выбираем 1xbet
-      if (!value) {
+      // Автоматически выбираем 1xbet, если еще не выбран
+      if (!value || value !== '1xbet') {
         onChange('1xbet')
       }
     } else {
-      // Если это не бот для 1xbet, очищаем сохраненный тип
-      localStorage.removeItem('bot_type')
+      // Если это не бот для 1xbet, показываем все казино
+      setBookmakers(ALL_BOOKMAKERS)
+      // Очищаем сохраненный тип только если явно передан другой тип бота
+      if (botType && botType !== '1xbet') {
+        localStorage.removeItem('bot_type')
+      }
     }
   }, [value, onChange])
 

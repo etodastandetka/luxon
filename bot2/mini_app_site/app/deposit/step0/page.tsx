@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import PageTransition from '../../../components/PageTransition'
@@ -9,6 +9,17 @@ export default function DepositStep0() {
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
   const router = useRouter()
   const { language } = useLanguage()
+
+  // Сохраняем параметр bot из URL в localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const botType = urlParams.get('bot')
+      if (botType) {
+        localStorage.setItem('bot_type', botType)
+      }
+    }
+  }, [])
 
   const translations = {
     ru: {
