@@ -68,16 +68,21 @@ export default function BookmakerGrid({
     return casino?.name || key.toUpperCase()
   }
 
+  // Определяем количество колонок: если букмекер один - на всю ширину, иначе 2 колонки
+  const gridCols = bookmakers.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+  // Высота карточки: если букмекер один - больше, иначе стандартная
+  const cardHeight = bookmakers.length === 1 ? 'h-48' : 'h-32'
+
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={`grid ${gridCols} gap-3`}>
         {bookmakers.map(b => {
           const isDisabled = disabledCasinos && disabledCasinos.includes(b.key)
           return (
             <button 
               key={b.key}
               onClick={() => handleClick(b.key)}
-              className={`relative overflow-hidden rounded-xl transition-all duration-200 h-32 ${
+              className={`relative overflow-hidden rounded-xl transition-all duration-200 ${cardHeight} ${
                 value === b.key 
                   ? 'ring-2 ring-green-400' 
                   : isDisabled
