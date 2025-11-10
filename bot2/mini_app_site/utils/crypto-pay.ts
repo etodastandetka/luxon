@@ -33,9 +33,16 @@ export function formatKgs(amount: number | string): string {
 /**
  * Форматирование суммы в USDT
  */
-export function formatUsdt(amount: number | string | undefined): string {
+export function formatUsdt(amount: number | string | undefined | null): string {
     if (amount === undefined || amount === null) return '0.00 USDT';
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    let num: number;
+    if (typeof amount === 'string') {
+        num = parseFloat(amount);
+    } else if (typeof amount === 'number') {
+        num = amount;
+    } else {
+        num = 0;
+    }
     if (isNaN(num)) return '0.00 USDT';
     return `${num.toFixed(2)} USDT`;
 }
