@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 # Токен бота техподдержки
 SUPPORT_BOT_TOKEN = os.getenv('SUPPORT_BOT_TOKEN', '8390085986:AAH9iS53RgIleXC-JfExWv8SxwvJR1rPdbI')
 
+# ID операторов для уведомлений
+OPERATOR_IDS = [7638996648, 6826609528, 8203434235]
+
 # Состояния пользователей (для отслеживания этапа диалога)
 user_states = {}
 
@@ -63,16 +66,159 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
     
     if callback_data == "deposit_issue":
-        user_states[user_id] = {'step': 'deposit_amount', 'data': {'issue_type': 'deposit'}}
+        user_states[user_id] = {'step': 'deposit_menu', 'data': {'issue_type': 'deposit'}}
         await query.edit_message_text(
-            "💰 Проблема с пополнением\n\n"
-            "Вы отправляли средства с копейками?",
+            "💰 Проблемы с депозитом\n\n"
+            "Выберите тему, которая вас интересует 🔍",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Да", callback_data="yes_cents")],
-                [InlineKeyboardButton("❌ Нет", callback_data="no_cents")],
+                [InlineKeyboardButton("Как сделать пополнение?", callback_data="deposit_how_to")],
+                [InlineKeyboardButton("Какие сроки пополнения средств?", callback_data="deposit_time")],
+                [InlineKeyboardButton("Пополнение не пришло более 24 часов", callback_data="deposit_not_arrived")],
+                [InlineKeyboardButton("Неправильная сумма пополнения", callback_data="deposit_wrong_amount")],
+                [InlineKeyboardButton("Другая проблема", callback_data="deposit_other")],
                 [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
             ])
         )
+    
+    elif callback_data == "deposit_how_to":
+        user_states[user_id] = {'step': 'deposit_answer', 'data': {'issue_type': 'deposit', 'question': 'how_to'}}
+        await query.edit_message_text(
+            "📝 Как сделать пополнение?\n\n"
+            "Выберите букмекера, введите ID игрока, укажите сумму, выберите банк и перейдите по ссылке для оплаты.\n\n"
+            "Пошаговая инструкция:\n"
+            "1. Откройте раздел «Пополнение»\n"
+            "2. Выберите букмекера (1XBET, 1WIN, MELBET, MOSTBET)\n"
+            "3. Введите ваш ID игрока в букмекерской конторе\n"
+            "4. Укажите сумму пополнения (от 35 до 100,000 сом)\n"
+            "5. Выберите банк для оплаты\n"
+            "6. Перейдите по ссылке и оплатите\n"
+            "7. Дождитесь автоматического зачисления (1-5 минут)",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Это помогло", callback_data="deposit_helpful")],
+                [InlineKeyboardButton("📞 Вызвать оператора", callback_data="deposit_call_operator")],
+                [InlineKeyboardButton("🔙 Назад", callback_data="deposit_issue")]
+            ])
+        )
+    
+    elif callback_data == "deposit_time":
+        user_states[user_id] = {'step': 'deposit_answer', 'data': {'issue_type': 'deposit', 'question': 'time'}}
+        await query.edit_message_text(
+            "⏰ Какие сроки пополнения средств?\n\n"
+            "Пополнение: 1-5 минут. Все зависит от загрузки системы.\n\n"
+            "Обычно средства зачисляются в течение 1-5 минут после оплаты. "
+            "В часы пиковой нагрузки (вечер, выходные) обработка может занять до 15 минут.\n\n"
+            "Если пополнение не пришло более 30 минут, проверьте:\n"
+            "• Статус заявки в истории операций\n"
+            "• Правильность введенного ID игрока\n"
+            "• Корректность суммы пополнения",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Это помогло", callback_data="deposit_helpful")],
+                [InlineKeyboardButton("📞 Вызвать оператора", callback_data="deposit_call_operator")],
+                [InlineKeyboardButton("🔙 Назад", callback_data="deposit_issue")]
+            ])
+        )
+    
+    elif callback_data == "deposit_not_arrived":
+        user_states[user_id] = {'step': 'deposit_answer', 'data': {'issue_type': 'deposit', 'question': 'not_arrived'}}
+        await query.edit_message_text(
+            "⏰ Пополнение не пришло более 24 часов\n\n"
+            "Проверьте статус в истории операций. Если статус «ожидает», обратитесь в поддержку с номером заявки.\n\n"
+            "Что нужно сделать:\n"
+            "1. Откройте раздел «История»\n"
+            "2. Найдите вашу заявку на пополнение\n"
+            "3. Проверьте статус заявки\n"
+            "4. Если статус «ожидает» или «обработка» более 24 часов:\n"
+            "   • Скопируйте номер заявки\n"
+            "   • Отправьте скриншот чека об оплате\n"
+            "   • Опишите проблему\n\n"
+            "Мы проверим вашу заявку и решим проблему в кратчайшие сроки.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Это помогло", callback_data="deposit_helpful")],
+                [InlineKeyboardButton("📞 Вызвать оператора", callback_data="deposit_call_operator")],
+                [InlineKeyboardButton("🔙 Назад", callback_data="deposit_issue")]
+            ])
+        )
+    
+    elif callback_data == "deposit_wrong_amount":
+        user_states[user_id] = {'step': 'deposit_answer', 'data': {'issue_type': 'deposit', 'question': 'wrong_amount'}}
+        await query.edit_message_text(
+            "💳 Неправильная сумма пополнения\n\n"
+            "Если вы отправили неправильную сумму, пожалуйста:\n\n"
+            "1. Проверьте фактически отправленную сумму в истории транзакций вашего банка\n"
+            "2. Сравните с суммой в заявке на пополнение\n"
+            "3. Если суммы не совпадают:\n"
+            "   • Отправьте скриншот чека об оплате\n"
+            "   • Укажите правильную сумму\n"
+            "   • Укажите сумму, которая была указана в заявке\n\n"
+            "Важно: Если вы отправили сумму с копейками, это может задержать обработку. "
+            "Рекомендуется отправлять только целые числа.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Это помогло", callback_data="deposit_helpful")],
+                [InlineKeyboardButton("📞 Вызвать оператора", callback_data="deposit_call_operator")],
+                [InlineKeyboardButton("🔙 Назад", callback_data="deposit_issue")]
+            ])
+        )
+    
+    elif callback_data == "deposit_other":
+        user_states[user_id] = {'step': 'deposit_question', 'data': {'issue_type': 'deposit', 'question': 'other'}}
+        await query.edit_message_text(
+            "❓ Другая проблема с депозитом\n\n"
+            "Опишите вашу проблему текстом, и мы поможем вам разобраться.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Назад", callback_data="deposit_issue")]
+            ])
+        )
+    
+    elif callback_data == "deposit_helpful":
+        await query.edit_message_text(
+            "✅ Отлично! Рады, что смогли помочь!\n\n"
+            "Если у вас возникнут другие вопросы, мы всегда готовы помочь.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Новая заявка", callback_data="main_menu")]
+            ])
+        )
+        # Сбрасываем состояние
+        user_states[user_id] = {'step': 'main_menu', 'data': {}}
+    
+    elif callback_data == "deposit_call_operator":
+        # Вызываем оператора
+        user = query.from_user
+        state = user_states.get(user_id, {})
+        question_type = state.get('data', {}).get('question', 'unknown')
+        description = state.get('data', {}).get('description', '')
+        additional_info = state.get('data', {}).get('additional_info', '')
+        
+        question_names = {
+            'how_to': 'Как сделать пополнение?',
+            'time': 'Какие сроки пополнения средств?',
+            'not_arrived': 'Пополнение не пришло более 24 часов',
+            'wrong_amount': 'Неправильная сумма пополнения',
+            'other': 'Другая проблема с депозитом',
+            'unknown': 'Проблема с депозитом'
+        }
+        
+        issue_description = question_names.get(question_type, 'Проблема с депозитом')
+        
+        # Если есть описание проблемы, добавляем его
+        if description:
+            issue_description += f"\nОписание: {description}"
+        if additional_info:
+            issue_description += f"\nДополнительно: {additional_info}"
+        
+        # Отправляем уведомления операторам
+        await call_operator(context, user, issue_description)
+        
+        await query.edit_message_text(
+            "📞 Оператор вызван!\n\n"
+            "Мы уведомили наших операторов о вашей проблеме. "
+            "Ожидайте ответа в течение 5-15 минут.\n\n"
+            "Проблема: " + question_names.get(question_type, 'Проблема с депозитом'),
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Новая заявка", callback_data="main_menu")]
+            ])
+        )
+        # Сбрасываем состояние
+        user_states[user_id] = {'step': 'main_menu', 'data': {}}
     
     elif callback_data == "withdraw_issue":
         user_states[user_id] = {'step': 'withdraw_qr_photo', 'data': {'issue_type': 'withdraw'}}
@@ -230,33 +376,31 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             ])
         )
     
-    elif callback_data == "yes_cents":
-        state = user_states.get(user_id, {})
-        state['data']['has_cents'] = True
-        state['step'] = 'request_receipt'
-        user_states[user_id] = state
-        
-        await query.edit_message_text(
-            "📤 Пожалуйста, отправьте скриншот чека об оплате.\n\n"
-            "Это поможет нам быстрее обработать вашу заявку.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
-            ])
-        )
+
+async def call_operator(context: ContextTypes.DEFAULT_TYPE, user, issue_description: str) -> None:
+    """Отправляет уведомление операторам о вызове"""
+    username = f"@{user.username}" if user.username else "не указан"
+    user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "не указан"
+    user_id = user.id
     
-    elif callback_data == "no_cents":
-        state = user_states.get(user_id, {})
-        state['data']['has_cents'] = False
-        state['step'] = 'request_receipt'
-        user_states[user_id] = state
-        
-        await query.edit_message_text(
-            "📤 Пожалуйста, отправьте скриншот чека об оплате.\n\n"
-            "Это поможет нам быстрее обработать вашу заявку.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
-            ])
-        )
+    message_text = (
+        "Вас позвали, ответьте\n\n"
+        f"Пользователь: {username}\n"
+        f"ID: {user_id}\n"
+        f"Ник: {user_name}\n"
+        f"Проблема: {issue_description}"
+    )
+    
+    # Отправляем сообщение каждому оператору
+    for operator_id in OPERATOR_IDS:
+        try:
+            await context.bot.send_message(
+                chat_id=operator_id,
+                text=message_text
+            )
+            logger.info(f"✅ Уведомление отправлено оператору {operator_id}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при отправке уведомления оператору {operator_id}: {e}")
 
 async def start_from_query(query, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Вспомогательная функция для отправки главного меню из query"""
@@ -304,7 +448,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     
     # Обработка различных этапов
-    if step in ['history_question', 'referral_question', 'other_question']:
+    if step == 'deposit_question':
+        # Пользователь описывает другую проблему с депозитом
+        if message_text and message_text.lower() not in ['/start', 'start', 'привет', 'hi', 'hello', 'начать', 'меню']:
+            state['data']['description'] = message_text
+            state['step'] = 'deposit_other_info'
+            user_states[user_id] = state
+            
+            await update.message.reply_text(
+                "📤 Пожалуйста, отправьте скриншот чека об оплате (если применимо).\n\n"
+                "Или отправьте любое другое фото, связанное с вашей проблемой.\n\n"
+                "Если у вас нет чека, нажмите кнопку для вызова оператора.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📞 Вызвать оператора", callback_data="deposit_call_operator")],
+                    [InlineKeyboardButton("🔙 Назад", callback_data="deposit_issue")]
+                ])
+            )
+        else:
+            # Возвращаем в главное меню
+            user_states[user_id] = {'step': 'main_menu', 'data': {}}
+            await start(update, context)
+    
+    elif step == 'deposit_other_info':
+        # Пользователь отправил дополнительную информацию
+        if message_text and message_text.lower() not in ['/start', 'start', 'привет', 'hi', 'hello', 'начать', 'меню']:
+            state['data']['additional_info'] = message_text
+            user_states[user_id] = state
+            
+            await update.message.reply_text(
+                "Спасибо за информацию. Выберите действие:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📞 Вызвать оператора", callback_data="deposit_call_operator")],
+                    [InlineKeyboardButton("🔙 Назад", callback_data="deposit_issue")]
+                ])
+            )
+        else:
+            # Возвращаем в главное меню
+            user_states[user_id] = {'step': 'main_menu', 'data': {}}
+            await start(update, context)
+    
+    elif step in ['history_question', 'referral_question', 'other_question']:
         # Сохраняем описание проблемы
         state['data']['description'] = message_text
         state['step'] = 'request_receipt'
@@ -399,7 +582,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     state = user_states.get(user_id, {})
     step = state.get('step', 'main_menu')
     
-    if step in ['request_receipt', 'request_qr_photo']:
+    if step in ['request_receipt', 'request_qr_photo', 'deposit_other_info']:
         # Сохраняем информацию о фото
         photo = update.message.photo[-1] if update.message.photo else None
         if photo:
@@ -409,7 +592,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             if step == 'request_qr_photo':
                 state['data']['qr_photo_received'] = True
         
-        # Завершаем сбор информации
+        # Для депозитов предлагаем вызвать оператора после отправки фото
+        if step == 'deposit_other_info':
+            await update.message.reply_text(
+                "✅ Фото получено. Спасибо!\n\n"
+                "Выберите действие:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📞 Вызвать оператора", callback_data="deposit_call_operator")],
+                    [InlineKeyboardButton("🔙 Назад", callback_data="deposit_issue")]
+                ])
+            )
+            return
+        
+        # Завершаем сбор информации для других типов проблем
         await finish_support_request(update, context, user_id, state['data'])
         
         # Сбрасываем состояние
@@ -438,9 +633,16 @@ async def finish_support_request(update: Update, context: ContextTypes.DEFAULT_T
     
     # Информация для пополнения
     if issue_type == 'deposit':
-        has_cents = data.get('has_cents', None)
-        if has_cents is not None:
-            summary += f"Средства с копейками: {'Да' if has_cents else 'Нет'}\n"
+        question = data.get('question', 'unknown')
+        question_names = {
+            'how_to': 'Как сделать пополнение?',
+            'time': 'Какие сроки пополнения средств?',
+            'not_arrived': 'Пополнение не пришло более 24 часов',
+            'wrong_amount': 'Неправильная сумма пополнения',
+            'other': 'Другая проблема с депозитом',
+            'unknown': 'Проблема с депозитом'
+        }
+        summary += f"Вопрос: {question_names.get(question, 'Не указано')}\n"
     
     # Информация для вывода
     if issue_type == 'withdraw':
