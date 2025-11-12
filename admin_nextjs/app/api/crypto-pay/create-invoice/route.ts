@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаем invoice через @koo0ki/send
-    const invoice = await cryptoPay.createInvoice({
+    const invoice: any = await cryptoPay.createInvoice({
       amount: amountUsdt,
       asset: asset,
       description: description || 'Пополнение баланса LUXON',
