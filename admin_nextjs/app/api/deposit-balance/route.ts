@@ -58,14 +58,28 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Преобразуем BigInt в строки для JSON сериализации
+    const serializeBigInt = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj
+      if (typeof obj === 'bigint') return obj.toString()
+      if (Array.isArray(obj)) return obj.map(serializeBigInt)
+      if (typeof obj === 'object') {
+        const serialized: any = {}
+        for (const [key, value] of Object.entries(obj)) {
+          serialized[key] = serializeBigInt(value)
+        }
+        return serialized
+      }
+      return obj
+    }
+
+    const serializedRequest = serializeBigInt(updatedRequest)
+
     return NextResponse.json(
       createApiResponse({
         success: true,
         message: depositResult.message,
-        request: {
-          ...updatedRequest,
-          amount: updatedRequest.amount ? updatedRequest.amount.toString() : null,
-        },
+        request: serializedRequest,
       })
     )
   } catch (error: any) {
