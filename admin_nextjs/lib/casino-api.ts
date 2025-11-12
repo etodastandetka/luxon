@@ -74,6 +74,18 @@ async function getCashdeskBalance(
     const confirmStr = `${cfg.cashdeskid}:${cfg.hash}`
     const confirm = crypto.createHash('md5').update(confirmStr).digest('hex')
     
+    // Согласно документации для баланса:
+    // 1. SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt})
+    // 2. MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
+    // 3. SHA256(результаты 1 и 2 объединены)
+    
+    console.log(`[${casino} Balance] Config:`, {
+      hash: cfg.hash,
+      login: cfg.login,
+      cashierpass: '***',
+      cashdeskid: cfg.cashdeskid,
+    })
+    
     console.log(`[${casino} Balance] Confirm calculation: MD5(${cfg.cashdeskid}:${cfg.hash.substring(0, 20)}...) = ${confirm}`)
 
     // Подпись для баланса:
@@ -96,6 +108,15 @@ async function getCashdeskBalance(
     // 3. SHA256(результаты 1 и 2 объединены)
     const combined = sha1 + md5Hash
     const sign = crypto.createHash('sha256').update(combined).digest('hex')
+    
+    console.log(`[${casino} Balance] Signature calculation:`, {
+      step1_full: step1,
+      step1_hash: sha1,
+      step2_full: step2,
+      step2_hash: md5Hash,
+      combined: combined.substring(0, 100) + '...',
+      final_sign: sign,
+    })
 
     const url = `https://partners.servcul.com/CashdeskBotAPI/Cashdesk/${cfg.cashdeskid}/Balance?confirm=${confirm}&dt=${formattedDt}`
     
