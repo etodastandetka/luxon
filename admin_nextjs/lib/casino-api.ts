@@ -94,10 +94,23 @@ async function getCashdeskBalance(
     const authBase64 = Buffer.from(authString).toString('base64')
     const authHeader = `Basic ${authBase64}`
     
-    const headers = {
-      sign,
-      Authorization: authHeader
+    const headers: Record<string, string> = {
+      'sign': sign,
+      'Authorization': authHeader,
+      'Content-Type': 'application/json',
     }
+
+    console.log(`[${casino} Balance] Request details:`, {
+      url,
+      confirm,
+      dt: formattedDt,
+      sign_preview: sign.substring(0, 20) + '...',
+      auth_header_preview: authHeader.substring(0, 20) + '...',
+      step1: step1,
+      step2: step2,
+      sha1_preview: sha1.substring(0, 20) + '...',
+      md5Hash_preview: md5Hash.substring(0, 20) + '...',
+    })
 
     const response = await fetch(url, { headers, method: 'GET' })
 
