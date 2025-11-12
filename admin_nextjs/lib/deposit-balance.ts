@@ -124,8 +124,8 @@ export async function getMobCashConfig(bookmaker: string): Promise<{
       login: process.env.MOBCASH_LOGIN || 'burgoevk',
       password: process.env.MOBCASH_PASSWORD || 'Kanat312###',
       cashdesk_id: process.env.MOBCASH_CASHDESK_ID || '1001098',
-      default_lat: parseFloat(process.env.MOBCASH_DEFAULT_LAT || '34.6805775'),
-      default_lon: parseFloat(process.env.MOBCASH_DEFAULT_LON || '33.0458273'),
+      default_lat: parseFloat(process.env.MOBCASH_DEFAULT_LAT || '42.845778'),
+      default_lon: parseFloat(process.env.MOBCASH_DEFAULT_LON || '74.568778'),
       // Готовые токены (полученные через браузер) - см. MOBCASH_SETUP.md
       bearer_token: process.env.MOBCASH_BEARER_TOKEN,
       user_id: process.env.MOBCASH_USER_ID,

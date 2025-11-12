@@ -564,22 +564,21 @@ export class MobCashClient {
 
     console.log('[MobCash Auth] Login to cashbox response:', JSON.stringify(result, null, 2))
 
-    // Проверяем, есть ли sessionID в ответе, даже если есть ошибка
-    const sessionID = result.result?.sessionID || result.result?.session_id || result.result?.id
-
     if (result.error) {
-      // Если есть sessionID, используем его, даже если есть ошибка
-      if (sessionID) {
-        console.warn('[MobCash Auth] Warning:', result.error.message, 'but sessionID found')
-        return String(sessionID)
-      }
       throw new Error(`API error: ${result.error.message} (code: ${result.error.code})`)
     }
 
-    // SessionID обычно возвращается в результате
-    // В документации не указано точно, где находится sessionID, возможно нужно извлечь из ответа
-    // Пока используем временное значение, которое будет обновляться при каждом запросе
-    return result.result?.sessionID || result.result?.session_id || `${Date.now()}${Math.random().toString(36).substring(7)}`
+    // SessionID находится в result.result.session.id
+    const sessionID = result.result?.session?.id || result.result?.sessionID || result.result?.session_id || result.result?.id
+
+    if (!sessionID) {
+      console.error('[MobCash Auth] SessionID not found in response')
+      console.error('[MobCash Auth] Full response:', JSON.stringify(result, null, 2))
+      throw new Error('SessionID not found in cashbox login response')
+    }
+
+    console.log('[MobCash Auth] SessionID extracted:', sessionID)
+    return String(sessionID)
   }
 
   /**
