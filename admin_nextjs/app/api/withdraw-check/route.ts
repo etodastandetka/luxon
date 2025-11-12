@@ -45,13 +45,14 @@ export async function POST(request: NextRequest) {
     
     let config: any = null
 
-    // Для 1xbet используем только mob-cash API
-    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
+    // Для 1xbet и 888starz используем mob-cash API
+    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' ||
+        normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
       const mobCashConfig = await getMobCashConfig(bookmaker)
       
       if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
         return NextResponse.json(
-          createApiResponse(null, '1xbet mob-cash API configuration not found. Please configure 1xbet_mobcash_config in database or set MOBCASH_* environment variables.'),
+          createApiResponse(null, `${bookmaker} mob-cash API configuration not found. Please configure ${normalizedBookmaker.includes('888') ? '888starz' : '1xbet'}_mobcash_config in database or set MOBCASH_* environment variables.`),
           { 
             status: 400,
             headers: {
