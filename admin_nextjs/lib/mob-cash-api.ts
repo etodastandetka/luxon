@@ -536,10 +536,14 @@ export class MobCashClient {
                 console.error('[MobCash Auth] ❌ Ошибка без cookies:', tokenResponse2.status, errorText2)
               }
             }
+            
+            // Если все варианты не сработали, выбрасываем ошибку
+            throw new Error(`Failed to exchange authorization code for access token: ${tokenResponse.status}. Client authentication failed. Please use ready tokens from browser (see MOBCASH_SETUP.md) or contact API provider for client_secret.`)
           }
         } else {
           console.warn('[MobCash Auth] ⚠️ Код авторизации не найден в редиректах')
           console.warn('[MobCash Auth] Final URL:', finalUrl)
+          throw new Error('Authorization code not found in redirects')
         }
       }
     }
@@ -571,7 +575,7 @@ export class MobCashClient {
     console.error('[MobCash Auth] ❌ Access token not found')
     console.error('[MobCash Auth] Response status:', response.status)
     console.error('[MobCash Auth] Response URL:', response.url)
-    throw new Error('Access token not found in response')
+    throw new Error('Access token not found in response. Please use ready tokens from browser (see MOBCASH_SETUP.md) or contact API provider for client_secret.')
   }
 
   /**
