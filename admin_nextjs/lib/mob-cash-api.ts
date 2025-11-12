@@ -472,117 +472,39 @@ export class MobCashClient {
           console.log('[MobCash Auth] ✅ Authorization code получен:', authCode.substring(0, 20) + '...')
           
           // Обмениваем код на токен через OAuth2 token endpoint
-          // Согласно логам, клиент использует 'client_secret_post' метод аутентификации
-          // Это означает, что client_secret должен быть в теле запроса, а не в заголовке
+          // Делаем точно так же, как в test-mobcash-auth.ts
+          const tokenFormData = new URLSearchParams()
+          tokenFormData.append('grant_type', 'authorization_code')
+          tokenFormData.append('code', authCode)
+          tokenFormData.append('client_id', '4e779103-d67b-42ef-bc9d-ab5ecdec40f8')
+          tokenFormData.append('redirect_uri', 'https://app.mob-cash.com')
           
-          const clientId = '4e779103-d67b-42ef-bc9d-ab5ecdec40f8'
+          console.log('[MobCash Auth] Обмениваем код на токен (как в тесте)...')
           
-          console.log('[MobCash Auth] Обмениваем код на токен...')
-          console.log('[MobCash Auth] Используем client_secret_post метод (client_secret в теле запроса)')
-          
-          // Вариант 1: client_secret_post с client_id как client_secret
-          const tokenFormData1 = new URLSearchParams()
-          tokenFormData1.append('grant_type', 'authorization_code')
-          tokenFormData1.append('code', authCode)
-          tokenFormData1.append('client_id', clientId)
-          tokenFormData1.append('client_secret', clientId) // Пробуем client_id как client_secret
-          tokenFormData1.append('redirect_uri', 'https://app.mob-cash.com')
-          
-          console.log('[MobCash Auth] Пробуем вариант 1: client_secret_post (client_secret = client_id)...')
-          const tokenResponse1 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
+          const tokenResponse = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
             method: 'POST',
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: tokenFormData1,
+            body: tokenFormData,
           })
           
-          const responseText1 = await tokenResponse1.text()
-          console.log('[MobCash Auth] Token response 1 status:', tokenResponse1.status)
-          console.log('[MobCash Auth] Token response 1 text:', responseText1.substring(0, 500))
+          console.log('[MobCash Auth] Token response status:', tokenResponse.status)
           
-          if (tokenResponse1.ok) {
-            try {
-              const tokenData = JSON.parse(responseText1)
-              if (tokenData.access_token) {
-                console.log('[MobCash Auth] ✅ Access token получен (вариант 1)')
-                return tokenData.access_token
-              }
-            } catch (e) {
-              // Не JSON
+          if (tokenResponse.ok) {
+            const tokenData = await tokenResponse.json()
+            if (tokenData.access_token) {
+              console.log('[MobCash Auth] ✅ Access token получен через OAuth2 token endpoint')
+              return tokenData.access_token
+            } else {
+              console.error('[MobCash Auth] ❌ access_token не найден в ответе token endpoint:', tokenData)
             }
+          } else {
+            const errorText = await tokenResponse.text()
+            console.error('[MobCash Auth] ❌ Ошибка обмена кода на токен:', tokenResponse.status)
+            console.error('[MobCash Auth] Ответ:', errorText)
           }
-          
-          // Вариант 2: client_secret_post без client_secret (публичный клиент)
-          const tokenFormData2 = new URLSearchParams()
-          tokenFormData2.append('grant_type', 'authorization_code')
-          tokenFormData2.append('code', authCode)
-          tokenFormData2.append('client_id', clientId)
-          tokenFormData2.append('redirect_uri', 'https://app.mob-cash.com')
-          
-          console.log('[MobCash Auth] Пробуем вариант 2: client_secret_post без client_secret (публичный клиент)...')
-          const tokenResponse2 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: tokenFormData2,
-          })
-          
-          const responseText2 = await tokenResponse2.text()
-          console.log('[MobCash Auth] Token response 2 status:', tokenResponse2.status)
-          console.log('[MobCash Auth] Token response 2 text:', responseText2.substring(0, 500))
-          
-          if (tokenResponse2.ok) {
-            try {
-              const tokenData = JSON.parse(responseText2)
-              if (tokenData.access_token) {
-                console.log('[MobCash Auth] ✅ Access token получен (вариант 2)')
-                return tokenData.access_token
-              }
-            } catch (e) {
-              // Не JSON
-            }
-          }
-          
-          // Вариант 3: client_secret_post с пустым client_secret
-          const tokenFormData3 = new URLSearchParams()
-          tokenFormData3.append('grant_type', 'authorization_code')
-          tokenFormData3.append('code', authCode)
-          tokenFormData3.append('client_id', clientId)
-          tokenFormData3.append('client_secret', '')
-          tokenFormData3.append('redirect_uri', 'https://app.mob-cash.com')
-          
-          console.log('[MobCash Auth] Пробуем вариант 3: client_secret_post с пустым client_secret...')
-          const tokenResponse3 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: tokenFormData3,
-          })
-          
-          const responseText3 = await tokenResponse3.text()
-          console.log('[MobCash Auth] Token response 3 status:', tokenResponse3.status)
-          console.log('[MobCash Auth] Token response 3 text:', responseText3.substring(0, 500))
-          
-          if (tokenResponse3.ok) {
-            try {
-              const tokenData = JSON.parse(responseText3)
-              if (tokenData.access_token) {
-                console.log('[MobCash Auth] ✅ Access token получен (вариант 3)')
-                return tokenData.access_token
-              }
-            } catch (e) {
-              // Не JSON
-            }
-          }
-          
-          console.error('[MobCash Auth] ❌ Все варианты обмена кода на токен не сработали')
-          console.error('[MobCash Auth] Возможно, нужен реальный client_secret, которого нет в документации')
         } else {
           console.warn('[MobCash Auth] ⚠️ Код авторизации не найден в редиректах')
           console.warn('[MobCash Auth] Final URL:', finalUrl)
