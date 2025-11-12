@@ -74,12 +74,20 @@ async function getCashdeskBalance(
     const confirmStr = `${cfg.cashdeskid}:${cfg.hash}`
     const confirm = crypto.createHash('md5').update(confirmStr).digest('hex')
 
-    // Подпись для баланса (согласно документации):
-    // 1. SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt})
-    const step1 = `hash=${cfg.hash}&cashdeskid=${cfg.cashdeskid}&dt=${formattedDt}`
+    // Подпись для баланса зависит от казино:
+    // Для Melbet/Winwin: SHA256(hash={hash}&cashierpass={cashierpass}&dt={dt})
+    // Для 888starz: SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt})
+    let step1: string
+    if (casino === '888starz') {
+      // Для 888starz согласно документации
+      step1 = `hash=${cfg.hash}&cashdeskid=${cfg.cashdeskid}&dt=${formattedDt}`
+    } else {
+      // Для Melbet и Winwin (старая формула из Python скриптов)
+      step1 = `hash=${cfg.hash}&cashierpass=${cfg.cashierpass}&dt=${formattedDt}`
+    }
     const sha1 = crypto.createHash('sha256').update(step1).digest('hex')
 
-    // 2. MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
+    // 2. MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) - одинаково для всех
     const step2 = `dt=${formattedDt}&cashierpass=${cfg.cashierpass}&cashdeskid=${cfg.cashdeskid}`
     const md5Hash = crypto.createHash('md5').update(step2).digest('hex')
 
