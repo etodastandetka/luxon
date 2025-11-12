@@ -29,9 +29,25 @@ export default function BookmakerGrid({
   useEffect(() => {
     // Проверяем параметр в URL (если бот передает ?bot=1xbet)
     const urlParams = new URLSearchParams(window.location.search)
-    const botType = urlParams.get('bot')
+    const botTypeFromUrl = urlParams.get('bot')
     
-    // Если в URL явно указан bot=1xbet, показываем только 1xbet
+    // Также проверяем Telegram WebApp для определения типа бота
+    const tg = (window as any).Telegram?.WebApp
+    let botTypeFromTelegram: string | null = null
+    
+    // Пытаемся определить тип бота из Telegram WebApp
+    if (tg?.initDataUnsafe?.start_param) {
+      // start_param может содержать тип бота
+      const startParam = tg.initDataUnsafe.start_param
+      if (startParam.includes('1xbet') || startParam === '1xbet') {
+        botTypeFromTelegram = '1xbet'
+      }
+    }
+    
+    // Приоритет: URL параметр > Telegram start_param > localStorage (только для очистки)
+    const botType = botTypeFromUrl || botTypeFromTelegram
+    
+    // Если определен тип бота как 1xbet, показываем только 1xbet
     if (botType === '1xbet') {
       // Сохраняем в localStorage для последующих переходов
       localStorage.setItem('bot_type', '1xbet')
@@ -42,7 +58,7 @@ export default function BookmakerGrid({
         onChange('1xbet')
       }
     } else {
-      // Если в URL нет параметра bot или он другой - показываем все казино
+      // Если не определен тип бота как 1xbet - показываем все казино
       // Это основной бот со всеми казино
       setBookmakers(ALL_BOOKMAKERS)
       // Очищаем сохраненный тип бота, чтобы не показывать только 1xbet
