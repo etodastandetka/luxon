@@ -53,7 +53,7 @@ export const useBotSettings = () => {
           bot_name: 'LUXON',
           welcome_message: 'Добро пожаловать!',
           platform_description: 'Платформа для пополнения и вывода средств в казино',
-          supported_bookmakers: ['1xBet', 'Melbet', 'Mostbet', '1Win'],
+          supported_bookmakers: ['1xBet', 'Melbet', 'Mostbet', '1Win', 'Winwin', '888starz'],
           supported_banks: ['DemirBank', 'O! bank', 'Balance.kg', 'Bakai', 'MegaPay', 'MBank'],
           min_deposit: 35,
           max_deposit: 100000,

@@ -157,7 +157,7 @@ export default function ReferralPage() {
         'Выплаты происходят автоматически в конце месяца',
         `Минимальная сумма для выплаты: ${referralSettings.min_payout} сом`
       ],
-      shareText: 'Присоединяйся к платформе пополнений и выводов!\nБыстро пополняй 1xBet, Melbet, Mostbet, 1Win и выводи средства без задержек\nРегистрируйся по моей ссылке',
+      shareText: 'Присоединяйся к платформе пополнений и выводов!\nБыстро пополняй 1xBet, Melbet, Mostbet, 1Win, Winwin, 888starz и выводи средства без задержек\nРегистрируйся по моей ссылке',
       copied: 'Ссылка скопирована!',
       error: 'Ошибка при копировании',
       backToMain: 'На главную'
@@ -186,7 +186,7 @@ export default function ReferralPage() {
         'Payouts happen automatically at the end of the month',
         `Minimum payout amount: ${referralSettings.min_payout} som`
       ],
-      shareText: 'Join the deposit and withdrawal platform!\nQuickly top up 1xBet, Melbet, Mostbet, 1Win and withdraw funds without delays\nRegister using my link',
+      shareText: 'Join the deposit and withdrawal platform!\nQuickly top up 1xBet, Melbet, Mostbet, 1Win, Winwin, 888starz and withdraw funds without delays\nRegister using my link',
       copied: 'Link copied!',
       error: 'Error copying',
       backToMain: 'Back to main'

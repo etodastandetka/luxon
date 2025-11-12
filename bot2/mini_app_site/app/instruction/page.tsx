@@ -12,7 +12,7 @@ export default function InstructionPage() {
       subtitle: 'Пошаговое руководство по использованию платформы',
       depositTitle: '💰 Пополнение счета',
       depositSteps: [
-        'Выберите букмекера из списка (1XBET, 1WIN, MELBET, MOSTBET)',
+        'Выберите букмекера из списка (1XBET, 1WIN, MELBET, MOSTBET, WINWIN, 888STARZ)',
         'Введите ваш ID игрока в казино',
         'Укажите сумму пополнения (от 35 до 100,000 сом)',
         'Выберите банк для оплаты (DemirBank, O! bank, Balance.kg, Bakai, MegaPay, MBank)',
@@ -47,7 +47,7 @@ export default function InstructionPage() {
       subtitle: 'Step-by-step guide to using the platform',
       depositTitle: '💰 Account Deposit',
       depositSteps: [
-        'Choose a bookmaker from the list (1XBET, 1WIN, MELBET, MOSTBET)',
+        'Choose a bookmaker from the list (1XBET, 1WIN, MELBET, MOSTBET, WINWIN, 888STARZ)',
         'Enter your player ID in the casino',
         'Specify the deposit amount (from 35 to 100,000 som)',
         'Choose a bank for payment (DemirBank, O! bank, Balance.kg, Bakai, MegaPay, MBank)',

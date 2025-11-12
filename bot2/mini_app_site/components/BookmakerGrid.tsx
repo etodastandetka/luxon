@@ -10,6 +10,7 @@ const ALL_BOOKMAKERS: Item[] = [
   { key: 'melbet', name: 'MELBET', emoji: '🎲', logo: '/images/melbet.jpg' },
   { key: 'mostbet', name: 'MOSTBET', emoji: '🎯', logo: '/images/mostbet.jpg' },
   { key: 'winwin', name: 'WINWIN', emoji: '🎰', logo: '/images/winwin.png' },
+  { key: '888starz', name: '888STARZ', emoji: '⭐', logo: '/images/888starz.jpg' },
 ]
 
 export default function BookmakerGrid({ 
