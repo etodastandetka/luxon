@@ -1,0 +1,64 @@
+# ============================================
+# ДОБАВЬТЕ ЭТИ СТРОКИ В ВАШ .env ФАЙЛ НА СЕРВЕРЕ
+# ============================================
+# 
+# Скопируйте весь блок ниже и добавьте в конец вашего .env файла
+# Затем заполните значения MOBCASH_BEARER_TOKEN, MOBCASH_USER_ID, MOBCASH_SESSION_ID
+# через браузер DevTools (см. инструкцию ниже)
+#
+# ============================================
+
+# Mob-Cash API для 1xbet
+MOBCASH_LOGIN="burgoevk"
+MOBCASH_PASSWORD="Kanat312###"
+MOBCASH_CASHDESK_ID="1001098"
+MOBCASH_DEFAULT_LAT="42.845778"
+MOBCASH_DEFAULT_LON="74.568778"
+
+# ТОКЕНЫ (получите через браузер DevTools)
+# ВАЖНО: Замените пустые значения "" на реальные токены!
+MOBCASH_BEARER_TOKEN=""
+MOBCASH_USER_ID=""
+MOBCASH_SESSION_ID=""
+
+# ============================================
+# КАК ПОЛУЧИТЬ ТОКЕНЫ:
+# ============================================
+# 
+# 1. Откройте https://app.mob-cash.com в браузере
+# 2. Войдите:
+#    - Логин: burgoevk
+#    - Пароль: Kanat312###
+# 3. Нажмите F12 (откроется DevTools)
+# 4. Перейдите на вкладку "Network" (Сеть)
+# 5. Обновите страницу (F5)
+# 6. Найдите запрос "mobile.login" к "admin.mob-cash.com/api/"
+#    (это POST запрос, не GET к HTML страницам)
+# 7. Откройте этот запрос
+# 8. Перейдите на вкладку "Headers" (Заголовки)
+# 9. Найдите "Request Headers" → "Authorization"
+#    Скопируйте значение: "Bearer ory_at_..."
+#    Это ваш MOBCASH_BEARER_TOKEN (без слова "Bearer")
+# 10. Перейдите на вкладку "Payload" (или "Request Payload")
+# 11. Найдите в JSON:
+#     - "userID": "1955911305411895296" → это MOBCASH_USER_ID
+#     - "sessionID": "1986068554788577280" → это MOBCASH_SESSION_ID
+# 
+# Пример заполнения:
+# MOBCASH_BEARER_TOKEN="ory_at_mlFJjo6xzmE0sz23113z5p5ZVmGP5ZnJydoMOMDkOjQo.joX3zGJzfOTxEkVwGVLv2Di5nafJxfCuMCKOMVnOqZk"
+# MOBCASH_USER_ID="1955911305411895296"
+# MOBCASH_SESSION_ID="1986068554788577280"
+#
+# ============================================
+# ПОСЛЕ ЗАПОЛНЕНИЯ:
+# ============================================
+# 
+# 1. Сохраните .env файл
+# 2. Перезапустите сервер:
+#    pm2 restart admin_nextjs
+# 
+# Или если используете systemd:
+#    sudo systemctl restart luxon-admin
+#
+# ============================================
+

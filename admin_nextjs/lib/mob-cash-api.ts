@@ -97,12 +97,24 @@ export class MobCashClient {
    * Иначе выполняем полный OAuth2 flow
    */
   private async authenticate(): Promise<MobCashSession> {
-    // Если токен, userID и sessionID предоставлены в конфигурации, используем их
-    if (this.config.bearer_token && this.config.user_id && this.config.session_id) {
-      console.log('[MobCash Auth] Using provided tokens from config (skipping OAuth2 flow)')
+    // Проверяем, что все три токена предоставлены и не пустые
+    const hasAllTokens = 
+      this.config.bearer_token && 
+      this.config.bearer_token.trim() !== '' &&
+      this.config.user_id && 
+      this.config.user_id.trim() !== '' &&
+      this.config.session_id && 
+      this.config.session_id.trim() !== ''
+    
+    if (hasAllTokens && this.config.bearer_token && this.config.user_id && this.config.session_id) {
+      console.log('[MobCash Auth] ✅ Using provided tokens from config (skipping OAuth2 flow)')
       console.log('[MobCash Auth] Bearer token:', this.config.bearer_token.substring(0, 30) + '...')
       console.log('[MobCash Auth] User ID:', this.config.user_id)
       console.log('[MobCash Auth] Session ID:', this.config.session_id)
+      console.log('[MobCash Auth] Location:', {
+        lat: this.config.default_lat || 42.845778,
+        lon: this.config.default_lon || 74.568778,
+      })
       return {
         token: this.config.bearer_token,
         userID: this.config.user_id,
@@ -111,41 +123,23 @@ export class MobCashClient {
       }
     }
 
-    console.log('[MobCash Auth] Tokens not provided, attempting OAuth2 flow...')
-    console.log('[MobCash Auth] Config check:', {
-      has_bearer_token: !!this.config.bearer_token,
-      has_user_id: !!this.config.user_id,
-      has_session_id: !!this.config.session_id,
+    // Если токены не предоставлены, выбрасываем понятную ошибку
+    console.error('[MobCash Auth] ❌ Tokens not provided in config')
+    console.error('[MobCash Auth] Config check:', {
+      has_bearer_token: !!(this.config.bearer_token && this.config.bearer_token.trim() !== ''),
+      has_user_id: !!(this.config.user_id && this.config.user_id.trim() !== ''),
+      has_session_id: !!(this.config.session_id && this.config.session_id.trim() !== ''),
+      bearer_token_preview: this.config.bearer_token ? this.config.bearer_token.substring(0, 20) + '...' : 'undefined',
+      user_id_value: this.config.user_id || 'undefined',
+      session_id_value: this.config.session_id || 'undefined',
     })
+    
+    throw new Error(
+      'Mob-cash tokens not configured. OAuth2 flow requires client_secret which is not available. ' +
+      'Please add MOBCASH_BEARER_TOKEN, MOBCASH_USER_ID, and MOBCASH_SESSION_ID to your .env file. ' +
+      'See MOBCASH_SETUP.md for instructions on how to obtain these tokens from browser DevTools.'
+    )
 
-    // Иначе выполняем полный OAuth2 flow
-    try {
-      // Шаг 1.1: Начало авторизации - получение LoginChallenge (cookies сохраняются в this.cookies)
-      const { loginChallenge } = await this.getLoginChallenge()
-      
-      // Шаг 1.2: Получение ConsentChallenge (используем сохраненные cookies)
-      const consentChallenge = await this.getConsentChallenge(loginChallenge)
-      
-      // Шаг 1.3: Получение токена авторизации
-      const token = await this.getAccessToken(consentChallenge)
-      
-      // Шаг 1.4: Получение профиля пользователя (userID)
-      const userID = await this.getUserProfile(token)
-      
-      // Шаг 1.5: Логин на кассу (sessionID)
-      const sessionID = await this.loginToCashbox(token, userID)
-      
-      return {
-        token,
-        userID,
-        sessionID,
-        expiresAt: Date.now() + SESSION_TTL,
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.error('[MobCash Auth] Authentication error:', errorMessage)
-      throw new Error(`Failed to authenticate: ${errorMessage}`)
-    }
   }
 
   /**
@@ -709,16 +703,21 @@ export class MobCashClient {
     const session = await this.getSession()
     const requestId = this.requestIdCounter++
 
+    // Используем координаты из конфига (должны совпадать с теми, что использовались при создании сессии)
+    const location = {
+      lat: this.config.default_lat || 42.845778,
+      lon: this.config.default_lon || 74.568778,
+    }
+
+    console.log(`[MobCash API] Making request: ${method} with location:`, location)
+
     const request: JsonRpcRequest = {
       jsonrpc: '2.0',
       id: requestId,
       method,
       params: {
         ...params,
-        location: {
-          lat: this.config.default_lat,
-          lon: this.config.default_lon,
-        },
+        location,
         userID: session.userID,
         sessionID: session.sessionID,
       },
@@ -740,6 +739,8 @@ export class MobCashClient {
       'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
       'x-request-source': 'pwa',
     }
+
+    console.log(`[MobCash API] Request body for ${method}:`, JSON.stringify([request], null, 2))
 
     try {
       const response = await fetch(this.baseUrl, {
