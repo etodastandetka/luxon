@@ -472,46 +472,30 @@ export class MobCashClient {
           console.log('[MobCash Auth] ✅ Authorization code получен:', authCode.substring(0, 20) + '...')
           
           // Обмениваем код на токен через OAuth2 token endpoint
-          const tokenFormData = new URLSearchParams()
-          tokenFormData.append('grant_type', 'authorization_code')
-          tokenFormData.append('code', authCode)
-          tokenFormData.append('client_id', '4e779103-d67b-42ef-bc9d-ab5ecdec40f8')
-          // Важно: redirect_uri должен точно совпадать с тем, что был при получении кода
-          tokenFormData.append('redirect_uri', 'https://app.mob-cash.com')
+          // Согласно логам, клиент использует 'client_secret_post' метод аутентификации
+          // Это означает, что client_secret должен быть в теле запроса, а не в заголовке
           
-          console.log('[MobCash Auth] Обмениваем код на токен...')
-          console.log('[MobCash Auth] Token request params:', {
-            grant_type: 'authorization_code',
-            code: authCode.substring(0, 20) + '...',
-            client_id: '4e779103-d67b-42ef-bc9d-ab5ecdec40f8',
-            redirect_uri: 'https://app.mob-cash.com',
-          })
-          
-          // Пробуем разные варианты авторизации
           const clientId = '4e779103-d67b-42ef-bc9d-ab5ecdec40f8'
           
-          // Вариант 1: С Basic Auth (client_id:client_secret, но client_secret неизвестен, пробуем пустой)
-          const basicAuth1 = Buffer.from(`${clientId}:`).toString('base64')
+          console.log('[MobCash Auth] Обмениваем код на токен...')
+          console.log('[MobCash Auth] Используем client_secret_post метод (client_secret в теле запроса)')
           
-          // Вариант 2: С Basic Auth (client_id как username и password)
-          const basicAuth2 = Buffer.from(`${clientId}:${clientId}`).toString('base64')
+          // Вариант 1: client_secret_post с client_id как client_secret
+          const tokenFormData1 = new URLSearchParams()
+          tokenFormData1.append('grant_type', 'authorization_code')
+          tokenFormData1.append('code', authCode)
+          tokenFormData1.append('client_id', clientId)
+          tokenFormData1.append('client_secret', clientId) // Пробуем client_id как client_secret
+          tokenFormData1.append('redirect_uri', 'https://app.mob-cash.com')
           
-          // Вариант 3: С cookies (может быть нужны cookies для аутентификации)
-          const tokenHeaders1: Record<string, string> = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': `Basic ${basicAuth1}`,
-          }
-          
-          if (this.cookies) {
-            tokenHeaders1['Cookie'] = this.cookies
-          }
-          
-          console.log('[MobCash Auth] Пробуем вариант 1: Basic Auth (client_id:) с cookies...')
+          console.log('[MobCash Auth] Пробуем вариант 1: client_secret_post (client_secret = client_id)...')
           const tokenResponse1 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
             method: 'POST',
-            headers: tokenHeaders1,
-            body: tokenFormData,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: tokenFormData1,
           })
           
           const responseText1 = await tokenResponse1.text()
@@ -530,22 +514,21 @@ export class MobCashClient {
             }
           }
           
-          // Вариант 2: Basic Auth (client_id:client_id)
-          console.log('[MobCash Auth] Пробуем вариант 2: Basic Auth (client_id:client_id)...')
-          const tokenHeaders2: Record<string, string> = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': `Basic ${basicAuth2}`,
-          }
+          // Вариант 2: client_secret_post без client_secret (публичный клиент)
+          const tokenFormData2 = new URLSearchParams()
+          tokenFormData2.append('grant_type', 'authorization_code')
+          tokenFormData2.append('code', authCode)
+          tokenFormData2.append('client_id', clientId)
+          tokenFormData2.append('redirect_uri', 'https://app.mob-cash.com')
           
-          if (this.cookies) {
-            tokenHeaders2['Cookie'] = this.cookies
-          }
-          
+          console.log('[MobCash Auth] Пробуем вариант 2: client_secret_post без client_secret (публичный клиент)...')
           const tokenResponse2 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
             method: 'POST',
-            headers: tokenHeaders2,
-            body: tokenFormData,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: tokenFormData2,
           })
           
           const responseText2 = await tokenResponse2.text()
@@ -564,21 +547,22 @@ export class MobCashClient {
             }
           }
           
-          // Вариант 3: Без Basic Auth, только с cookies
-          console.log('[MobCash Auth] Пробуем вариант 3: Без Basic Auth, только с cookies...')
-          const tokenHeaders3: Record<string, string> = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-          }
+          // Вариант 3: client_secret_post с пустым client_secret
+          const tokenFormData3 = new URLSearchParams()
+          tokenFormData3.append('grant_type', 'authorization_code')
+          tokenFormData3.append('code', authCode)
+          tokenFormData3.append('client_id', clientId)
+          tokenFormData3.append('client_secret', '')
+          tokenFormData3.append('redirect_uri', 'https://app.mob-cash.com')
           
-          if (this.cookies) {
-            tokenHeaders3['Cookie'] = this.cookies
-          }
-          
+          console.log('[MobCash Auth] Пробуем вариант 3: client_secret_post с пустым client_secret...')
           const tokenResponse3 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
             method: 'POST',
-            headers: tokenHeaders3,
-            body: tokenFormData,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: tokenFormData3,
           })
           
           const responseText3 = await tokenResponse3.text()
@@ -597,34 +581,8 @@ export class MobCashClient {
             }
           }
           
-          // Вариант 4: Без Basic Auth, без cookies
-          console.log('[MobCash Auth] Пробуем вариант 4: Без Basic Auth, без cookies...')
-          const tokenResponse4 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: tokenFormData,
-          })
-          
-          const responseText4 = await tokenResponse4.text()
-          console.log('[MobCash Auth] Token response 4 status:', tokenResponse4.status)
-          console.log('[MobCash Auth] Token response 4 text:', responseText4.substring(0, 500))
-          
-          if (tokenResponse4.ok) {
-            try {
-              const tokenData = JSON.parse(responseText4)
-              if (tokenData.access_token) {
-                console.log('[MobCash Auth] ✅ Access token получен (вариант 4)')
-                return tokenData.access_token
-              }
-            } catch (e) {
-              // Не JSON
-            }
-          }
-          
           console.error('[MobCash Auth] ❌ Все варианты обмена кода на токен не сработали')
+          console.error('[MobCash Auth] Возможно, нужен реальный client_secret, которого нет в документации')
         } else {
           console.warn('[MobCash Auth] ⚠️ Код авторизации не найден в редиректах')
           console.warn('[MobCash Auth] Final URL:', finalUrl)
