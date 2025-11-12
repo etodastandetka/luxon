@@ -108,11 +108,7 @@ async function getCashdeskBalance(
     // Согласно документации: "ensure that the request headers include the generated signature sign"
     const headers: Record<string, string> = {
       'sign': sign, // Заголовок sign (с маленькой буквы) для всех казино
-    }
-    
-    // Basic Auth нужен только для Melbet и Winwin (не упоминается в документации для баланса)
-    if (casino !== '888starz') {
-      headers['Authorization'] = authHeader
+      'Authorization': authHeader, // Basic Auth нужен для всех казино (включая 888starz)
     }
 
     const logDetails: any = {
@@ -120,17 +116,15 @@ async function getCashdeskBalance(
       confirm,
       dt: formattedDt,
       sign_preview: sign.substring(0, 20) + '...',
+      auth_header_preview: authHeader.substring(0, 20) + '...',
       step1: step1,
       step2: step2,
       sha1_preview: sha1.substring(0, 20) + '...',
       md5Hash_preview: md5Hash.substring(0, 20) + '...',
-      headers: { sign: sign.substring(0, 20) + '...' },
-    }
-    
-    // Basic Auth только для Melbet и Winwin
-    if (casino !== '888starz') {
-      logDetails.auth_header_preview = authHeader.substring(0, 20) + '...'
-      logDetails.headers.Authorization = 'Basic ...'
+      headers: {
+        sign: sign.substring(0, 20) + '...',
+        Authorization: 'Basic ...',
+      },
     }
     
     console.log(`[${casino} Balance] Request details:`, logDetails)
