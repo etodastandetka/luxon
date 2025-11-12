@@ -105,16 +105,15 @@ async function getCashdeskBalance(
     const authHeader = `Basic ${authBase64}`
     
     // Заголовки для запроса
-    const headers: Record<string, string> = {
-      'sign': sign,
-      'Authorization': authHeader,
-    }
+    const headers: Record<string, string> = {}
     
-    // Для 888starz пробуем также заголовок Sign с большой буквы (на случай если API требует именно так)
     if (casino === '888starz') {
+      // Для 888starz используем только Sign (с большой буквы) и без Basic Auth
       headers['Sign'] = sign
-      // Также пробуем без Basic Auth (на случай если для 888starz не нужен)
-      // Но пока оставляем Basic Auth, так как он нужен для других казино
+    } else {
+      // Для Melbet и Winwin используем sign (с маленькой) и Basic Auth
+      headers['sign'] = sign
+      headers['Authorization'] = authHeader
     }
 
     console.log(`[${casino} Balance] Request details:`, {
