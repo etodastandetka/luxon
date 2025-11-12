@@ -3,6 +3,13 @@
  * Использует JSON-RPC 2.0 протокол
  */
 
+import fetchCookie from 'fetch-cookie'
+import { CookieJar } from 'tough-cookie'
+
+// Создаем cookie jar для автоматического управления cookies
+const cookieJar = new CookieJar()
+const fetchWithCookies = fetchCookie(fetch, cookieJar)
+
 interface MobCashConfig {
   login: string
   password: string
@@ -52,8 +59,9 @@ const SESSION_TTL = 60 * 60 * 1000
 export class MobCashClient {
   private config: MobCashConfig
   private baseUrl = 'https://admin.mob-cash.com/api/'
-  private cookies: string = '' // Храним cookies между запросами
   private requestIdCounter = 1
+  // Используем fetch с автоматическим управлением cookies
+  private fetch = fetchWithCookies
 
   constructor(config: MobCashConfig) {
     this.config = {
@@ -139,7 +147,8 @@ export class MobCashClient {
   private async getInitialCookies(): Promise<void> {
     console.log('[MobCash Auth] Getting initial cookies from login page...')
     // Сначала делаем GET запрос на страницу логина, чтобы получить cookies
-    const response = await fetch('https://app.mob-cash.com/login', {
+    // fetch-cookie автоматически сохранит cookies в cookie jar
+    const response = await this.fetch('https://app.mob-cash.com/login', {
       method: 'GET',
       headers: {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -156,15 +165,9 @@ export class MobCashClient {
     const setCookieHeader = response.headers.get('set-cookie')
     console.log('[MobCash Auth] Set-Cookie from login page:', setCookieHeader)
     
+    // fetch-cookie автоматически сохранит cookies, просто проверяем что они есть
     if (setCookieHeader) {
-      const cookieParts = setCookieHeader.split(',').map(c => c.trim())
-      const cookieValues = cookieParts.map(cookie => cookie.split(';')[0].trim()).filter(c => c)
-      if (cookieValues.length > 0) {
-        this.cookies = cookieValues.join('; ')
-        console.log('[MobCash Auth] Initial cookies obtained:', this.cookies.substring(0, 100))
-      } else {
-        console.warn('[MobCash Auth] No cookie values extracted from login page')
-      }
+      console.log('[MobCash Auth] Initial cookies получены и сохранены автоматически')
     } else {
       console.warn('[MobCash Auth] No set-cookie header from login page')
     }
@@ -174,10 +177,8 @@ export class MobCashClient {
    * Шаг 1.1: Начало авторизации - получение LoginChallenge
    */
   private async getLoginChallenge(): Promise<{ loginChallenge: string }> {
-    // Сначала получаем cookies
-    if (!this.cookies) {
-      await this.getInitialCookies()
-    }
+    // Получаем начальные cookies (fetch-cookie автоматически сохранит их)
+    await this.getInitialCookies()
 
     // Согласно документации, используем POST с form-data
     const formData = new URLSearchParams()
@@ -198,13 +199,11 @@ export class MobCashClient {
       'Content-Type': 'application/x-www-form-urlencoded',
     }
 
-    // Добавляем cookies если они есть
-    if (this.cookies) {
-      headers['Cookie'] = this.cookies
-    }
+    // fetch-cookie автоматически добавит cookies
 
     // Используем redirect: 'manual' чтобы получить cookies из промежуточных ответов
-    const response = await fetch('https://admin.mob-cash.com/hydra/oauth2/auth', {
+    // Используем fetch с cookies - они автоматически сохраняются и передаются
+    const response = await this.fetch('https://admin.mob-cash.com/hydra/oauth2/auth', {
       method: 'POST',
       headers,
       body: formData,
@@ -218,16 +217,7 @@ export class MobCashClient {
         const urlParams = new URLSearchParams(location.split('?')[1] || '')
         const loginChallenge = urlParams.get('login_challenge')
         if (loginChallenge) {
-          // Пробуем извлечь cookies из заголовков редиректа
-          const setCookieHeader = response.headers.get('set-cookie')
-          if (setCookieHeader) {
-            const cookieParts = setCookieHeader.split(',').map(c => c.trim())
-            const cookieValues = cookieParts.map(cookie => cookie.split(';')[0].trim()).filter(c => c)
-            if (cookieValues.length > 0) {
-              this.cookies = cookieValues.join('; ')
-              console.log('[MobCash Auth] Cookies from redirect:', this.cookies.substring(0, 100))
-            }
-          }
+          // fetch-cookie автоматически сохранит cookies из редиректа
           console.log('[MobCash Auth] LoginChallenge from redirect:', loginChallenge)
           return { loginChallenge }
         }
@@ -240,52 +230,10 @@ export class MobCashClient {
       throw new Error(`Failed to get login challenge: ${response.status} ${response.statusText}`)
     }
 
-    // Извлекаем cookies из ответа и сохраняем в объекте
-    // Cookies могут быть в промежуточных редиректах, поэтому проверяем все заголовки
-    console.log('[MobCash Auth] Response status:', response.status)
-    console.log('[MobCash Auth] Response headers:', Object.fromEntries(response.headers.entries()))
-    
-    // Пробуем получить cookies из текущего ответа
+    // fetch-cookie автоматически сохраняет cookies, просто проверяем что они есть
     const setCookieHeader = response.headers.get('set-cookie')
-    console.log('[MobCash Auth] Set-Cookie header:', setCookieHeader)
-    
-    // Если есть редирект, пробуем получить cookies из location
-    if (response.status === 302 || response.status === 301) {
-      const location = response.headers.get('location')
-      console.log('[MobCash Auth] Redirect location:', location)
-    }
-    
     if (setCookieHeader) {
-      // Извлекаем все cookies и объединяем их
-      // set-cookie может содержать несколько cookies, разделенных запятыми
-      const cookieParts = setCookieHeader.split(',').map(c => c.trim())
-      console.log('[MobCash Auth] Cookie parts:', cookieParts)
-      
-      const cookieValues = cookieParts.map(cookie => {
-        // Берем только имя=значение (до первого ;)
-        const nameValue = cookie.split(';')[0].trim()
-        return nameValue
-      }).filter(c => c)
-      
-      console.log('[MobCash Auth] Extracted cookie values:', cookieValues)
-      
-      if (cookieValues.length > 0) {
-        // Объединяем с существующими cookies
-        const existingCookies = this.cookies ? this.cookies.split('; ') : []
-        const allCookies = [...existingCookies, ...cookieValues]
-        // Убираем дубликаты (по имени cookie)
-        const uniqueCookies = new Map<string, string>()
-        allCookies.forEach(cookie => {
-          const [name] = cookie.split('=')
-          if (name) uniqueCookies.set(name, cookie)
-        })
-        this.cookies = Array.from(uniqueCookies.values()).join('; ')
-        console.log('[MobCash Auth] Cookies saved:', this.cookies.substring(0, 200))
-      } else {
-        console.warn('[MobCash Auth] No cookie values extracted from set-cookie header')
-      }
-    } else {
-      console.warn('[MobCash Auth] No set-cookie header in response')
+      console.log('[MobCash Auth] Cookies получены и сохранены автоматически')
     }
 
     // Пробуем получить LoginChallenge из JSON ответа
@@ -296,7 +244,6 @@ export class MobCashClient {
       data = JSON.parse(responseText)
       if (data.LoginChallenge) {
         console.log('[MobCash Auth] LoginChallenge from JSON:', data.LoginChallenge)
-        console.log('[MobCash Auth] Cookies extracted:', this.cookies ? `${this.cookies.substring(0, 50)}...` : 'none')
         return { loginChallenge: data.LoginChallenge }
       }
     } catch (e) {
@@ -343,20 +290,15 @@ export class MobCashClient {
       'Content-Type': 'application/x-www-form-urlencoded',
     }
 
-    // Используем сохраненные cookies из объекта
-    if (this.cookies) {
-      headers['Cookie'] = this.cookies
-      console.log('[MobCash Auth] Sending cookies with request:', this.cookies.substring(0, 50))
-    } else {
-      console.warn('[MobCash Auth] No cookies to send - this may cause 403 error')
-    }
+    // fetch-cookie автоматически добавит cookies из cookie jar
+    console.log('[MobCash Auth] Cookies будут отправлены автоматически через fetch-cookie')
 
     console.log('[MobCash Auth] Sending login request with:')
     console.log('[MobCash Auth]   URL:', `https://admin.mob-cash.com/authentication/login?login_challenge=${loginChallenge}`)
     console.log('[MobCash Auth]   Nickname:', this.config.login)
-    console.log('[MobCash Auth]   Cookies:', this.cookies || 'none')
 
-    const response = await fetch(
+    // fetch-cookie автоматически сохранит cookies из ответа
+    const response = await this.fetch(
       `https://admin.mob-cash.com/authentication/login?login_challenge=${loginChallenge}`,
       {
         method: 'POST',
@@ -366,23 +308,10 @@ export class MobCashClient {
       }
     )
 
-    // Сохраняем cookies из ответа
+    // Проверяем что cookies сохранены
     const responseCookies = response.headers.get('set-cookie')
     if (responseCookies) {
-      // Обновляем сохраненные cookies
-      const cookieParts = responseCookies.split(',').map(c => c.trim())
-      const cookieValues = cookieParts.map(cookie => cookie.split(';')[0].trim()).filter(c => c)
-      if (cookieValues.length > 0) {
-        const existingCookies = this.cookies ? this.cookies.split('; ') : []
-        const allCookies = [...existingCookies, ...cookieValues]
-        const uniqueCookies = new Map<string, string>()
-        allCookies.forEach(cookie => {
-          const [name] = cookie.split('=')
-          if (name) uniqueCookies.set(name, cookie)
-        })
-        this.cookies = Array.from(uniqueCookies.values()).join('; ')
-        console.log('[MobCash Auth] Updated cookies from login response:', this.cookies.substring(0, 100))
-      }
+      console.log('[MobCash Auth] Cookies обновлены автоматически')
     }
 
     if (!response.ok) {
@@ -390,7 +319,7 @@ export class MobCashClient {
       console.error('[MobCash Auth] ConsentChallenge error:', response.status)
       console.error('[MobCash Auth] Error response:', errorText)
       console.error('[MobCash Auth] Response URL:', response.url)
-      console.error('[MobCash Auth] Login:', this.config.login, 'Cookies sent:', this.cookies ? 'yes' : 'no')
+      console.error('[MobCash Auth] Login:', this.config.login)
       
       // Если 302, возможно это редирект с consent_challenge в URL
       if (response.status === 302 || response.status === 301) {
@@ -447,7 +376,7 @@ export class MobCashClient {
     formData.append('grant_scope', 'offline')
     formData.append('state', '547f6922-61ec-47f8-8718-c7928dd8f6eb')
 
-    const response = await fetch(
+    const response = await this.fetch(
       `https://admin.mob-cash.com/authentication/consent?consent_challenge=${consentChallenge}`,
       {
         method: 'POST',
@@ -456,24 +385,76 @@ export class MobCashClient {
           'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
-          'Origin': 'https://cashbox-gateway-dev.btmk.xbet.lan',
-          'Referer': 'https://cashbox-gateway-dev.btmk.xbet.lan',
+          'Origin': 'https://app.mob-cash.com',
+          'Referer': 'https://app.mob-cash.com',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: formData,
+        redirect: 'follow', // Следуем редиректам для получения кода авторизации
       }
     )
 
-    if (!response.ok) {
-      throw new Error(`Failed to get access token: ${response.status} ${response.statusText}`)
+    // Проверяем редирект - должен быть код авторизации в финальном URL
+    const finalUrl = response.url
+    console.log('[MobCash Auth] Final URL after consent:', finalUrl)
+    
+    if (finalUrl && finalUrl.includes('code=')) {
+      const urlParams = new URLSearchParams(finalUrl.split('?')[1] || '')
+      const authCode = urlParams.get('code')
+      
+      if (authCode) {
+        console.log('[MobCash Auth] Authorization code found in URL:', authCode.substring(0, 20))
+        
+        // Обмениваем код на токен через OAuth2 token endpoint
+        const tokenFormData = new URLSearchParams()
+        tokenFormData.append('grant_type', 'authorization_code')
+        tokenFormData.append('code', authCode)
+        tokenFormData.append('client_id', '4e779103-d67b-42ef-bc9d-ab5ecdec40f8')
+        tokenFormData.append('redirect_uri', 'https://app.mob-cash.com')
+        
+        const tokenResponse = await this.fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: tokenFormData,
+        })
+        
+        if (tokenResponse.ok) {
+          const tokenData = await tokenResponse.json()
+          if (tokenData.access_token) {
+            console.log('[MobCash Auth] Access token получен через OAuth2 token endpoint')
+            return tokenData.access_token
+          }
+        } else {
+          const errorText = await tokenResponse.text()
+          console.error('[MobCash Auth] Ошибка обмена кода на токен:', errorText)
+        }
+      }
     }
 
-    const data = await response.json()
-    if (!data.access_token) {
-      throw new Error('access_token not found in response')
+    // Если не получили через редирект, пробуем из JSON ответа
+    if (response.ok) {
+      try {
+        const data = await response.json()
+        if (data.access_token) {
+          console.log('[MobCash Auth] Access token получен из JSON ответа')
+          return data.access_token
+        }
+      } catch (e) {
+        // Не JSON
+      }
     }
 
-    return data.access_token
+    const errorText = response.ok ? '' : await response.text()
+    console.error('[MobCash Auth] Не удалось получить access_token')
+    console.error('[MobCash Auth] Статус:', response.status)
+    if (errorText) {
+      console.error('[MobCash Auth] Ответ:', errorText)
+    }
+    throw new Error(`Failed to get access token: ${response.status} ${response.statusText}`)
   }
 
   /**
@@ -487,7 +468,7 @@ export class MobCashClient {
       params: {},
     }
 
-    const response = await fetch('https://admin.mob-cash.com/api/', {
+    const response = await this.fetch('https://admin.mob-cash.com/api/', {
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',
@@ -515,15 +496,24 @@ export class MobCashClient {
     const data: JsonRpcResponse[] = await response.json()
     const result = data[0]
 
+    console.log('[MobCash Auth] Profile response:', JSON.stringify(result, null, 2))
+
     if (result.error) {
       throw new Error(`API error: ${result.error.message} (code: ${result.error.code})`)
     }
 
-    if (!result.result?.id) {
+    // Проверяем разные возможные форматы ответа
+    // userID может быть в result.result.id или result.result.user.id
+    const userID = result.result?.id || result.result?.user?.id || result.result?.userID || result.result?.userId
+    
+    if (!userID) {
+      console.error('[MobCash Auth] User ID not found in profile response')
+      console.error('[MobCash Auth] Full response:', JSON.stringify(result, null, 2))
       throw new Error('User ID not found in profile response')
     }
 
-    return String(result.result.id)
+    console.log('[MobCash Auth] User ID extracted:', userID)
+    return String(userID)
   }
 
   /**
@@ -544,7 +534,7 @@ export class MobCashClient {
       },
     }
 
-    const response = await fetch('https://admin.mob-cash.com/api/', {
+    const response = await this.fetch('https://admin.mob-cash.com/api/', {
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',
@@ -572,11 +562,21 @@ export class MobCashClient {
     const data: JsonRpcResponse[] = await response.json()
     const result = data[0]
 
+    console.log('[MobCash Auth] Login to cashbox response:', JSON.stringify(result, null, 2))
+
+    // Проверяем, есть ли sessionID в ответе, даже если есть ошибка
+    const sessionID = result.result?.sessionID || result.result?.session_id || result.result?.id
+
     if (result.error) {
+      // Если есть sessionID, используем его, даже если есть ошибка
+      if (sessionID) {
+        console.warn('[MobCash Auth] Warning:', result.error.message, 'but sessionID found')
+        return String(sessionID)
+      }
       throw new Error(`API error: ${result.error.message} (code: ${result.error.code})`)
     }
 
-    // SessionID обычно возвращается в результате, но если нет - используем временный
+    // SessionID обычно возвращается в результате
     // В документации не указано точно, где находится sessionID, возможно нужно извлечь из ответа
     // Пока используем временное значение, которое будет обновляться при каждом запросе
     return result.result?.sessionID || result.result?.session_id || `${Date.now()}${Math.random().toString(36).substring(7)}`
@@ -622,7 +622,7 @@ export class MobCashClient {
     }
 
     try {
-      const response = await fetch(this.baseUrl, {
+      const response = await this.fetch(this.baseUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify([request]),
