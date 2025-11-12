@@ -15,19 +15,22 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "watcher": "tsx scripts/start-watcher.ts",
     "watcher:check": "tsx scripts/check-watcher-once.ts",
-    "test-mobcash": "tsx scripts/test-mobcash.ts"
+    "test-mobcash": "tsx scripts/test-mobcash.ts",
+    "test-mobcash-auth": "tsx scripts/test-mobcash-auth.ts"
   },
   "dependencies": {
     "@koo0ki/send": "^1.1.1",
     "@prisma/client": "^5.18.0",
     "@tanstack/react-query": "^5.56.2",
     "bcryptjs": "^2.4.3",
+    "fetch-cookie": "^3.1.0",
     "imap": "^0.8.19",
     "jsonwebtoken": "^9.0.2",
     "mailparser": "^3.7.5",
     "next": "14.2.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "tough-cookie": "^6.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
