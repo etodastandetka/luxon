@@ -479,31 +479,78 @@ export class MobCashClient {
           tokenFormData.append('redirect_uri', 'https://app.mob-cash.com')
           
           console.log('[MobCash Auth] Обмениваем код на токен...')
+          console.log('[MobCash Auth] Token request params:', {
+            grant_type: 'authorization_code',
+            code: authCode.substring(0, 20) + '...',
+            client_id: '4e779103-d67b-42ef-bc9d-ab5ecdec40f8',
+            redirect_uri: 'https://app.mob-cash.com',
+          })
+          
+          // Пробуем с Basic Auth (client_id как username, без password или пустой)
+          const clientId = '4e779103-d67b-42ef-bc9d-ab5ecdec40f8'
+          const basicAuth = Buffer.from(`${clientId}:`).toString('base64')
+          
           const tokenResponse = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
             method: 'POST',
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/x-www-form-urlencoded',
+              'Authorization': `Basic ${basicAuth}`,
             },
             body: tokenFormData,
           })
           
           console.log('[MobCash Auth] Token response status:', tokenResponse.status)
+          console.log('[MobCash Auth] Token response headers:', Object.fromEntries(tokenResponse.headers.entries()))
+          
+          const responseText = await tokenResponse.text()
+          console.log('[MobCash Auth] Token response text:', responseText.substring(0, 500))
           
           if (tokenResponse.ok) {
-            const tokenData = await tokenResponse.json()
-            console.log('[MobCash Auth] Token response data keys:', Object.keys(tokenData))
-            
-            if (tokenData.access_token) {
-              console.log('[MobCash Auth] ✅ Access token получен через OAuth2 token endpoint')
-              return tokenData.access_token
-            } else {
-              console.error('[MobCash Auth] ❌ access_token не найден в ответе token endpoint:', tokenData)
+            try {
+              const tokenData = JSON.parse(responseText)
+              console.log('[MobCash Auth] Token response data keys:', Object.keys(tokenData))
+              
+              if (tokenData.access_token) {
+                console.log('[MobCash Auth] ✅ Access token получен через OAuth2 token endpoint')
+                return tokenData.access_token
+              } else {
+                console.error('[MobCash Auth] ❌ access_token не найден в ответе token endpoint:', tokenData)
+              }
+            } catch (e) {
+              console.error('[MobCash Auth] ❌ Ошибка парсинга JSON ответа:', e)
+              console.error('[MobCash Auth] Response text:', responseText)
             }
           } else {
-            const errorText = await tokenResponse.text()
             console.error('[MobCash Auth] ❌ Ошибка обмена кода на токен:', tokenResponse.status)
-            console.error('[MobCash Auth] Ответ:', errorText)
+            console.error('[MobCash Auth] Ответ:', responseText)
+            
+            // Пробуем без Basic Auth
+            console.log('[MobCash Auth] Пробуем без Basic Auth...')
+            const tokenResponse2 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
+              method: 'POST',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: tokenFormData,
+            })
+            
+            const responseText2 = await tokenResponse2.text()
+            console.log('[MobCash Auth] Token response 2 status:', tokenResponse2.status)
+            console.log('[MobCash Auth] Token response 2 text:', responseText2.substring(0, 500))
+            
+            if (tokenResponse2.ok) {
+              try {
+                const tokenData = JSON.parse(responseText2)
+                if (tokenData.access_token) {
+                  console.log('[MobCash Auth] ✅ Access token получен без Basic Auth')
+                  return tokenData.access_token
+                }
+              } catch (e) {
+                // Не JSON
+              }
+            }
           }
         } else {
           console.warn('[MobCash Auth] ⚠️ Код авторизации не найден в редиректах')
