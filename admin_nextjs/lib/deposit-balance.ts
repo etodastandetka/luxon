@@ -1,38 +1,11 @@
 import { prisma } from './prisma'
-import { depositCashdeskAPI, depositMostbetAPI } from './casino-deposit'
+import { depositCashdeskAPI, depositMostbetAPI, depositMobCashAPI } from './casino-deposit'
 
 // Функция для получения конфигурации API казино из настроек
 export async function getCasinoConfig(bookmaker: string) {
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
   
-  // Для 1xbet и Melbet нужны: hash, cashierpass, login, cashdeskid
-  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
-    // Сначала пробуем получить из БД
-    const setting = await prisma.botConfiguration.findFirst({
-      where: { key: '1xbet_api_config' },
-    })
-
-    if (setting) {
-      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
-      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
-        return {
-          hash: config.hash,
-          cashierpass: config.cashierpass,
-          login: config.login,
-          cashdeskid: String(config.cashdeskid),
-        }
-      }
-    }
-
-    // Fallback на дефолтные значения
-    return {
-      hash: process.env.XBET_HASH || 'f7ff9a23821a0dd19276392f80d43fd2e481986bebb7418fef11e03bba038101',
-      cashierpass: process.env.XBET_CASHIERPASS || 'i3EBqvV1hB',
-      login: process.env.XBET_LOGIN || 'kurbanaevb',
-      cashdeskid: process.env.XBET_CASHDESKID || '1343871',
-    }
-  }
-  
+  // Для Melbet нужны: hash, cashierpass, login, cashdeskid
   if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {
     const setting = await prisma.botConfiguration.findFirst({
       where: { key: 'melbet_api_config' },
@@ -110,6 +83,49 @@ export async function getCasinoConfig(bookmaker: string) {
   return null
 }
 
+// Функция для получения конфигурации mob-cash для 1xbet
+export async function getMobCashConfig(bookmaker: string) {
+  const normalizedBookmaker = bookmaker?.toLowerCase() || ''
+  
+  // Только для 1xbet
+  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
+    // Сначала пробуем получить из БД
+    const setting = await prisma.botConfiguration.findFirst({
+      where: { key: '1xbet_mobcash_config' },
+    })
+
+    if (setting) {
+      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+      if (config.login && config.password && config.cashdesk_id) {
+        return {
+          login: config.login,
+          password: config.password,
+          cashdesk_id: String(config.cashdesk_id),
+          default_lat: config.default_lat || parseFloat(process.env.MOBCASH_DEFAULT_LAT || '34.6805775'),
+          default_lon: config.default_lon || parseFloat(process.env.MOBCASH_DEFAULT_LON || '33.0458273'),
+          bearer_token: config.bearer_token,
+          user_id: config.user_id,
+          session_id: config.session_id,
+        }
+      }
+    }
+
+    // Fallback на переменные окружения или дефолтные значения
+    return {
+      login: process.env.MOBCASH_LOGIN || 'burgoevk',
+      password: process.env.MOBCASH_PASSWORD || 'Kanat312###',
+      cashdesk_id: process.env.MOBCASH_CASHDESK_ID || '1001098',
+      default_lat: parseFloat(process.env.MOBCASH_DEFAULT_LAT || '34.6805775'),
+      default_lon: parseFloat(process.env.MOBCASH_DEFAULT_LON || '33.0458273'),
+      bearer_token: process.env.MOBCASH_BEARER_TOKEN,
+      user_id: process.env.MOBCASH_USER_ID,
+      session_id: process.env.MOBCASH_SESSION_ID,
+    }
+  }
+
+  return null
+}
+
 // Функция для пополнения баланса через API казино
 export async function depositToCasino(
   bookmaker: string,
@@ -119,8 +135,22 @@ export async function depositToCasino(
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
 
   try {
-    // 1xbet, Melbet и Winwin используют Cashdesk API
-    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin')) {
+    // Для 1xbet используем только mob-cash API
+    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
+      const mobCashConfig = await getMobCashConfig(bookmaker)
+      
+      if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
+        return {
+          success: false,
+          message: `${bookmaker} mob-cash API configuration not found. Please configure 1xbet_mobcash_config in database or set MOBCASH_* environment variables.`,
+        }
+      }
+
+      return await depositMobCashAPI(accountId, amount, mobCashConfig)
+    }
+    
+    // Melbet и Winwin используют Cashdesk API
+    if (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin')) {
       const config = await getCasinoConfig(bookmaker)
       
       if (!config) {

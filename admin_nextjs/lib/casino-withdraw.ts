@@ -3,6 +3,7 @@
  * Поддерживаются: 1xbet, Melbet, Mostbet, 1win
  */
 import crypto from 'crypto'
+import { MobCashClient } from './mob-cash-api'
 
 // Конфигурация API казино
 interface CasinoConfig {
@@ -13,6 +14,18 @@ interface CasinoConfig {
   api_key?: string
   secret?: string
   cashpoint_id?: string | number
+}
+
+// Конфигурация mob-cash API
+interface MobCashConfig {
+  login: string
+  password: string
+  cashdesk_id: string | number
+  default_lat?: number
+  default_lon?: number
+  bearer_token?: string
+  user_id?: string
+  session_id?: string
 }
 
 /**
@@ -333,6 +346,104 @@ export async function checkWithdrawAmount1win(
     return {
       success: false,
       message: `Error checking withdrawal: ${error.message}`,
+    }
+  }
+}
+
+/**
+ * Проверка суммы вывода через mob-cash API
+ */
+export async function checkWithdrawAmountMobCash(
+  payerID: string,
+  withdrawalCode: string,
+  config: MobCashConfig
+): Promise<{ success: boolean; amount?: number; message?: string }> {
+  try {
+    // Проверяем, что все обязательные поля заполнены
+    if (!config.login || !config.password || !config.cashdesk_id ||
+        config.login.trim() === '' || config.password.trim() === '' ||
+        String(config.cashdesk_id).trim() === '' || String(config.cashdesk_id).trim() === '0') {
+      return {
+        success: false,
+        message: 'Missing required mob-cash API credentials',
+      }
+    }
+
+    console.log(`[MobCash Withdraw Check] Payer ID: ${payerID}, Code: ${withdrawalCode}`)
+
+    // Создаем клиент mob-cash
+    const client = new MobCashClient(config)
+
+    // Запрашиваем сумму ордера
+    const result = await client.getWithdrawalAmount(payerID, withdrawalCode)
+
+    if (!result.success) {
+      return {
+        success: false,
+        message: result.message || 'Failed to get withdrawal amount',
+      }
+    }
+
+    return {
+      success: true,
+      amount: parseFloat(result.amount) || 0,
+      message: result.message || 'Withdrawal amount retrieved',
+    }
+  } catch (error: any) {
+    console.error(`[MobCash Withdraw Check] Error:`, error)
+    return {
+      success: false,
+      message: error.message || 'Error checking withdrawal amount',
+    }
+  }
+}
+
+/**
+ * Исполнение ордера на вывод через mob-cash API
+ */
+export async function processWithdrawMobCash(
+  payerID: string,
+  amount: number,
+  withdrawalCode: string,
+  config: MobCashConfig
+): Promise<{ success: boolean; amount?: number; message?: string; data?: any }> {
+  try {
+    // Проверяем, что все обязательные поля заполнены
+    if (!config.login || !config.password || !config.cashdesk_id ||
+        config.login.trim() === '' || config.password.trim() === '' ||
+        String(config.cashdesk_id).trim() === '' || String(config.cashdesk_id).trim() === '0') {
+      return {
+        success: false,
+        message: 'Missing required mob-cash API credentials',
+      }
+    }
+
+    console.log(`[MobCash Withdraw] Payer ID: ${payerID}, Amount: ${amount}, Code: ${withdrawalCode}`)
+
+    // Создаем клиент mob-cash
+    const client = new MobCashClient(config)
+
+    // Выполняем вывод
+    const result = await client.withdrawal(payerID, amount, withdrawalCode)
+
+    if (!result.success) {
+      return {
+        success: false,
+        message: result.message || 'Withdrawal failed',
+      }
+    }
+
+    return {
+      success: true,
+      amount: amount,
+      message: result.message || 'Withdrawal successful',
+      data: result.data,
+    }
+  } catch (error: any) {
+    console.error(`[MobCash Withdraw] Error:`, error)
+    return {
+      success: false,
+      message: error.message || 'Error processing withdrawal',
     }
   }
 }

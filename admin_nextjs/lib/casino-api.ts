@@ -21,13 +21,8 @@ interface BalanceResult {
 }
 
 // Конфигурация для API (из переменных окружения или дефолтные значения)
+// Примечание: 1xbet теперь использует mob-cash API, поэтому удален из этого списка
 const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
-  '1xbet': {
-    hash: process.env.XBET_HASH || '97f471a9db92debbda38201af67e15f64d086e94ae4b919d8a6a4f64958912cf',
-    cashierpass: process.env.XBET_CASHIERPASS || 'wiaWAfE9',
-    login: process.env.XBET_LOGIN || 'zhenishbAd',
-    cashdeskid: parseInt(process.env.XBET_CASHDESKID || '1388580'),
-  },
   melbet: {
     hash: process.env.MELBET_HASH || 'f788cc308d9de930b292873b2cf79526da363cb24a85883575426cc7f3c4553d',
     cashierpass: process.env.MELBET_CASHIERPASS || '3nKS3!b7',
@@ -49,10 +44,11 @@ const MOSTBET_CONFIG: MostbetConfig = {
 }
 
 /**
- * Получение баланса и лимита через Cashdesk API (1xbet, Melbet, Winwin)
+ * Получение баланса и лимита через Cashdesk API (Melbet, Winwin)
+ * Примечание: 1xbet теперь использует mob-cash API
  */
 async function getCashdeskBalance(
-  casino: '1xbet' | 'melbet' | 'winwin',
+  casino: 'melbet' | 'winwin',
   cfg: CashdeskConfig
 ): Promise<BalanceResult> {
   try {
@@ -291,15 +287,9 @@ export async function getPlatformLimits(): Promise<
   const limits: Array<{ key: string; name: string; limit: number }> = []
 
   try {
-    // 1xbet
-    const xbetCfg = CASHDESK_CONFIG['1xbet']
-    if (xbetCfg.cashdeskid > 0) {
-      const xbetBal = await getCashdeskBalance('1xbet', xbetCfg)
-      console.log(`📊 1xbet result: balance=${xbetBal.balance}, limit=${xbetBal.limit}`)
-      limits.push({ key: '1xbet', name: '1xbet', limit: xbetBal.limit })
-    } else {
-      limits.push({ key: '1xbet', name: '1xbet', limit: 0 })
-    }
+    // 1xbet - использует mob-cash API, баланс недоступен через старый API
+    // Используем -1 как специальное значение для "недоступно"
+    limits.push({ key: '1xbet', name: '1xbet', limit: -1 })
 
     // Melbet
     const melbetCfg = CASHDESK_CONFIG.melbet
@@ -336,9 +326,10 @@ export async function getPlatformLimits(): Promise<
     }
   } catch (error) {
     console.error('Error getting platform limits:', error)
-    // Возвращаем нули если ошибка
+    // Возвращаем значения по умолчанию при ошибке
+    // Для 1xbet используем -1 (недоступно), для остальных - 0
     return [
-      { key: '1xbet', name: '1xbet', limit: 0 },
+      { key: '1xbet', name: '1xbet', limit: -1 },
       { key: 'melbet', name: 'Melbet', limit: 0 },
       { key: '1win', name: '1WIN', limit: 0 },
       { key: 'mostbet', name: 'Mostbet', limit: 0 },

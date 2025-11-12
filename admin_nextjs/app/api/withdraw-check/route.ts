@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
-import { processWithdraw } from '@/lib/casino-withdraw'
+import { processWithdraw, checkWithdrawAmountMobCash } from '@/lib/casino-withdraw'
+import { getMobCashConfig } from '@/lib/deposit-balance'
 
 /**
  * API для проверки суммы вывода и подтверждения вывода
@@ -44,32 +45,51 @@ export async function POST(request: NextRequest) {
     
     let config: any = null
 
-    // Для 1xbet и Melbet
+    // Для 1xbet используем только mob-cash API
     if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
-      const setting = await prisma.botConfiguration.findFirst({
-        where: { key: '1xbet_api_config' },
-      })
+      const mobCashConfig = await getMobCashConfig(bookmaker)
+      
+      if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
+        return NextResponse.json(
+          createApiResponse(null, '1xbet mob-cash API configuration not found. Please configure 1xbet_mobcash_config in database or set MOBCASH_* environment variables.'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
 
-      if (setting) {
-        const settingConfig = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
-        if (settingConfig.hash && settingConfig.cashierpass && settingConfig.login && settingConfig.cashdeskid) {
-          config = {
-            hash: settingConfig.hash,
-            cashierpass: settingConfig.cashierpass,
-            login: settingConfig.login,
-            cashdeskid: String(settingConfig.cashdeskid),
+      // Используем mob-cash API для проверки суммы вывода
+      const result = await checkWithdrawAmountMobCash(playerId, code, mobCashConfig)
+      
+      if (!result.success) {
+        return NextResponse.json(
+          createApiResponse(null, result.message || 'Failed to check withdrawal'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+
+      return NextResponse.json(
+        createApiResponse(
+          {
+            amount: result.amount,
+            message: result.message,
+          },
+          'Withdrawal checked successfully'
+        ),
+        {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
           }
         }
-      }
-
-      if (!config) {
-        config = {
-          hash: process.env.XBET_HASH || 'f7ff9a23821a0dd19276392f80d43fd2e481986bebb7418fef11e03bba038101',
-          cashierpass: process.env.XBET_CASHIERPASS || 'i3EBqvV1hB',
-          login: process.env.XBET_LOGIN || 'kurbanaevb',
-          cashdeskid: process.env.XBET_CASHDESKID || '1343871',
-        }
-      }
+      )
     }
 
     if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {

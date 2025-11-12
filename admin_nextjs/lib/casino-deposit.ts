@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { MobCashClient } from './mob-cash-api'
 
 // Конфигурация API казино
 interface CasinoConfig {
@@ -9,6 +10,18 @@ interface CasinoConfig {
   api_key?: string
   secret?: string
   cashpoint_id?: string | number
+}
+
+// Конфигурация mob-cash API
+interface MobCashConfig {
+  login: string
+  password: string
+  cashdesk_id: string | number
+  default_lat?: number
+  default_lon?: number
+  bearer_token?: string
+  user_id?: string
+  session_id?: string
 }
 
 // Генерация confirm для 1xbet/Melbet
@@ -307,6 +320,48 @@ export async function depositMostbetAPI(
     }
   } catch (error: any) {
     console.error(`[Mostbet Deposit] Error for playerId: ${userId}:`, error)
+    return {
+      success: false,
+      message: error.message || 'Failed to deposit balance',
+    }
+  }
+}
+
+// Пополнение через mob-cash API
+export async function depositMobCashAPI(
+  payerID: string,
+  amount: number,
+  config: MobCashConfig
+): Promise<{ success: boolean; message: string; data?: any }> {
+  // Проверяем, что все обязательные поля заполнены
+  if (!config.login || !config.password || !config.cashdesk_id ||
+      config.login.trim() === '' || config.password.trim() === '' ||
+      String(config.cashdesk_id).trim() === '' || String(config.cashdesk_id).trim() === '0') {
+    return {
+      success: false,
+      message: 'Missing required mob-cash API credentials. Please configure API settings in database or environment variables.',
+    }
+  }
+
+  try {
+    // payerID здесь - это ID игрока в казино (accountId), не Telegram ID
+    console.log(`[MobCash Deposit] Payer ID: ${payerID}, Amount: ${amount}`)
+
+    // Создаем клиент mob-cash
+    const client = new MobCashClient(config)
+
+    // Выполняем пополнение (внутри метода deposit уже вызывается checkPayerNickname)
+    const result = await client.deposit(payerID, amount)
+
+    console.log(`[MobCash Deposit] Result:`, result)
+
+    return {
+      success: result.success,
+      message: result.message || (result.success ? 'Deposit successful' : 'Deposit failed'),
+      data: result.data,
+    }
+  } catch (error: any) {
+    console.error(`[MobCash Deposit] Error for payerID: ${payerID}:`, error)
     return {
       success: false,
       message: error.message || 'Failed to deposit balance',
