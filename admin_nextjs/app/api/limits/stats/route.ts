@@ -135,6 +135,7 @@ export async function GET(request: NextRequest) {
     
     let casinoSettings: Record<string, boolean> = {
       '1xbet': true,
+      '888starz': true,
       '1win': true,
       melbet: true,
       mostbet: true,
@@ -157,6 +158,7 @@ export async function GET(request: NextRequest) {
       const key = platform.key.toLowerCase()
       // Маппинг ключей платформ на настройки
       const settingKey = key === '1xbet' ? '1xbet' 
+        : key === '888starz' ? '888starz'
         : key === '1win' ? '1win'
         : key === 'melbet' ? 'melbet'
         : key === 'mostbet' ? 'mostbet'

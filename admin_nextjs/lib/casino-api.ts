@@ -291,6 +291,9 @@ export async function getPlatformLimits(): Promise<
     // Используем -1 как специальное значение для "недоступно"
     limits.push({ key: '1xbet', name: '1xbet', limit: -1 })
 
+    // 888starz - использует mob-cash API, баланс недоступен
+    limits.push({ key: '888starz', name: '888starz', limit: -1 })
+
     // Melbet
     const melbetCfg = CASHDESK_CONFIG.melbet
     if (melbetCfg.cashdeskid > 0) {
@@ -330,6 +333,7 @@ export async function getPlatformLimits(): Promise<
     // Для 1xbet используем -1 (недоступно), для остальных - 0
     return [
       { key: '1xbet', name: '1xbet', limit: -1 },
+      { key: '888starz', name: '888starz', limit: -1 },
       { key: 'melbet', name: 'Melbet', limit: 0 },
       { key: '1win', name: '1WIN', limit: 0 },
       { key: 'mostbet', name: 'Mostbet', limit: 0 },
