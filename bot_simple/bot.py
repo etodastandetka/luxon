@@ -156,7 +156,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     elif update.message.sticker:
         message_type = 'sticker'
         media_url = update.message.sticker.file_id
-    # Обрабатываем стикеры, если они есть (через общий обработчик)
     
     # Сохраняем сообщение в админку через API
     try:
@@ -195,6 +194,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         logger.error(f"❌ Таймаут при сохранении сообщения в чат")
     except Exception as e:
         logger.error(f"❌ Ошибка при сохранении сообщения в чат: {e}", exc_info=True)
+    
+    # Отвечаем пользователю, предлагая использовать меню
+    try:
+        # Создаем кнопки как в команде /start
+        keyboard = [
+            [
+                InlineKeyboardButton("💰 Пополнить", web_app=WebAppInfo(url=f"{WEBSITE_URL}/deposit/step0")),
+                InlineKeyboardButton("💸 Вывести", web_app=WebAppInfo(url=f"{WEBSITE_URL}/withdraw/step0"))
+            ],
+            [
+                InlineKeyboardButton("📊 История", web_app=WebAppInfo(url=f"{WEBSITE_URL}/history")),
+                InlineKeyboardButton("👥 Рефералы", web_app=WebAppInfo(url=f"{WEBSITE_URL}/referral"))
+            ],
+            [
+                InlineKeyboardButton("ℹ️ Инструкция", web_app=WebAppInfo(url=f"{WEBSITE_URL}/instruction")),
+                InlineKeyboardButton("🆘 Поддержка", web_app=WebAppInfo(url=f"{WEBSITE_URL}/support"))
+            ],
+            [
+                InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url=WEBSITE_URL))
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        reply_text = "Используйте кнопки меню для работы с ботом 👇"
+        await update.message.reply_text(reply_text, reply_markup=reply_markup)
+    except Exception as e:
+        logger.error(f"❌ Ошибка при отправке ответа пользователю: {e}", exc_info=True)
 
 async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /referral для просмотра реферальной статистики"""
