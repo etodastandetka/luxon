@@ -3,31 +3,8 @@
  * Использует JSON-RPC 2.0 протокол
  */
 
-// Динамический импорт для Next.js
-let fetchCookie: any
-let CookieJar: any
-let cookieJar: any
-let fetchWithCookies: typeof fetch
-
-// Инициализация fetch-cookie (только на сервере)
-if (typeof window === 'undefined') {
-  try {
-    fetchCookie = require('fetch-cookie')
-    CookieJar = require('tough-cookie').CookieJar
-    cookieJar = new CookieJar()
-    fetchWithCookies = fetchCookie(fetch, cookieJar)
-    console.log('[MobCash] fetch-cookie initialized successfully')
-  } catch (e) {
-    // Если модули не установлены, используем обычный fetch
-    console.warn('[MobCash] fetch-cookie not available, using regular fetch')
-    console.warn('[MobCash] Error:', e instanceof Error ? e.message : String(e))
-    console.warn('[MobCash] NOTE: OAuth2 flow will not work without fetch-cookie. Use bearer_token, user_id, and session_id from .env instead.')
-    fetchWithCookies = fetch
-  }
-} else {
-  // На клиенте используем обычный fetch
-  fetchWithCookies = fetch
-}
+// OAuth2 flow использует обычный fetch с ручным управлением cookies
+// fetch-cookie больше не требуется
 
 interface MobCashConfig {
   login: string
@@ -79,9 +56,7 @@ export class MobCashClient {
   private config: MobCashConfig
   private baseUrl = 'https://admin.mob-cash.com/api/'
   private requestIdCounter = 1
-  // Используем fetch с автоматическим управлением cookies
-  private fetch = fetchWithCookies
-  // Ручное управление cookies для OAuth2 flow (если fetch-cookie не работает)
+  // Ручное управление cookies для OAuth2 flow
   private cookies: string = ''
 
   constructor(config: MobCashConfig) {
@@ -572,7 +547,7 @@ export class MobCashClient {
       params: {},
     }
 
-    const response = await this.fetch('https://admin.mob-cash.com/api/', {
+    const response = await fetch('https://admin.mob-cash.com/api/', {
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',
@@ -638,7 +613,7 @@ export class MobCashClient {
       },
     }
 
-    const response = await this.fetch('https://admin.mob-cash.com/api/', {
+    const response = await fetch('https://admin.mob-cash.com/api/', {
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',
@@ -725,7 +700,7 @@ export class MobCashClient {
     }
 
     try {
-      const response = await this.fetch(this.baseUrl, {
+      const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify([request]),
