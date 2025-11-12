@@ -55,6 +55,33 @@ export async function getCasinoConfig(bookmaker: string) {
       cashdeskid: process.env.WINWIN_CASHDESKID || '1416579',
     }
   }
+
+  // 888starz использует Cashdesk API
+  if (normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
+    const setting = await prisma.botConfiguration.findFirst({
+      where: { key: '888starz_api_config' },
+    })
+
+    if (setting) {
+      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        return {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: String(config.cashdeskid),
+        }
+      }
+    }
+
+    // API KEY используется как hash
+    return {
+      hash: process.env['888STARZ_HASH'] || '6e978b90d2e3d7010390c680cf036b49e521bf91e32839021db8c3637f1cbc56',
+      cashierpass: process.env['888STARZ_CASHIERPASS'] || 'ydsuHiK^',
+      login: process.env['888STARZ_LOGIN'] || 'burgoevka',
+      cashdeskid: process.env['888STARZ_CASHDESKID'] || '1416358',
+    }
+  }
   
   // Mostbet нужны: api_key, secret, cashpoint_id
   if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
@@ -83,7 +110,7 @@ export async function getCasinoConfig(bookmaker: string) {
   return null
 }
 
-// Функция для получения конфигурации mob-cash для 1xbet и 888starz
+// Функция для получения конфигурации mob-cash для 1xbet
 export async function getMobCashConfig(bookmaker: string): Promise<{
   login: string
   password: string
@@ -133,43 +160,6 @@ export async function getMobCashConfig(bookmaker: string): Promise<{
     }
   }
 
-  // Для 888starz
-  if (normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
-    // Сначала пробуем получить из БД
-    const setting = await prisma.botConfiguration.findFirst({
-      where: { key: '888starz_mobcash_config' },
-    })
-
-    if (setting) {
-      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
-      if (config.login && config.password && config.cashdesk_id) {
-        return {
-          login: config.login,
-          password: config.password,
-          cashdesk_id: String(config.cashdesk_id),
-          default_lat: config.default_lat || parseFloat(process.env.MOBCASH_888STARZ_DEFAULT_LAT || '42.845778'),
-          default_lon: config.default_lon || parseFloat(process.env.MOBCASH_888STARZ_DEFAULT_LON || '74.568778'),
-          bearer_token: config.bearer_token,
-          user_id: config.user_id,
-          session_id: config.session_id,
-        }
-      }
-    }
-
-    // Fallback на переменные окружения или дефолтные значения
-    return {
-      login: process.env.MOBCASH_888STARZ_LOGIN || 'burgoevka',
-      password: process.env.MOBCASH_888STARZ_PASSWORD || 'ydsuHiK^',
-      cashdesk_id: process.env.MOBCASH_888STARZ_CASHDESK_ID || '1416358',
-      default_lat: parseFloat(process.env.MOBCASH_888STARZ_DEFAULT_LAT || '42.845778'),
-      default_lon: parseFloat(process.env.MOBCASH_888STARZ_DEFAULT_LON || '74.568778'),
-      // Готовые токены (полученные через браузер) - см. MOBCASH_SETUP.md
-      bearer_token: process.env.MOBCASH_888STARZ_BEARER_TOKEN,
-      user_id: process.env.MOBCASH_888STARZ_USER_ID,
-      session_id: process.env.MOBCASH_888STARZ_SESSION_ID,
-    }
-  }
-
   return null
 }
 
@@ -182,9 +172,8 @@ export async function depositToCasino(
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
 
   try {
-          // Для 1xbet и 888starz используем mob-cash API
-          if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' ||
-              normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
+          // Для 1xbet используем mob-cash API
+          if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
             const mobCashConfig = await getMobCashConfig(bookmaker)
             
             if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
@@ -220,8 +209,9 @@ export async function depositToCasino(
             return await depositMobCashAPI(accountId, amount, mobCashConfig)
           }
     
-    // Melbet и Winwin используют Cashdesk API
-    if (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin')) {
+    // Melbet, Winwin и 888starz используют Cashdesk API
+    if (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin') ||
+        normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
       const config = await getCasinoConfig(bookmaker)
       
       if (!config) {
