@@ -14,8 +14,8 @@ async function testMobCash() {
     login: process.env.MOBCASH_LOGIN || 'burgoevk',
     password: process.env.MOBCASH_PASSWORD || 'Kanat312###',
     cashdesk_id: process.env.MOBCASH_CASHDESK_ID || '1001098',
-    default_lat: parseFloat(process.env.MOBCASH_DEFAULT_LAT || '34.6805775'),
-    default_lon: parseFloat(process.env.MOBCASH_DEFAULT_LON || '33.0458273'),
+    default_lat: parseFloat(process.env.MOBCASH_DEFAULT_LAT || '42.845778'),
+    default_lon: parseFloat(process.env.MOBCASH_DEFAULT_LON || '74.568778'),
   }
 
   console.log('📋 Конфигурация:')
