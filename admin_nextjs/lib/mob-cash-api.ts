@@ -772,6 +772,7 @@ export class MobCashClient {
    */
   async checkPayerNickname(payerID: string): Promise<{ nickname?: string }> {
     try {
+      console.log(`[MobCash API] checkPayerNickname called with payerID: ${payerID}`)
       const result = await this.makeRequest('mobile.payerNickname', {
         payerID,
       })
