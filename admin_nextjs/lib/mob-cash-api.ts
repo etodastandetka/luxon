@@ -66,8 +66,8 @@ export class MobCashClient {
   constructor(config: MobCashConfig) {
     this.config = {
       ...config,
-      default_lat: config.default_lat || 34.6805775,
-      default_lon: config.default_lon || 33.0458273,
+      default_lat: config.default_lat || 42.845778,
+      default_lon: config.default_lon || 74.568778,
     }
   }
 
