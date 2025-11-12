@@ -145,19 +145,28 @@ export async function depositToCasino(
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
 
   try {
-    // Для 1xbet используем только mob-cash API
-    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
-      const mobCashConfig = await getMobCashConfig(bookmaker)
-      
-      if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
-        return {
-          success: false,
-          message: `${bookmaker} mob-cash API configuration not found. Please configure 1xbet_mobcash_config in database or set MOBCASH_* environment variables.`,
-        }
-      }
+          // Для 1xbet используем только mob-cash API
+          if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
+            const mobCashConfig = await getMobCashConfig(bookmaker)
+            
+            if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
+              return {
+                success: false,
+                message: `${bookmaker} mob-cash API configuration not found. Please configure 1xbet_mobcash_config in database or set MOBCASH_* environment variables.`,
+              }
+            }
 
-      return await depositMobCashAPI(accountId, amount, mobCashConfig)
-    }
+            // Логируем конфигурацию для отладки
+            console.log('[Deposit Balance] Mob-cash config:', {
+              has_bearer_token: !!mobCashConfig.bearer_token,
+              has_user_id: !!mobCashConfig.user_id,
+              has_session_id: !!mobCashConfig.session_id,
+              login: mobCashConfig.login,
+              cashdesk_id: mobCashConfig.cashdesk_id,
+            })
+
+            return await depositMobCashAPI(accountId, amount, mobCashConfig)
+          }
     
     // Melbet и Winwin используют Cashdesk API
     if (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin')) {

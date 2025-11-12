@@ -16,9 +16,12 @@ if (typeof window === 'undefined') {
     CookieJar = require('tough-cookie').CookieJar
     cookieJar = new CookieJar()
     fetchWithCookies = fetchCookie(fetch, cookieJar)
+    console.log('[MobCash] fetch-cookie initialized successfully')
   } catch (e) {
     // Если модули не установлены, используем обычный fetch
     console.warn('[MobCash] fetch-cookie not available, using regular fetch')
+    console.warn('[MobCash] Error:', e instanceof Error ? e.message : String(e))
+    console.warn('[MobCash] NOTE: OAuth2 flow will not work without fetch-cookie. Use bearer_token, user_id, and session_id from .env instead.')
     fetchWithCookies = fetch
   }
 } else {
@@ -119,6 +122,10 @@ export class MobCashClient {
   private async authenticate(): Promise<MobCashSession> {
     // Если токен, userID и sessionID предоставлены в конфигурации, используем их
     if (this.config.bearer_token && this.config.user_id && this.config.session_id) {
+      console.log('[MobCash Auth] Using provided tokens from config (skipping OAuth2 flow)')
+      console.log('[MobCash Auth] Bearer token:', this.config.bearer_token.substring(0, 30) + '...')
+      console.log('[MobCash Auth] User ID:', this.config.user_id)
+      console.log('[MobCash Auth] Session ID:', this.config.session_id)
       return {
         token: this.config.bearer_token,
         userID: this.config.user_id,
@@ -126,6 +133,13 @@ export class MobCashClient {
         expiresAt: Date.now() + SESSION_TTL,
       }
     }
+
+    console.log('[MobCash Auth] Tokens not provided, attempting OAuth2 flow...')
+    console.log('[MobCash Auth] Config check:', {
+      has_bearer_token: !!this.config.bearer_token,
+      has_user_id: !!this.config.user_id,
+      has_session_id: !!this.config.session_id,
+    })
 
     // Иначе выполняем полный OAuth2 flow
     try {
