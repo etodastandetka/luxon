@@ -84,7 +84,16 @@ export async function getCasinoConfig(bookmaker: string) {
 }
 
 // Функция для получения конфигурации mob-cash для 1xbet
-export async function getMobCashConfig(bookmaker: string) {
+export async function getMobCashConfig(bookmaker: string): Promise<{
+  login: string
+  password: string
+  cashdesk_id: string | number
+  default_lat?: number
+  default_lon?: number
+  bearer_token?: string
+  user_id?: string
+  session_id?: string
+}> {
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
   
   // Только для 1xbet
@@ -117,6 +126,7 @@ export async function getMobCashConfig(bookmaker: string) {
       cashdesk_id: process.env.MOBCASH_CASHDESK_ID || '1001098',
       default_lat: parseFloat(process.env.MOBCASH_DEFAULT_LAT || '34.6805775'),
       default_lon: parseFloat(process.env.MOBCASH_DEFAULT_LON || '33.0458273'),
+      // Готовые токены (полученные через браузер) - см. MOBCASH_SETUP.md
       bearer_token: process.env.MOBCASH_BEARER_TOKEN,
       user_id: process.env.MOBCASH_USER_ID,
       session_id: process.env.MOBCASH_SESSION_ID,

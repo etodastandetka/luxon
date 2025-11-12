@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "create-admin": "tsx scripts/create-admin.ts",
     "watcher": "tsx scripts/start-watcher.ts",
-    "watcher:check": "tsx scripts/check-watcher-once.ts"
+    "watcher:check": "tsx scripts/check-watcher-once.ts",
+    "test-mobcash": "tsx scripts/test-mobcash.ts"
   },
   "dependencies": {
     "@koo0ki/send": "^1.1.1",
