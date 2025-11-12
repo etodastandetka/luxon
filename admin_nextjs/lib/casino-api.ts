@@ -70,9 +70,11 @@ async function getCashdeskBalance(
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const formattedDt = `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`
 
-    // confirm = MD5(cashdeskid:hash)
+    // confirm = MD5(cashdeskid:hash) - одинаково для всех
     const confirmStr = `${cfg.cashdeskid}:${cfg.hash}`
     const confirm = crypto.createHash('md5').update(confirmStr).digest('hex')
+    
+    console.log(`[${casino} Balance] Confirm calculation: MD5(${cfg.cashdeskid}:${cfg.hash.substring(0, 20)}...) = ${confirm}`)
 
     // Подпись для баланса зависит от казино:
     // Для Melbet/Winwin: SHA256(hash={hash}&cashierpass={cashierpass}&dt={dt})
@@ -102,9 +104,15 @@ async function getCashdeskBalance(
     const authBase64 = Buffer.from(authString).toString('base64')
     const authHeader = `Basic ${authBase64}`
     
+    // Для 888starz пробуем разные варианты заголовков
     const headers: Record<string, string> = {
       'sign': sign,
       'Authorization': authHeader,
+    }
+    
+    // Для 888starz пробуем также заголовок Sign с большой буквы
+    if (casino === '888starz') {
+      headers['Sign'] = sign
     }
 
     console.log(`[${casino} Balance] Request details:`, {
