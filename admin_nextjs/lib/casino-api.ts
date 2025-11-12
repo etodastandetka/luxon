@@ -76,9 +76,17 @@ async function getCashdeskBalance(
     
     console.log(`[${casino} Balance] Confirm calculation: MD5(${cfg.cashdeskid}:${cfg.hash.substring(0, 20)}...) = ${confirm}`)
 
-    // Подпись для баланса согласно документации (одинакова для всех):
-    // 1. SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt})
-    const step1 = `hash=${cfg.hash}&cashdeskid=${cfg.cashdeskid}&dt=${formattedDt}`
+    // Подпись для баланса:
+    // Для 888starz: SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt}) - согласно документации
+    // Для Melbet/Winwin: SHA256(hash={hash}&cashierpass={cashierpass}&dt={dt}) - старая рабочая формула
+    let step1: string
+    if (casino === '888starz') {
+      // Для 888starz согласно документации
+      step1 = `hash=${cfg.hash}&cashdeskid=${cfg.cashdeskid}&dt=${formattedDt}`
+    } else {
+      // Для Melbet и Winwin (старая рабочая формула)
+      step1 = `hash=${cfg.hash}&cashierpass=${cfg.cashierpass}&dt=${formattedDt}`
+    }
     const sha1 = crypto.createHash('sha256').update(step1).digest('hex')
 
     // 2. MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) - одинаково для всех
