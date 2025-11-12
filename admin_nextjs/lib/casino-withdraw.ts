@@ -459,8 +459,9 @@ export async function processWithdraw(
 ): Promise<{ success: boolean; amount?: number; message?: string; transactionId?: number }> {
   const normalizedBookmaker = bookmaker.toLowerCase()
 
-  // 1xbet, Melbet и Winwin используют Cashdesk API
-  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin')) {
+  // Melbet, Winwin и 888starz используют Cashdesk API
+  if (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin') ||
+      normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
     return await checkWithdrawAmountCashdesk(bookmaker, userId, code, config)
   }
 

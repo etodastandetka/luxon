@@ -35,6 +35,12 @@ const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
     login: process.env.WINWIN_LOGIN || 'burgoevkan',
     cashdeskid: parseInt(process.env.WINWIN_CASHDESKID || '1416579'),
   },
+  '888starz': {
+    hash: process.env['888STARZ_HASH'] || '6e978b90d2e3d7010390c680cf036b49e521bf91e32839021db8c3637f1cbc56',
+    cashierpass: process.env['888STARZ_CASHIERPASS'] || 'ydsuHiK^',
+    login: process.env['888STARZ_LOGIN'] || 'burgoevka',
+    cashdeskid: parseInt(process.env['888STARZ_CASHDESKID'] || '1416358'),
+  },
 }
 
 const MOSTBET_CONFIG: MostbetConfig = {
@@ -48,7 +54,7 @@ const MOSTBET_CONFIG: MostbetConfig = {
  * Примечание: 1xbet теперь использует mob-cash API
  */
 async function getCashdeskBalance(
-  casino: 'melbet' | 'winwin',
+  casino: 'melbet' | 'winwin' | '888starz',
   cfg: CashdeskConfig
 ): Promise<BalanceResult> {
   try {
@@ -68,16 +74,16 @@ async function getCashdeskBalance(
     const confirmStr = `${cfg.cashdeskid}:${cfg.hash}`
     const confirm = crypto.createHash('md5').update(confirmStr).digest('hex')
 
-    // Подпись для баланса:
-    // a. SHA256(hash={hash}&cashierpass={cashierpass}&dt={dt})
-    const step1 = `hash=${cfg.hash}&cashierpass=${cfg.cashierpass}&dt=${formattedDt}`
+    // Подпись для баланса (согласно документации):
+    // 1. SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt})
+    const step1 = `hash=${cfg.hash}&cashdeskid=${cfg.cashdeskid}&dt=${formattedDt}`
     const sha1 = crypto.createHash('sha256').update(step1).digest('hex')
 
-    // b. MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
+    // 2. MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
     const step2 = `dt=${formattedDt}&cashierpass=${cfg.cashierpass}&cashdeskid=${cfg.cashdeskid}`
     const md5Hash = crypto.createHash('md5').update(step2).digest('hex')
 
-    // c. SHA256(результаты a и b объединены)
+    // 3. SHA256(результаты 1 и 2 объединены)
     const combined = sha1 + md5Hash
     const sign = crypto.createHash('sha256').update(combined).digest('hex')
 
@@ -291,8 +297,15 @@ export async function getPlatformLimits(): Promise<
     // Используем -1 как специальное значение для "недоступно"
     limits.push({ key: '1xbet', name: '1xbet', limit: -1 })
 
-    // 888starz - использует mob-cash API, баланс недоступен
-    limits.push({ key: '888starz', name: '888starz', limit: -1 })
+    // 888starz - использует Cashdesk API
+    const starzCfg = CASHDESK_CONFIG['888starz']
+    if (starzCfg && starzCfg.cashdeskid > 0) {
+      const starzBal = await getCashdeskBalance('888starz', starzCfg)
+      console.log(`📊 888starz result: balance=${starzBal.balance}, limit=${starzBal.limit}`)
+      limits.push({ key: '888starz', name: '888starz', limit: starzBal.limit })
+    } else {
+      limits.push({ key: '888starz', name: '888starz', limit: 0 })
+    }
 
     // Melbet
     const melbetCfg = CASHDESK_CONFIG.melbet
@@ -333,7 +346,7 @@ export async function getPlatformLimits(): Promise<
     // Для 1xbet используем -1 (недоступно), для остальных - 0
     return [
       { key: '1xbet', name: '1xbet', limit: -1 },
-      { key: '888starz', name: '888starz', limit: -1 },
+      { key: '888starz', name: '888starz', limit: 0 },
       { key: 'melbet', name: 'Melbet', limit: 0 },
       { key: '1win', name: '1WIN', limit: 0 },
       { key: 'mostbet', name: 'Mostbet', limit: 0 },

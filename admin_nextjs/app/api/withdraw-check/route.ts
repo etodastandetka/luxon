@@ -45,14 +45,13 @@ export async function POST(request: NextRequest) {
     
     let config: any = null
 
-    // Для 1xbet и 888starz используем mob-cash API
-    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' ||
-        normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
+    // Для 1xbet используем mob-cash API
+    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
       const mobCashConfig = await getMobCashConfig(bookmaker)
       
       if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
         return NextResponse.json(
-          createApiResponse(null, `${bookmaker} mob-cash API configuration not found. Please configure ${normalizedBookmaker.includes('888') ? '888starz' : '1xbet'}_mobcash_config in database or set MOBCASH_* environment variables.`),
+          createApiResponse(null, '1xbet mob-cash API configuration not found. Please configure 1xbet_mobcash_config in database or set MOBCASH_* environment variables.'),
           { 
             status: 400,
             headers: {
@@ -91,6 +90,34 @@ export async function POST(request: NextRequest) {
           }
         }
       )
+    }
+
+    // 888starz использует Cashdesk API
+    if (normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
+      const setting = await prisma.botConfiguration.findFirst({
+        where: { key: '888starz_api_config' },
+      })
+
+      if (setting) {
+        const settingConfig = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+        if (settingConfig.hash && settingConfig.cashierpass && settingConfig.login && settingConfig.cashdeskid) {
+          config = {
+            hash: settingConfig.hash,
+            cashierpass: settingConfig.cashierpass,
+            login: settingConfig.login,
+            cashdeskid: String(settingConfig.cashdeskid),
+          }
+        }
+      }
+
+      if (!config) {
+        config = {
+          hash: process.env['888STARZ_HASH'] || '6e978b90d2e3d7010390c680cf036b49e521bf91e32839021db8c3637f1cbc56',
+          cashierpass: process.env['888STARZ_CASHIERPASS'] || 'ydsuHiK^',
+          login: process.env['888STARZ_LOGIN'] || 'burgoevka',
+          cashdeskid: process.env['888STARZ_CASHDESKID'] || '1416358',
+        }
+      }
     }
 
     if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {
