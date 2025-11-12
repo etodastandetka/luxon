@@ -476,6 +476,7 @@ export class MobCashClient {
           tokenFormData.append('grant_type', 'authorization_code')
           tokenFormData.append('code', authCode)
           tokenFormData.append('client_id', '4e779103-d67b-42ef-bc9d-ab5ecdec40f8')
+          // Важно: redirect_uri должен точно совпадать с тем, что был при получении кода
           tokenFormData.append('redirect_uri', 'https://app.mob-cash.com')
           
           console.log('[MobCash Auth] Обмениваем код на токен...')
@@ -486,72 +487,144 @@ export class MobCashClient {
             redirect_uri: 'https://app.mob-cash.com',
           })
           
-          // Пробуем с Basic Auth (client_id как username, без password или пустой)
+          // Пробуем разные варианты авторизации
           const clientId = '4e779103-d67b-42ef-bc9d-ab5ecdec40f8'
-          const basicAuth = Buffer.from(`${clientId}:`).toString('base64')
           
-          const tokenResponse = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
+          // Вариант 1: С Basic Auth (client_id:client_secret, но client_secret неизвестен, пробуем пустой)
+          const basicAuth1 = Buffer.from(`${clientId}:`).toString('base64')
+          
+          // Вариант 2: С Basic Auth (client_id как username и password)
+          const basicAuth2 = Buffer.from(`${clientId}:${clientId}`).toString('base64')
+          
+          // Вариант 3: С cookies (может быть нужны cookies для аутентификации)
+          const tokenHeaders1: Record<string, string> = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${basicAuth1}`,
+          }
+          
+          if (this.cookies) {
+            tokenHeaders1['Cookie'] = this.cookies
+          }
+          
+          console.log('[MobCash Auth] Пробуем вариант 1: Basic Auth (client_id:) с cookies...')
+          const tokenResponse1 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
+            method: 'POST',
+            headers: tokenHeaders1,
+            body: tokenFormData,
+          })
+          
+          const responseText1 = await tokenResponse1.text()
+          console.log('[MobCash Auth] Token response 1 status:', tokenResponse1.status)
+          console.log('[MobCash Auth] Token response 1 text:', responseText1.substring(0, 500))
+          
+          if (tokenResponse1.ok) {
+            try {
+              const tokenData = JSON.parse(responseText1)
+              if (tokenData.access_token) {
+                console.log('[MobCash Auth] ✅ Access token получен (вариант 1)')
+                return tokenData.access_token
+              }
+            } catch (e) {
+              // Не JSON
+            }
+          }
+          
+          // Вариант 2: Basic Auth (client_id:client_id)
+          console.log('[MobCash Auth] Пробуем вариант 2: Basic Auth (client_id:client_id)...')
+          const tokenHeaders2: Record<string, string> = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${basicAuth2}`,
+          }
+          
+          if (this.cookies) {
+            tokenHeaders2['Cookie'] = this.cookies
+          }
+          
+          const tokenResponse2 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
+            method: 'POST',
+            headers: tokenHeaders2,
+            body: tokenFormData,
+          })
+          
+          const responseText2 = await tokenResponse2.text()
+          console.log('[MobCash Auth] Token response 2 status:', tokenResponse2.status)
+          console.log('[MobCash Auth] Token response 2 text:', responseText2.substring(0, 500))
+          
+          if (tokenResponse2.ok) {
+            try {
+              const tokenData = JSON.parse(responseText2)
+              if (tokenData.access_token) {
+                console.log('[MobCash Auth] ✅ Access token получен (вариант 2)')
+                return tokenData.access_token
+              }
+            } catch (e) {
+              // Не JSON
+            }
+          }
+          
+          // Вариант 3: Без Basic Auth, только с cookies
+          console.log('[MobCash Auth] Пробуем вариант 3: Без Basic Auth, только с cookies...')
+          const tokenHeaders3: Record<string, string> = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          }
+          
+          if (this.cookies) {
+            tokenHeaders3['Cookie'] = this.cookies
+          }
+          
+          const tokenResponse3 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
+            method: 'POST',
+            headers: tokenHeaders3,
+            body: tokenFormData,
+          })
+          
+          const responseText3 = await tokenResponse3.text()
+          console.log('[MobCash Auth] Token response 3 status:', tokenResponse3.status)
+          console.log('[MobCash Auth] Token response 3 text:', responseText3.substring(0, 500))
+          
+          if (tokenResponse3.ok) {
+            try {
+              const tokenData = JSON.parse(responseText3)
+              if (tokenData.access_token) {
+                console.log('[MobCash Auth] ✅ Access token получен (вариант 3)')
+                return tokenData.access_token
+              }
+            } catch (e) {
+              // Не JSON
+            }
+          }
+          
+          // Вариант 4: Без Basic Auth, без cookies
+          console.log('[MobCash Auth] Пробуем вариант 4: Без Basic Auth, без cookies...')
+          const tokenResponse4 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
             method: 'POST',
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/x-www-form-urlencoded',
-              'Authorization': `Basic ${basicAuth}`,
             },
             body: tokenFormData,
           })
           
-          console.log('[MobCash Auth] Token response status:', tokenResponse.status)
-          console.log('[MobCash Auth] Token response headers:', Object.fromEntries(tokenResponse.headers.entries()))
+          const responseText4 = await tokenResponse4.text()
+          console.log('[MobCash Auth] Token response 4 status:', tokenResponse4.status)
+          console.log('[MobCash Auth] Token response 4 text:', responseText4.substring(0, 500))
           
-          const responseText = await tokenResponse.text()
-          console.log('[MobCash Auth] Token response text:', responseText.substring(0, 500))
-          
-          if (tokenResponse.ok) {
+          if (tokenResponse4.ok) {
             try {
-              const tokenData = JSON.parse(responseText)
-              console.log('[MobCash Auth] Token response data keys:', Object.keys(tokenData))
-              
+              const tokenData = JSON.parse(responseText4)
               if (tokenData.access_token) {
-                console.log('[MobCash Auth] ✅ Access token получен через OAuth2 token endpoint')
+                console.log('[MobCash Auth] ✅ Access token получен (вариант 4)')
                 return tokenData.access_token
-              } else {
-                console.error('[MobCash Auth] ❌ access_token не найден в ответе token endpoint:', tokenData)
               }
             } catch (e) {
-              console.error('[MobCash Auth] ❌ Ошибка парсинга JSON ответа:', e)
-              console.error('[MobCash Auth] Response text:', responseText)
-            }
-          } else {
-            console.error('[MobCash Auth] ❌ Ошибка обмена кода на токен:', tokenResponse.status)
-            console.error('[MobCash Auth] Ответ:', responseText)
-            
-            // Пробуем без Basic Auth
-            console.log('[MobCash Auth] Пробуем без Basic Auth...')
-            const tokenResponse2 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: tokenFormData,
-            })
-            
-            const responseText2 = await tokenResponse2.text()
-            console.log('[MobCash Auth] Token response 2 status:', tokenResponse2.status)
-            console.log('[MobCash Auth] Token response 2 text:', responseText2.substring(0, 500))
-            
-            if (tokenResponse2.ok) {
-              try {
-                const tokenData = JSON.parse(responseText2)
-                if (tokenData.access_token) {
-                  console.log('[MobCash Auth] ✅ Access token получен без Basic Auth')
-                  return tokenData.access_token
-                }
-              } catch (e) {
-                // Не JSON
-              }
+              // Не JSON
             }
           }
+          
+          console.error('[MobCash Auth] ❌ Все варианты обмена кода на токен не сработали')
         } else {
           console.warn('[MobCash Auth] ⚠️ Код авторизации не найден в редиректах')
           console.warn('[MobCash Auth] Final URL:', finalUrl)
