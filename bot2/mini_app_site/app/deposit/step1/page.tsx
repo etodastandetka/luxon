@@ -14,16 +14,8 @@ export default function DepositStep1() {
   const { language } = useLanguage()
   const router = useRouter()
 
-  // Сохраняем параметр bot из URL в localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search)
-      const botType = urlParams.get('bot')
-      if (botType) {
-        localStorage.setItem('bot_type', botType)
-      }
-    }
-  }, [])
+  // Параметр bot обрабатывается в BookmakerGrid компоненте
+  // Здесь не сохраняем, чтобы избежать конфликтов
 
   // Проверка настроек депозитов и казино
   useEffect(() => {
