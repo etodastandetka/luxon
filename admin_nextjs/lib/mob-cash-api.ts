@@ -472,7 +472,7 @@ export class MobCashClient {
           console.log('[MobCash Auth] ✅ Authorization code получен:', authCode.substring(0, 20) + '...')
           
           // Обмениваем код на токен через OAuth2 token endpoint
-          // Делаем точно так же, как в test-mobcash-auth.ts
+          // Делаем точно так же, как в test-mobcash-auth.ts, но добавляем cookies
           const tokenFormData = new URLSearchParams()
           tokenFormData.append('grant_type', 'authorization_code')
           tokenFormData.append('code', authCode)
@@ -481,12 +481,20 @@ export class MobCashClient {
           
           console.log('[MobCash Auth] Обмениваем код на токен (как в тесте)...')
           
+          const tokenHeaders: Record<string, string> = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          }
+          
+          // Добавляем cookies, если они есть
+          if (this.cookies) {
+            tokenHeaders['Cookie'] = this.cookies
+            console.log('[MobCash Auth] Отправляем cookies с запросом на обмен токена:', this.cookies.substring(0, 80) + '...')
+          }
+          
           const tokenResponse = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
             method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
+            headers: tokenHeaders,
             body: tokenFormData,
           })
           
@@ -504,6 +512,30 @@ export class MobCashClient {
             const errorText = await tokenResponse.text()
             console.error('[MobCash Auth] ❌ Ошибка обмена кода на токен:', tokenResponse.status)
             console.error('[MobCash Auth] Ответ:', errorText)
+            
+            // Если не сработало с cookies, пробуем без них
+            if (this.cookies) {
+              console.log('[MobCash Auth] Пробуем без cookies...')
+              const tokenResponse2 = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
+                method: 'POST',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: tokenFormData,
+              })
+              
+              if (tokenResponse2.ok) {
+                const tokenData = await tokenResponse2.json()
+                if (tokenData.access_token) {
+                  console.log('[MobCash Auth] ✅ Access token получен без cookies')
+                  return tokenData.access_token
+                }
+              } else {
+                const errorText2 = await tokenResponse2.text()
+                console.error('[MobCash Auth] ❌ Ошибка без cookies:', tokenResponse2.status, errorText2)
+              }
+            }
           }
         } else {
           console.warn('[MobCash Auth] ⚠️ Код авторизации не найден в редиректах')
