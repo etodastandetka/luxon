@@ -52,6 +52,7 @@ export default function DepositStep1() {
           if (data.casinos['melbet'] === false) disabled.push('melbet')
           if (data.casinos['mostbet'] === false) disabled.push('mostbet')
           if (data.casinos['winwin'] === false) disabled.push('winwin')
+          if (data.casinos['888starz'] === false) disabled.push('888starz')
           setDisabledCasinos(disabled)
         }
       } catch (error) {

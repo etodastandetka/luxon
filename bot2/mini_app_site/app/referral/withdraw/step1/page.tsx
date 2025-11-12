@@ -10,6 +10,8 @@ const bookmakers = [
   { id: '1win', name: '1WIN', icon: '🎲' },
   { id: 'melbet', name: 'Melbet', icon: '🎯' },
   { id: 'mostbet', name: 'Mostbet', icon: '🎪' },
+  { id: 'winwin', name: 'Winwin', icon: '🎰' },
+  { id: '888starz', name: '888starz', icon: '⭐' },
 ]
 
 export default function ReferralWithdrawStep1() {

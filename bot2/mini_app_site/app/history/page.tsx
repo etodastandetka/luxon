@@ -280,6 +280,8 @@ export default function HistoryPage(){
       '1win': '1WIN',
       'melbet': 'Melbet',
       'mostbet': 'Mostbet',
+      'winwin': 'Winwin',
+      '888starz': '888starz',
     }
     return names[bookmaker?.toLowerCase()] || bookmaker || 'N/A'
   }

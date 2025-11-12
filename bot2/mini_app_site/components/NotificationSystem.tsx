@@ -73,6 +73,8 @@ export default function NotificationSystem() {
             '1win': '1WIN',
             'melbet': 'Melbet',
             'mostbet': 'Mostbet',
+            'winwin': 'Winwin',
+            '888starz': '888starz',
           }
 
           const notification: Notification = {
