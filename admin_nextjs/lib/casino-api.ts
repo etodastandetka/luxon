@@ -111,11 +111,14 @@ async function getCashdeskBalance(
         const balanceValue = data.Balance ?? data.balance ?? 0
         const balance = typeof balanceValue === 'string' ? parseFloat(balanceValue) : (typeof balanceValue === 'number' ? balanceValue : 0)
         
-        // Парсим Limit (может быть строкой или числом)
-        const limitValue = data.Limit ?? data.limit ?? 0
-        const limit = typeof limitValue === 'string' ? parseFloat(limitValue) : (typeof limitValue === 'number' ? limitValue : 0)
+        // Парсим Limit (может быть строкой, числом или null)
+        // ВАЖНО: Используем только Limit, Balance не нужен для лимитов
+        const limitValue = data.Limit ?? data.limit ?? null
+        const limit = limitValue === null || limitValue === undefined 
+          ? 0 
+          : (typeof limitValue === 'string' ? parseFloat(limitValue) : (typeof limitValue === 'number' ? limitValue : 0))
         
-        console.log(`✅ ${casino}: Balance=${balance}, Limit=${limit} (raw: Balance=${data.Balance}, Limit=${data.Limit})`)
+        console.log(`✅ ${casino}: Limit=${limit} (raw: Limit=${data.Limit})`)
         return {
           balance: isNaN(balance) ? 0 : balance,
           limit: isNaN(limit) ? 0 : limit,
