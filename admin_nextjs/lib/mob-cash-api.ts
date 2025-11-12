@@ -52,6 +52,7 @@ const SESSION_TTL = 60 * 60 * 1000
 export class MobCashClient {
   private config: MobCashConfig
   private baseUrl = 'https://admin.mob-cash.com/api/'
+  private cookies: string = '' // Храним cookies между запросами
   private requestIdCounter = 1
 
   constructor(config: MobCashConfig) {
@@ -104,11 +105,11 @@ export class MobCashClient {
 
     // Иначе выполняем полный OAuth2 flow
     try {
-      // Шаг 1.1: Начало авторизации - получение LoginChallenge и cookies
-      const { loginChallenge, cookies } = await this.getLoginChallenge()
+      // Шаг 1.1: Начало авторизации - получение LoginChallenge (cookies сохраняются в this.cookies)
+      const { loginChallenge } = await this.getLoginChallenge()
       
-      // Шаг 1.2: Получение ConsentChallenge (передаем cookies)
-      const consentChallenge = await this.getConsentChallenge(loginChallenge, cookies)
+      // Шаг 1.2: Получение ConsentChallenge (используем сохраненные cookies)
+      const consentChallenge = await this.getConsentChallenge(loginChallenge)
       
       // Шаг 1.3: Получение токена авторизации
       const token = await this.getAccessToken(consentChallenge)
@@ -133,9 +134,52 @@ export class MobCashClient {
   }
 
   /**
-   * Шаг 1.1: Начало авторизации - получение LoginChallenge и cookies
+   * Шаг 1.0: Получение cookies с CSRF токеном (предварительный GET запрос)
    */
-  private async getLoginChallenge(): Promise<{ loginChallenge: string; cookies: string }> {
+  private async getInitialCookies(): Promise<void> {
+    console.log('[MobCash Auth] Getting initial cookies from login page...')
+    // Сначала делаем GET запрос на страницу логина, чтобы получить cookies
+    const response = await fetch('https://app.mob-cash.com/login', {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+      },
+      redirect: 'follow',
+    })
+
+    // Извлекаем cookies из ответа
+    console.log('[MobCash Auth] Login page response status:', response.status)
+    console.log('[MobCash Auth] Login page response headers:', Object.fromEntries(response.headers.entries()))
+    
+    const setCookieHeader = response.headers.get('set-cookie')
+    console.log('[MobCash Auth] Set-Cookie from login page:', setCookieHeader)
+    
+    if (setCookieHeader) {
+      const cookieParts = setCookieHeader.split(',').map(c => c.trim())
+      const cookieValues = cookieParts.map(cookie => cookie.split(';')[0].trim()).filter(c => c)
+      if (cookieValues.length > 0) {
+        this.cookies = cookieValues.join('; ')
+        console.log('[MobCash Auth] Initial cookies obtained:', this.cookies.substring(0, 100))
+      } else {
+        console.warn('[MobCash Auth] No cookie values extracted from login page')
+      }
+    } else {
+      console.warn('[MobCash Auth] No set-cookie header from login page')
+    }
+  }
+
+  /**
+   * Шаг 1.1: Начало авторизации - получение LoginChallenge
+   */
+  private async getLoginChallenge(): Promise<{ loginChallenge: string }> {
+    // Сначала получаем cookies
+    if (!this.cookies) {
+      await this.getInitialCookies()
+    }
+
+    // Согласно документации, используем POST с form-data
     const formData = new URLSearchParams()
     formData.append('response_type', 'code')
     formData.append('grant_type', 'refresh_token')
@@ -144,53 +188,144 @@ export class MobCashClient {
     formData.append('prompt', 'consent')
     formData.append('state', 'Qm2WdqqCf0sUyqaiCOWWDrGOOKcYdvOV')
 
+    const headers: Record<string, string> = {
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
+      'Connection': 'keep-alive',
+      'Origin': 'https://app.mob-cash.com/',
+      'Referer': 'https://app.mob-cash.com/login',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+
+    // Добавляем cookies если они есть
+    if (this.cookies) {
+      headers['Cookie'] = this.cookies
+    }
+
+    // Используем redirect: 'manual' чтобы получить cookies из промежуточных ответов
     const response = await fetch('https://admin.mob-cash.com/hydra/oauth2/auth', {
       method: 'POST',
-      headers: {
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
-        'Connection': 'keep-alive',
-        'Origin': 'https://app.mob-cash.com/',
-        'Referer': 'https://app.mob-cash.com/login',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
-      },
+      headers,
       body: formData,
+      redirect: 'manual', // Не следуем редиректам автоматически, чтобы получить cookies
     })
 
-    if (!response.ok) {
+    // Если редирект, пробуем извлечь login_challenge из URL или ответа
+    if (response.status === 302 || response.status === 301) {
+      const location = response.headers.get('location')
+      if (location) {
+        const urlParams = new URLSearchParams(location.split('?')[1] || '')
+        const loginChallenge = urlParams.get('login_challenge')
+        if (loginChallenge) {
+          // Пробуем извлечь cookies из заголовков редиректа
+          const setCookieHeader = response.headers.get('set-cookie')
+          if (setCookieHeader) {
+            const cookieParts = setCookieHeader.split(',').map(c => c.trim())
+            const cookieValues = cookieParts.map(cookie => cookie.split(';')[0].trim()).filter(c => c)
+            if (cookieValues.length > 0) {
+              this.cookies = cookieValues.join('; ')
+              console.log('[MobCash Auth] Cookies from redirect:', this.cookies.substring(0, 100))
+            }
+          }
+          console.log('[MobCash Auth] LoginChallenge from redirect:', loginChallenge)
+          return { loginChallenge }
+        }
+      }
+    }
+
+    if (!response.ok && response.status !== 302) {
       const errorText = await response.text()
       console.error('[MobCash Auth] LoginChallenge error:', response.status, errorText)
       throw new Error(`Failed to get login challenge: ${response.status} ${response.statusText}`)
     }
 
-    // Извлекаем cookies из ответа
-    let cookies = ''
+    // Извлекаем cookies из ответа и сохраняем в объекте
+    // Cookies могут быть в промежуточных редиректах, поэтому проверяем все заголовки
+    console.log('[MobCash Auth] Response status:', response.status)
+    console.log('[MobCash Auth] Response headers:', Object.fromEntries(response.headers.entries()))
+    
+    // Пробуем получить cookies из текущего ответа
     const setCookieHeader = response.headers.get('set-cookie')
+    console.log('[MobCash Auth] Set-Cookie header:', setCookieHeader)
+    
+    // Если есть редирект, пробуем получить cookies из location
+    if (response.status === 302 || response.status === 301) {
+      const location = response.headers.get('location')
+      console.log('[MobCash Auth] Redirect location:', location)
+    }
+    
     if (setCookieHeader) {
-      // Если один cookie
-      cookies = setCookieHeader
+      // Извлекаем все cookies и объединяем их
+      // set-cookie может содержать несколько cookies, разделенных запятыми
+      const cookieParts = setCookieHeader.split(',').map(c => c.trim())
+      console.log('[MobCash Auth] Cookie parts:', cookieParts)
+      
+      const cookieValues = cookieParts.map(cookie => {
+        // Берем только имя=значение (до первого ;)
+        const nameValue = cookie.split(';')[0].trim()
+        return nameValue
+      }).filter(c => c)
+      
+      console.log('[MobCash Auth] Extracted cookie values:', cookieValues)
+      
+      if (cookieValues.length > 0) {
+        // Объединяем с существующими cookies
+        const existingCookies = this.cookies ? this.cookies.split('; ') : []
+        const allCookies = [...existingCookies, ...cookieValues]
+        // Убираем дубликаты (по имени cookie)
+        const uniqueCookies = new Map<string, string>()
+        allCookies.forEach(cookie => {
+          const [name] = cookie.split('=')
+          if (name) uniqueCookies.set(name, cookie)
+        })
+        this.cookies = Array.from(uniqueCookies.values()).join('; ')
+        console.log('[MobCash Auth] Cookies saved:', this.cookies.substring(0, 200))
+      } else {
+        console.warn('[MobCash Auth] No cookie values extracted from set-cookie header')
+      }
     } else {
-      // Если несколько cookies (массив)
-      const setCookieHeaders = response.headers.getSetCookie?.() || []
-      if (setCookieHeaders.length > 0) {
-        cookies = setCookieHeaders.join('; ')
+      console.warn('[MobCash Auth] No set-cookie header in response')
+    }
+
+    // Пробуем получить LoginChallenge из JSON ответа
+    const responseText = await response.text()
+    let data: any
+    
+    try {
+      data = JSON.parse(responseText)
+      if (data.LoginChallenge) {
+        console.log('[MobCash Auth] LoginChallenge from JSON:', data.LoginChallenge)
+        console.log('[MobCash Auth] Cookies extracted:', this.cookies ? `${this.cookies.substring(0, 50)}...` : 'none')
+        return { loginChallenge: data.LoginChallenge }
+      }
+    } catch (e) {
+      // Не JSON ответ - возможно HTML или редирект
+      console.log('[MobCash Auth] Response is not JSON, trying to extract from URL or HTML')
+    }
+    
+    // Если не нашли в JSON, пробуем из URL редиректа
+    const finalUrl = response.url
+    if (finalUrl) {
+      const urlParams = new URLSearchParams(finalUrl.split('?')[1] || '')
+      const loginChallenge = urlParams.get('login_challenge')
+      if (loginChallenge) {
+        console.log('[MobCash Auth] LoginChallenge from final URL:', loginChallenge)
+        return { loginChallenge }
       }
     }
-
-    const data = await response.json()
-    if (!data.LoginChallenge) {
-      console.error('[MobCash Auth] LoginChallenge response:', data)
-      throw new Error('LoginChallenge not found in response')
-    }
-
-    console.log('[MobCash Auth] LoginChallenge received, cookies:', cookies ? 'present' : 'missing')
-    return { loginChallenge: data.LoginChallenge, cookies }
+    
+    console.error('[MobCash Auth] LoginChallenge not found in response or URL')
+    console.error('[MobCash Auth] Response status:', response.status)
+    console.error('[MobCash Auth] Response URL:', response.url)
+    console.error('[MobCash Auth] Response text (first 500 chars):', responseText.substring(0, 500))
+    throw new Error('LoginChallenge not found in response')
   }
 
   /**
    * Шаг 1.2: Получение ConsentChallenge
    */
-  private async getConsentChallenge(loginChallenge: string, cookies: string): Promise<string> {
+  private async getConsentChallenge(loginChallenge: string): Promise<string> {
     const formData = new URLSearchParams()
     formData.append('nickname', this.config.login)
     formData.append('password', this.config.password)
@@ -205,12 +340,21 @@ export class MobCashClient {
       'Origin': 'https://app.mob-cash.com/',
       'Referer': 'https://app.mob-cash.com//login',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
+      'Content-Type': 'application/x-www-form-urlencoded',
     }
 
-    // Добавляем cookies если они есть
-    if (cookies) {
-      headers['Cookie'] = cookies
+    // Используем сохраненные cookies из объекта
+    if (this.cookies) {
+      headers['Cookie'] = this.cookies
+      console.log('[MobCash Auth] Sending cookies with request:', this.cookies.substring(0, 50))
+    } else {
+      console.warn('[MobCash Auth] No cookies to send - this may cause 403 error')
     }
+
+    console.log('[MobCash Auth] Sending login request with:')
+    console.log('[MobCash Auth]   URL:', `https://admin.mob-cash.com/authentication/login?login_challenge=${loginChallenge}`)
+    console.log('[MobCash Auth]   Nickname:', this.config.login)
+    console.log('[MobCash Auth]   Cookies:', this.cookies || 'none')
 
     const response = await fetch(
       `https://admin.mob-cash.com/authentication/login?login_challenge=${loginChallenge}`,
@@ -218,23 +362,80 @@ export class MobCashClient {
         method: 'POST',
         headers,
         body: formData,
+        redirect: 'follow', // Следуем редиректам
       }
     )
 
+    // Сохраняем cookies из ответа
+    const responseCookies = response.headers.get('set-cookie')
+    if (responseCookies) {
+      // Обновляем сохраненные cookies
+      const cookieParts = responseCookies.split(',').map(c => c.trim())
+      const cookieValues = cookieParts.map(cookie => cookie.split(';')[0].trim()).filter(c => c)
+      if (cookieValues.length > 0) {
+        const existingCookies = this.cookies ? this.cookies.split('; ') : []
+        const allCookies = [...existingCookies, ...cookieValues]
+        const uniqueCookies = new Map<string, string>()
+        allCookies.forEach(cookie => {
+          const [name] = cookie.split('=')
+          if (name) uniqueCookies.set(name, cookie)
+        })
+        this.cookies = Array.from(uniqueCookies.values()).join('; ')
+        console.log('[MobCash Auth] Updated cookies from login response:', this.cookies.substring(0, 100))
+      }
+    }
+
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[MobCash Auth] ConsentChallenge error:', response.status, errorText)
-      console.error('[MobCash Auth] Login:', this.config.login, 'Cookies:', cookies ? 'present' : 'missing')
+      console.error('[MobCash Auth] ConsentChallenge error:', response.status)
+      console.error('[MobCash Auth] Error response:', errorText)
+      console.error('[MobCash Auth] Response URL:', response.url)
+      console.error('[MobCash Auth] Login:', this.config.login, 'Cookies sent:', this.cookies ? 'yes' : 'no')
+      
+      // Если 302, возможно это редирект с consent_challenge в URL
+      if (response.status === 302 || response.status === 301) {
+        const location = response.headers.get('location') || response.url
+        if (location) {
+          const urlParams = new URLSearchParams(location.split('?')[1] || '')
+          const consentChallenge = urlParams.get('consent_challenge')
+          if (consentChallenge) {
+            console.log('[MobCash Auth] ConsentChallenge from redirect URL:', consentChallenge)
+            return consentChallenge
+          }
+        }
+      }
+      
       throw new Error(`Failed to get consent challenge: ${response.status} ${response.statusText}. Check login and password.`)
     }
 
-    const data = await response.json()
-    if (!data.ConsentChallenge) {
-      console.error('[MobCash Auth] ConsentChallenge response:', data)
-      throw new Error('ConsentChallenge not found in response. Check login and password.')
+    // Пробуем получить из JSON
+    let data: any
+    try {
+      const responseText = await response.text()
+      data = JSON.parse(responseText)
+      if (data.ConsentChallenge) {
+        console.log('[MobCash Auth] ConsentChallenge from JSON:', data.ConsentChallenge)
+        return data.ConsentChallenge
+      }
+    } catch (e) {
+      // Не JSON
     }
 
-    return data.ConsentChallenge
+    // Пробуем из URL
+    const finalUrl = response.url
+    if (finalUrl) {
+      const urlParams = new URLSearchParams(finalUrl.split('?')[1] || '')
+      const consentChallenge = urlParams.get('consent_challenge')
+      if (consentChallenge) {
+        console.log('[MobCash Auth] ConsentChallenge from final URL:', consentChallenge)
+        return consentChallenge
+      }
+    }
+
+    console.error('[MobCash Auth] ConsentChallenge not found in response')
+    console.error('[MobCash Auth] Response status:', response.status)
+    console.error('[MobCash Auth] Response URL:', response.url)
+    throw new Error('ConsentChallenge not found in response. Check login and password.')
   }
 
   /**
