@@ -91,6 +91,14 @@ export default function RequestDetailPage() {
           
           if (abortController.signal.aborted || !isMountedRef.current) return
           
+          // Проверяем, что ответ является JSON
+          const contentType = response.headers.get('content-type')
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text()
+            console.error('❌ API returned non-JSON response:', response.status, text.substring(0, 200))
+            throw new Error(`API returned ${response.status} error. Expected JSON but got ${contentType}`)
+          }
+          
           const data = await response.json()
 
           // console.log('📋 Request detail data:', data)
@@ -127,12 +135,28 @@ export default function RequestDetailPage() {
                       }),
                     })
                     
+                    // Проверяем Content-Type перед парсингом JSON
+                    const updateContentType = updateResponse.headers.get('content-type')
+                    if (!updateContentType || !updateContentType.includes('application/json')) {
+                      const text = await updateResponse.text()
+                      console.error('❌ Update API returned non-JSON:', updateResponse.status, text.substring(0, 200))
+                      return
+                    }
+                    
                     const updateData = await updateResponse.json()
                     if (updateData.success) {
                       // Обновляем данные заявки
                       const refreshedResponse = await fetch(`/api/requests/${requestId}`, {
                         signal: abortController.signal
                       })
+                      
+                      // Проверяем Content-Type перед парсингом JSON
+                      const refreshedContentType = refreshedResponse.headers.get('content-type')
+                      if (!refreshedContentType || !refreshedContentType.includes('application/json')) {
+                        console.error('❌ Refreshed API returned non-JSON:', refreshedResponse.status)
+                        return
+                      }
+                      
                       const refreshedData = await refreshedResponse.json()
                       if (refreshedData.success && isMountedRef.current) {
                         requestData.status = 'completed'
@@ -171,6 +195,18 @@ export default function RequestDetailPage() {
       const fetchProfilePhoto = async (userId: string) => {
         try {
           const photoResponse = await fetch(`/api/users/${userId}/profile-photo`)
+          
+          // Проверяем Content-Type перед парсингом JSON
+          const photoContentType = photoResponse.headers.get('content-type')
+          if (!photoContentType || !photoContentType.includes('application/json')) {
+            // Если не JSON, просто игнорируем (возможно, это ошибка 500)
+            if (!photoResponse.ok) {
+              const text = await photoResponse.text()
+              console.error('❌ Profile photo API error:', photoResponse.status, text.substring(0, 200))
+            }
+            return
+          }
+          
           const photoData = await photoResponse.json()
           
           if (photoData.success && photoData.data?.photoUrl && isMountedRef.current) {
@@ -340,6 +376,16 @@ export default function RequestDetailPage() {
         body: JSON.stringify({ status: 'deferred' }),
       })
 
+      // Проверяем Content-Type перед парсингом JSON
+      const deferContentType = response.headers.get('content-type')
+      if (!deferContentType || !deferContentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('❌ Defer API returned non-JSON:', response.status, text.substring(0, 200))
+        alert(`Ошибка отложения заявки: Сервер вернул ошибку ${response.status}`)
+        setDeferring(false)
+        return
+      }
+
       const data = await response.json()
 
       if (data.success) {
@@ -391,6 +437,15 @@ export default function RequestDetailPage() {
               }),
             })
 
+            // Проверяем, что ответ является JSON
+            const contentType = depositResponse.headers.get('content-type')
+            if (!contentType || !contentType.includes('application/json')) {
+              const text = await depositResponse.text()
+              console.error('❌ Deposit API returned non-JSON response:', depositResponse.status, text.substring(0, 200))
+              alert(`Ошибка пополнения баланса: Сервер вернул ошибку ${depositResponse.status}. Проверьте логи на сервере.`)
+              return
+            }
+
             const depositData = await depositResponse.json()
 
             if (!depositData.success) {
@@ -417,6 +472,15 @@ export default function RequestDetailPage() {
                 }),
               })
               
+              // Проверяем Content-Type перед парсингом JSON
+              const updateContentType2 = updateResponse.headers.get('content-type')
+              if (!updateContentType2 || !updateContentType2.includes('application/json')) {
+                const text = await updateResponse.text()
+                console.error('❌ Update API returned non-JSON:', updateResponse.status, text.substring(0, 200))
+                alert(`Ошибка обновления статуса: Сервер вернул ошибку ${updateResponse.status}`)
+                return
+              }
+              
               const updateData = await updateResponse.json()
               if (updateData.success) {
                 // Обновляем заявку с новым статусом
@@ -426,6 +490,14 @@ export default function RequestDetailPage() {
                 // Используем setTimeout для асинхронной перезагрузки после обновления состояния
                 setTimeout(async () => {
                   const refreshResponse = await fetch(`/api/requests/${request.id}`)
+                  
+                  // Проверяем Content-Type перед парсингом JSON
+                  const refreshContentType = refreshResponse.headers.get('content-type')
+                  if (!refreshContentType || !refreshContentType.includes('application/json')) {
+                    console.error('❌ Refresh API returned non-JSON:', refreshResponse.status)
+                    return
+                  }
+                  
                   const refreshData = await refreshResponse.json()
                   if (refreshData.success && isMountedRef.current) {
                     setRequest(refreshData.data)
@@ -460,6 +532,15 @@ export default function RequestDetailPage() {
           body: JSON.stringify({ status: newStatus }),
         })
 
+        // Проверяем Content-Type перед парсингом JSON
+        const responseContentType = response.headers.get('content-type')
+        if (!responseContentType || !responseContentType.includes('application/json')) {
+          const text = await response.text()
+          console.error('❌ Update status API returned non-JSON:', response.status, text.substring(0, 200))
+          alert(`Ошибка обновления статуса: Сервер вернул ошибку ${response.status}`)
+          return
+        }
+
         const data = await response.json()
 
         if (data.success) {
@@ -470,6 +551,14 @@ export default function RequestDetailPage() {
           // Перезагружаем данные для получения актуального состояния
           setTimeout(async () => {
             const refreshResponse = await fetch(`/api/requests/${request.id}`)
+            
+            // Проверяем Content-Type перед парсингом JSON
+            const refreshContentType2 = refreshResponse.headers.get('content-type')
+            if (!refreshContentType2 || !refreshContentType2.includes('application/json')) {
+              console.error('❌ Refresh API returned non-JSON:', refreshResponse.status)
+              return
+            }
+            
             const refreshData = await refreshResponse.json()
             if (refreshData.success && isMountedRef.current) {
               setRequest(refreshData.data)
@@ -994,10 +1083,28 @@ export default function RequestDetailPage() {
                     body: JSON.stringify({ requestId: request.id }),
                   })
                   
+                  // Проверяем Content-Type перед парсингом JSON
+                  const linkContentType = response.headers.get('content-type')
+                  if (!linkContentType || !linkContentType.includes('application/json')) {
+                    const text = await response.text()
+                    console.error('❌ Link payment API returned non-JSON:', response.status, text.substring(0, 200))
+                    alert(`Ошибка привязки платежа: Сервер вернул ошибку ${response.status}`)
+                    setLinkingPayment(false)
+                    return
+                  }
+                  
                   const data = await response.json()
                   if (data.success) {
                     // Обновляем заявку (API автоматически обновит статус если сумма совпадает)
                     const fetchResponse = await fetch(`/api/requests/${request.id}`)
+                    
+                    // Проверяем Content-Type перед парсингом JSON
+                    const fetchContentType = fetchResponse.headers.get('content-type')
+                    if (!fetchContentType || !fetchContentType.includes('application/json')) {
+                      console.error('❌ Fetch API returned non-JSON:', fetchResponse.status)
+                      return
+                    }
+                    
                     const fetchData = await fetchResponse.json()
                     if (fetchData.success) {
                       setRequest(fetchData.data)

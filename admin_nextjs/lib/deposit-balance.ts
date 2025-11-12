@@ -157,13 +157,27 @@ export async function depositToCasino(
             }
 
             // Логируем конфигурацию для отладки
+            const hasAllTokens = 
+              mobCashConfig.bearer_token && 
+              mobCashConfig.bearer_token.trim() !== '' &&
+              mobCashConfig.user_id && 
+              mobCashConfig.user_id.trim() !== '' &&
+              mobCashConfig.session_id && 
+              mobCashConfig.session_id.trim() !== ''
+            
             console.log('[Deposit Balance] Mob-cash config:', {
-              has_bearer_token: !!mobCashConfig.bearer_token,
-              has_user_id: !!mobCashConfig.user_id,
-              has_session_id: !!mobCashConfig.session_id,
+              has_all_tokens: hasAllTokens,
+              has_bearer_token: !!(mobCashConfig.bearer_token && mobCashConfig.bearer_token.trim() !== ''),
+              has_user_id: !!(mobCashConfig.user_id && mobCashConfig.user_id.trim() !== ''),
+              has_session_id: !!(mobCashConfig.session_id && mobCashConfig.session_id.trim() !== ''),
               login: mobCashConfig.login,
               cashdesk_id: mobCashConfig.cashdesk_id,
             })
+            
+            if (!hasAllTokens) {
+              console.warn('[Deposit Balance] ⚠️ Mob-cash tokens not fully configured. OAuth2 flow will fail without client_secret.')
+              console.warn('[Deposit Balance] Please add MOBCASH_BEARER_TOKEN, MOBCASH_USER_ID, and MOBCASH_SESSION_ID to .env file.')
+            }
 
             return await depositMobCashAPI(accountId, amount, mobCashConfig)
           }
