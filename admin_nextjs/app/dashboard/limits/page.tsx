@@ -302,8 +302,8 @@ export default function LimitsPage() {
             {stats.platformLimits.map((platform) => (
               <div key={platform.key} className="flex items-center justify-between py-2">
                 <span className="text-white">{platform.name}</span>
-                <span className="text-green-500 font-bold">
-                  {platform.limit.toFixed(2)} с
+                <span className={platform.limit < 0 ? "text-gray-400 font-bold" : "text-green-500 font-bold"}>
+                  {platform.limit < 0 ? 'N/A' : `${platform.limit.toFixed(2)} с`}
                 </span>
               </div>
             ))}
