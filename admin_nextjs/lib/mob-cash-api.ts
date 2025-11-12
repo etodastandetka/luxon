@@ -397,6 +397,7 @@ export class MobCashClient {
     // Добавляем cookies
     if (this.cookies) {
       headers['Cookie'] = this.cookies
+      console.log('[MobCash Auth] Отправляем cookies:', this.cookies.substring(0, 80) + '...')
     }
 
     // Используем обычный fetch с ручным управлением cookies
@@ -413,87 +414,71 @@ export class MobCashClient {
     // Обновляем cookies
     this.updateCookies(response.headers.get('set-cookie'))
 
+    console.log('[MobCash Auth] Consent response status:', response.status)
+    
     // Проверяем редирект - должен быть код авторизации в URL
     if (response.status === 302 || response.status === 301) {
       const location = response.headers.get('location')
+      console.log('[MobCash Auth] Redirect location:', location)
+      
       if (location) {
-        console.log('[MobCash Auth] Redirect location:', location)
+        // Следуем редиректу автоматически, чтобы получить код авторизации
+        const redirectResponse = await fetch(location, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'Cookie': this.cookies,
+          },
+          redirect: 'follow', // Следуем всем редиректам автоматически
+        })
         
-        // Извлекаем consent_verifier из URL
-        const urlParams = new URLSearchParams(location.split('?')[1] || '')
-        const consentVerifier = urlParams.get('consent_verifier')
+        this.updateCookies(redirectResponse.headers.get('set-cookie'))
         
-        if (consentVerifier) {
-          console.log('[MobCash Auth] ✅ Consent verifier получен:', consentVerifier)
+        // Проверяем финальный URL на наличие кода
+        const finalUrl = redirectResponse.url
+        console.log('[MobCash Auth] Final URL after redirects:', finalUrl)
+        
+        // Проверяем, есть ли ошибка в URL
+        if (finalUrl && finalUrl.includes('error=')) {
+          const urlParams = new URLSearchParams(finalUrl.split('?')[1] || '')
+          const error = urlParams.get('error')
+          const errorDesc = urlParams.get('error_description')
+          console.error('[MobCash Auth] ❌ Ошибка в редиректе:', error)
+          console.error('[MobCash Auth] Описание:', errorDesc)
+          throw new Error(`OAuth2 error: ${error} - ${errorDesc}`)
+        }
+        
+        let authCode = ''
+        
+        if (finalUrl) {
+          const urlParams = new URLSearchParams(finalUrl.split('?')[1] || '')
+          authCode = urlParams.get('code') || ''
           
-          // Делаем GET запрос по редиректу, чтобы получить authorization code
-          const redirectResponse = await fetch(location, {
-            method: 'GET',
-            headers: {
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-              'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
-              'Cookie': this.cookies,
-            },
-            redirect: 'manual',
-          })
-          
-          this.updateCookies(redirectResponse.headers.get('set-cookie'))
-          
-          // Проверяем следующий редирект с authorization code
-          if (redirectResponse.status === 302 || redirectResponse.status === 301) {
-            const nextLocation = redirectResponse.headers.get('location')
-            if (nextLocation) {
-              console.log('[MobCash Auth] Next redirect location:', nextLocation)
-              const nextUrlParams = new URLSearchParams(nextLocation.split('?')[1] || '')
-              const authCode = nextUrlParams.get('code')
-              
-              if (authCode && typeof authCode === 'string') {
-                console.log('[MobCash Auth] ✅ Authorization code получен:', authCode.substring(0, 20) + '...')
-                
-                // Обмениваем код на токен через OAuth2 token endpoint
-                const tokenFormData = new URLSearchParams()
-                tokenFormData.append('grant_type', 'authorization_code')
-                tokenFormData.append('code', authCode)
-                tokenFormData.append('client_id', '4e779103-d67b-42ef-bc9d-ab5ecdec40f8')
-                tokenFormData.append('redirect_uri', 'https://app.mob-cash.com')
-                
-                const tokenResponse = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
-                  method: 'POST',
-                  headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                  },
-                  body: tokenFormData,
-                })
-                
-                if (tokenResponse.ok) {
-                  const tokenData = await tokenResponse.json()
-                  if (tokenData.access_token) {
-                    console.log('[MobCash Auth] ✅ Access token получен через OAuth2 token endpoint')
-                    return tokenData.access_token
-                  }
-                } else {
-                  const errorText = await tokenResponse.text()
-                  console.error('[MobCash Auth] ❌ Ошибка обмена кода на токен:', errorText)
-                }
+          // Если код не в URL, проверяем тело ответа
+          if (!authCode) {
+            try {
+              const redirectText = await redirectResponse.text()
+              const redirectData = JSON.parse(redirectText)
+              if (redirectData.code) {
+                authCode = redirectData.code
               }
+            } catch (e) {
+              // Не JSON
             }
           }
         }
         
-        // Пробуем извлечь code напрямую из первого редиректа
-        const authCode = urlParams.get('code')
         if (authCode && typeof authCode === 'string') {
-          console.log('[MobCash Auth] ✅ Authorization code из первого редиректа:', authCode.substring(0, 20) + '...')
+          console.log('[MobCash Auth] ✅ Authorization code получен:', authCode.substring(0, 20) + '...')
           
-          // Обмениваем код на токен
+          // Обмениваем код на токен через OAuth2 token endpoint
           const tokenFormData = new URLSearchParams()
           tokenFormData.append('grant_type', 'authorization_code')
           tokenFormData.append('code', authCode)
           tokenFormData.append('client_id', '4e779103-d67b-42ef-bc9d-ab5ecdec40f8')
           tokenFormData.append('redirect_uri', 'https://app.mob-cash.com')
           
+          console.log('[MobCash Auth] Обмениваем код на токен...')
           const tokenResponse = await fetch('https://admin.mob-cash.com/hydra/oauth2/token', {
             method: 'POST',
             headers: {
@@ -503,36 +488,57 @@ export class MobCashClient {
             body: tokenFormData,
           })
           
+          console.log('[MobCash Auth] Token response status:', tokenResponse.status)
+          
           if (tokenResponse.ok) {
             const tokenData = await tokenResponse.json()
+            console.log('[MobCash Auth] Token response data keys:', Object.keys(tokenData))
+            
             if (tokenData.access_token) {
-              console.log('[MobCash Auth] ✅ Access token получен')
+              console.log('[MobCash Auth] ✅ Access token получен через OAuth2 token endpoint')
               return tokenData.access_token
+            } else {
+              console.error('[MobCash Auth] ❌ access_token не найден в ответе token endpoint:', tokenData)
             }
+          } else {
+            const errorText = await tokenResponse.text()
+            console.error('[MobCash Auth] ❌ Ошибка обмена кода на токен:', tokenResponse.status)
+            console.error('[MobCash Auth] Ответ:', errorText)
           }
+        } else {
+          console.warn('[MobCash Auth] ⚠️ Код авторизации не найден в редиректах')
+          console.warn('[MobCash Auth] Final URL:', finalUrl)
         }
       }
     }
 
     if (!response.ok && response.status !== 302) {
       const errorText = await response.text()
-      console.error('[MobCash Auth] ❌ Ошибка получения access token:', response.status, errorText)
+      console.error('[MobCash Auth] ❌ Ошибка получения access token:', response.status)
+      console.error('[MobCash Auth] Error response:', errorText)
       throw new Error(`Failed to get access token: ${response.status} ${response.statusText}`)
     }
 
     // Пробуем из JSON ответа
     const responseText = await response.text()
+    console.log('[MobCash Auth] Response text (first 500 chars):', responseText.substring(0, 500))
+    
     try {
       const data = JSON.parse(responseText)
       if (data.access_token) {
         console.log('[MobCash Auth] ✅ Access token из JSON')
         return data.access_token
+      } else {
+        console.error('[MobCash Auth] ❌ access_token не найден в JSON ответе:', data)
       }
     } catch (e) {
       // Не JSON
+      console.log('[MobCash Auth] Response is not JSON')
     }
 
     console.error('[MobCash Auth] ❌ Access token not found')
+    console.error('[MobCash Auth] Response status:', response.status)
+    console.error('[MobCash Auth] Response URL:', response.url)
     throw new Error('Access token not found in response')
   }
 
