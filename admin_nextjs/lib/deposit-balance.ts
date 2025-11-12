@@ -93,7 +93,7 @@ export async function getMobCashConfig(bookmaker: string): Promise<{
   bearer_token?: string
   user_id?: string
   session_id?: string
-}> {
+} | null> {
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
   
   // Только для 1xbet

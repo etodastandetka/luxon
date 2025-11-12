@@ -3,12 +3,28 @@
  * Использует JSON-RPC 2.0 протокол
  */
 
-import fetchCookie from 'fetch-cookie'
-import { CookieJar } from 'tough-cookie'
+// Динамический импорт для Next.js
+let fetchCookie: any
+let CookieJar: any
+let cookieJar: any
+let fetchWithCookies: typeof fetch
 
-// Создаем cookie jar для автоматического управления cookies
-const cookieJar = new CookieJar()
-const fetchWithCookies = fetchCookie(fetch, cookieJar)
+// Инициализация fetch-cookie (только на сервере)
+if (typeof window === 'undefined') {
+  try {
+    fetchCookie = require('fetch-cookie')
+    CookieJar = require('tough-cookie').CookieJar
+    cookieJar = new CookieJar()
+    fetchWithCookies = fetchCookie(fetch, cookieJar)
+  } catch (e) {
+    // Если модули не установлены, используем обычный fetch
+    console.warn('[MobCash] fetch-cookie not available, using regular fetch')
+    fetchWithCookies = fetch
+  }
+} else {
+  // На клиенте используем обычный fetch
+  fetchWithCookies = fetch
+}
 
 interface MobCashConfig {
   login: string
