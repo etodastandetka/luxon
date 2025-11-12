@@ -104,11 +104,11 @@ export class MobCashClient {
 
     // Иначе выполняем полный OAuth2 flow
     try {
-      // Шаг 1.1: Начало авторизации - получение LoginChallenge
-      const loginChallenge = await this.getLoginChallenge()
+      // Шаг 1.1: Начало авторизации - получение LoginChallenge и cookies
+      const { loginChallenge, cookies } = await this.getLoginChallenge()
       
-      // Шаг 1.2: Получение ConsentChallenge
-      const consentChallenge = await this.getConsentChallenge(loginChallenge)
+      // Шаг 1.2: Получение ConsentChallenge (передаем cookies)
+      const consentChallenge = await this.getConsentChallenge(loginChallenge, cookies)
       
       // Шаг 1.3: Получение токена авторизации
       const token = await this.getAccessToken(consentChallenge)
@@ -126,14 +126,16 @@ export class MobCashClient {
         expiresAt: Date.now() + SESSION_TTL,
       }
     } catch (error) {
-      throw new Error(`Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[MobCash Auth] Authentication error:', errorMessage)
+      throw new Error(`Failed to authenticate: ${errorMessage}`)
     }
   }
 
   /**
-   * Шаг 1.1: Начало авторизации - получение LoginChallenge
+   * Шаг 1.1: Начало авторизации - получение LoginChallenge и cookies
    */
-  private async getLoginChallenge(): Promise<string> {
+  private async getLoginChallenge(): Promise<{ loginChallenge: string; cookies: string }> {
     const formData = new URLSearchParams()
     formData.append('response_type', 'code')
     formData.append('grant_type', 'refresh_token')
@@ -156,50 +158,79 @@ export class MobCashClient {
     })
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[MobCash Auth] LoginChallenge error:', response.status, errorText)
       throw new Error(`Failed to get login challenge: ${response.status} ${response.statusText}`)
+    }
+
+    // Извлекаем cookies из ответа
+    let cookies = ''
+    const setCookieHeader = response.headers.get('set-cookie')
+    if (setCookieHeader) {
+      // Если один cookie
+      cookies = setCookieHeader
+    } else {
+      // Если несколько cookies (массив)
+      const setCookieHeaders = response.headers.getSetCookie?.() || []
+      if (setCookieHeaders.length > 0) {
+        cookies = setCookieHeaders.join('; ')
+      }
     }
 
     const data = await response.json()
     if (!data.LoginChallenge) {
+      console.error('[MobCash Auth] LoginChallenge response:', data)
       throw new Error('LoginChallenge not found in response')
     }
 
-    return data.LoginChallenge
+    console.log('[MobCash Auth] LoginChallenge received, cookies:', cookies ? 'present' : 'missing')
+    return { loginChallenge: data.LoginChallenge, cookies }
   }
 
   /**
    * Шаг 1.2: Получение ConsentChallenge
    */
-  private async getConsentChallenge(loginChallenge: string): Promise<string> {
+  private async getConsentChallenge(loginChallenge: string, cookies: string): Promise<string> {
     const formData = new URLSearchParams()
     formData.append('nickname', this.config.login)
     formData.append('password', this.config.password)
     formData.append('state', '547f6922-61ec-47f8-8718-c7928dd8f6eb')
     formData.append('remember_me', 'true')
 
+    const headers: Record<string, string> = {
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Origin': 'https://app.mob-cash.com/',
+      'Referer': 'https://app.mob-cash.com//login',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
+    }
+
+    // Добавляем cookies если они есть
+    if (cookies) {
+      headers['Cookie'] = cookies
+    }
+
     const response = await fetch(
       `https://admin.mob-cash.com/authentication/login?login_challenge=${loginChallenge}`,
       {
         method: 'POST',
-        headers: {
-          'Accept': 'application/json, text/plain, */*',
-          'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Origin': 'https://app.mob-cash.com/',
-          'Referer': 'https://app.mob-cash.com//login',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
-        },
+        headers,
         body: formData,
       }
     )
 
     if (!response.ok) {
-      throw new Error(`Failed to get consent challenge: ${response.status} ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('[MobCash Auth] ConsentChallenge error:', response.status, errorText)
+      console.error('[MobCash Auth] Login:', this.config.login, 'Cookies:', cookies ? 'present' : 'missing')
+      throw new Error(`Failed to get consent challenge: ${response.status} ${response.statusText}. Check login and password.`)
     }
 
     const data = await response.json()
     if (!data.ConsentChallenge) {
+      console.error('[MobCash Auth] ConsentChallenge response:', data)
       throw new Error('ConsentChallenge not found in response. Check login and password.')
     }
 
