@@ -105,28 +105,35 @@ async function getCashdeskBalance(
     const authHeader = `Basic ${authBase64}`
     
     // Заголовки для запроса
-    const headers: Record<string, string> = {}
+    // Согласно документации: "ensure that the request headers include the generated signature sign"
+    const headers: Record<string, string> = {
+      'sign': sign, // Заголовок sign (с маленькой буквы) для всех казино
+    }
     
-    if (casino === '888starz') {
-      // Для 888starz используем только Sign (с большой буквы) и без Basic Auth
-      headers['Sign'] = sign
-    } else {
-      // Для Melbet и Winwin используем sign (с маленькой) и Basic Auth
-      headers['sign'] = sign
+    // Basic Auth нужен только для Melbet и Winwin (не упоминается в документации для баланса)
+    if (casino !== '888starz') {
       headers['Authorization'] = authHeader
     }
 
-    console.log(`[${casino} Balance] Request details:`, {
+    const logDetails: any = {
       url,
       confirm,
       dt: formattedDt,
       sign_preview: sign.substring(0, 20) + '...',
-      auth_header_preview: authHeader.substring(0, 20) + '...',
       step1: step1,
       step2: step2,
       sha1_preview: sha1.substring(0, 20) + '...',
       md5Hash_preview: md5Hash.substring(0, 20) + '...',
-    })
+      headers: { sign: sign.substring(0, 20) + '...' },
+    }
+    
+    // Basic Auth только для Melbet и Winwin
+    if (casino !== '888starz') {
+      logDetails.auth_header_preview = authHeader.substring(0, 20) + '...'
+      logDetails.headers.Authorization = 'Basic ...'
+    }
+    
+    console.log(`[${casino} Balance] Request details:`, logDetails)
 
     const response = await fetch(url, { headers, method: 'GET' })
 
