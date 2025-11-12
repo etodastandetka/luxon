@@ -97,7 +97,6 @@ async function getCashdeskBalance(
     const headers: Record<string, string> = {
       'sign': sign,
       'Authorization': authHeader,
-      'Content-Type': 'application/json',
     }
 
     console.log(`[${casino} Balance] Request details:`, {
