@@ -18,6 +18,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Ищем прямой курс USDT -> KGS (сомы) - приоритет
+    const usdtToKgs = rates.find(
+      (rate) => rate.source === 'USDT' && rate.target === 'KGS' && rate.is_valid
+    )
+
     // Ищем курс USDT -> USD
     const usdtToUsd = rates.find(
       (rate) => rate.source === 'USDT' && rate.target === 'USD' && rate.is_valid
@@ -26,11 +31,6 @@ export async function GET(request: NextRequest) {
     // Ищем курс USD -> KGS (если доступен)
     const usdToKgs = rates.find(
       (rate) => rate.source === 'USD' && rate.target === 'KGS' && rate.is_valid
-    )
-
-    // Если есть прямой курс USDT -> KGS
-    const usdtToKgs = rates.find(
-      (rate) => rate.source === 'USDT' && rate.target === 'KGS' && rate.is_valid
     )
 
     let usdtToUsdRate: number | null = null
@@ -48,12 +48,16 @@ export async function GET(request: NextRequest) {
       usdToKgsRate = 95
     }
 
+    // Приоритет: прямой курс USDT -> KGS
     if (usdtToKgs) {
-      // Используем прямой курс USDT -> KGS
       usdtToKgsRate = parseFloat(usdtToKgs.rate)
+      console.log('✅ Found direct USDT -> KGS rate:', usdtToKgsRate)
     } else if (usdtToUsdRate && usdToKgsRate) {
-      // Конвертируем через USD: USDT -> USD -> KGS
+      // Fallback: конвертируем через USD: USDT -> USD -> KGS
       usdtToKgsRate = usdtToUsdRate * usdToKgsRate
+      console.log('⚠️ Using converted rate USDT -> USD -> KGS:', usdtToKgsRate)
+    } else {
+      console.warn('⚠️ No exchange rate found, using fallback')
     }
 
     return NextResponse.json({

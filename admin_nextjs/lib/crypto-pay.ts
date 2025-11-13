@@ -4,9 +4,18 @@
  */
 
 import { createHash, createHmac } from 'crypto'
+// @ts-ignore - @koo0ki/send types may not be available
+import { CryptoPayClient, Networks } from "@koo0ki/send"
 
 const CRYPTO_PAY_API_TOKEN = process.env.CRYPTO_PAY_API_TOKEN || '483674:AADGGvOSSrOaWDtd2baJuAN2ePJDVpnYief'
 const CRYPTO_PAY_API_URL = process.env.CRYPTO_PAY_API_URL || 'https://pay.crypt.bot/api'
+
+// Инициализация клиента @koo0ki/send
+const cryptoPayClient = new CryptoPayClient({
+  token: CRYPTO_PAY_API_TOKEN,
+  net: process.env.NODE_ENV === 'production' ? Networks.MAINNET : Networks.TESTNET,
+  pollingEnabled: false, // Не используем polling в серверном коде
+})
 
 interface CreateInvoiceParams {
   asset?: string // 'USDT', 'TON', 'BTC', 'ETH', etc.
@@ -155,6 +164,26 @@ export interface ExchangeRate {
 
 export async function getExchangeRates(): Promise<ExchangeRate[]> {
   try {
+    // Пробуем использовать библиотеку @koo0ki/send
+    try {
+      // @ts-ignore
+      const rates = await cryptoPayClient.getExchangeRates()
+      if (rates && Array.isArray(rates)) {
+        // Преобразуем формат из библиотеки в наш формат
+        return rates.map((rate: any) => ({
+          is_valid: rate.is_valid !== false,
+          is_crypto: rate.is_crypto || false,
+          is_fiat: rate.is_fiat || false,
+          source: rate.source || '',
+          target: rate.target || '',
+          rate: String(rate.rate || '0')
+        }))
+      }
+    } catch (libError) {
+      console.warn('Error using @koo0ki/send library, falling back to direct API:', libError)
+    }
+
+    // Fallback: прямой запрос к API
     const url = `${CRYPTO_PAY_API_URL}/getExchangeRates`
     
     const response = await fetch(url, {
@@ -183,9 +212,11 @@ export async function getExchangeRates(): Promise<ExchangeRate[]> {
  */
 export function verifyWebhookSignature(token: string, body: any, signature: string): boolean {
   try {
-    const secret = createHash('sha256').update(token).digest()
+    // Создаем секретный ключ из токена (SHA256 хеш токена)
+    const secretBuffer = createHash('sha256').update(token).digest()
     const checkString = JSON.stringify(body)
-    const hmac = createHmac('sha256', secret).update(checkString).digest('hex')
+    // Используем Buffer напрямую для HMAC
+    const hmac = createHmac('sha256', secretBuffer as any).update(checkString).digest('hex')
     return hmac === signature
   } catch (error) {
     console.error('Error verifying webhook signature:', error)
