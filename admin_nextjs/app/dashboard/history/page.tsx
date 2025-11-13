@@ -107,21 +107,21 @@ export default function HistoryPage() {
   const getStatusLabel = (status: string, statusDetail: string | null) => {
     // Маппинг статусов на русские метки (темная тема)
     if (status === 'completed' || status === 'auto_completed' || status === 'approved' || status === 'autodeposit_success') {
-      return { label: 'Успешно', color: 'bg-green-500 text-black border border-green-400' }
+      return { label: 'Успешно', color: 'bg-green-500 text-black border border-green-400', textColor: 'text-green-500' }
     }
     if (status === 'rejected' || status === 'declined') {
-      return { label: 'Отклонено', color: 'bg-red-500 text-white border border-red-400' }
+      return { label: 'Отклонено', color: 'bg-red-500 text-white border border-red-400', textColor: 'text-red-500' }
     }
     if (status === 'pending' || status === 'processing') {
-      return { label: 'Ожидает', color: 'bg-yellow-500 text-black border border-yellow-400' }
+      return { label: 'Ожидает', color: 'bg-yellow-500 text-black border border-yellow-400', textColor: 'text-yellow-500' }
     }
     if (status === 'manual' || status === 'awaiting_manual' || statusDetail === 'manual') {
-      return { label: 'Ручная', color: 'bg-red-500 text-white border border-red-400' }
+      return { label: 'Ручная', color: 'bg-red-500 text-white border border-red-400', textColor: 'text-red-500' }
     }
     if (status === 'deferred') {
-      return { label: 'Отложено', color: 'bg-orange-500 text-white border border-orange-400' }
+      return { label: 'Отложено', color: 'bg-orange-500 text-white border border-orange-400', textColor: 'text-orange-500' }
     }
-    return { label: status, color: 'bg-gray-700 text-gray-300 border border-gray-600' }
+    return { label: status, color: 'bg-gray-700 text-gray-300 border border-gray-600', textColor: 'text-gray-300' }
   }
 
   const getTransactionType = (tx: Transaction) => {
@@ -352,24 +352,8 @@ export default function HistoryPage() {
                     </p>
                     
                     {/* Статус */}
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${statusInfo.color}`}
-                    >
-                      <div className={`w-1.5 h-1.5 rounded-full ${
-                        statusInfo.label === 'Успешно' ? 'bg-green-600' :
-                        statusInfo.label === 'Отклонено' ? 'bg-red-600' :
-                        statusInfo.label === 'Отложено' ? 'bg-orange-600' :
-                        'bg-yellow-600'
-                      }`}></div>
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${statusInfo.color}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          statusState === 'Успешно' ? 'bg-green-600' :
-                          statusState === 'Отклонено' ? 'bg-red-600' :
-                          statusState === 'Отложено' ? 'bg-orange-600' :
-                          'bg-yellow-600'
-                        }`}></div>
-                        {statusState}
-                      </span>
+                    <span className={`text-xs font-medium whitespace-nowrap ${statusInfo.textColor || 'text-gray-300'}`}>
+                      {statusState}
                     </span>
                   </div>
                 </div>

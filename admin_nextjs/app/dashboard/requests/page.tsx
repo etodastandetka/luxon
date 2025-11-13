@@ -151,6 +151,29 @@ export default function RequestsPage() {
     }
   }
 
+  // Функция для получения цвета текста статуса (без фона)
+  const getStatusTextColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+      case 'approved':
+      case 'auto_completed':
+      case 'autodeposit_success':
+        return 'text-green-500'
+      case 'pending':
+        return 'text-yellow-500'
+      case 'rejected':
+      case 'declined':
+        return 'text-red-500'
+      case 'deferred':
+        return 'text-orange-500'
+      case 'manual':
+      case 'awaiting_manual':
+        return 'text-red-500'
+      default:
+        return 'text-gray-300'
+    }
+  }
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'pending':
@@ -288,7 +311,7 @@ export default function RequestsPage() {
                     }).replace('.', ',') : '0,00'}
                   </p>
                   {/* Статус */}
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}>
+                  <span className={`text-xs font-medium whitespace-nowrap ${getStatusTextColor(request.status)}`}>
                     {getStatusState(request.status)}
                   </span>
                 </div>
