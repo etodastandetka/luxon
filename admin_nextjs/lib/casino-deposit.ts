@@ -80,7 +80,7 @@ export function generateBasicAuth(login: string, cashierpass: string): string {
   return `Basic ${authBase64}`
 }
 
-// Пополнение для 1xbet/Melbet через Cashdesk API
+// Пополнение для 1xbet/Melbet/888starz через Cashdesk API
 export async function depositCashdeskAPI(
   bookmaker: string,
   userId: string,
@@ -88,7 +88,9 @@ export async function depositCashdeskAPI(
   config: CasinoConfig
 ): Promise<{ success: boolean; message: string; data?: any }> {
   const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI/'
-  const isMelbet = bookmaker.toLowerCase().includes('melbet')
+  const normalizedBookmaker = bookmaker.toLowerCase()
+  const isMelbet = normalizedBookmaker.includes('melbet')
+  const is888starz = normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888')
 
   // Проверяем, что все обязательные поля заполнены и не пустые
   const hash = config.hash
@@ -109,16 +111,19 @@ export async function depositCashdeskAPI(
     // userId здесь - это ID казино (accountId), не Telegram ID
     console.log(`[Cashdesk Deposit] Bookmaker: ${bookmaker}, Casino User ID: ${userId}, Amount: ${amount}`)
     
-    const confirm = generateConfirm(userId, hash, isMelbet)
+    // Для 888starz используем стандартную логику (как 1xbet), но без lowercase для userId
+    const userIdForApi = isMelbet ? userId.toLowerCase() : userId
+    const confirm = generateConfirm(userIdForApi, hash, isMelbet)
     const sign = isMelbet
       ? generateSignForDepositMelbet(userId, amount, hash, cashierpass, cashdeskid)
-      : generateSignForDeposit1xbet(userId, amount, hash, cashierpass, cashdeskid)
+      : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
 
-    const url = `${baseUrl}Deposit/${userId}/Add`
+    const url = `${baseUrl}Deposit/${userIdForApi}/Add`
     const authHeader = generateBasicAuth(login, cashierpass)
 
+    // Согласно документации: для Deposit/Add используется cashdeskid (lowercase)
     const requestBody = {
-      cashdeskId: String(cashdeskid),
+      cashdeskid: parseInt(String(cashdeskid)),
       lng: 'ru',
       summa: amount,
       confirm: confirm,
@@ -365,6 +370,157 @@ export async function depositMobCashAPI(
     return {
       success: false,
       message: error.message || 'Failed to deposit balance',
+    }
+  }
+}
+
+/**
+ * Проверка баланса кассы для 888starz/1xbet/Melbet (Cashdesk API)
+ * GET Cashdesk/{cashdeskId}/Balance?confirm=&dt=
+ */
+export async function checkCashdeskBalance(
+  bookmaker: string,
+  config: CasinoConfig
+): Promise<{ success: boolean; balance?: number; limit?: number; message?: string }> {
+  try {
+    const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI'
+    const hash = config.hash!
+    const cashierpass = config.cashierpass!
+    const cashdeskid = String(config.cashdeskid!)
+
+    // Формируем дату в формате yyyy.MM.dd HH:mm:ss (UTC+0)
+    const now = new Date()
+    const year = now.getUTCFullYear()
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(now.getUTCDate()).padStart(2, '0')
+    const hours = String(now.getUTCHours()).padStart(2, '0')
+    const minutes = String(now.getUTCMinutes()).padStart(2, '0')
+    const seconds = String(now.getUTCSeconds()).padStart(2, '0')
+    const dt = `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`
+
+    // confirm: MD5(cashdeskid:hash)
+    const confirm = crypto.createHash('md5').update(`${cashdeskid}:${hash}`).digest('hex')
+
+    // Signature generation:
+    // Step 1: SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt})
+    const step1String = `hash=${hash}&cashdeskid=${cashdeskid}&dt=${dt}`
+    const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
+
+    // Step 2: MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
+    const step2String = `dt=${dt}&cashierpass=${cashierpass}&cashdeskid=${cashdeskid}`
+    const step2Hash = crypto.createHash('md5').update(step2String).digest('hex')
+
+    // Step 3: SHA256(step1 + step2)
+    const combined = step1Hash + step2Hash
+    const sign = crypto.createHash('sha256').update(combined).digest('hex')
+
+    const url = `${baseUrl}/Cashdesk/${cashdeskid}/Balance?confirm=${confirm}&dt=${encodeURIComponent(dt)}`
+
+    console.log(`[Cashdesk Balance] Bookmaker: ${bookmaker}, URL: ${url}`)
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'sign': sign,
+      },
+    })
+
+    const data = await response.json()
+    console.log(`[Cashdesk Balance] Response status: ${response.status}, Data:`, data)
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || data.error || `Failed to check balance: ${response.status}`,
+      }
+    }
+
+    return {
+      success: true,
+      balance: data.Balance || data.balance || 0,
+      limit: data.Limit || data.limit || 0,
+      message: 'Balance retrieved successfully',
+    }
+  } catch (error: any) {
+    console.error(`[Cashdesk Balance] Error:`, error)
+    return {
+      success: false,
+      message: `Error checking balance: ${error.message}`,
+    }
+  }
+}
+
+/**
+ * Поиск игрока для 888starz/1xbet/Melbet (Cashdesk API)
+ * GET /Users/{userId}?confirm=&cashdeskid=
+ */
+export async function searchCashdeskPlayer(
+  bookmaker: string,
+  userId: string,
+  config: CasinoConfig
+): Promise<{ success: boolean; userId?: number; name?: string; currencyId?: number; message?: string }> {
+  try {
+    const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI'
+    const normalizedBookmaker = bookmaker.toLowerCase()
+    const hash = config.hash!
+    const cashierpass = config.cashierpass!
+    const cashdeskid = String(config.cashdeskid!)
+
+    // Для Melbet и Winwin userid должен быть в нижнем регистре
+    // Для 888starz используем userId как есть (без lowercase)
+    const userIdForApi = (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin'))
+      ? userId.toLowerCase()
+      : userId
+
+    // confirm: MD5(userId:hash)
+    const confirm = crypto.createHash('md5').update(`${userIdForApi}:${hash}`).digest('hex')
+
+    // Signature generation:
+    // Step 1: SHA256(hash={hash}&userid={userid}&cashdeskid={cashdeskid})
+    const step1String = `hash=${hash}&userid=${userIdForApi}&cashdeskid=${cashdeskid}`
+    const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
+
+    // Step 2: MD5(userid={userid}&cashierpass={cashierpass}&hash={hash})
+    const step2String = `userid=${userIdForApi}&cashierpass=${cashierpass}&hash=${hash}`
+    const step2Hash = crypto.createHash('md5').update(step2String).digest('hex')
+
+    // Step 3: SHA256(step1 + step2)
+    const combined = step1Hash + step2Hash
+    const sign = crypto.createHash('sha256').update(combined).digest('hex')
+
+    const url = `${baseUrl}/Users/${userIdForApi}?confirm=${confirm}&cashdeskid=${cashdeskid}`
+
+    console.log(`[Cashdesk Player Search] Bookmaker: ${bookmaker}, User ID: ${userIdForApi}, URL: ${url}`)
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'sign': sign,
+      },
+    })
+
+    const data = await response.json()
+    console.log(`[Cashdesk Player Search] Response status: ${response.status}, Data:`, data)
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || data.error || `Failed to search player: ${response.status}`,
+      }
+    }
+
+    return {
+      success: true,
+      userId: data.userId || data.user_id || 0,
+      name: data.name || '',
+      currencyId: data.currencyId || data.currency_id || 0,
+      message: 'Player found',
+    }
+  } catch (error: any) {
+    console.error(`[Cashdesk Player Search] Error:`, error)
+    return {
+      success: false,
+      message: `Error searching player: ${error.message}`,
     }
   }
 }

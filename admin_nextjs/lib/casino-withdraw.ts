@@ -36,7 +36,7 @@ function generateConfirm(userId: string, hash: string): string {
 }
 
 /**
- * Генерация подписи для вывода 1xbet/Melbet
+ * Генерация подписи для вывода 1xbet/Melbet/888starz
  */
 function generateSignForWithdraw(
   userId: string,
@@ -59,7 +59,7 @@ function generateSignForWithdraw(
 }
 
 /**
- * Проверка суммы вывода через API 1xbet/Melbet (Cashdesk API)
+ * Проверка суммы вывода через API 1xbet/Melbet/888starz (Cashdesk API)
  * ВАЖНО: Метод Payout сразу выполняет вывод, поэтому используем его только для проверки кода
  * Если код верный - возвращаем успех (сумму нужно брать из заявки или запрашивать отдельно)
  */
@@ -74,6 +74,7 @@ export async function checkWithdrawAmountCashdesk(
     const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI'
     
     // Для Melbet и Winwin userid должен быть в нижнем регистре
+    // Для 888starz используем userId как есть (без lowercase)
     const userIdForApi = (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin'))
       ? userId.toLowerCase() 
       : userId
@@ -89,6 +90,7 @@ export async function checkWithdrawAmountCashdesk(
 
     const url = `${baseUrl}/Deposit/${userIdForApi}/Payout`
     
+    // Согласно документации: для Payout используется cashdeskId (camelCase)
     const requestBody = {
       cashdeskId: parseInt(String(config.cashdeskid)),
       lng: 'ru',
