@@ -143,11 +143,29 @@ export async function POST(request: NextRequest) {
 
     // Адаптируем ответ под формат, который ожидает клиент
     // Библиотека @koo0ki/send может возвращать другой формат
+    console.log('📦 Полный объект invoice от библиотеки/API:', JSON.stringify(invoice, null, 2))
+    
     const invoiceId = invoice.invoiceId || invoice.invoice_id || invoice.id
     const invoiceHash = invoice.hash
     const botInvoiceUrl = invoice.botInvoiceUrl || invoice.bot_invoice_url || invoice.url
     const miniAppInvoiceUrl = invoice.miniAppInvoiceUrl || invoice.mini_app_invoice_url || invoice.url
     const webAppInvoiceUrl = invoice.webAppInvoiceUrl || invoice.web_app_invoice_url || invoice.url
+
+    console.log('🔍 Извлеченные данные из invoice:', {
+      invoiceId,
+      invoiceHash,
+      botInvoiceUrl: botInvoiceUrl ? '✅' : '❌',
+      miniAppInvoiceUrl: miniAppInvoiceUrl ? '✅' : '❌',
+      webAppInvoiceUrl: webAppInvoiceUrl ? '✅' : '❌'
+    })
+
+    if (!invoiceId) {
+      console.error('❌ Invoice ID не найден! Объект invoice:', invoice)
+      return NextResponse.json(
+        { error: 'Failed to extract invoice ID from response' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
       success: true,

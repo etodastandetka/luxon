@@ -194,9 +194,15 @@ export default function DepositStep4() {
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.data) {
-          setCryptoInvoice(data.data)
-          console.log('✅ Crypto invoice created and saved to state:', data.data)
-          console.log('📋 Invoice ID:', data.data.invoice_id || data.data.invoiceId)
+          const invoiceData = data.data
+          console.log('✅ Crypto invoice created and saved to state:', invoiceData)
+          console.log('📋 Invoice ID (проверка всех вариантов):', {
+            invoice_id: invoiceData.invoice_id,
+            invoiceId: invoiceData.invoiceId,
+            id: invoiceData.id,
+            invoice: invoiceData.invoice
+          })
+          setCryptoInvoice(invoiceData)
           // Заявка будет создана только после нажатия кнопки "Я оплатил"
         } else {
           console.error('❌ Invoice creation failed:', data)
@@ -432,11 +438,16 @@ export default function DepositStep4() {
       const savedAmountUsd = paymentType === 'crypto' ? localStorage.getItem('deposit_amount_usd') : null
       const amountUsd = savedAmountUsd ? parseFloat(savedAmountUsd) : null
 
-      // Для крипты проверяем invoice_id
+      // Для крипты проверяем invoice_id (проверяем все возможные варианты)
       let invoiceId = null
       if (paymentType === 'crypto' && cryptoInvoice) {
-        invoiceId = cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || null
-        console.log('🔍 Crypto invoice ID для заявки:', invoiceId)
+        invoiceId = cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || cryptoInvoice.id || null
+        console.log('🔍 Crypto invoice ID для заявки (проверка всех вариантов):', {
+          invoice_id: cryptoInvoice.invoice_id,
+          invoiceId: cryptoInvoice.invoiceId,
+          id: cryptoInvoice.id,
+          final: invoiceId
+        })
         console.log('📦 Полный cryptoInvoice объект:', cryptoInvoice)
       }
 
@@ -1472,9 +1483,10 @@ export default function DepositStep4() {
           {/* Debug info (only in development) */}
           {process.env.NODE_ENV === 'development' && cryptoInvoice && (
             <div className="text-xs text-white/30 text-center mt-2 p-2 bg-black/20 rounded">
-              <div>Invoice ID: {cryptoInvoice.invoice_id}</div>
+              <div>Invoice ID: {cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || cryptoInvoice.id || 'undefined'}</div>
               <div>Has bot_invoice_url: {cryptoInvoice.bot_invoice_url ? '✅' : '❌'}</div>
               <div>Has mini_app_invoice_url: {cryptoInvoice.mini_app_invoice_url ? '✅' : '❌'}</div>
+              <div>Full invoice object: {JSON.stringify(cryptoInvoice, null, 2)}</div>
             </div>
           )}
         </div>
