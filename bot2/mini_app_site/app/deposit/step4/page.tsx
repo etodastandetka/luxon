@@ -38,6 +38,13 @@ export default function DepositStep4() {
     const savedAmount = parseFloat(localStorage.getItem('deposit_amount') || '0')
     const savedPaymentType = localStorage.getItem('deposit_payment_type') as 'bank' | 'crypto' || 'bank'
     
+    console.log('📋 Загружаем данные из localStorage:', {
+      bookmaker: savedBookmaker,
+      playerId: savedPlayerId,
+      amount: savedAmount,
+      paymentType: savedPaymentType
+    })
+    
     setBookmaker(savedBookmaker)
     setPlayerId(savedPlayerId)
     setAmount(savedAmount)
@@ -1229,6 +1236,16 @@ export default function DepositStep4() {
         </div>
       )}
 
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="card text-xs text-white/50">
+          <div>paymentType: {paymentType}</div>
+          <div>cryptoInvoice: {cryptoInvoice ? '✅' : '❌'}</div>
+          <div>cryptoLoading: {cryptoLoading ? '✅' : '❌'}</div>
+          <div>isPaid: {isPaid ? '✅' : '❌'}</div>
+        </div>
+      )}
+
       {/* Crypto Bot Invoice - открытие через Telegram WebApp API внутри Telegram */}
       {paymentType === 'crypto' && cryptoInvoice && (
         <div className="card space-y-4">
@@ -1242,6 +1259,7 @@ export default function DepositStep4() {
           </p>
           
           <button
+            type="button"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
@@ -1620,9 +1638,15 @@ export default function DepositStep4() {
       )}
 
       {/* Большая кнопка "Я оплатил" (для crypto платежей) */}
-      {!isPaid && paymentType === 'crypto' && cryptoInvoice && (
+      {paymentType === 'crypto' && cryptoInvoice && !isPaid && (
         <button
-          onClick={handleCryptoIPaid}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            console.log('🔘 Кнопка "Я оплатил" нажата для crypto')
+            handleCryptoIPaid()
+          }}
           className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
