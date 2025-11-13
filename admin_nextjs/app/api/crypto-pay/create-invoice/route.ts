@@ -12,52 +12,6 @@ const cryptoPay = new CryptoPayClient({
 
 export const dynamic = 'force-dynamic'
 
-/**
- * Получение курса USD -> KGS
- */
-async function getUsdToKgsRate(): Promise<number> {
-  try {
-    const rates = await getExchangeRates()
-    
-    // Ищем курс USD -> KGS
-    const usdToKgs = rates.find(
-      (rate) => rate.source === 'USD' && rate.target === 'KGS' && rate.is_valid
-    )
-    
-    if (usdToKgs) {
-      return parseFloat(usdToKgs.rate)
-    }
-  } catch (error) {
-    console.error('Error getting exchange rate:', error)
-  }
-  
-  // Fallback: фиксированный курс
-  return 95
-}
-
-/**
- * Получение курса USDT -> USD
- */
-async function getUsdtToUsdRate(): Promise<number> {
-  try {
-    const rates = await getExchangeRates()
-    
-    // Ищем курс USDT -> USD
-    const usdtToUsd = rates.find(
-      (rate) => rate.source === 'USDT' && rate.target === 'USD' && rate.is_valid
-    )
-    
-    if (usdtToUsd) {
-      return parseFloat(usdtToUsd.rate)
-    }
-  } catch (error) {
-    console.error('Error getting exchange rate:', error)
-  }
-  
-  // Fallback: 1 USDT = 1 USD
-  return 1
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
