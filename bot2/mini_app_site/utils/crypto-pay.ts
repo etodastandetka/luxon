@@ -52,17 +52,27 @@ export async function getExchangeRate(): Promise<{
             ? 'http://localhost:3001' 
             : 'https://xendro.pro';
         
+        console.log('📡 Fetching exchange rate from:', `${apiUrl}/api/crypto-pay/exchange-rate`);
         const response = await fetch(`${apiUrl}/api/crypto-pay/exchange-rate`, {
             cache: 'no-store'
         });
 
         if (!response.ok) {
-            throw new Error('Failed to fetch exchange rate');
+            const errorText = await response.text();
+            console.error('❌ API response not OK:', response.status, errorText);
+            throw new Error(`Failed to fetch exchange rate: ${response.status} ${errorText}`);
         }
 
         const data = await response.json();
+        console.log('📊 Exchange rate API response:', data);
         
         if (data.success && data.data) {
+            console.log('✅ Exchange rates received:', {
+                usdtToUsd: data.data.usdtToUsd,
+                usdToKgs: data.data.usdToKgs,
+                usdtToKgs: data.data.usdtToKgs
+            });
+            
             exchangeRateCache = {
                 usdtToUsd: data.data.usdtToUsd,
                 usdToKgs: data.data.usdToKgs,
@@ -75,11 +85,14 @@ export async function getExchangeRate(): Promise<{
                 usdToKgs: data.data.usdToKgs,
                 usdtToKgs: data.data.usdtToKgs
             };
+        } else {
+            console.error('❌ API response format error:', data);
+            throw new Error('Invalid API response format');
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Error fetching exchange rate from API:', error);
         // Не возвращаем fallback - пусть пользователь видит ошибку
-        throw new Error('Failed to fetch exchange rate from API. Please try again later.');
+        throw new Error(`Failed to fetch exchange rate from API: ${error.message || 'Unknown error'}. Please try again later.`);
     }
 
     // Если API вернул пустой ответ, выбрасываем ошибку

@@ -30,6 +30,7 @@ export default function DepositStep3() {
     
     // Если выбрана крипта, сбрасываем кэш курса для получения актуального курса
     if (savedPaymentType === 'crypto') {
+      console.log('🔄 Clearing exchange rate cache for fresh rates...')
       clearExchangeRateCache()
     }
   }, [router])
@@ -42,7 +43,9 @@ export default function DepositStep3() {
         if (!isNaN(numAmount) && numAmount > 0) {
           setLoadingRate(true)
           try {
+            console.log('🔄 Fetching exchange rate for USD -> KGS conversion...')
             const amountInKgs = await usdToKgs(numAmount)
+            console.log('✅ Conversion successful:', numAmount, 'USD =', amountInKgs, 'KGS')
             setConvertedAmount(amountInKgs.toFixed(2))
           } catch (error: any) {
             console.error('❌ Error converting USD to KGS:', error)
