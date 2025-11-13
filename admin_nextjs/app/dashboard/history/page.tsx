@@ -60,6 +60,50 @@ export default function HistoryPage() {
     return `${day}.${month}.${year} • ${hours}:${minutes}`
   }
 
+  // Функция для определения типа транзакции (Автопополнение/profile-1) по статусу
+  const getTransactionTypeFromStatus = (status: string, statusDetail: string | null, requestType: string) => {
+    if (requestType === 'withdraw') {
+      return statusDetail?.match(/profile-\d+/)?.[0] || 'profile-1'
+    }
+    
+    if (requestType === 'deposit') {
+      // Автопополнение - если статус autodeposit_success или statusDetail указывает на автопополнение
+      if (status === 'autodeposit_success' || statusDetail?.includes('autodeposit')) {
+        return 'Автопополнение'
+      }
+      
+      // Проверяем наличие profile-* в statusDetail
+      if (statusDetail?.match(/profile-\d+/)) {
+        return statusDetail.match(/profile-(\d+)/)?.[0] || 'profile-1'
+      }
+      
+      // Для всех остальных депозитов показываем profile-1
+      return 'profile-1'
+    }
+    
+    return requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+  }
+
+  // Функция для определения состояния (Успешно/Отклонено/Ожидает)
+  const getStatusState = (status: string) => {
+    if (status === 'completed' || status === 'approved' || status === 'auto_completed' || status === 'autodeposit_success') {
+      return 'Успешно'
+    }
+    if (status === 'rejected' || status === 'declined') {
+      return 'Отклонено'
+    }
+    if (status === 'pending' || status === 'processing') {
+      return 'Ожидает'
+    }
+    if (status === 'deferred') {
+      return 'Отложено'
+    }
+    if (status === 'manual' || status === 'awaiting_manual') {
+      return 'Ручная'
+    }
+    return status
+  }
+
   const getStatusLabel = (status: string, statusDetail: string | null) => {
     // Маппинг статусов на русские метки (темная тема)
     if (status === 'completed' || status === 'auto_completed' || status === 'approved' || status === 'autodeposit_success') {
@@ -240,6 +284,8 @@ export default function HistoryPage() {
             const isDeposit = tx.type === 'deposit'
             const statusInfo = getStatusLabel(tx.status, tx.status_detail)
             const transactionType = getTransactionType(tx)
+            const transactionTypeLabel = getTransactionTypeFromStatus(tx.status, tx.status_detail, tx.type)
+            const statusState = getStatusState(tx.status)
 
             return (
               <div
@@ -315,7 +361,16 @@ export default function HistoryPage() {
                         statusInfo.label === 'Отложено' ? 'bg-orange-600' :
                         'bg-yellow-600'
                       }`}></div>
-                      {statusInfo.label}
+                      <span className="inline-flex items-center gap-2">
+                        {/* Бейдж типа транзакции */}
+                        <span className="px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap bg-blue-500 text-white">
+                          {transactionTypeLabel}
+                        </span>
+                        {/* Бейдж состояния */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${statusInfo.color}`}>
+                          {statusState}
+                        </span>
+                      </span>
                     </span>
                   </div>
                 </div>

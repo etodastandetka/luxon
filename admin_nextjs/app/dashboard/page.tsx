@@ -108,6 +108,50 @@ export default function DashboardPage() {
     return type === 'deposit' ? 'Пополнение' : 'Вывод'
   }
 
+  // Функция для определения типа транзакции (Автопополнение/profile-1)
+  const getTransactionType = (status: string, statusDetail: string | null, requestType: string) => {
+    if (requestType === 'withdraw') {
+      return statusDetail?.match(/profile-\d+/)?.[0] || 'profile-1'
+    }
+    
+    if (requestType === 'deposit') {
+      // Автопополнение - если статус autodeposit_success или statusDetail указывает на автопополнение
+      if (status === 'autodeposit_success' || statusDetail?.includes('autodeposit')) {
+        return 'Автопополнение'
+      }
+      
+      // Проверяем наличие profile-* в statusDetail
+      if (statusDetail?.match(/profile-\d+/)) {
+        return statusDetail.match(/profile-(\d+)/)?.[0] || 'profile-1'
+      }
+      
+      // Для всех остальных депозитов показываем profile-1
+      return 'profile-1'
+    }
+    
+    return requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+  }
+
+  // Функция для определения состояния (Успешно/Отклонено/Ожидает)
+  const getStatusState = (status: string) => {
+    if (status === 'completed' || status === 'approved' || status === 'auto_completed' || status === 'autodeposit_success') {
+      return 'Успешно'
+    }
+    if (status === 'rejected' || status === 'declined') {
+      return 'Отклонено'
+    }
+    if (status === 'pending') {
+      return 'Ожидает'
+    }
+    if (status === 'deferred') {
+      return 'Отложено'
+    }
+    if (status === 'manual' || status === 'awaiting_manual') {
+      return 'Ручная'
+    }
+    return status
+  }
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'pending':
@@ -195,35 +239,7 @@ export default function DashboardPage() {
     return null
   }
 
-    const getTransactionType = (request: Request) => {
-      // Если статус "Ожидает", показываем "-"
-      if (request.status === 'pending' || request.status === 'processing') {
-        return '-'
-      }
-      
-      // Для выводов может быть profile-*
-      if (request.requestType === 'withdraw') {
-        return request.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
-      }
-      
-      // Для депозитов
-      if (request.requestType === 'deposit') {
-        // Авто пополнение - только если статус явно указывает на автопополнение
-        if (request.status === 'autodeposit_success' || request.status === 'auto_completed' || request.status_detail?.includes('autodeposit')) {
-          return 'Авто пополнение'
-        }
-        
-        // Проверяем наличие profile-* в status_detail
-        if (request.status_detail?.match(/profile-\d+/)) {
-          return request.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
-        }
-        
-        // Для всех остальных депозитов (включая отклоненные) показываем profile-1
-        return 'profile-1'
-      }
-      
-      return request.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
-    }
+    // Эта функция больше не используется, используем getTransactionType с параметрами
 
   return (
     <div className="py-4">
@@ -291,7 +307,7 @@ export default function DashboardPage() {
               : request.firstName 
                 ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
                 : `ID: ${request.userId}`
-            const transactionType = getTransactionType(request)
+            const transactionType = getTransactionType(request.status, (request as any).status_detail || null, request.requestType)
             const isDeferred = request.status === 'deferred'
             // Если отложено и "Авто пополнение", показываем минус
             const showMinus = isDeferred && transactionType === 'Авто пополнение'
@@ -365,15 +381,21 @@ export default function DashboardPage() {
                       
                       {/* Статус */}
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}
-                      >
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          getStatusLabel(request.status) === 'Успешно' ? 'bg-green-600' :
-                          getStatusLabel(request.status) === 'Отклонено' ? 'bg-red-600' :
-                          getStatusLabel(request.status) === 'Отложено' ? 'bg-orange-600' :
-                          'bg-yellow-600'
-                        }`}></div>
-                        {getStatusLabel(request.status)}
+                        className="inline-flex items-center gap-2">
+                        {/* Бейдж типа транзакции */}
+                        <span className="px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap bg-blue-500 text-white">
+                          {getTransactionType(request.status, (request as any).status_detail || null, request.requestType)}
+                        </span>
+                        {/* Бейдж состояния */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${
+                            getStatusState(request.status) === 'Успешно' ? 'bg-green-600' :
+                            getStatusState(request.status) === 'Отклонено' ? 'bg-red-600' :
+                            getStatusState(request.status) === 'Отложено' ? 'bg-orange-600' :
+                            'bg-yellow-600'
+                          }`}></div>
+                          {getStatusState(request.status)}
+                        </span>
                       </span>
                     </div>
                   </div>

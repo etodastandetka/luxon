@@ -143,11 +143,12 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     }
 
     // Успешное пополнение - обновляем статус заявки
+    // statusDetail = null означает "Автопополнение • Успешно"
     await prisma.request.update({
       where: { id: request.id },
       data: {
         status: 'autodeposit_success',
-        statusDetail: 'auto_completed',
+        statusDetail: null,
         processedAt: new Date(),
         updatedAt: new Date(),
       },
