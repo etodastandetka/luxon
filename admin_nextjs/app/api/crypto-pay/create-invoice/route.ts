@@ -51,16 +51,41 @@ export async function POST(request: NextRequest) {
       (rate) => rate.source === 'USDT' && rate.target === 'USD' && rate.is_valid
     )
 
-    // Получаем реальный курс USD -> KGS из API (обязательно)
-    if (!usdToKgs) {
-      console.error('❌ USD -> KGS rate not found in API response')
-      return NextResponse.json(
-        { error: 'USD -> KGS exchange rate not available. Please check Crypto Bot API configuration.' },
-        { status: 500 }
-      )
+    // Получаем курс USD -> KGS
+    let usdToKgsRate: number
+    if (usdToKgs) {
+      // Если курс доступен в Crypto Bot API, используем его
+      usdToKgsRate = parseFloat(usdToKgs.rate)
+      console.log('✅ Using USD -> KGS rate from Crypto Bot API:', usdToKgsRate)
+    } else {
+      // Если курс не найден в Crypto Bot API, получаем из внешнего источника
+      try {
+        const externalApiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'
+        console.log('📡 Fetching USD -> KGS from external API:', externalApiUrl)
+        const externalResponse = await fetch(externalApiUrl, {
+          cache: 'no-store',
+          next: { revalidate: 60 }
+        })
+        
+        if (externalResponse.ok) {
+          const externalData = await externalResponse.json()
+          if (externalData.rates && externalData.rates.KGS) {
+            usdToKgsRate = externalData.rates.KGS
+            console.log('✅ Using USD -> KGS rate from external API:', usdToKgsRate)
+          } else {
+            throw new Error('KGS rate not found in external API response')
+          }
+        } else {
+          throw new Error(`External API returned ${externalResponse.status}`)
+        }
+      } catch (externalError: any) {
+        console.error('❌ Error fetching USD -> KGS from external API:', externalError.message)
+        return NextResponse.json(
+          { error: 'USD -> KGS exchange rate not available. Crypto Bot API and external API both failed.' },
+          { status: 500 }
+        )
+      }
     }
-    const usdToKgsRate = parseFloat(usdToKgs.rate)
-    console.log('✅ Using USD -> KGS rate from API:', usdToKgsRate)
     const amountKgs = amountUsdNum * usdToKgsRate
 
     // Конвертируем USD -> USDT для оплаты (используя реальные курсы из API)

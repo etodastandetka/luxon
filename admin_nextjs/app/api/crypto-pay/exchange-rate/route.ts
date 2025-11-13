@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       (rate) => rate.source === 'USDT' && rate.target === 'USD' && rate.is_valid
     )
 
-    // Ищем курс USD -> KGS (если доступен)
+    // Ищем курс USD -> KGS (если доступен в Crypto Bot API)
     const usdToKgs = rates.find(
       (rate) => rate.source === 'USD' && rate.target === 'KGS' && rate.is_valid
     )
@@ -47,34 +47,59 @@ export async function GET(request: NextRequest) {
 
     if (usdtToUsd) {
       usdtToUsdRate = parseFloat(usdtToUsd.rate)
+      console.log('✅ Found USDT -> USD rate from API:', usdtToUsdRate)
     }
 
-    // Получаем реальный курс USD -> KGS из API
+    // Получаем курс USD -> KGS
     if (usdToKgs) {
+      // Если курс доступен в Crypto Bot API, используем его
       usdToKgsRate = parseFloat(usdToKgs.rate)
-      console.log('✅ Found USD -> KGS rate from API:', usdToKgsRate)
+      console.log('✅ Found USD -> KGS rate from Crypto Bot API:', usdToKgsRate)
     } else {
-      // Если курс не найден, возвращаем ошибку - нужен реальный курс
-      console.error('❌ USD -> KGS rate not found in API response')
-      return NextResponse.json(
-        { error: 'USD -> KGS exchange rate not available. Please check Crypto Bot API configuration.' },
-        { status: 500 }
-      )
+      // Если курс не найден в Crypto Bot API, получаем из внешнего источника
+      try {
+        // Используем exchangerate-api.com для получения курса USD -> KGS
+        const externalApiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'
+        console.log('📡 Fetching USD -> KGS from external API:', externalApiUrl)
+        const externalResponse = await fetch(externalApiUrl, {
+          cache: 'no-store',
+          next: { revalidate: 60 } // Кэш на 60 секунд
+        })
+        
+        if (externalResponse.ok) {
+          const externalData = await externalResponse.json()
+          if (externalData.rates && externalData.rates.KGS) {
+            usdToKgsRate = externalData.rates.KGS
+            console.log('✅ Found USD -> KGS rate from external API:', usdToKgsRate)
+          } else {
+            throw new Error('KGS rate not found in external API response')
+          }
+        } else {
+          throw new Error(`External API returned ${externalResponse.status}`)
+        }
+      } catch (externalError: any) {
+        console.error('❌ Error fetching USD -> KGS from external API:', externalError.message)
+        // Если внешний API недоступен, возвращаем ошибку
+        return NextResponse.json(
+          { error: 'USD -> KGS exchange rate not available. Crypto Bot API and external API both failed.' },
+          { status: 500 }
+        )
+      }
     }
 
-    // Приоритет: прямой курс USDT -> KGS из API
+    // Приоритет: прямой курс USDT -> KGS из Crypto Bot API
     if (usdtToKgs) {
       usdtToKgsRate = parseFloat(usdtToKgs.rate)
-      console.log('✅ Found direct USDT -> KGS rate from API:', usdtToKgsRate)
+      console.log('✅ Found direct USDT -> KGS rate from Crypto Bot API:', usdtToKgsRate)
     } else if (usdtToUsdRate && usdToKgsRate) {
-      // Конвертируем через USD: USDT -> USD -> KGS (используя реальные курсы из API)
+      // Конвертируем через USD: USDT -> USD -> KGS (используя реальные курсы)
       usdtToKgsRate = usdtToUsdRate * usdToKgsRate
-      console.log('✅ Using converted rate USDT -> USD -> KGS from API:', usdtToKgsRate, `(${usdtToUsdRate} * ${usdToKgsRate})`)
+      console.log('✅ Using converted rate USDT -> USD -> KGS:', usdtToKgsRate, `(${usdtToUsdRate} * ${usdToKgsRate})`)
     } else {
       // Если нет данных для конвертации, возвращаем ошибку
       console.error('❌ Cannot calculate USDT -> KGS rate: missing exchange rates')
       return NextResponse.json(
-        { error: 'Cannot calculate USDT -> KGS rate. Missing exchange rates from Crypto Bot API.' },
+        { error: 'Cannot calculate USDT -> KGS rate. Missing exchange rates.' },
         { status: 500 }
       )
     }
