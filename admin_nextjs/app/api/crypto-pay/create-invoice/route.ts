@@ -101,9 +101,11 @@ export async function POST(request: NextRequest) {
     let usdToKgsRate: number
     if (usdToKgs) {
       usdToKgsRate = parseFloat(usdToKgs.rate)
+      console.log('✅ Using USD -> KGS rate from API:', usdToKgsRate)
     } else {
-      // Fallback: фиксированный курс
-      usdToKgsRate = 95
+      // Fallback: более актуальный курс (87.41 по данным на ноябрь 2024)
+      usdToKgsRate = 87.41
+      console.warn('⚠️ USD -> KGS rate not found, using fallback:', usdToKgsRate)
     }
     const amountKgs = amountUsdNum * usdToKgsRate
 

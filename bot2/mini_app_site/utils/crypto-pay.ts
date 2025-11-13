@@ -68,8 +68,8 @@ export async function getExchangeRate(): Promise<{
         console.error('Error fetching exchange rate:', error);
     }
 
-    // Fallback: фиксированные курсы
-    const fallbackUsdToKgs = 95;
+    // Fallback: более актуальные курсы (ноябрь 2024)
+    const fallbackUsdToKgs = 87.41; // Более актуальный курс USD -> KGS
     const fallbackUsdtToUsd = 1; // 1 USDT = 1 USD (примерно)
     
     return {

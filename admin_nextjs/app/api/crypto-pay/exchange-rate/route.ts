@@ -12,11 +12,19 @@ export async function GET(request: NextRequest) {
     const rates = await getExchangeRates()
     
     if (!rates || rates.length === 0) {
+      console.error('❌ No exchange rates received from API')
       return NextResponse.json(
         { error: 'Failed to get exchange rates' },
         { status: 500 }
       )
     }
+
+    console.log('📊 Received exchange rates:', rates.length, 'rates')
+    // Логируем все курсы для отладки
+    const usdtRates = rates.filter(r => r.source === 'USDT')
+    const kgsRates = rates.filter(r => r.target === 'KGS')
+    console.log('💱 USDT rates:', usdtRates.map(r => `${r.source}->${r.target}: ${r.rate}`))
+    console.log('💱 KGS rates:', kgsRates.map(r => `${r.source}->${r.target}: ${r.rate}`))
 
     // Ищем прямой курс USDT -> KGS (сомы) - приоритет
     const usdtToKgs = rates.find(
@@ -43,9 +51,11 @@ export async function GET(request: NextRequest) {
 
     if (usdToKgs) {
       usdToKgsRate = parseFloat(usdToKgs.rate)
+      console.log('✅ Found USD -> KGS rate:', usdToKgsRate)
     } else {
-      // Fallback: фиксированный курс USD -> KGS (95)
-      usdToKgsRate = 95
+      // Fallback: более актуальный курс USD -> KGS (87.41 по данным на ноябрь 2024)
+      usdToKgsRate = 87.41
+      console.warn('⚠️ USD -> KGS rate not found, using fallback:', usdToKgsRate)
     }
 
     // Приоритет: прямой курс USDT -> KGS
@@ -55,9 +65,11 @@ export async function GET(request: NextRequest) {
     } else if (usdtToUsdRate && usdToKgsRate) {
       // Fallback: конвертируем через USD: USDT -> USD -> KGS
       usdtToKgsRate = usdtToUsdRate * usdToKgsRate
-      console.log('⚠️ Using converted rate USDT -> USD -> KGS:', usdtToKgsRate)
+      console.log('⚠️ Using converted rate USDT -> USD -> KGS:', usdtToKgsRate, `(${usdtToUsdRate} * ${usdToKgsRate})`)
     } else {
-      console.warn('⚠️ No exchange rate found, using fallback')
+      // Если ничего не найдено, используем прямой fallback для USDT -> KGS
+      usdtToKgsRate = 87.41 // Примерный курс USDT -> KGS
+      console.warn('⚠️ No exchange rate found, using fallback USDT -> KGS:', usdtToKgsRate)
     }
 
     return NextResponse.json({
