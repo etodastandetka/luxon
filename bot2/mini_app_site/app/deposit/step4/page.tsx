@@ -186,7 +186,7 @@ export default function DepositStep4() {
         body: JSON.stringify({
           amountUsd: amountInUsd, // Отправляем сумму в долларах (API конвертирует в USDT)
           asset: 'USDT',
-          description: `Пополнение баланса ${bookmaker} - ID: ${playerId}\n\n⚠️ Рекомендуется выбрать сеть TRC20 (TRON) для оплаты`,
+          description: `Пополнение баланса ${bookmaker} - ID: ${playerId}`,
           payload: payload,
         })
       })
