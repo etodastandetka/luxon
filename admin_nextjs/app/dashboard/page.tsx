@@ -354,7 +354,7 @@ export default function DashboardPage() {
                         
                         {/* Тип транзакции */}
                         <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
-                          {transactionType}
+                          {getTransactionType(request.status, (request as any).status_detail || null, request.requestType)}
                         </span>
                       </div>
                     </div>
@@ -380,22 +380,14 @@ export default function DashboardPage() {
                       </p>
                       
                       {/* Статус */}
-                      <span
-                        className="inline-flex items-center gap-2">
-                        {/* Бейдж типа транзакции */}
-                        <span className="px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap bg-blue-500 text-white">
-                          {getTransactionType(request.status, (request as any).status_detail || null, request.requestType)}
-                        </span>
-                        {/* Бейдж состояния */}
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${
-                            getStatusState(request.status) === 'Успешно' ? 'bg-green-600' :
-                            getStatusState(request.status) === 'Отклонено' ? 'bg-red-600' :
-                            getStatusState(request.status) === 'Отложено' ? 'bg-orange-600' :
-                            'bg-yellow-600'
-                          }`}></div>
-                          {getStatusState(request.status)}
-                        </span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          getStatusState(request.status) === 'Успешно' ? 'bg-green-600' :
+                          getStatusState(request.status) === 'Отклонено' ? 'bg-red-600' :
+                          getStatusState(request.status) === 'Отложено' ? 'bg-orange-600' :
+                          'bg-yellow-600'
+                        }`}></div>
+                        {getStatusState(request.status)}
                       </span>
                     </div>
                   </div>

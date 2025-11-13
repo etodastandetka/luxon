@@ -326,7 +326,7 @@ export default function HistoryPage() {
                       
                       {/* Тип транзакции */}
                       <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
-                        {transactionType}
+                        {transactionTypeLabel}
                       </span>
                     </div>
                   </div>
@@ -361,15 +361,14 @@ export default function HistoryPage() {
                         statusInfo.label === 'Отложено' ? 'bg-orange-600' :
                         'bg-yellow-600'
                       }`}></div>
-                      <span className="inline-flex items-center gap-2">
-                        {/* Бейдж типа транзакции */}
-                        <span className="px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap bg-blue-500 text-white">
-                          {transactionTypeLabel}
-                        </span>
-                        {/* Бейдж состояния */}
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${statusInfo.color}`}>
-                          {statusState}
-                        </span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${statusInfo.color}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          statusState === 'Успешно' ? 'bg-green-600' :
+                          statusState === 'Отклонено' ? 'bg-red-600' :
+                          statusState === 'Отложено' ? 'bg-orange-600' :
+                          'bg-yellow-600'
+                        }`}></div>
+                        {statusState}
                       </span>
                     </span>
                   </div>
