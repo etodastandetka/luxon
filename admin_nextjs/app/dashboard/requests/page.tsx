@@ -177,6 +177,16 @@ export default function RequestsPage() {
     return type === 'deposit' ? 'Пополнение' : 'Вывод'
   }
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${day}.${month}.${year} • ${hours}:${minutes}`
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -248,40 +258,40 @@ export default function RequestsPage() {
               href={`/dashboard/requests/${request.id}`}
               className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm"
             >
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
                     <span className="text-sm font-medium text-white">
                       Заявка #{request.id}
                     </span>
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                        request.status
-                      )}`}
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        {/* Бейдж типа транзакции */}
-                        <span className="px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap bg-blue-500 text-white">
-                          {getTransactionType(request.status, (request as any).status_detail || null, request.requestType)}
-                        </span>
-                        {/* Бейдж состояния */}
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}>
-                          {getStatusState(request.status)}
-                        </span>
-                      </span>
+                    {/* Бейдж типа транзакции слева */}
+                    <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md border border-blue-500 border-opacity-30">
+                      {getTransactionType(request.status, (request as any).status_detail || null, request.requestType)}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400">
-                    {getTypeLabel(request.requestType)}
+                  <p className="text-xs text-gray-400 mb-2">
+                    {request.username || request.firstName || request.userId}
                   </p>
                 </div>
-                <p className="text-base font-bold text-white">
-                  {request.amount ? `${parseFloat(request.amount).toLocaleString()} KGS` : 'N/A'}
-                </p>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
-                <span>{request.username || request.firstName || request.userId}</span>
-                {request.bookmaker && <span>{request.bookmaker}</span>}
+                {/* Правая часть: Дата, сумма и статус */}
+                <div className="flex flex-col items-end space-y-2 ml-4">
+                  {/* Дата и время */}
+                  <p className="text-xs text-gray-400 whitespace-nowrap">
+                    {formatDate(request.createdAt)}
+                  </p>
+                  {/* Сумма */}
+                  <p className={`text-base font-bold ${request.requestType === 'deposit' ? 'text-green-500' : 'text-red-500'}`}>
+                    {request.requestType === 'deposit' ? '+' : '-'}
+                    {request.amount ? parseFloat(request.amount).toLocaleString('ru-RU', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).replace('.', ',') : '0,00'}
+                  </p>
+                  {/* Статус */}
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}>
+                    {getStatusState(request.status)}
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

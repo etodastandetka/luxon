@@ -872,16 +872,9 @@ export default function RequestDetailPage() {
               </svg>
             </button>
           </div>
-          <div className="flex items-center space-x-2">
-            {/* Бейдж типа транзакции */}
-            <div className="px-3 py-1 rounded-full bg-blue-500 text-white">
-              <span className="text-xs font-medium">{getTransactionType(request.status, request.statusDetail || request.status_detail, request.requestType)}</span>
-            </div>
-            {/* Бейдж состояния */}
-            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${getStatusColor(request.status)}`}>
-              <div className="w-2 h-2 rounded-full bg-current"></div>
-              <span className="text-xs font-medium">{getStatusState(request.status)}</span>
-            </div>
+          <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${getStatusColor(request.status)}`}>
+            <div className="w-2 h-2 rounded-full bg-current"></div>
+            <span className="text-xs font-medium">{getStatusState(request.status)}</span>
           </div>
         </div>
 
