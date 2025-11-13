@@ -227,13 +227,8 @@ export default function DepositStep4() {
       }
       
       if (paymentType === 'crypto') {
-        // Создаем крипто invoice и автоматически создаем заявку
-        createCryptoInvoice().then(() => {
-          // После создания invoice создаем заявку
-          if (cryptoInvoice) {
-            createDepositRequest()
-          }
-        })
+        // Создаем крипто invoice (заявка будет создана только после нажатия "Я оплатил")
+        createCryptoInvoice()
       } else {
         // Генерируем QR код для банковского перевода
         generateQRCode()
@@ -283,40 +278,7 @@ export default function DepositStep4() {
     }
   }, [timeLeft, isPaid, paymentType])
 
-  // Проверка статуса крипто-платежа
-  useEffect(() => {
-    if (paymentType === 'crypto' && cryptoInvoice && !isPaid) {
-      const checkCryptoStatus = async () => {
-        try {
-          const requestId = localStorage.getItem('deposit_request_id')
-          if (!requestId) return
-
-          const apiUrl = process.env.NODE_ENV === 'development' 
-            ? 'http://localhost:3001' 
-            : 'https://xendro.pro'
-
-          const response = await fetch(`${apiUrl}/api/requests/${requestId}`)
-          if (response.ok) {
-            const data = await response.json()
-            if (data.data && data.data.status) {
-              const status = data.data.status
-              // Если платеж оплачен, перенаправляем на waiting страницу
-              if (status === 'completed' || status === 'auto_completed' || status === 'autodeposit_success') {
-                setIsPaid(true)
-                router.push('/deposit/waiting')
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Ошибка проверки статуса крипто-платежа:', error)
-        }
-      }
-
-      // Проверяем каждые 5 секунд
-      const interval = setInterval(checkCryptoStatus, 5000)
-      return () => clearInterval(interval)
-    }
-  }, [paymentType, cryptoInvoice, isPaid, router])
+  // Проверка статуса крипто-платежа убрана - теперь проверка происходит на странице ожидания
 
   // Функция обработки истечения времени
   const handleTimeExpired = async () => {
@@ -522,7 +484,7 @@ export default function DepositStep4() {
     }
   }
 
-  // Отправка подтверждения оплаты
+  // Отправка подтверждения оплаты (только для банковских переводов)
   const sendPaymentConfirmation = async () => {
     try {
       const requestId = localStorage.getItem('deposit_request_id')
@@ -547,6 +509,37 @@ export default function DepositStep4() {
     }
   }
 
+  // Обработка нажатия "Я оплатил" для crypto
+  const handleCryptoIPaid = async () => {
+    if (!cryptoInvoice) {
+      showAlert({
+        type: 'error',
+        title: language === 'ru' ? 'Ошибка' : 'Error',
+        message: language === 'ru' 
+          ? 'Invoice не загружен. Попробуйте обновить страницу.'
+          : 'Invoice not loaded. Please refresh the page.'
+      })
+      return
+    }
+
+    try {
+      // Создаем заявку
+      await createDepositRequest()
+      
+      // Переходим на страницу ожидания
+      router.push('/deposit/waiting')
+    } catch (error: any) {
+      console.error('❌ Error creating deposit request:', error)
+      showAlert({
+        type: 'error',
+        title: language === 'ru' ? 'Ошибка' : 'Error',
+        message: error.message || (language === 'ru' 
+          ? 'Ошибка при создании заявки'
+          : 'Error creating request')
+      })
+    }
+  }
+
   // Обработка загрузки фото чека
   const handleReceiptPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -563,7 +556,7 @@ export default function DepositStep4() {
 
   // Кнопка "Я оплатил" — отправляем заявку в админку только по нажатию (только для банковских переводов)
   const handleIPaid = async () => {
-    // Для крипты заявка создается автоматически при создании invoice
+    // Для крипты используется отдельная функция handleCryptoIPaid
     if (paymentType === 'crypto') {
       return
     }
@@ -1476,8 +1469,8 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Статус оплаты */}
-      {isPaid && (
+      {/* Статус оплаты (только для банковских переводов, для crypto используется страница ожидания) */}
+      {isPaid && paymentType === 'bank' && (
         <div className="card text-center bg-green-900/20 border-green-500">
           <div className="text-green-500 text-lg font-semibold mb-2">
             ✅ {t.paymentComplete}
@@ -1567,11 +1560,24 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Большая кнопка "Я оплатил" (только для банковских переводов) */}
+      {/* Большая кнопка "Я оплатил" (для банковских переводов) */}
       {!isPaid && paymentType === 'bank' && (
         <button
           onClick={handleIPaid}
           className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {t.iPaid}
+        </button>
+      )}
+
+      {/* Большая кнопка "Я оплатил" (для crypto платежей) */}
+      {!isPaid && paymentType === 'crypto' && cryptoInvoice && (
+        <button
+          onClick={handleCryptoIPaid}
+          className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
