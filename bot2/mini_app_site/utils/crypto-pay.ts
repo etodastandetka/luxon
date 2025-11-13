@@ -15,7 +15,19 @@ let exchangeRateCache: {
     timestamp: 0
 };
 
-const CACHE_DURATION = 60 * 1000; // 1 минута
+const CACHE_DURATION = 30 * 1000; // 30 секунд (для более актуального курса)
+
+/**
+ * Сброс кэша курса валют (для принудительного обновления)
+ */
+export function clearExchangeRateCache(): void {
+    exchangeRateCache = {
+        usdtToUsd: null,
+        usdToKgs: null,
+        usdtToKgs: null,
+        timestamp: 0
+    };
+}
 
 /**
  * Получение курса валют через API админки
@@ -105,7 +117,7 @@ export async function usdtToUsd(usdt: number): Promise<number> {
  */
 export async function usdToKgs(usd: number): Promise<number> {
     const rates = await getExchangeRate();
-    const rate = rates.usdToKgs || 95;
+    const rate = rates.usdToKgs || 87.41; // Более актуальный fallback
     return Math.round((usd * rate) * 100) / 100;
 }
 
@@ -114,7 +126,7 @@ export async function usdToKgs(usd: number): Promise<number> {
  */
 export async function kgsToUsd(kgs: number): Promise<number> {
     const rates = await getExchangeRate();
-    const rate = rates.usdToKgs || 95;
+    const rate = rates.usdToKgs || 87.41; // Более актуальный fallback
     return Math.round((kgs / rate) * 100) / 100;
 }
 
@@ -123,7 +135,7 @@ export async function kgsToUsd(kgs: number): Promise<number> {
  */
 export async function usdtToKgs(usdt: number): Promise<number> {
     const rates = await getExchangeRate();
-    const rate = rates.usdtToKgs || (rates.usdtToUsd || 1) * (rates.usdToKgs || 95);
+    const rate = rates.usdtToKgs || (rates.usdtToUsd || 1) * (rates.usdToKgs || 87.41);
     return Math.round((usdt * rate) * 100) / 100;
 }
 
@@ -132,7 +144,7 @@ export async function usdtToKgs(usdt: number): Promise<number> {
  */
 export async function kgsToUsdt(kgs: number): Promise<number> {
     const rates = await getExchangeRate();
-    const rate = rates.usdtToKgs || (rates.usdtToUsd || 1) * (rates.usdToKgs || 95);
+    const rate = rates.usdtToKgs || (rates.usdtToUsd || 1) * (rates.usdToKgs || 87.41);
     return Math.round((kgs / rate) * 100) / 100;
 }
 
