@@ -189,13 +189,7 @@ export default function DepositStep4() {
         if (data.success && data.data) {
           setCryptoInvoice(data.data)
           console.log('✅ Crypto invoice created:', data.data)
-          
-          // После создания invoice автоматически создаем заявку
-          try {
-            await createDepositRequest()
-          } catch (error) {
-            console.error('❌ Error creating deposit request after invoice:', error)
-          }
+          // Заявка будет создана только после нажатия кнопки "Я оплатил"
         }
       } else {
         const errorData = await response.json()
@@ -425,6 +419,22 @@ export default function DepositStep4() {
       const savedAmountUsd = paymentType === 'crypto' ? localStorage.getItem('deposit_amount_usd') : null
       const amountUsd = savedAmountUsd ? parseFloat(savedAmountUsd) : null
 
+      // Для крипты проверяем invoice_id
+      let invoiceId = null
+      if (paymentType === 'crypto' && cryptoInvoice) {
+        invoiceId = cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || null
+        console.log('🔍 Crypto invoice ID для заявки:', invoiceId)
+        console.log('📦 Полный cryptoInvoice объект:', cryptoInvoice)
+      }
+
+      console.log('📤 Создаем заявку с данными:', {
+        type: 'deposit',
+        amount,
+        amount_usd: amountUsd,
+        payment_method: paymentType,
+        crypto_invoice_id: invoiceId
+      })
+
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -439,7 +449,7 @@ export default function DepositStep4() {
           bank: bank,
           playerId: playerId, // Добавляем playerId для совместимости
           payment_method: paymentType, // 'bank' или 'crypto'
-          crypto_invoice_id: paymentType === 'crypto' && cryptoInvoice ? cryptoInvoice.invoice_id : null,
+          crypto_invoice_id: invoiceId,
           // Данные пользователя Telegram
           telegram_user_id: telegramUser?.id,
           telegram_username: telegramUser?.username,
@@ -523,8 +533,13 @@ export default function DepositStep4() {
     }
 
     try {
-      // Создаем заявку
+      console.log('🔘 "Я оплатил" нажата для crypto, создаем заявку...')
+      console.log('📦 cryptoInvoice:', cryptoInvoice)
+      
+      // Создаем заявку (cryptoInvoice уже есть в state, передается в createDepositRequest)
       await createDepositRequest()
+      
+      console.log('✅ Заявка создана, переходим на страницу ожидания')
       
       // Переходим на страницу ожидания
       router.push('/deposit/waiting')
