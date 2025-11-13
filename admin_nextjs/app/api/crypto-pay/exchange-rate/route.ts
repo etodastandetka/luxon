@@ -49,27 +49,34 @@ export async function GET(request: NextRequest) {
       usdtToUsdRate = parseFloat(usdtToUsd.rate)
     }
 
+    // Получаем реальный курс USD -> KGS из API
     if (usdToKgs) {
       usdToKgsRate = parseFloat(usdToKgs.rate)
-      console.log('✅ Found USD -> KGS rate:', usdToKgsRate)
+      console.log('✅ Found USD -> KGS rate from API:', usdToKgsRate)
     } else {
-      // Fallback: более актуальный курс USD -> KGS (87.41 по данным на ноябрь 2024)
-      usdToKgsRate = 87.41
-      console.warn('⚠️ USD -> KGS rate not found, using fallback:', usdToKgsRate)
+      // Если курс не найден, возвращаем ошибку - нужен реальный курс
+      console.error('❌ USD -> KGS rate not found in API response')
+      return NextResponse.json(
+        { error: 'USD -> KGS exchange rate not available. Please check Crypto Bot API configuration.' },
+        { status: 500 }
+      )
     }
 
-    // Приоритет: прямой курс USDT -> KGS
+    // Приоритет: прямой курс USDT -> KGS из API
     if (usdtToKgs) {
       usdtToKgsRate = parseFloat(usdtToKgs.rate)
-      console.log('✅ Found direct USDT -> KGS rate:', usdtToKgsRate)
+      console.log('✅ Found direct USDT -> KGS rate from API:', usdtToKgsRate)
     } else if (usdtToUsdRate && usdToKgsRate) {
-      // Fallback: конвертируем через USD: USDT -> USD -> KGS
+      // Конвертируем через USD: USDT -> USD -> KGS (используя реальные курсы из API)
       usdtToKgsRate = usdtToUsdRate * usdToKgsRate
-      console.log('⚠️ Using converted rate USDT -> USD -> KGS:', usdtToKgsRate, `(${usdtToUsdRate} * ${usdToKgsRate})`)
+      console.log('✅ Using converted rate USDT -> USD -> KGS from API:', usdtToKgsRate, `(${usdtToUsdRate} * ${usdToKgsRate})`)
     } else {
-      // Если ничего не найдено, используем прямой fallback для USDT -> KGS
-      usdtToKgsRate = 87.41 // Примерный курс USDT -> KGS
-      console.warn('⚠️ No exchange rate found, using fallback USDT -> KGS:', usdtToKgsRate)
+      // Если нет данных для конвертации, возвращаем ошибку
+      console.error('❌ Cannot calculate USDT -> KGS rate: missing exchange rates')
+      return NextResponse.json(
+        { error: 'Cannot calculate USDT -> KGS rate. Missing exchange rates from Crypto Bot API.' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({

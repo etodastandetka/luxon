@@ -44,9 +44,14 @@ export default function DepositStep3() {
           try {
             const amountInKgs = await usdToKgs(numAmount)
             setConvertedAmount(amountInKgs.toFixed(2))
-          } catch (error) {
-            console.error('Error converting USD to KGS:', error)
-            setConvertedAmount('')
+          } catch (error: any) {
+            console.error('❌ Error converting USD to KGS:', error)
+            // Показываем ошибку пользователю
+            setConvertedAmount('Ошибка загрузки курса')
+            // Можно показать alert, но лучше просто показать в UI
+            if (error.message) {
+              console.warn('Exchange rate error:', error.message)
+            }
           } finally {
             setLoadingRate(false)
           }
@@ -77,13 +82,19 @@ export default function DepositStep3() {
         return
       }
       
-      // Конвертируем доллары в сомы для пополнения в казино
-      const amountInKgs = await usdToKgs(numAmount)
-      
-      // Сохраняем сумму в долларах (что ввел пользователь)
-      localStorage.setItem('deposit_amount_usd', numAmount.toString())
-      // Сохраняем сумму в сомах (для пополнения в казино)
-      localStorage.setItem('deposit_amount', amountInKgs.toString())
+      try {
+        // Конвертируем доллары в сомы для пополнения в казино (используя реальный курс из API)
+        const amountInKgs = await usdToKgs(numAmount)
+        
+        // Сохраняем сумму в долларах (что ввел пользователь)
+        localStorage.setItem('deposit_amount_usd', numAmount.toString())
+        // Сохраняем сумму в сомах (для пополнения в казино)
+        localStorage.setItem('deposit_amount', amountInKgs.toString())
+      } catch (error: any) {
+        console.error('❌ Error converting USD to KGS:', error)
+        alert(error.message || 'Ошибка получения курса валют. Пожалуйста, попробуйте позже.')
+        return
+      }
     } else {
       // Для банковских переводов: валидация в сомах
       if (numAmount < 35 || numAmount > 100000) {

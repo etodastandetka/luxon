@@ -77,18 +77,13 @@ export async function getExchangeRate(): Promise<{
             };
         }
     } catch (error) {
-        console.error('Error fetching exchange rate:', error);
+        console.error('❌ Error fetching exchange rate from API:', error);
+        // Не возвращаем fallback - пусть пользователь видит ошибку
+        throw new Error('Failed to fetch exchange rate from API. Please try again later.');
     }
 
-    // Fallback: более актуальные курсы (ноябрь 2024)
-    const fallbackUsdToKgs = 87.41; // Более актуальный курс USD -> KGS
-    const fallbackUsdtToUsd = 1; // 1 USDT = 1 USD (примерно)
-    
-    return {
-        usdtToUsd: fallbackUsdtToUsd,
-        usdToKgs: fallbackUsdToKgs,
-        usdtToKgs: fallbackUsdtToUsd * fallbackUsdToKgs
-    };
+    // Если API вернул пустой ответ, выбрасываем ошибку
+    throw new Error('Exchange rate API returned empty data. Please check server configuration.');
 }
 
 /**
@@ -114,37 +109,69 @@ export async function usdtToUsd(usdt: number): Promise<number> {
 /**
  * Конвертация долларов (USD) в сомы (KGS)
  * Используется для конвертации суммы после оплаты для пополнения в казино
+ * Всегда использует реальный курс из API
  */
 export async function usdToKgs(usd: number): Promise<number> {
     const rates = await getExchangeRate();
-    const rate = rates.usdToKgs || 87.41; // Более актуальный fallback
+    if (!rates.usdToKgs) {
+        throw new Error('USD -> KGS exchange rate not available. Please try again later.');
+    }
+    const rate = rates.usdToKgs;
     return Math.round((usd * rate) * 100) / 100;
 }
 
 /**
  * Конвертация сомов в доллары (USD)
+ * Всегда использует реальный курс из API
  */
 export async function kgsToUsd(kgs: number): Promise<number> {
     const rates = await getExchangeRate();
-    const rate = rates.usdToKgs || 87.41; // Более актуальный fallback
+    if (!rates.usdToKgs) {
+        throw new Error('USD -> KGS exchange rate not available. Please try again later.');
+    }
+    const rate = rates.usdToKgs;
     return Math.round((kgs / rate) * 100) / 100;
 }
 
 /**
  * Конвертация USDT в сомы (KGS)
+ * Всегда использует реальный курс из API
  */
 export async function usdtToKgs(usdt: number): Promise<number> {
     const rates = await getExchangeRate();
-    const rate = rates.usdtToKgs || (rates.usdtToUsd || 1) * (rates.usdToKgs || 87.41);
+    let rate: number;
+    
+    if (rates.usdtToKgs) {
+        // Используем прямой курс USDT -> KGS
+        rate = rates.usdtToKgs;
+    } else if (rates.usdtToUsd && rates.usdToKgs) {
+        // Конвертируем через USD: USDT -> USD -> KGS
+        rate = rates.usdtToUsd * rates.usdToKgs;
+    } else {
+        throw new Error('USDT -> KGS exchange rate not available. Please try again later.');
+    }
+    
     return Math.round((usdt * rate) * 100) / 100;
 }
 
 /**
  * Конвертация сомов в USDT (для обратной совместимости)
+ * Всегда использует реальный курс из API
  */
 export async function kgsToUsdt(kgs: number): Promise<number> {
     const rates = await getExchangeRate();
-    const rate = rates.usdtToKgs || (rates.usdtToUsd || 1) * (rates.usdToKgs || 87.41);
+    let rate: number;
+    
+    if (rates.usdtToKgs) {
+        // Используем прямой курс USDT -> KGS
+        rate = rates.usdtToKgs;
+    } else if (rates.usdtToUsd && rates.usdToKgs) {
+        // Конвертируем через USD: USDT -> USD -> KGS
+        rate = rates.usdtToUsd * rates.usdToKgs;
+    } else {
+        throw new Error('USDT -> KGS exchange rate not available. Please try again later.');
+    }
+    
     return Math.round((kgs / rate) * 100) / 100;
 }
 
