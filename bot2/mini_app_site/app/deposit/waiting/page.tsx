@@ -59,7 +59,7 @@ export default function DepositWaitingPage() {
 
   useEffect(() => {
     // Получаем ID заявки из localStorage
-    const transactionId = localStorage.getItem('deposit_transaction_id')
+    const transactionId = localStorage.getItem('deposit_transaction_id') || localStorage.getItem('deposit_request_id')
     if (!transactionId) {
       // Если нет ID заявки, перенаправляем на главную
       router.push('/')
@@ -111,10 +111,13 @@ export default function DepositWaitingPage() {
           
           // Очищаем localStorage
           localStorage.removeItem('deposit_transaction_id')
+          localStorage.removeItem('deposit_request_id')
           localStorage.removeItem('deposit_timer_start')
           localStorage.removeItem('deposit_bookmaker')
           localStorage.removeItem('deposit_user_id')
           localStorage.removeItem('deposit_amount')
+          localStorage.removeItem('deposit_amount_usd')
+          localStorage.removeItem('deposit_payment_type')
         } else if (['rejected', 'declined', 'failed'].includes(requestStatus)) {
           setStatus('error')
         }
