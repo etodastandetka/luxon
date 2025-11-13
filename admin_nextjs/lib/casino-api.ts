@@ -89,14 +89,16 @@ async function getCashdeskBalance(
     console.log(`[${casino} Balance] Confirm calculation: MD5(${cfg.cashdeskid}:${cfg.hash.substring(0, 20)}...) = ${confirm}`)
 
     // Подпись для баланса:
-    // Для 888starz: SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt}) - согласно документации
-    // Для Melbet/Winwin: SHA256(hash={hash}&cashierpass={cashierpass}&dt={dt}) - старая рабочая формула
+    // Для Melbet/Winwin используется формула: hash&cashierpass&dt (работает)
+    // Для 888starz попробуем ту же формулу, что и для Melbet/Winwin (так как документация может быть неточной)
+    // Если не сработает, попробуем формулу из документации: hash&cashdeskid&dt
     let step1: string
     if (casino === '888starz') {
-      // Для 888starz согласно документации
-      step1 = `hash=${cfg.hash}&cashdeskid=${cfg.cashdeskid}&dt=${formattedDt}`
+      // Пробуем сначала формулу как у Melbet/Winwin (рабочая формула)
+      step1 = `hash=${cfg.hash}&cashierpass=${cfg.cashierpass}&dt=${formattedDt}`
+      console.log(`🔍 [888starz] Using Melbet/Winwin formula: hash&cashierpass&dt`)
     } else {
-      // Для Melbet и Winwin (старая рабочая формула)
+      // Для Melbet и Winwin (рабочая формула)
       step1 = `hash=${cfg.hash}&cashierpass=${cfg.cashierpass}&dt=${formattedDt}`
     }
     const sha1 = crypto.createHash('sha256').update(step1).digest('hex')
@@ -124,6 +126,17 @@ async function getCashdeskBalance(
     const authString = `${cfg.login}:${cfg.cashierpass}`
     const authBase64 = Buffer.from(authString).toString('base64')
     const authHeader = `Basic ${authBase64}`
+    
+    // Логируем данные для отладки (особенно для 888starz)
+    if (casino === '888starz') {
+      console.log(`🔍 [888starz Balance] Auth details:`, {
+        login: cfg.login,
+        cashierpass_length: cfg.cashierpass.length,
+        cashierpass_preview: cfg.cashierpass.substring(0, 3) + '***',
+        authString: `${cfg.login}:***`,
+        authHeader_preview: authHeader.substring(0, 20) + '...',
+      })
+    }
     
     // Заголовки для запроса
     // Согласно документации: "ensure that the request headers include the generated signature sign"
@@ -380,10 +393,18 @@ export async function getPlatformLimits(): Promise<
     }
 
     if (starzCfg && starzCfg.cashdeskid > 0) {
+      console.log(`🔍 [888starz] Using config:`, {
+        hash: starzCfg.hash?.substring(0, 20) + '...',
+        login: starzCfg.login,
+        cashdeskid: starzCfg.cashdeskid,
+        cashierpass_length: starzCfg.cashierpass?.length || 0,
+        source: starzSetting ? 'database' : 'env'
+      })
       const starzBal = await getCashdeskBalance('888starz', starzCfg)
       console.log(`📊 888starz result: balance=${starzBal.balance}, limit=${starzBal.limit}`)
       limits.push({ key: '888starz', name: '888starz', limit: starzBal.limit })
     } else {
+      console.log(`⚠️ [888starz] Config not found or invalid:`, { starzCfg, hasSetting: !!starzSetting })
       limits.push({ key: '888starz', name: '888starz', limit: 0 })
     }
 
