@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
             const usdToKgs = rates.find(r => r.source === 'USD' && r.target === 'KGS' && r.is_valid)
             
             const usdtToUsdRate = usdtToUsd ? parseFloat(usdtToUsd.rate) : 1
-            const usdToKgsRate = usdToKgs ? parseFloat(usdToKgs.rate) : 95
+            const usdToKgsRate = usdToKgs ? parseFloat(usdToKgs.rate) : 87.41 // Более актуальный fallback
             
             amountInKgs = amountUsdt * usdtToUsdRate * usdToKgsRate
           } catch (error) {
