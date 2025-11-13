@@ -5,14 +5,13 @@ import { useRouter } from 'next/navigation'
 import QuickAmounts from '../../../components/QuickAmounts'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
-import { kgsToUsdt, usdtToKgs, validateCryptoAmount } from '../../../utils/crypto-pay'
-
-// Примерный курс USD/KGS (можно обновить или получать через API)
-const USD_TO_KGS_RATE = 95
+import { validateCryptoAmount, formatUsd, formatKgs, usdToKgs } from '../../../utils/crypto-pay'
 
 export default function DepositStep3() {
   const [amount, setAmount] = useState('')
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
+  const [convertedAmount, setConvertedAmount] = useState<string>('')
+  const [loadingRate, setLoadingRate] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -30,35 +29,56 @@ export default function DepositStep3() {
     setPaymentType(savedPaymentType)
   }, [router])
 
-  // Конвертация USD в KGS
-  const usdToKgs = (usd: number) => usd * USD_TO_KGS_RATE
-  
-  // Конвертация KGS в USD
-  const kgsToUsd = (kgs: number) => kgs / USD_TO_KGS_RATE
+  // Обновление конвертированной суммы при изменении введенной суммы
+  useEffect(() => {
+    const updateConvertedAmount = async () => {
+      if (paymentType === 'crypto' && amount) {
+        const numAmount = parseFloat(amount)
+        if (!isNaN(numAmount) && numAmount > 0) {
+          setLoadingRate(true)
+          try {
+            const amountInKgs = await usdToKgs(numAmount)
+            setConvertedAmount(amountInKgs.toFixed(2))
+          } catch (error) {
+            console.error('Error converting USD to KGS:', error)
+            setConvertedAmount('')
+          } finally {
+            setLoadingRate(false)
+          }
+        } else {
+          setConvertedAmount('')
+        }
+      } else {
+        setConvertedAmount('')
+      }
+    }
 
-  const handleNext = () => {
+    updateConvertedAmount()
+  }, [amount, paymentType])
+
+  const handleNext = async () => {
     const numAmount = parseFloat(amount)
     if (!amount.trim() || isNaN(numAmount) || numAmount <= 0) {
-      alert(paymentType === 'crypto' ? 'Введите корректную сумму в сомах' : 'Введите корректную сумму')
+      alert(paymentType === 'crypto' ? 'Введите корректную сумму в долларах' : 'Введите корректную сумму')
       return
     }
     
     if (paymentType === 'crypto') {
-      // Для крипты: пользователь вводит сумму в сомах
-      // Валидируем сумму в сомах
+      // Для крипты: пользователь вводит сумму в долларах (USD)
+      // Валидируем сумму в долларах
       const validation = validateCryptoAmount(numAmount)
       if (!validation.valid) {
         alert(validation.error || 'Неверная сумма')
         return
       }
       
-      // Конвертируем в USDT для сохранения
-      const amountUsdt = kgsToUsdt(numAmount)
+      // Конвертируем доллары в сомы для пополнения в казино
+      const amountInKgs = await usdToKgs(numAmount)
       
-      // Сохраняем сумму в сомах (основная валюта)
-      localStorage.setItem('deposit_amount', numAmount.toString())
-      // Также сохраняем в USDT для совместимости
-      localStorage.setItem('deposit_amount_usd', amountUsdt.toString())
+      // Сохраняем сумму в долларах (что ввел пользователь)
+      localStorage.setItem('deposit_amount_usd', numAmount.toString())
+      // Сохраняем сумму в сомах (для пополнения в казино)
+      localStorage.setItem('deposit_amount', amountInKgs.toString())
     } else {
       // Для банковских переводов: валидация в сомах
       if (numAmount < 35 || numAmount > 100000) {
@@ -95,40 +115,44 @@ export default function DepositStep3() {
       ru: {
         title: 'Пополнение - Шаг 3',
         subtitle: 'Введите сумму',
-        instruction: 'Введите сумму пополнения',
-        placeholder: paymentType === 'crypto' ? 'Введите сумму в сомах' : 'Введите сумму',
-        limits: paymentType === 'crypto' ? `От ${usdtToKgs(1)} до ${usdtToKgs(1000)} сом` : 'От 35 до 100000 сом',
-        currency: 'сом',
+        instruction: paymentType === 'crypto' ? 'Введите сумму в долларах (USD)' : 'Введите сумму пополнения',
+        placeholder: paymentType === 'crypto' ? 'Введите сумму в долларах' : 'Введите сумму',
+        limits: paymentType === 'crypto' ? 'От $1 до $1000 USD' : 'От 35 до 100000 сом',
+        currency: paymentType === 'crypto' ? 'USD' : 'сом',
+        convertedLabel: '≈ в сомах',
         next: 'Далее',
         back: 'Назад'
       },
       en: {
         title: 'Deposit - Step 3',
         subtitle: 'Enter amount',
-        instruction: 'Enter deposit amount',
-        placeholder: paymentType === 'crypto' ? 'Enter amount in som' : 'Enter amount',
-        limits: paymentType === 'crypto' ? `From ${usdtToKgs(1)} to ${usdtToKgs(1000)} som` : 'From 35 to 100000 som',
-        currency: 'som',
+        instruction: paymentType === 'crypto' ? 'Enter amount in US dollars (USD)' : 'Enter deposit amount',
+        placeholder: paymentType === 'crypto' ? 'Enter amount in dollars' : 'Enter amount',
+        limits: paymentType === 'crypto' ? 'From $1 to $1000 USD' : 'From 35 to 100000 som',
+        currency: paymentType === 'crypto' ? 'USD' : 'som',
+        convertedLabel: '≈ in som',
         next: 'Next',
         back: 'Back'
       },
       ky: {
         title: 'Толтуруу - 3-чү кадам',
         subtitle: 'Сумманы киргизиңиз',
-        instruction: 'Толтуруу суммасын киргизиңиз',
-        placeholder: paymentType === 'crypto' ? 'Сом суммасын киргизиңиз' : 'Сумма киргизиңиз',
-        limits: paymentType === 'crypto' ? `${usdtToKgs(1)} сомдон ${usdtToKgs(1000)} сомго чейин` : '35дөн 100000 сом чейин',
-        currency: 'сом',
+        instruction: paymentType === 'crypto' ? 'Доллар суммасын киргизиңиз (USD)' : 'Толтуруу суммасын киргизиңиз',
+        placeholder: paymentType === 'crypto' ? 'Доллар суммасын киргизиңиз' : 'Сумма киргизиңиз',
+        limits: paymentType === 'crypto' ? '$1дөн $1000 USD чейин' : '35дөн 100000 сом чейин',
+        currency: paymentType === 'crypto' ? 'USD' : 'сом',
+        convertedLabel: '≈ сомдо',
         next: 'Кийинки',
         back: 'Артка'
       },
       uz: {
         title: 'To\'ldirish - 3-qadam',
         subtitle: 'Summani kiriting',
-        instruction: 'To\'ldirish summasini kiriting',
-        placeholder: paymentType === 'crypto' ? 'Som summasini kiriting' : 'Summa kiriting',
-        limits: paymentType === 'crypto' ? `${usdtToKgs(1)} somdan ${usdtToKgs(1000)} somgacha` : '35 dan 100000 som gacha',
-        currency: 'som',
+        instruction: paymentType === 'crypto' ? 'AQSh dollarida summani kiriting (USD)' : 'To\'ldirish summasini kiriting',
+        placeholder: paymentType === 'crypto' ? 'Dollar summasini kiriting' : 'Summa kiriting',
+        limits: paymentType === 'crypto' ? '$1 dan $1000 USD gacha' : '35 dan 100000 som gacha',
+        currency: paymentType === 'crypto' ? 'USD' : 'som',
+        convertedLabel: '≈ somda',
         next: 'Keyingi',
         back: 'Orqaga'
       }
@@ -166,8 +190,8 @@ export default function DepositStep3() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder={t.placeholder}
-                min={paymentType === 'crypto' ? usdtToKgs(1).toString() : '35'}
-                max={paymentType === 'crypto' ? usdtToKgs(1000).toString() : '100000'}
+                min={paymentType === 'crypto' ? '1' : '35'}
+                max={paymentType === 'crypto' ? '1000' : '100000'}
                 step="0.01"
                 style={{'MozAppearance': 'textfield'}}
               />
@@ -182,12 +206,25 @@ export default function DepositStep3() {
                 }
               `}</style>
               <p className="text-sm text-white/70 mt-1">{t.limits}</p>
+              
+              {/* Показываем конвертированную сумму для крипты */}
+              {paymentType === 'crypto' && amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (
+                <div className="mt-2 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                  {loadingRate ? (
+                    <p className="text-sm text-white/70">Загрузка курса...</p>
+                  ) : convertedAmount ? (
+                    <p className="text-sm text-white">
+                      {t.convertedLabel}: <span className="font-semibold">{formatKgs(convertedAmount)}</span>
+                    </p>
+                  ) : null}
+                </div>
+              )}
             </div>
             
             <QuickAmounts 
               onPick={(value) => setAmount(value.toString())} 
               selected={amount} 
-              currency="kgs"
+              currency={paymentType === 'crypto' ? 'usd' : 'kgs'}
             />
           </div>
           

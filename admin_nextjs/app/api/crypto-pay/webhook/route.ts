@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyWebhookSignature, getInvoice } from '@/lib/crypto-pay'
+import { verifyWebhookSignature, getInvoice, getExchangeRates } from '@/lib/crypto-pay'
 import { prisma } from '@/lib/prisma'
 import { depositToCasino } from '@/lib/deposit-balance'
 
@@ -75,7 +75,8 @@ export async function POST(request: NextRequest) {
     let telegramUserId: string | null = null
     let bookmaker: string | null = null
     let playerId: string | null = null
-    let amount: number | null = null
+    let amount: number | null = null // В сомах (для пополнения в казино)
+    let amountUsd: number | null = null // В долларах (что ввел пользователь)
 
     if (invoice.payload) {
       try {
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
         telegramUserId = payloadData.telegram_user_id || null
         bookmaker = payloadData.bookmaker || null
         playerId = payloadData.playerId || null
-        amount = payloadData.amount || null
+        amount = payloadData.amount || null // В сомах
+        amountUsd = payloadData.amount_usd || null // В долларах
       } catch (e) {
         // Если payload не JSON, пробуем найти request_id в строке
         const match = invoice.payload.match(/request_id[=:](\d+)/i)
@@ -161,40 +163,75 @@ export async function POST(request: NextRequest) {
     }
 
     if (botRequest && botRequest.status === 'pending') {
+        // Получаем сумму в USDT из invoice
+        const amountUsdt = parseFloat(invoice.paid_amount || invoice.amount)
+        
+        // Конвертируем USDT -> USD -> KGS для пополнения в казино
+        let amountInKgs: number
+        if (amount !== null) {
+          // Если есть сумма в сомах из payload, используем её
+          amountInKgs = amount
+        } else {
+          // Иначе конвертируем USDT в сомы по текущему курсу
+          try {
+            const rates = await getExchangeRates()
+            const usdtToUsd = rates.find(r => r.source === 'USDT' && r.target === 'USD' && r.is_valid)
+            const usdToKgs = rates.find(r => r.source === 'USD' && r.target === 'KGS' && r.is_valid)
+            
+            const usdtToUsdRate = usdtToUsd ? parseFloat(usdtToUsd.rate) : 1
+            const usdToKgsRate = usdToKgs ? parseFloat(usdToKgs.rate) : 95
+            
+            amountInKgs = amountUsdt * usdtToUsdRate * usdToKgsRate
+          } catch (error) {
+            console.error('Error converting USDT to KGS:', error)
+            // Fallback: используем сумму из заявки
+            amountInKgs = botRequest.amount ? parseFloat(botRequest.amount.toString()) : 0
+          }
+        }
+
         console.log('🔄 Processing auto-deposit for crypto payment:', {
           request_id: botRequest.id,
           bookmaker: botRequest.bookmaker,
           accountId: botRequest.accountId,
           userId: botRequest.userId.toString(),
-          amount: invoice.paid_amount || invoice.amount
+          amount_usdt: amountUsdt,
+          amount_usd: amountUsd,
+          amount_kgs: amountInKgs
         })
 
-        // Обновляем заявку
+        // Обновляем заявку с обеими суммами
+        const statusDetailData = amountUsd ? JSON.stringify({
+          amount_usd: amountUsd,
+          amount_kgs: amountInKgs,
+          amount_usdt: amountUsdt
+        }) : null
+
         await prisma.request.update({
           where: { id: botRequest.id },
           data: {
             status: 'auto_completed',
             paymentMethod: 'crypto',
-            cryptoPaymentId: cryptoPayment.id
+            cryptoPaymentId: cryptoPayment.id,
+            amount: amountInKgs, // Обновляем сумму в сомах (для пополнения в казино)
+            statusDetail: statusDetailData // Сохраняем обе суммы
           }
         })
 
-        // Выполняем автоматическое пополнение
+        // Выполняем автоматическое пополнение в сомах
         try {
           const bookmaker = botRequest.bookmaker || ''
           const accountId = botRequest.accountId || botRequest.userId.toString()
-          const amount = parseFloat(invoice.paid_amount || invoice.amount)
 
           console.log('💸 Attempting auto-deposit:', {
             bookmaker,
             accountId,
-            amount
+            amount_kgs: amountInKgs // Пополняем в сомах
           })
 
           const depositResult = await depositToCasino(
             bookmaker,
             accountId,
-            amount
+            amountInKgs // Используем сумму в сомах для пополнения в казино
           )
           
           console.log('📊 Deposit result:', depositResult)
@@ -220,7 +257,9 @@ export async function POST(request: NextRequest) {
             request_id: botRequest.id,
             bookmaker,
             accountId,
-            amount,
+            amount_kgs: amountInKgs,
+            amount_usd: amountUsd,
+            amount_usdt: amountUsdt,
             transaction_id: depositResult.data?.transactionId
           })
         } catch (error: any) {
