@@ -188,8 +188,11 @@ export default function DepositStep4() {
         const data = await response.json()
         if (data.success && data.data) {
           setCryptoInvoice(data.data)
-          console.log('✅ Crypto invoice created:', data.data)
+          console.log('✅ Crypto invoice created and saved to state:', data.data)
+          console.log('📋 Invoice ID:', data.data.invoice_id || data.data.invoiceId)
           // Заявка будет создана только после нажатия кнопки "Я оплатил"
+        } else {
+          console.error('❌ Invoice creation failed:', data)
         }
       } else {
         const errorData = await response.json()
@@ -222,7 +225,10 @@ export default function DepositStep4() {
       
       if (paymentType === 'crypto') {
         // Создаем крипто invoice (заявка будет создана только после нажатия "Я оплатил")
-        createCryptoInvoice()
+        console.log('🔄 Создаем crypto invoice для:', { bookmaker, playerId, amount })
+        createCryptoInvoice().catch((error) => {
+          console.error('❌ Ошибка создания crypto invoice:', error)
+        })
       } else {
         // Генерируем QR код для банковского перевода
         generateQRCode()
@@ -1194,12 +1200,37 @@ export default function DepositStep4() {
       {/* Индикатор загрузки крипто invoice */}
       {paymentType === 'crypto' && cryptoLoading && (
         <div className="card text-center">
-          <div className="text-white/70">Создание счета на оплату...</div>
+          <div className="text-white/70">
+            {language === 'ru' ? 'Создание счета на оплату...' : 'Creating payment invoice...'}
+          </div>
+        </div>
+      )}
+
+      {/* Сообщение об ошибке, если invoice не создан */}
+      {paymentType === 'crypto' && !cryptoLoading && !cryptoInvoice && (
+        <div className="card text-center bg-red-900/20 border-red-500">
+          <div className="text-red-500 text-lg font-semibold mb-2">
+            {language === 'ru' ? 'Ошибка создания счета' : 'Invoice creation error'}
+          </div>
+          <p className="text-sm text-white/70 mb-4">
+            {language === 'ru' 
+              ? 'Не удалось создать счет на оплату. Попробуйте обновить страницу.'
+              : 'Failed to create payment invoice. Please refresh the page.'}
+          </p>
+          <button
+            onClick={() => {
+              setCryptoLoading(true)
+              createCryptoInvoice().finally(() => setCryptoLoading(false))
+            }}
+            className="btn btn-primary"
+          >
+            {language === 'ru' ? 'Попробовать снова' : 'Try again'}
+          </button>
         </div>
       )}
 
       {/* Crypto Bot Invoice - открытие через Telegram WebApp API внутри Telegram */}
-      {paymentType === 'crypto' && cryptoInvoice && !isPaid && (
+      {paymentType === 'crypto' && cryptoInvoice && (
         <div className="card space-y-4">
           <h2 className="text-lg font-semibold text-white text-center">
             {language === 'ru' ? 'Оплата через Crypto Bot' : 'Pay via Crypto Bot'}
@@ -1611,7 +1642,7 @@ export default function DepositStep4() {
         </button>
       )}
 
-      {/* Инструкция (только для банковских переводов) */}
+      {/* Инструкция для банковских переводов */}
       {paymentType === 'bank' && (
         <div className="card space-y-4">
           <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>
