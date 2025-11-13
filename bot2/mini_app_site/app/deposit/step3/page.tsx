@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import QuickAmounts from '../../../components/QuickAmounts'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
-import { validateCryptoAmount, formatUsd, formatKgs, usdToKgs } from '../../../utils/crypto-pay'
+import { validateCryptoAmount, formatUsd, formatKgs, usdToKgs, clearExchangeRateCache } from '../../../utils/crypto-pay'
 
 export default function DepositStep3() {
   const [amount, setAmount] = useState('')
@@ -27,6 +27,11 @@ export default function DepositStep3() {
     }
     
     setPaymentType(savedPaymentType)
+    
+    // Если выбрана крипта, сбрасываем кэш курса для получения актуального курса
+    if (savedPaymentType === 'crypto') {
+      clearExchangeRateCache()
+    }
   }, [router])
 
   // Обновление конвертированной суммы при изменении введенной суммы
