@@ -112,7 +112,13 @@ export async function POST(request: NextRequest) {
     // Создаем invoice через библиотеку @koo0ki/send
     let invoice: any
     try {
-      invoice = await cryptoPay.createInvoice({
+      console.log('🔄 Создаем invoice через @koo0ki/send с параметрами:', {
+        amount: amountUsdt,
+        asset: asset,
+        description: description || 'Пополнение баланса LUXON'
+      })
+      
+      const invoiceResponse = await cryptoPay.createInvoice({
         amount: amountUsdt,
         asset: asset,
         description: description || 'Пополнение баланса LUXON',
@@ -122,8 +128,44 @@ export async function POST(request: NextRequest) {
           amount_usdt: amountUsdt
         })
       })
-    } catch (error) {
-      console.error('Error creating invoice with @koo0ki/send, falling back to direct API:', error)
+      
+      console.log('📦 Ответ от @koo0ki/send createInvoice (тип):', typeof invoiceResponse)
+      console.log('📦 Ответ от @koo0ki/send createInvoice (полный):', JSON.stringify(invoiceResponse, null, 2))
+      console.log('📦 Ключи ответа:', invoiceResponse ? Object.keys(invoiceResponse) : 'null/undefined')
+      
+      // Библиотека @koo0ki/send может вернуть объект напрямую (уже распарсенный result)
+      // или обернутый в стандартный формат API { ok: true, result: {...} }
+      invoice = invoiceResponse
+      
+      // Если это стандартный формат API Crypto Bot с полем ok и result
+      if (invoice && typeof invoice === 'object' && 'ok' in invoice && invoice.ok && invoice.result) {
+        invoice = invoice.result
+        console.log('✅ Извлечен invoice из стандартного формата API (ok.result)')
+      }
+      // Если это объект с полем result (без ok)
+      else if (invoice && invoice.result) {
+        invoice = invoice.result
+        console.log('✅ Извлечен invoice из invoice.result')
+      }
+      // Если это объект с полем data
+      else if (invoice && invoice.data) {
+        invoice = invoice.data
+        console.log('✅ Извлечен invoice из invoice.data')
+      }
+      // Если библиотека уже вернула распарсенный объект Invoice напрямую
+      else if (invoice && (invoice.invoice_id || invoice.invoiceId || invoice.id)) {
+        console.log('✅ Библиотека вернула Invoice напрямую')
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Error creating invoice with @koo0ki/send:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      })
+      console.log('🔄 Falling back to direct API call...')
+      
       // Fallback: используем прямой API
       invoice = await createInvoice({
         asset: asset,
@@ -135,6 +177,12 @@ export async function POST(request: NextRequest) {
           amount_usdt: amountUsdt
         })
       })
+      
+      if (invoice) {
+        console.log('✅ Invoice создан через прямой API')
+      } else {
+        console.error('❌ Прямой API тоже вернул null')
+      }
     }
 
     if (!invoice) {
@@ -144,25 +192,67 @@ export async function POST(request: NextRequest) {
     // Адаптируем ответ под формат, который ожидает клиент
     // Библиотека @koo0ki/send может возвращать другой формат
     console.log('📦 Полный объект invoice от библиотеки/API:', JSON.stringify(invoice, null, 2))
+    console.log('📦 Ключи объекта invoice:', invoice ? Object.keys(invoice) : 'invoice is null/undefined')
     
-    const invoiceId = invoice.invoiceId || invoice.invoice_id || invoice.id
-    const invoiceHash = invoice.hash
-    const botInvoiceUrl = invoice.botInvoiceUrl || invoice.bot_invoice_url || invoice.url
-    const miniAppInvoiceUrl = invoice.miniAppInvoiceUrl || invoice.mini_app_invoice_url || invoice.url
-    const webAppInvoiceUrl = invoice.webAppInvoiceUrl || invoice.web_app_invoice_url || invoice.url
+    // Пробуем все возможные варианты полей для invoice_id
+    const invoiceId = invoice?.invoiceId || 
+                     invoice?.invoice_id || 
+                     invoice?.id || 
+                     invoice?.invoiceId?.toString() ||
+                     invoice?.invoice_id?.toString() ||
+                     invoice?.id?.toString() ||
+                     null
+    
+    // Пробуем все возможные варианты полей для hash
+    const invoiceHash = invoice?.hash || 
+                       invoice?.invoiceHash ||
+                       invoice?.hashString ||
+                       null
+    
+    // Пробуем все возможные варианты полей для URL
+    const botInvoiceUrl = invoice?.botInvoiceUrl || 
+                         invoice?.bot_invoice_url || 
+                         invoice?.url ||
+                         invoice?.botUrl ||
+                         invoice?.invoiceUrl ||
+                         null
+    
+    const miniAppInvoiceUrl = invoice?.miniAppInvoiceUrl || 
+                             invoice?.mini_app_invoice_url || 
+                             invoice?.miniAppUrl ||
+                             invoice?.miniAppUrl ||
+                             invoice?.url ||
+                             null
+    
+    const webAppInvoiceUrl = invoice?.webAppInvoiceUrl || 
+                            invoice?.web_app_invoice_url || 
+                            invoice?.webAppUrl ||
+                            invoice?.webUrl ||
+                            invoice?.url ||
+                            null
 
     console.log('🔍 Извлеченные данные из invoice:', {
       invoiceId,
       invoiceHash,
       botInvoiceUrl: botInvoiceUrl ? '✅' : '❌',
       miniAppInvoiceUrl: miniAppInvoiceUrl ? '✅' : '❌',
-      webAppInvoiceUrl: webAppInvoiceUrl ? '✅' : '❌'
+      webAppInvoiceUrl: webAppInvoiceUrl ? '✅' : '❌',
+      allKeys: invoice ? Object.keys(invoice) : []
     })
 
     if (!invoiceId) {
       console.error('❌ Invoice ID не найден! Объект invoice:', invoice)
+      console.error('❌ Все ключи объекта:', invoice ? Object.keys(invoice) : 'invoice is null')
+      console.error('❌ Все значения объекта:', invoice ? Object.values(invoice) : 'invoice is null')
       return NextResponse.json(
-        { error: 'Failed to extract invoice ID from response' },
+        { 
+          error: 'Failed to extract invoice ID from response',
+          debug: {
+            invoiceKeys: invoice ? Object.keys(invoice) : null,
+            invoiceType: typeof invoice,
+            invoiceString: JSON.stringify(invoice)
+          }
+        },
         { status: 500 }
       )
     }
