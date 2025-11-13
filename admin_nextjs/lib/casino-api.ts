@@ -120,19 +120,17 @@ async function getCashdeskBalance(
 
     const url = `https://partners.servcul.com/CashdeskBotAPI/Cashdesk/${cfg.cashdeskid}/Balance?confirm=${confirm}&dt=${encodeURIComponent(formattedDt)}`
     
+    // Добавляем Basic Auth для всех казино (включая 888starz)
+    const authString = `${cfg.login}:${cfg.cashierpass}`
+    const authBase64 = Buffer.from(authString).toString('base64')
+    const authHeader = `Basic ${authBase64}`
+    
     // Заголовки для запроса
     // Согласно документации: "ensure that the request headers include the generated signature sign"
-    // Для 888starz согласно документации нужен только sign, без Authorization
+    // Authorization нужен для всех казино (включая 888starz)
     const headers: Record<string, string> = {
       'sign': sign, // Заголовок sign (с маленькой буквы) для всех казино
-    }
-    
-    // Для Melbet и Winwin может потребоваться Authorization (оставляем для совместимости)
-    if (casino !== '888starz') {
-      const authString = `${cfg.login}:${cfg.cashierpass}`
-      const authBase64 = Buffer.from(authString).toString('base64')
-      const authHeader = `Basic ${authBase64}`
-      headers['Authorization'] = authHeader
+      'Authorization': authHeader, // Basic Auth нужен для всех казино
     }
 
     const logDetails: any = {
@@ -146,7 +144,7 @@ async function getCashdeskBalance(
       md5Hash_preview: md5Hash.substring(0, 20) + '...',
       headers: {
         sign: sign.substring(0, 20) + '...',
-        ...(casino !== '888starz' ? { Authorization: 'Basic ...' } : {}),
+        Authorization: 'Basic ...',
       },
     }
     
