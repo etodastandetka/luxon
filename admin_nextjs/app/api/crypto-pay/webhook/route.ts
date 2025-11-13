@@ -188,13 +188,40 @@ export async function POST(request: NextRequest) {
               // Используем прямой курс USDT -> KGS
               const usdtToKgsRate = parseFloat(usdtToKgs.rate)
               amountInKgs = amountUsdt * usdtToKgsRate
-              console.log('✅ Using direct USDT -> KGS rate from API:', usdtToKgsRate)
-            } else if (usdtToUsd && usdToKgs) {
+              console.log('✅ Using direct USDT -> KGS rate from Crypto Bot API:', usdtToKgsRate)
+            } else if (usdtToUsd) {
               // Конвертируем через USD: USDT -> USD -> KGS
               const usdtToUsdRate = parseFloat(usdtToUsd.rate)
-              const usdToKgsRate = parseFloat(usdToKgs.rate)
+              let usdToKgsRate: number
+              
+              if (usdToKgs) {
+                // Используем курс из Crypto Bot API
+                usdToKgsRate = parseFloat(usdToKgs.rate)
+                console.log('✅ Using USD -> KGS rate from Crypto Bot API:', usdToKgsRate)
+              } else {
+                // Получаем курс из внешнего API
+                const externalApiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'
+                console.log('📡 Fetching USD -> KGS from external API for webhook')
+                const externalResponse = await fetch(externalApiUrl, {
+                  cache: 'no-store',
+                  next: { revalidate: 60 }
+                })
+                
+                if (externalResponse.ok) {
+                  const externalData = await externalResponse.json()
+                  if (externalData.rates && externalData.rates.KGS) {
+                    usdToKgsRate = externalData.rates.KGS
+                    console.log('✅ Using USD -> KGS rate from external API:', usdToKgsRate)
+                  } else {
+                    throw new Error('KGS rate not found in external API response')
+                  }
+                } else {
+                  throw new Error(`External API returned ${externalResponse.status}`)
+                }
+              }
+              
               amountInKgs = amountUsdt * usdtToUsdRate * usdToKgsRate
-              console.log('✅ Using converted rate USDT -> USD -> KGS from API:', usdtToUsdRate, '*', usdToKgsRate)
+              console.log('✅ Using converted rate USDT -> USD -> KGS:', usdtToUsdRate, '*', usdToKgsRate)
             } else {
               throw new Error('Cannot calculate USDT -> KGS: missing exchange rates')
             }
