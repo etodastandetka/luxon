@@ -1,49 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server'
-// @ts-ignore - @koo0ki/send types may not be available
-import { CryptoPayClient, Networks } from "@koo0ki/send";
-
-const USD_TO_KGS_RATE = 95;
-
-// Инициализация клиента
-const cryptoPay = new CryptoPayClient({
-    token: process.env.CRYPTO_PAY_TOKEN || process.env.NEXT_PUBLIC_CRYPTO_PAY_TOKEN || process.env.CRYPTO_PAY_API_TOKEN || "",
-    net: process.env.NODE_ENV === 'production' ? Networks.MAINNET : Networks.TESTNET,
-    pollingEnabled: true,
-    pollingInterval: 15000,
-});
+import { createInvoice } from '@/lib/crypto-pay'
+import { getExchangeRates } from '@/lib/crypto-pay'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * Получение курса USD -> KGS
+ */
+async function getUsdToKgsRate(): Promise<number> {
+  try {
+    const rates = await getExchangeRates()
+    
+    // Ищем курс USD -> KGS
+    const usdToKgs = rates.find(
+      (rate) => rate.source === 'USD' && rate.target === 'KGS' && rate.is_valid
+    )
+    
+    if (usdToKgs) {
+      return parseFloat(usdToKgs.rate)
+    }
+  } catch (error) {
+    console.error('Error getting exchange rate:', error)
+  }
+  
+  // Fallback: фиксированный курс
+  return 95
+}
+
+/**
+ * Получение курса USDT -> USD
+ */
+async function getUsdtToUsdRate(): Promise<number> {
+  try {
+    const rates = await getExchangeRates()
+    
+    // Ищем курс USDT -> USD
+    const usdtToUsd = rates.find(
+      (rate) => rate.source === 'USDT' && rate.target === 'USD' && rate.is_valid
+    )
+    
+    if (usdtToUsd) {
+      return parseFloat(usdtToUsd.rate)
+    }
+  } catch (error) {
+    console.error('Error getting exchange rate:', error)
+  }
+  
+  // Fallback: 1 USDT = 1 USD
+  return 1
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { amount, amountKgs, description, payload, asset = 'USDT' } = body
+    const { amountUsd, description, payload, asset = 'USDT' } = body
 
-    // Если передана сумма в сомах, конвертируем в USDT
-    let amountUsdt: number;
-    if (amountKgs !== undefined && amountKgs !== null) {
-      amountUsdt = amountKgs / USD_TO_KGS_RATE;
-    } else if (amount) {
-      // Если передана сумма напрямую, считаем что это USDT
-      amountUsdt = parseFloat(amount);
-    } else {
-      return NextResponse.json({ error: 'Amount or amountKgs is required' }, { status: 400 })
+    // Пользователь вводит сумму в долларах (USD)
+    if (!amountUsd) {
+      return NextResponse.json({ error: 'amountUsd is required' }, { status: 400 })
     }
 
-    // Валидация суммы
-    if (amountUsdt < 1) {
-      return NextResponse.json({ error: 'Минимальная сумма: 1 USDT (95 сом)' }, { status: 400 })
+    const amountUsdNum = parseFloat(amountUsd)
+
+    // Валидация суммы в долларах
+    if (isNaN(amountUsdNum) || amountUsdNum < 1) {
+      return NextResponse.json({ error: 'Минимальная сумма: $1 USD' }, { status: 400 })
     }
     
-    if (amountUsdt > 1000) {
-      return NextResponse.json({ error: 'Максимальная сумма: 1000 USDT (95,000 сом)' }, { status: 400 })
+    if (amountUsdNum > 1000) {
+      return NextResponse.json({ error: 'Максимальная сумма: $1000 USD' }, { status: 400 })
     }
 
-    // Создаем invoice через @koo0ki/send
-    const invoice: any = await cryptoPay.createInvoice({
-      amount: amountUsdt,
+    // Конвертируем USD -> USDT для оплаты
+    const usdtToUsdRate = await getUsdtToUsdRate()
+    const amountUsdt = amountUsdNum / usdtToUsdRate
+
+    // Конвертируем USD -> KGS для пополнения в казино
+    const usdToKgsRate = await getUsdToKgsRate()
+    const amountKgs = amountUsdNum * usdToKgsRate
+
+    // Создаем invoice через Crypto Pay API
+    const invoice = await createInvoice({
       asset: asset,
+      amount: amountUsdt.toFixed(2),
       description: description || 'Пополнение баланса LUXON',
+      payload: payload || JSON.stringify({
+        amount_usd: amountUsdNum,
+        amount_kgs: amountKgs,
+        amount_usdt: amountUsdt
+      })
     })
 
     if (!invoice) {
@@ -54,13 +99,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        invoice_id: invoice.invoiceId || invoice.id || invoice.invoice_id,
+        invoice_id: invoice.invoice_id,
         hash: invoice.hash,
-        bot_invoice_url: invoice.botInvoiceUrl || invoice.url || invoice.bot_invoice_url,
-        mini_app_invoice_url: invoice.miniAppInvoiceUrl || invoice.url || invoice.mini_app_invoice_url,
-        web_app_invoice_url: invoice.webAppInvoiceUrl || invoice.url || invoice.web_app_invoice_url,
-        amount: amountUsdt,
-        amountKgs: amountKgs || (amountUsdt * USD_TO_KGS_RATE),
+        bot_invoice_url: invoice.bot_invoice_url,
+        mini_app_invoice_url: invoice.mini_app_invoice_url,
+        web_app_invoice_url: invoice.web_app_invoice_url,
+        amount: amountUsdt, // Сумма в USDT для оплаты
+        amount_usd: amountUsdNum, // Сумма в USD (что ввел пользователь)
+        amount_kgs: amountKgs, // Сумма в сомах (для пополнения в казино)
         asset: invoice.asset || asset,
         status: invoice.status || 'active'
       }

@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       playerId,
       type, // deposit/withdraw
       amount,
+      amount_usd, // Сумма в долларах (только для крипты)
       bookmaker,
       bank,
       phone,
@@ -120,6 +121,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Для криптоплатежей сохраняем amount_usd в statusDetail
+    let statusDetail: string | null = null
+    if (payment_method === 'crypto' && amount_usd) {
+      statusDetail = JSON.stringify({
+        amount_usd: parseFloat(amount_usd),
+        amount_kgs: parseFloat(amount)
+      })
+    }
+
     const newRequest = await prisma.request.create({
       data: {
         userId: userIdBigInt,
@@ -128,11 +138,12 @@ export async function POST(request: NextRequest) {
         lastName: telegram_last_name,
         bookmaker,
         accountId: finalAccountId?.toString(),
-        amount: parseFloat(amount),
+        amount: parseFloat(amount), // В сомах (для пополнения в казино)
         requestType: type,
         bank,
         phone,
         status: 'pending',
+        statusDetail: statusDetail, // Для крипты содержит JSON с amount_usd и amount_kgs
         photoFileUrl: receipt_photo || null, // Сохраняем base64 фото чека
         paymentMethod: payment_method || 'bank', // 'bank' или 'crypto'
         cryptoPaymentId: cryptoPaymentId,

@@ -7,7 +7,7 @@ import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getTelegramUser, syncWithBot, notifyUser } from '../../../utils/telegram'
 import { useAlert } from '../../../components/useAlert'
-import { kgsToUsdt, formatKgs, formatUsdt } from '../../../utils/crypto-pay'
+import { formatKgs, formatUsdt, formatUsd } from '../../../utils/crypto-pay'
 
 export default function DepositStep4() {
   const [bank, setBank] = useState('omoney') // По умолчанию O!Money
@@ -136,12 +136,13 @@ export default function DepositStep4() {
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
       
-      // Для крипты берем сумму в долларах из localStorage
-      // Если нет сохраненной суммы в долларах, конвертируем из сомов
-      // Конвертируем сумму в USDT для payload (если нужно)
-      const USD_TO_KGS_RATE = 95
+      // Для крипты берем сумму в долларах из localStorage (пользователь ввел в USD)
       const savedAmountUsd = localStorage.getItem('deposit_amount_usd')
-      const amountInUsd = savedAmountUsd ? parseFloat(savedAmountUsd) : (amount / USD_TO_KGS_RATE)
+      if (!savedAmountUsd) {
+        throw new Error('Сумма в долларах не найдена')
+      }
+      
+      const amountInUsd = parseFloat(savedAmountUsd)
       
       // Получаем Telegram ID пользователя для payload
       const tg = (window as any).Telegram?.WebApp
@@ -165,8 +166,8 @@ export default function DepositStep4() {
       const payload = JSON.stringify({
         bookmaker,
         playerId,
-        amount: amount, // В сомах для внутреннего использования
-        amount_usd: amountInUsd, // В долларах для совместимости
+        amount: amount, // В сомах (для пополнения в казино)
+        amount_usd: amountInUsd, // В долларах (что ввел пользователь)
         telegram_user_id: telegramUserId
       })
       
@@ -176,7 +177,7 @@ export default function DepositStep4() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amountKgs: amount, // Отправляем сумму в сомах (API конвертирует в USDT)
+          amountUsd: amountInUsd, // Отправляем сумму в долларах (API конвертирует в USDT)
           asset: 'USDT',
           description: `Пополнение баланса ${bookmaker} - ID: ${playerId}\n\n⚠️ Рекомендуется выбрать сеть TRC20 (TRON) для оплаты`,
           payload: payload,
@@ -197,10 +198,21 @@ export default function DepositStep4() {
           }
         }
       } else {
-        console.error('❌ Failed to create crypto invoice')
+        const errorData = await response.json()
+        console.error('❌ Failed to create crypto invoice:', errorData)
+        showAlert({
+          type: 'error',
+          title: language === 'ru' ? 'Ошибка' : 'Error',
+          message: errorData.error || 'Не удалось создать счет на оплату'
+        })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error creating crypto invoice:', error)
+      showAlert({
+        type: 'error',
+        title: language === 'ru' ? 'Ошибка' : 'Error',
+        message: error.message || 'Ошибка при создании счета на оплату'
+      })
     } finally {
       setCryptoLoading(false)
     }
@@ -447,6 +459,10 @@ export default function DepositStep4() {
         })
       }
 
+      // Для крипты получаем сумму в долларах
+      const savedAmountUsd = paymentType === 'crypto' ? localStorage.getItem('deposit_amount_usd') : null
+      const amountUsd = savedAmountUsd ? parseFloat(savedAmountUsd) : null
+
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -454,7 +470,8 @@ export default function DepositStep4() {
         },
         body: JSON.stringify({
           type: 'deposit',
-          amount: amount,
+          amount: amount, // В сомах (для пополнения в казино)
+          amount_usd: amountUsd, // В долларах (только для крипты)
           userId: playerId,
           bookmaker: bookmaker,
           bank: bank,
@@ -1382,15 +1399,11 @@ export default function DepositStep4() {
           
           <div className="text-xs text-white/50 text-center">
             {(() => {
-              // Вычисляем значение и преобразуем в строку
               const invoiceAmount = cryptoInvoice?.amount;
-              const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
-              const calculatedAmount = kgsToUsdt(amountNum);
-              const usdtAmountNum = invoiceAmount !== undefined && invoiceAmount !== null ? invoiceAmount : calculatedAmount;
-              const usdtAmountStr = String(usdtAmountNum);
+              const amountUsd = localStorage.getItem('deposit_amount_usd');
               return language === 'ru' 
-                ? `Сумма: ${formatKgs(amount)} (≈ ${formatUsdt(usdtAmountStr)})`
-                : `Amount: ${formatKgs(amount)} (≈ ${formatUsdt(usdtAmountStr)})`;
+                ? `Сумма: ${formatUsd(amountUsd || '0')} (≈ ${formatUsdt(String(invoiceAmount || '0'))} для оплаты)`
+                : `Amount: ${formatUsd(amountUsd || '0')} (≈ ${formatUsdt(String(invoiceAmount || '0'))} to pay)`;
             })()}
           </div>
           <div className="text-xs text-white/40 text-center">
@@ -1425,11 +1438,22 @@ export default function DepositStep4() {
           <div className="flex justify-between">
             <span className="text-white/70">{t.amount}:</span>
             <div className="text-right">
-              <span className="text-white font-bold text-lg">{formatKgs(amount)}</span>
-              {paymentType === 'crypto' && cryptoInvoice && (
-                <div className="text-sm text-white/60">
-                  ≈ {formatUsdt(String(cryptoInvoice.amount ?? kgsToUsdt(typeof amount === 'string' ? parseFloat(amount) : amount)))}
-                </div>
+              {paymentType === 'crypto' ? (
+                <>
+                  <span className="text-white font-bold text-lg">
+                    {formatUsd(localStorage.getItem('deposit_amount_usd') || '0')}
+                  </span>
+                  <div className="text-sm text-white/60">
+                    ≈ {formatKgs(amount)} (будет пополнено в казино)
+                  </div>
+                  {cryptoInvoice && (
+                    <div className="text-xs text-white/50 mt-1">
+                      ≈ {formatUsdt(String(cryptoInvoice.amount))} для оплаты
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span className="text-white font-bold text-lg">{formatKgs(amount)}</span>
               )}
             </div>
           </div>
