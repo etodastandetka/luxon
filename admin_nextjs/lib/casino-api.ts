@@ -118,18 +118,21 @@ async function getCashdeskBalance(
       final_sign: sign,
     })
 
-    const url = `https://partners.servcul.com/CashdeskBotAPI/Cashdesk/${cfg.cashdeskid}/Balance?confirm=${confirm}&dt=${formattedDt}`
-    
-    // Добавляем Basic Auth (как в melbet_client.py)
-    const authString = `${cfg.login}:${cfg.cashierpass}`
-    const authBase64 = Buffer.from(authString).toString('base64')
-    const authHeader = `Basic ${authBase64}`
+    const url = `https://partners.servcul.com/CashdeskBotAPI/Cashdesk/${cfg.cashdeskid}/Balance?confirm=${confirm}&dt=${encodeURIComponent(formattedDt)}`
     
     // Заголовки для запроса
     // Согласно документации: "ensure that the request headers include the generated signature sign"
+    // Для 888starz согласно документации нужен только sign, без Authorization
     const headers: Record<string, string> = {
       'sign': sign, // Заголовок sign (с маленькой буквы) для всех казино
-      'Authorization': authHeader, // Basic Auth нужен для всех казино (включая 888starz)
+    }
+    
+    // Для Melbet и Winwin может потребоваться Authorization (оставляем для совместимости)
+    if (casino !== '888starz') {
+      const authString = `${cfg.login}:${cfg.cashierpass}`
+      const authBase64 = Buffer.from(authString).toString('base64')
+      const authHeader = `Basic ${authBase64}`
+      headers['Authorization'] = authHeader
     }
 
     const logDetails: any = {
@@ -137,14 +140,13 @@ async function getCashdeskBalance(
       confirm,
       dt: formattedDt,
       sign_preview: sign.substring(0, 20) + '...',
-      auth_header_preview: authHeader.substring(0, 20) + '...',
       step1: step1,
       step2: step2,
       sha1_preview: sha1.substring(0, 20) + '...',
       md5Hash_preview: md5Hash.substring(0, 20) + '...',
       headers: {
         sign: sign.substring(0, 20) + '...',
-        Authorization: 'Basic ...',
+        ...(casino !== '888starz' ? { Authorization: 'Basic ...' } : {}),
       },
     }
     
@@ -347,12 +349,38 @@ export async function getPlatformLimits(): Promise<
   const limits: Array<{ key: string; name: string; limit: number }> = []
 
   try {
+    // Импортируем prisma для получения конфигурации из БД
+    const { prisma } = await import('./prisma')
+
     // 1xbet - использует mob-cash API, баланс недоступен через старый API
     // Используем -1 как специальное значение для "недоступно"
     limits.push({ key: '1xbet', name: '1xbet', limit: -1 })
 
-    // 888starz - использует Cashdesk API
-    const starzCfg = CASHDESK_CONFIG['888starz']
+    // 888starz - использует Cashdesk API, получаем конфигурацию из БД
+    let starzCfg: CashdeskConfig | null = null
+    
+    // Сначала пробуем получить из БД
+    const starzSetting = await prisma.botConfiguration.findFirst({
+      where: { key: '888starz_api_config' },
+    })
+
+    if (starzSetting) {
+      const config = typeof starzSetting.value === 'string' ? JSON.parse(starzSetting.value) : starzSetting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        starzCfg = {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: parseInt(String(config.cashdeskid)),
+        }
+      }
+    }
+
+    // Если не нашли в БД, используем переменные окружения
+    if (!starzCfg) {
+      starzCfg = CASHDESK_CONFIG['888starz']
+    }
+
     if (starzCfg && starzCfg.cashdeskid > 0) {
       const starzBal = await getCashdeskBalance('888starz', starzCfg)
       console.log(`📊 888starz result: balance=${starzBal.balance}, limit=${starzBal.limit}`)
@@ -361,9 +389,30 @@ export async function getPlatformLimits(): Promise<
       limits.push({ key: '888starz', name: '888starz', limit: 0 })
     }
 
-    // Melbet
-    const melbetCfg = CASHDESK_CONFIG.melbet
-    if (melbetCfg.cashdeskid > 0) {
+    // Melbet - получаем конфигурацию из БД
+    let melbetCfg: CashdeskConfig | null = null
+    
+    const melbetSetting = await prisma.botConfiguration.findFirst({
+      where: { key: 'melbet_api_config' },
+    })
+
+    if (melbetSetting) {
+      const config = typeof melbetSetting.value === 'string' ? JSON.parse(melbetSetting.value) : melbetSetting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        melbetCfg = {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: parseInt(String(config.cashdeskid)),
+        }
+      }
+    }
+
+    if (!melbetCfg) {
+      melbetCfg = CASHDESK_CONFIG.melbet
+    }
+
+    if (melbetCfg && melbetCfg.cashdeskid > 0) {
       const melbetBal = await getCashdeskBalance('melbet', melbetCfg)
       console.log(`📊 Melbet result: balance=${melbetBal.balance}, limit=${melbetBal.limit}`)
       limits.push({ key: 'melbet', name: 'Melbet', limit: melbetBal.limit })
@@ -374,8 +423,29 @@ export async function getPlatformLimits(): Promise<
     // 1WIN (пока нет API)
     limits.push({ key: '1win', name: '1WIN', limit: 0 })
 
-    // Winwin
-    const winwinCfg = CASHDESK_CONFIG.winwin
+    // Winwin - получаем конфигурацию из БД
+    let winwinCfg: CashdeskConfig | null = null
+    
+    const winwinSetting = await prisma.botConfiguration.findFirst({
+      where: { key: 'winwin_api_config' },
+    })
+
+    if (winwinSetting) {
+      const config = typeof winwinSetting.value === 'string' ? JSON.parse(winwinSetting.value) : winwinSetting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        winwinCfg = {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: parseInt(String(config.cashdeskid)),
+        }
+      }
+    }
+
+    if (!winwinCfg) {
+      winwinCfg = CASHDESK_CONFIG.winwin
+    }
+
     if (winwinCfg && winwinCfg.cashdeskid > 0) {
       const winwinBal = await getCashdeskBalance('winwin', winwinCfg)
       console.log(`📊 Winwin result: balance=${winwinBal.balance}, limit=${winwinBal.limit}`)
