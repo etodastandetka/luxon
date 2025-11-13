@@ -413,10 +413,47 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
 }
 
 /**
+ * Проверка таймаутов автопополнения
+ * Вызывается периодически для проверки заявок, которые не были обработаны в течение 1 минуты
+ */
+async function checkTimeouts(): Promise<void> {
+  try {
+    // Вызываем API для проверки таймаутов
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    const response = await fetch(`${baseUrl}/api/auto-deposit/check-timeout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success && data.data.updated > 0) {
+        console.log(`⏰ Timeout check: ${data.data.updated} requests changed to profile-1`)
+      }
+    }
+  } catch (error: any) {
+    // Игнорируем ошибки проверки таймаутов, чтобы не прерывать работу watcher
+    console.warn('⚠️ Timeout check error:', error.message)
+  }
+}
+
+/**
  * Запуск watcher в режиме реального времени (IDLE)
  */
 export async function startWatcher(): Promise<void> {
   console.log('🚀 Starting Email Watcher (IDLE mode - real-time)...')
+
+  // Запускаем периодическую проверку таймаутов каждую минуту
+  const timeoutInterval = setInterval(() => {
+    checkTimeouts().catch((error) => {
+      console.warn('⚠️ Timeout check failed:', error.message)
+    })
+  }, 60000) // Каждую минуту
+
+  // Проверяем таймауты сразу при запуске
+  checkTimeouts().catch((error) => {
+    console.warn('⚠️ Initial timeout check failed:', error.message)
+  })
 
   while (true) {
     try {

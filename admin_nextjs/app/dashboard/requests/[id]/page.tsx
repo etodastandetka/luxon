@@ -325,6 +325,50 @@ export default function RequestDetailPage() {
     return `${day}.${month}.${year} • ${hours}:${minutes}`
   }
 
+  // Функция для определения типа транзакции (Автопополнение/profile-1)
+  const getTransactionType = (status: string, statusDetail: string | null, requestType: string) => {
+    if (requestType === 'withdraw') {
+      return statusDetail?.match(/profile-\d+/)?.[0] || 'profile-1'
+    }
+    
+    if (requestType === 'deposit') {
+      // Автопополнение - если статус autodeposit_success или statusDetail указывает на автопополнение
+      if (status === 'autodeposit_success' || statusDetail?.includes('autodeposit')) {
+        return 'Автопополнение'
+      }
+      
+      // Проверяем наличие profile-* в statusDetail
+      if (statusDetail?.match(/profile-\d+/)) {
+        return statusDetail.match(/profile-(\d+)/)?.[0] || 'profile-1'
+      }
+      
+      // Для всех остальных депозитов показываем profile-1
+      return 'profile-1'
+    }
+    
+    return requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+  }
+
+  // Функция для определения состояния (Успешно/Отклонено/Ожидает)
+  const getStatusState = (status: string) => {
+    if (status === 'completed' || status === 'approved' || status === 'auto_completed' || status === 'autodeposit_success') {
+      return 'Успешно'
+    }
+    if (status === 'rejected' || status === 'declined') {
+      return 'Отклонено'
+    }
+    if (status === 'pending') {
+      return 'Ожидает'
+    }
+    if (status === 'deferred') {
+      return 'Отложено'
+    }
+    if (status === 'manual' || status === 'awaiting_manual') {
+      return 'Ручная'
+    }
+    return status
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -455,14 +499,23 @@ export default function RequestDetailPage() {
 
             // Если пополнение успешно, обновляем заявку
             if (depositData.data?.request) {
-              // Проверяем, есть ли привязанный платеж
-              const hasLinkedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
+              // Определяем тип транзакции для сохранения в statusDetail
+              // Если был автопополнение (status = autodeposit_success или statusDetail содержит autodeposit)
+              // и админ подтверждает вручную - это все равно profile-1
+              // Если был profile-1 - сохраняем profile-1
+              let statusDetail = 'profile-1'
               
-              // Если подтверждаем через привязанный платеж - устанавливаем "успешно" (completed без statusDetail)
-              // Иначе - profile-1
-              const statusDetail = hasLinkedPayment ? null : 'profile-1'
+              // Проверяем текущий тип
+              const currentType = getTransactionType(request.status, request.statusDetail || request.status_detail, request.requestType)
+              if (currentType === 'Автопополнение') {
+                // Если автопополнение не сработало и админ подтверждает - это profile-1
+                statusDetail = 'profile-1'
+              } else if (currentType?.match(/profile-\d+/)) {
+                // Сохраняем текущий profile-*
+                statusDetail = currentType
+              }
               
-              // Обновляем статус заявки на completed
+              // Обновляем статус заявки на completed с сохранением типа
               const updateResponse = await fetch(`/api/requests/${request.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -514,8 +567,7 @@ export default function RequestDetailPage() {
               localStorage.setItem('request_updated', request.id.toString())
               localStorage.removeItem('request_updated')
               
-              const statusMessage = hasLinkedPayment ? 'Баланс игрока пополнен. Заявка подтверждена успешно.' : 'Баланс игрока пополнен. Заявка подтверждена.'
-              alert(statusMessage)
+              alert('Баланс игрока пополнен. Заявка подтверждена.')
               return
             }
           } catch (depositError) {
@@ -525,11 +577,32 @@ export default function RequestDetailPage() {
           }
         }
 
-        // Для остальных случаев просто обновляем статус
+        // Для остальных случаев обновляем статус с сохранением типа
+        // Определяем текущий тип для сохранения в statusDetail
+        let statusDetail = request.statusDetail || request.status_detail
+        
+        // Если отклоняем или подтверждаем, сохраняем тип
+        if (newStatus === 'rejected' || newStatus === 'completed' || newStatus === 'approved') {
+          const currentType = getTransactionType(request.status, request.statusDetail || request.status_detail, request.requestType)
+          if (currentType === 'Автопополнение') {
+            // Если автопополнение отклонено/подтверждено вручную - это profile-1
+            statusDetail = 'profile-1'
+          } else if (currentType?.match(/profile-\d+/)) {
+            // Сохраняем текущий profile-*
+            statusDetail = currentType
+          } else {
+            // По умолчанию profile-1
+            statusDetail = 'profile-1'
+          }
+        }
+        
         const response = await fetch(`/api/requests/${request.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus }),
+          body: JSON.stringify({ 
+            status: newStatus,
+            statusDetail: statusDetail
+          }),
         })
 
         // Проверяем Content-Type перед парсингом JSON
@@ -799,9 +872,16 @@ export default function RequestDetailPage() {
               </svg>
             </button>
           </div>
-          <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${getStatusColor(request.status)}`}>
-            <div className="w-2 h-2 rounded-full bg-current"></div>
-            <span className="text-xs font-medium">{getStatusLabel(request.status)}</span>
+          <div className="flex items-center space-x-2">
+            {/* Бейдж типа транзакции */}
+            <div className="px-3 py-1 rounded-full bg-blue-500 text-white">
+              <span className="text-xs font-medium">{getTransactionType(request.status, request.statusDetail || request.status_detail, request.requestType)}</span>
+            </div>
+            {/* Бейдж состояния */}
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${getStatusColor(request.status)}`}>
+              <div className="w-2 h-2 rounded-full bg-current"></div>
+              <span className="text-xs font-medium">{getStatusState(request.status)}</span>
+            </div>
           </div>
         </div>
 

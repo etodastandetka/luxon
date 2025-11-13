@@ -85,6 +85,50 @@ export default function RequestsPage() {
     }
   }, [fetchRequests, filter])
 
+  // Функция для определения типа транзакции (Автопополнение/profile-1)
+  const getTransactionType = (status: string, statusDetail: string | null, requestType: string) => {
+    if (requestType === 'withdraw') {
+      return statusDetail?.match(/profile-\d+/)?.[0] || 'profile-1'
+    }
+    
+    if (requestType === 'deposit') {
+      // Автопополнение - если статус autodeposit_success или statusDetail указывает на автопополнение
+      if (status === 'autodeposit_success' || statusDetail?.includes('autodeposit')) {
+        return 'Автопополнение'
+      }
+      
+      // Проверяем наличие profile-* в statusDetail
+      if (statusDetail?.match(/profile-\d+/)) {
+        return statusDetail.match(/profile-(\d+)/)?.[0] || 'profile-1'
+      }
+      
+      // Для всех остальных депозитов показываем profile-1
+      return 'profile-1'
+    }
+    
+    return requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+  }
+
+  // Функция для определения состояния (Успешно/Отклонено/Ожидает)
+  const getStatusState = (status: string) => {
+    if (status === 'completed' || status === 'approved' || status === 'auto_completed' || status === 'autodeposit_success') {
+      return 'Успешно'
+    }
+    if (status === 'rejected' || status === 'declined') {
+      return 'Отклонено'
+    }
+    if (status === 'pending') {
+      return 'Ожидает'
+    }
+    if (status === 'deferred') {
+      return 'Отложено'
+    }
+    if (status === 'manual' || status === 'awaiting_manual') {
+      return 'Ручная'
+    }
+    return status
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -215,7 +259,16 @@ export default function RequestsPage() {
                         request.status
                       )}`}
                     >
-                      {getStatusLabel(request.status)}
+                      <span className="inline-flex items-center gap-2">
+                        {/* Бейдж типа транзакции */}
+                        <span className="px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap bg-blue-500 text-white">
+                          {getTransactionType(request.status, (request as any).status_detail || null, request.requestType)}
+                        </span>
+                        {/* Бейдж состояния */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${getStatusColor(request.status)}`}>
+                          {getStatusState(request.status)}
+                        </span>
+                      </span>
                     </span>
                   </div>
                   <p className="text-xs text-gray-400">

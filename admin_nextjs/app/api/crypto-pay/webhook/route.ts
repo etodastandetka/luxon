@@ -205,11 +205,12 @@ export async function POST(request: NextRequest) {
           }
           
           // Обновляем статус заявки на успешное автопополнение
+          // statusDetail = null означает "Автопополнение • Успешно"
           await prisma.request.update({
             where: { id: botRequest.id },
             data: {
               status: 'autodeposit_success',
-              statusDetail: 'crypto_auto_deposit_success',
+              statusDetail: null,
               processedAt: new Date(),
               updatedAt: new Date()
             }
