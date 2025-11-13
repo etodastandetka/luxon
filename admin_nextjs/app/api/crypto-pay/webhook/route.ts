@@ -172,20 +172,37 @@ export async function POST(request: NextRequest) {
           // Если есть сумма в сомах из payload, используем её
           amountInKgs = amount
         } else {
-          // Иначе конвертируем USDT в сомы по текущему курсу
+          // Иначе конвертируем USDT в сомы по текущему курсу из API
           try {
             const rates = await getExchangeRates()
+            if (!rates || rates.length === 0) {
+              throw new Error('No exchange rates received from API')
+            }
+            
+            // Ищем прямой курс USDT -> KGS (приоритет)
+            const usdtToKgs = rates.find(r => r.source === 'USDT' && r.target === 'KGS' && r.is_valid)
             const usdtToUsd = rates.find(r => r.source === 'USDT' && r.target === 'USD' && r.is_valid)
             const usdToKgs = rates.find(r => r.source === 'USD' && r.target === 'KGS' && r.is_valid)
             
-            const usdtToUsdRate = usdtToUsd ? parseFloat(usdtToUsd.rate) : 1
-            const usdToKgsRate = usdToKgs ? parseFloat(usdToKgs.rate) : 87.41 // Более актуальный fallback
-            
-            amountInKgs = amountUsdt * usdtToUsdRate * usdToKgsRate
+            if (usdtToKgs) {
+              // Используем прямой курс USDT -> KGS
+              const usdtToKgsRate = parseFloat(usdtToKgs.rate)
+              amountInKgs = amountUsdt * usdtToKgsRate
+              console.log('✅ Using direct USDT -> KGS rate from API:', usdtToKgsRate)
+            } else if (usdtToUsd && usdToKgs) {
+              // Конвертируем через USD: USDT -> USD -> KGS
+              const usdtToUsdRate = parseFloat(usdtToUsd.rate)
+              const usdToKgsRate = parseFloat(usdToKgs.rate)
+              amountInKgs = amountUsdt * usdtToUsdRate * usdToKgsRate
+              console.log('✅ Using converted rate USDT -> USD -> KGS from API:', usdtToUsdRate, '*', usdToKgsRate)
+            } else {
+              throw new Error('Cannot calculate USDT -> KGS: missing exchange rates')
+            }
           } catch (error) {
-            console.error('Error converting USDT to KGS:', error)
-            // Fallback: используем сумму из заявки
+            console.error('❌ Error converting USDT to KGS:', error)
+            // Если не удалось получить курс, используем сумму из заявки (она уже в сомах)
             amountInKgs = botRequest.amount ? parseFloat(botRequest.amount.toString()) : 0
+            console.warn('⚠️ Using amount from request as fallback:', amountInKgs)
           }
         }
 

@@ -97,31 +97,37 @@ export async function POST(request: NextRequest) {
       (rate) => rate.source === 'USDT' && rate.target === 'USD' && rate.is_valid
     )
 
-    // Конвертируем USD -> KGS для пополнения в казино
-    let usdToKgsRate: number
-    if (usdToKgs) {
-      usdToKgsRate = parseFloat(usdToKgs.rate)
-      console.log('✅ Using USD -> KGS rate from API:', usdToKgsRate)
-    } else {
-      // Fallback: более актуальный курс (87.41 по данным на ноябрь 2024)
-      usdToKgsRate = 87.41
-      console.warn('⚠️ USD -> KGS rate not found, using fallback:', usdToKgsRate)
+    // Получаем реальный курс USD -> KGS из API (обязательно)
+    if (!usdToKgs) {
+      console.error('❌ USD -> KGS rate not found in API response')
+      return NextResponse.json(
+        { error: 'USD -> KGS exchange rate not available. Please check Crypto Bot API configuration.' },
+        { status: 500 }
+      )
     }
+    const usdToKgsRate = parseFloat(usdToKgs.rate)
+    console.log('✅ Using USD -> KGS rate from API:', usdToKgsRate)
     const amountKgs = amountUsdNum * usdToKgsRate
 
-    // Конвертируем USD -> USDT для оплаты
+    // Конвертируем USD -> USDT для оплаты (используя реальные курсы из API)
     let amountUsdt: number
-    if (usdtToKgs && usdToKgs) {
+    if (usdtToKgs) {
       // Если есть прямой курс USDT -> KGS, используем его для обратной конвертации
       const usdtToKgsRate = parseFloat(usdtToKgs.rate)
       amountUsdt = amountKgs / usdtToKgsRate
+      console.log('✅ Using direct USDT -> KGS rate for conversion:', usdtToKgsRate)
     } else if (usdtToUsd) {
-      // Используем курс USDT -> USD
+      // Используем курс USDT -> USD из API
       const usdtToUsdRate = parseFloat(usdtToUsd.rate)
       amountUsdt = amountUsdNum / usdtToUsdRate
+      console.log('✅ Using USDT -> USD rate for conversion:', usdtToUsdRate)
     } else {
-      // Fallback: 1 USDT = 1 USD
-      amountUsdt = amountUsdNum
+      // Если нет курса для конвертации, возвращаем ошибку
+      console.error('❌ Cannot convert USD to USDT: missing exchange rates')
+      return NextResponse.json(
+        { error: 'Cannot convert USD to USDT. Missing exchange rates from Crypto Bot API.' },
+        { status: 500 }
+      )
     }
 
     // Создаем invoice через библиотеку @koo0ki/send
