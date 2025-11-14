@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'bot_simple',
       cwd: '/var/www/luxon/bot_simple',
-      script: 'python3',
+      script: 'venv/bin/python',
       args: 'bot.py',
       interpreter: 'none',
       env: {

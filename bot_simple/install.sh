@@ -9,20 +9,32 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# Проверяем наличие pip
-if ! command -v pip3 &> /dev/null; then
-    echo "❌ pip3 не найден. Установите pip3."
-    exit 1
+# Переходим в директорию скрипта
+cd "$(dirname "$0")"
+
+# Создаем виртуальное окружение, если его нет
+if [ ! -d "venv" ]; then
+    echo "📦 Создание виртуального окружения..."
+    python3 -m venv venv
 fi
+
+# Активируем виртуальное окружение
+echo "🔧 Активация виртуального окружения..."
+source venv/bin/activate
+
+# Обновляем pip
+echo "⬆️ Обновление pip..."
+pip install --upgrade pip
 
 # Устанавливаем зависимости
 echo "📦 Установка зависимостей из requirements.txt..."
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 
 echo "✅ Зависимости установлены!"
 echo ""
 echo "Для запуска бота используйте:"
-echo "  python3 bot.py"
+echo "  source venv/bin/activate"
+echo "  python bot.py"
 echo ""
 echo "Или через PM2:"
 echo "  pm2 start ecosystem.config.js"
