@@ -45,7 +45,7 @@ export default function WithdrawStep2() {
   }
 
   const handleBack = () => {
-    router.push('/withdraw/step1')
+    router.push('/withdraw/step0')
   }
 
   const translations = {

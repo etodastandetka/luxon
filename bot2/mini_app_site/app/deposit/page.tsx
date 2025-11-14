@@ -6,8 +6,8 @@ export default function DepositPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Перенаправляем на первый шаг
-    router.push('/deposit/step1')
+    // Перенаправляем на первый шаг (step0 - выбор способа оплаты)
+    router.push('/deposit/step0')
   }, [router])
 
   return (
