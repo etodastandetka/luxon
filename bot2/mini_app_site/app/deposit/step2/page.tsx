@@ -11,10 +11,11 @@ export default function DepositStep2() {
     const router = useRouter()
 
   useEffect(() => {
-    // Проверяем, что пользователь прошел первый шаг
+    // Проверяем, что пользователь прошел предыдущие шаги
     const bookmaker = localStorage.getItem('deposit_bookmaker')
-    if (!bookmaker) {
-      router.push('/deposit/step1')
+    const paymentType = localStorage.getItem('deposit_payment_type')
+    if (!bookmaker || !paymentType) {
+      router.push('/deposit/step0')
       return
     }
     
@@ -51,7 +52,7 @@ export default function DepositStep2() {
     const bookmaker = localStorage.getItem('deposit_bookmaker')
     if (!bookmaker) {
       alert('Ошибка: не выбрано казино')
-      router.push('/deposit/step1')
+      router.push('/deposit/step0')
       return
     }
     

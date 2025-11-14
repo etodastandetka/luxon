@@ -21,8 +21,8 @@ export default function DepositStep3() {
     const userId = localStorage.getItem('deposit_user_id')
     const savedPaymentType = localStorage.getItem('deposit_payment_type') as 'bank' | 'crypto' || 'bank'
     
-    if (!bookmaker || !userId) {
-      router.push('/deposit/step1')
+    if (!bookmaker || !userId || !savedPaymentType) {
+      router.push('/deposit/step0')
       return
     }
     
