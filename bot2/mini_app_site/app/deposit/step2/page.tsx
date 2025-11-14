@@ -15,9 +15,10 @@ export default function DepositStep2() {
     const bookmaker = localStorage.getItem('deposit_bookmaker')
     if (!bookmaker) {
       router.push('/deposit/step1')
+      return
     }
     
-    // Автоматически заполняем ID из cookies
+    // Автоматически заполняем ID из cookies для конкретного казино
     const getCookie = (name: string) => {
       const value = `; ${document.cookie}`
       const parts = value.split(`; ${name}=`)
@@ -25,10 +26,18 @@ export default function DepositStep2() {
       return null
     }
     
-    const savedUserId = getCookie('user_id')
+    // Загружаем ID для конкретного казино
+    const cookieName = `user_id_${bookmaker}`
+    const savedUserId = getCookie(cookieName)
+    
+    // Также проверяем localStorage для обратной совместимости
+    const localStorageKey = `deposit_user_id_${bookmaker}`
+    const savedUserIdFromStorage = localStorage.getItem(localStorageKey)
     
     if (savedUserId) {
       setUserId(savedUserId)
+    } else if (savedUserIdFromStorage) {
+      setUserId(savedUserIdFromStorage)
     }
   }, [router])
 
@@ -38,13 +47,26 @@ export default function DepositStep2() {
       return
     }
     
-    // Сохраняем данные в localStorage и cookies
+    // Получаем выбранное казино
+    const bookmaker = localStorage.getItem('deposit_bookmaker')
+    if (!bookmaker) {
+      alert('Ошибка: не выбрано казино')
+      router.push('/deposit/step1')
+      return
+    }
+    
+    // Сохраняем данные в localStorage с привязкой к казино
+    const localStorageKey = `deposit_user_id_${bookmaker}`
+    localStorage.setItem(localStorageKey, userId)
+    
+    // Также сохраняем для обратной совместимости (старый формат)
     localStorage.setItem('deposit_user_id', userId)
     
-    // Сохраняем в cookies на 30 дней
+    // Сохраняем в cookies с привязкой к казино на 30 дней
     const expires = new Date()
     expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000))
-    document.cookie = `user_id=${userId}; expires=${expires.toUTCString()}; path=/`
+    const cookieName = `user_id_${bookmaker}`
+    document.cookie = `${cookieName}=${userId}; expires=${expires.toUTCString()}; path=/`
     
     // Переходим к следующему шагу
     router.push('/deposit/step3')

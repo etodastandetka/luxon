@@ -17,6 +17,29 @@ export default function WithdrawStep4() {
     const phone = localStorage.getItem('withdraw_phone')
     if (!bookmaker || !bank || !qrPhoto || !phone) {
       router.push('/withdraw/step0')
+      return
+    }
+    
+    // Автоматически заполняем ID из cookies для конкретного казино
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop()?.split(';').shift()
+      return null
+    }
+    
+    // Загружаем ID для конкретного казино
+    const cookieName = `user_id_${bookmaker}`
+    const savedUserId = getCookie(cookieName)
+    
+    // Также проверяем localStorage для обратной совместимости
+    const localStorageKey = `withdraw_user_id_${bookmaker}`
+    const savedUserIdFromStorage = localStorage.getItem(localStorageKey)
+    
+    if (savedUserId) {
+      setUserId(savedUserId)
+    } else if (savedUserIdFromStorage) {
+      setUserId(savedUserIdFromStorage)
     }
   }, [router])
 
@@ -26,8 +49,26 @@ export default function WithdrawStep4() {
       return
     }
     
-    // Сохраняем данные
+    // Получаем выбранное казино
+    const bookmaker = localStorage.getItem('withdraw_bookmaker')
+    if (!bookmaker) {
+      alert('Ошибка: не выбрано казино')
+      router.push('/withdraw/step0')
+      return
+    }
+    
+    // Сохраняем данные в localStorage с привязкой к казино
+    const localStorageKey = `withdraw_user_id_${bookmaker}`
+    localStorage.setItem(localStorageKey, userId)
+    
+    // Также сохраняем для обратной совместимости (старый формат)
     localStorage.setItem('withdraw_user_id', userId)
+    
+    // Сохраняем в cookies с привязкой к казино на 30 дней
+    const expires = new Date()
+    expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000))
+    const cookieName = `user_id_${bookmaker}`
+    document.cookie = `${cookieName}=${userId}; expires=${expires.toUTCString()}; path=/`
     
     // Переходим к следующему шагу
     router.push('/withdraw/step5')
