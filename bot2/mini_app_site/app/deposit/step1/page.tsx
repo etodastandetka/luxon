@@ -74,10 +74,10 @@ export default function DepositStep1() {
     if (typeof window !== 'undefined' && (window as any).pageTransitionExit) {
       (window as any).pageTransitionExit()
       setTimeout(() => {
-        router.push('/')
+        router.push('/deposit/step0')
       }, 250)
     } else {
-      router.push('/')
+      router.push('/deposit/step0')
     }
   }
 
