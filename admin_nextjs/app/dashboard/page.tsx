@@ -360,10 +360,12 @@ export default function DashboardPage() {
                           {request.accountId ? `ID: ${request.accountId}` : request.bookmaker || '-'}
                         </p>
                         
-                        {/* Тип транзакции */}
-                        <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
-                          {getTransactionType(request.status, (request as any).status_detail || null, request.requestType)}
-                        </span>
+                        {/* Кто обработал */}
+                        {processedBy && (
+                          <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
+                            {processedBy === 'автопополнение' ? 'автопополнение' : processedBy}
+                          </span>
+                        )}
                       </div>
                     </div>
 
