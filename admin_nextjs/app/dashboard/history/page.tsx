@@ -259,9 +259,10 @@ export default function HistoryPage() {
             const statusState = getStatusState(tx.status)
 
             return (
-              <div
+              <Link
                 key={tx.id}
-                className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 backdrop-blur-sm"
+                href={`/dashboard/requests/${tx.id}`}
+                className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm cursor-pointer"
               >
                 <div className="flex items-start justify-between">
                   {/* Левая часть: Аватар и информация о пользователе */}
@@ -328,7 +329,7 @@ export default function HistoryPage() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>
