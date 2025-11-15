@@ -2,6 +2,43 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 
+// Функция для отправки уведомления пользователю в Telegram
+async function sendTelegramNotification(userId: bigint, message: string) {
+  try {
+    const botToken = process.env.BOT_TOKEN
+    if (!botToken) {
+      console.warn('⚠️ BOT_TOKEN not configured, skipping Telegram notification')
+      return
+    }
+
+    const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+    const response = await fetch(sendMessageUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: userId.toString(),
+        text: message,
+        parse_mode: 'HTML',
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('❌ Failed to send Telegram notification:', errorData)
+      return
+    }
+
+    const data = await response.json()
+    if (data.ok) {
+      console.log(`✅ Telegram notification sent to user ${userId}`)
+    }
+  } catch (error) {
+    console.error('❌ Error sending Telegram notification:', error)
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -121,7 +158,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    requireAuth(request)
+    const authUser = requireAuth(request)
 
     const id = parseInt(params.id)
     const body = await request.json()
@@ -133,14 +170,55 @@ export async function PATCH(
       updateData.processedAt = body.processedAt ? new Date(body.processedAt) : null
     }
 
+    // Получаем заявку до обновления для отправки уведомления
+    const requestBeforeUpdate = await prisma.request.findUnique({
+      where: { id },
+    })
+
+    if (!requestBeforeUpdate) {
+      return NextResponse.json(
+        createApiResponse(null, 'Request not found'),
+        { status: 404 }
+      )
+    }
+
     if (body.status && ['completed', 'rejected', 'approved'].includes(body.status)) {
       updateData.processedAt = new Date()
+      // Сохраняем логин админа, который закрыл заявку
+      updateData.processedBy = authUser.username
     }
 
     const updatedRequest = await prisma.request.update({
       where: { id },
       data: updateData,
     })
+
+    // Отправляем уведомление пользователю в Telegram при изменении статуса
+    if (body.status && body.status !== requestBeforeUpdate.status) {
+      const amount = updatedRequest.amount ? parseFloat(updatedRequest.amount.toString()).toFixed(2) : '0.00'
+      const bookmaker = updatedRequest.bookmaker || 'казино'
+      
+      let notificationMessage = ''
+      
+      if (body.status === 'completed' || body.status === 'approved') {
+        notificationMessage = `✅ <b>Ваша заявка успешно обработана!</b>\n\n` +
+          `💰 Сумма: ${amount} сом\n` +
+          `🎰 Казино: ${bookmaker}\n\n` +
+          `Ваш баланс пополнен. Спасибо за использование нашего сервиса!`
+      } else if (body.status === 'rejected') {
+        notificationMessage = `❌ <b>Ваша заявка отклонена</b>\n\n` +
+          `💰 Сумма: ${amount} сом\n` +
+          `🎰 Казино: ${bookmaker}\n\n` +
+          `Пожалуйста, обратитесь в поддержку для уточнения деталей.`
+      }
+
+      if (notificationMessage) {
+        // Отправляем уведомление асинхронно, не блокируя ответ
+        sendTelegramNotification(updatedRequest.userId, notificationMessage).catch(err => {
+          console.error('Failed to send notification:', err)
+        })
+      }
+    }
 
     return NextResponse.json(
       createApiResponse({

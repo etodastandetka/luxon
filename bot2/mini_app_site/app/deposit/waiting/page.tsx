@@ -18,8 +18,8 @@ export default function DepositWaitingPage() {
       checking: 'Проверяем вашу оплату...',
       success: 'Успешная оплата!',
       successMessage: 'Ваш баланс пополнен!',
-      error: 'Ошибка',
-      errorMessage: 'Произошла ошибка при обработке платежа',
+      error: 'Заявка отклонена',
+      errorMessage: 'Ваша заявка отклонена. Пожалуйста, обратитесь в поддержку.',
       back: 'На главную',
       backHome: 'На главную'
     },
@@ -28,8 +28,8 @@ export default function DepositWaitingPage() {
       checking: 'Checking your payment...',
       success: 'Payment successful!',
       successMessage: 'Your balance has been topped up!',
-      error: 'Error',
-      errorMessage: 'An error occurred while processing the payment',
+      error: 'Request rejected',
+      errorMessage: 'Your request has been rejected. Please contact support.',
       back: 'Back',
       backHome: 'Back to home'
     },
@@ -38,8 +38,8 @@ export default function DepositWaitingPage() {
       checking: 'Төлөмүңүздү текшерип жатабыз...',
       success: 'Төлөм ийгиликтүү!',
       successMessage: 'Балансыңыз толукталды!',
-      error: 'Ката',
-      errorMessage: 'Төлөмдү иштетүүдө ката кетти',
+      error: 'Өтүнүч четке кагылды',
+      errorMessage: 'Кечиресиз, сиздин өтүнүчүңүз четке кагылды. Сураныч, колдоо кызматына кайрылыңыз.',
       back: 'Артка',
       backHome: 'Башкы бетке'
     },
@@ -48,8 +48,8 @@ export default function DepositWaitingPage() {
       checking: 'To\'lovingizni tekshiryapmiz...',
       success: 'To\'lov muvaffaqiyatli!',
       successMessage: 'Balansingiz to\'ldirildi!',
-      error: 'Xatolik',
-      errorMessage: 'To\'lovni qayta ishlashda xatolik yuz berdi',
+      error: 'So\'rov rad etildi',
+      errorMessage: 'Afsuski, so\'rovingiz rad etildi. Iltimos, qo\'llab-quvvatlash xizmatiga murojaat qiling.',
       back: 'Orqaga',
       backHome: 'Bosh sahifaga'
     }
@@ -72,18 +72,17 @@ export default function DepositWaitingPage() {
   useEffect(() => {
     if (!requestId) return
 
-    // Начинаем проверку статуса
+    // Начинаем проверку статуса сразу при загрузке
     checkPaymentStatus()
 
-    // Проверяем статус каждые 5 секунд
+    // Проверяем статус каждые 3 секунды для более быстрого обновления
     const interval = setInterval(() => {
-      if (status === 'waiting') {
-        checkPaymentStatus()
-      }
-    }, 5000)
+      checkPaymentStatus()
+    }, 3000)
 
-      return () => clearInterval(interval)
-  }, [requestId, status])
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId])
 
   const checkPaymentStatus = async () => {
     if (!requestId || status !== 'waiting') return
@@ -103,9 +102,15 @@ export default function DepositWaitingPage() {
       
       if (data.success && data.data) {
         const requestStatus = data.data.status
+        const processedBy = data.data.processedBy
 
-        // Проверяем успешные статусы
-        if (['completed', 'approved', 'auto_completed', 'autodeposit_success'].includes(requestStatus)) {
+        // Проверяем успешные статусы (включая автопополнение)
+        // Автопополнение: статус completed с processedBy = 'автопополнение'
+        // Ручное подтверждение: статус completed, approved, auto_completed, autodeposit_success
+        const isAutoDeposit = requestStatus === 'completed' && processedBy === 'автопополнение'
+        const isManualCompleted = ['completed', 'approved', 'auto_completed', 'autodeposit_success'].includes(requestStatus)
+        
+        if (isAutoDeposit || isManualCompleted) {
           setStatus('success')
           setShowConfetti(true)
           
@@ -264,16 +269,19 @@ export default function DepositWaitingPage() {
         )}
 
         {status === 'error' && (
-          <div className="text-center space-y-6 max-w-md">
-            <div className="w-32 h-32 mx-auto bg-red-500 rounded-full flex items-center justify-center">
-              <svg className="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+          <div className="text-center space-y-6 max-w-md animate-fade-in">
+            {/* Иконка отклонения */}
+            <div className="relative">
+              <div className="w-32 h-32 mx-auto bg-red-500 rounded-full flex items-center justify-center animate-scale-in">
+                <svg className="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold text-red-400">{t.error}</h1>
-              <p className="text-white/70 text-lg">{t.errorMessage}</p>
+              <h1 className="text-4xl font-bold text-red-400">{t.error}</h1>
+              <p className="text-white text-xl">{t.errorMessage}</p>
             </div>
 
             <button

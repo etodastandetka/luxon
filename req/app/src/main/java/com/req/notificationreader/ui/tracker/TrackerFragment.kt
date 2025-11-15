@@ -13,6 +13,7 @@ import com.req.notificationreader.adapter.PaymentAdapter
 import com.req.notificationreader.database.AppDatabase
 import com.req.notificationreader.databinding.FragmentTrackerBinding
 import com.req.notificationreader.model.PaymentNotification
+import com.req.notificationreader.util.SharedPreferencesHelper
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -23,6 +24,7 @@ class TrackerFragment : Fragment() {
     
     private lateinit var database: AppDatabase
     private lateinit var adapter: PaymentAdapter
+    private lateinit var prefsHelper: SharedPreferencesHelper
     
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -45,12 +47,24 @@ class TrackerFragment : Fragment() {
         
         try {
             database = AppDatabase.getDatabase(requireContext())
+            prefsHelper = SharedPreferencesHelper(requireContext())
             setupRecyclerView()
+            setupServiceToggle()
             checkNotificationPermission()
             observePayments()
         } catch (e: Exception) {
             android.util.Log.e("TrackerFragment", "Ошибка инициализации", e)
             Toast.makeText(context, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Обновляем состояние переключателя при возврате на экран
+        if (::prefsHelper.isInitialized && _binding != null) {
+            val isEnabled = prefsHelper.isServiceEnabled()
+            binding.serviceToggleSwitch.isChecked = isEnabled
+            updateServiceStatusText(isEnabled)
         }
     }
     
@@ -60,6 +74,48 @@ class TrackerFragment : Fragment() {
         }
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
+    }
+    
+    private fun setupServiceToggle() {
+        // Устанавливаем начальное состояние
+        val isEnabled = prefsHelper.isServiceEnabled()
+        binding.serviceToggleSwitch.isChecked = isEnabled
+        updateServiceStatusText(isEnabled)
+        
+        // Обработчик переключения
+        binding.serviceToggleSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefsHelper.setServiceEnabled(isChecked)
+            updateServiceStatusText(isChecked)
+            
+            // Отправляем broadcast для обновления уведомления в сервисе
+            val intent = android.content.Intent("com.req.notificationreader.SERVICE_STATE_CHANGED")
+            intent.putExtra("enabled", isChecked)
+            requireContext().sendBroadcast(intent)
+            
+            val message = if (isChecked) {
+                "Отслеживание включено. Приложение будет получать и отправлять уведомления."
+            } else {
+                "Отслеживание отключено. Приложение не будет получать и отправлять уведомления."
+            }
+            
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            android.util.Log.d("TrackerFragment", "Сервис ${if (isChecked) "включен" else "отключен"}")
+        }
+    }
+    
+    private fun updateServiceStatusText(isEnabled: Boolean) {
+        binding.serviceStatusText.text = if (isEnabled) {
+            "Включено"
+        } else {
+            "Отключено"
+        }
+        binding.serviceStatusText.setTextColor(
+            if (isEnabled) {
+                requireContext().getColor(com.req.notificationreader.R.color.status_success)
+            } else {
+                requireContext().getColor(com.req.notificationreader.R.color.text_secondary_light)
+            }
+        )
     }
     
     private fun showNotificationDetails(payment: PaymentNotification) {

@@ -2,6 +2,43 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 
+// Функция для отправки уведомления пользователю в Telegram
+async function sendTelegramNotification(userId: bigint, message: string) {
+  try {
+    const botToken = process.env.BOT_TOKEN
+    if (!botToken) {
+      console.warn('⚠️ BOT_TOKEN not configured, skipping Telegram notification')
+      return
+    }
+
+    const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+    const response = await fetch(sendMessageUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: userId.toString(),
+        text: message,
+        parse_mode: 'HTML',
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('❌ Failed to send Telegram notification:', errorData)
+      return
+    }
+
+    const data = await response.json()
+    if (data.ok) {
+      console.log(`✅ Telegram notification sent to user ${userId}`)
+    }
+  } catch (error) {
+    console.error('❌ Error sending Telegram notification:', error)
+  }
+}
+
 /**
  * API endpoint для ручного запуска сопоставления платежей
  * POST /api/auto-deposit/match
@@ -143,15 +180,28 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     }
 
     // Успешное пополнение - обновляем статус заявки
-    // statusDetail = null означает "Автопополнение • Успешно"
-    await prisma.request.update({
+    // processedBy = "автопополнение" означает что заявка закрыта автоматически
+    const updatedRequest = await prisma.request.update({
       where: { id: request.id },
       data: {
-        status: 'autodeposit_success',
+        status: 'completed',
         statusDetail: null,
+        processedBy: 'автопополнение' as any,
         processedAt: new Date(),
         updatedAt: new Date(),
-      },
+      } as any,
+    })
+
+    // Отправляем уведомление пользователю о успешном автопополнении
+    const amount = updatedRequest.amount ? parseFloat(updatedRequest.amount.toString()).toFixed(2) : '0.00'
+    const bookmaker = updatedRequest.bookmaker || 'казино'
+    const notificationMessage = `✅ <b>Ваша заявка успешно обработана!</b>\n\n` +
+      `💰 Сумма: ${amount} сом\n` +
+      `🎰 Казино: ${bookmaker}\n\n` +
+      `Ваш баланс пополнен. Спасибо за использование нашего сервиса!`
+    
+    sendTelegramNotification(updatedRequest.userId, notificationMessage).catch(err => {
+      console.error('Failed to send notification:', err)
     })
 
     return {
@@ -159,17 +209,9 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
       success: true,
     }
   } catch (error: any) {
-    // В случае ошибки API казино, ставим статус profile-5
-    await prisma.request.update({
-      where: { id: request.id },
-      data: {
-        status: 'profile-5',
-        statusDetail: 'api_error',
-        processedAt: new Date(),
-        updatedAt: new Date(),
-      },
-    })
-
+    // В случае ошибки API казино, оставляем статус pending для ручной обработки
+    // processedBy не устанавливаем, т.к. заявка не закрыта
+    console.error(`❌ Auto-deposit failed for request ${request.id}:`, error)
     throw error
   }
 }

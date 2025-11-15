@@ -25,5 +25,23 @@ class SharedPreferencesHelper(context: Context) {
     fun getBaseUrl(): String {
         return prefs.getString("base_url", "http://localhost:3001") ?: "http://localhost:3001"
     }
+    
+    fun saveAdminApiUrl(url: String) {
+        prefs.edit().putString("admin_api_url", url).apply()
+    }
+    
+    fun getAdminApiUrl(): String {
+        // Используем значение из SharedPreferences, если есть, иначе из DatabaseConfig
+        return prefs.getString("admin_api_url", null) 
+            ?: com.req.notificationreader.util.DatabaseConfig.ADMIN_API_BASE_URL
+    }
+    
+    fun setServiceEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("service_enabled", enabled).apply()
+    }
+    
+    fun isServiceEnabled(): Boolean {
+        return prefs.getBoolean("service_enabled", true) // По умолчанию включено
+    }
 }
 

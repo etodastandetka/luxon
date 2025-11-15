@@ -60,28 +60,12 @@ export default function HistoryPage() {
     return `${day}.${month}.${year} • ${hours}:${minutes}`
   }
 
-  // Функция для определения типа транзакции (Автопополнение/profile-1) по статусу
-  const getTransactionTypeFromStatus = (status: string, statusDetail: string | null, requestType: string) => {
-    if (requestType === 'withdraw') {
-      return statusDetail?.match(/profile-\d+/)?.[0] || 'profile-1'
+  // Функция для определения кто обработал транзакцию (логин админа или "автопополнение")
+  const getProcessedBy = (processedBy: string | null | undefined) => {
+    if (!processedBy) {
+      return null
     }
-    
-    if (requestType === 'deposit') {
-      // Автопополнение - если статус autodeposit_success или statusDetail указывает на автопополнение
-      if (status === 'autodeposit_success' || statusDetail?.includes('autodeposit')) {
-        return 'Автопополнение'
-      }
-      
-      // Проверяем наличие profile-* в statusDetail
-      if (statusDetail?.match(/profile-\d+/)) {
-        return statusDetail.match(/profile-(\d+)/)?.[0] || 'profile-1'
-      }
-      
-      // Для всех остальных депозитов показываем profile-1
-      return 'profile-1'
-    }
-    
-    return requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+    return processedBy === 'автопополнение' ? 'автопополнение' : processedBy
   }
 
   // Функция для определения состояния (Успешно/Отклонено/Ожидает)
@@ -130,28 +114,14 @@ export default function HistoryPage() {
       return '-'
     }
     
-    // Для выводов может быть profile-*
-    if (tx.type === 'withdraw') {
-      return tx.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
+    // Используем processedBy если доступно
+    const processedBy = getProcessedBy((tx as any).processedBy)
+    if (processedBy) {
+      return processedBy === 'автопополнение' ? 'автопополнение' : processedBy
     }
     
-    // Для депозитов
-    if (tx.type === 'deposit') {
-      // Авто пополнение - только если статус явно указывает на автопополнение
-      if (tx.status === 'autodeposit_success' || tx.status === 'auto_completed' || tx.status_detail?.includes('autodeposit')) {
-        return 'Авто пополнение'
-      }
-      
-      // Проверяем наличие profile-* в status_detail
-      if (tx.status_detail?.match(/profile-\d+/)) {
-        return tx.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
-      }
-      
-      // Для всех остальных депозитов (включая отклоненные) показываем profile-1
-      return 'profile-1'
-    }
-    
-    return tx.type === 'deposit' ? 'Пополнение' : 'Вывод'
+    // Если processedBy нет, показываем "-"
+    return '-'
   }
 
   const getBookmakerName = (bookmaker: string | null) => {
@@ -283,8 +253,9 @@ export default function HistoryPage() {
           {transactions.map((tx) => {
             const isDeposit = tx.type === 'deposit'
             const statusInfo = getStatusLabel(tx.status, tx.status_detail)
-            const transactionType = getTransactionType(tx)
-            const transactionTypeLabel = getTransactionTypeFromStatus(tx.status, tx.status_detail, tx.type)
+            const processedBy = getProcessedBy((tx as any).processedBy)
+            const transactionType = processedBy ? (processedBy === 'автопополнение' ? 'автопополнение' : processedBy) : '-'
+            const transactionTypeLabel = processedBy ? (processedBy === 'автопополнение' ? 'автопополнение' : processedBy) : '-'
             const statusState = getStatusState(tx.status)
 
             return (

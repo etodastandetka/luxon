@@ -2,6 +2,43 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 
+// Функция для отправки уведомления пользователю в Telegram
+async function sendTelegramNotification(userId: bigint, message: string) {
+  try {
+    const botToken = process.env.BOT_TOKEN
+    if (!botToken) {
+      console.warn('⚠️ BOT_TOKEN not configured, skipping Telegram notification')
+      return
+    }
+
+    const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+    const response = await fetch(sendMessageUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: userId.toString(),
+        text: message,
+        parse_mode: 'HTML',
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('❌ Failed to send Telegram notification:', errorData)
+      return
+    }
+
+    const data = await response.json()
+    if (data.ok) {
+      console.log(`✅ Telegram notification sent to user ${userId}`)
+    }
+  } catch (error) {
+    console.error('❌ Error sending Telegram notification:', error)
+  }
+}
+
 /**
  * API endpoint для привязки входящего платежа к заявке
  * POST /api/incoming-payment/[id]/link
@@ -12,7 +49,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    requireAuth(request)
+    const authUser = requireAuth(request)
 
     const paymentId = parseInt(params.id)
     const body = await request.json()
@@ -66,14 +103,28 @@ export async function POST(
       // Если сумма совпадает (с точностью до 1 копейки), автоматически обновляем статус заявки
       if (Math.abs(paymentAmount - requestAmount) < 0.01) {
         // Обновляем статус заявки на completed (успешно)
-        await prisma.request.update({
+        // Сохраняем логин админа, который привязал платеж
+        const updatedRequest = await prisma.request.update({
           where: { id: parseInt(requestId) },
           data: {
             status: 'completed',
-            statusDetail: null, // "успешно" - без statusDetail
+            statusDetail: null,
+            processedBy: authUser.username as any,
             processedAt: new Date(),
             updatedAt: new Date(),
-          },
+          } as any,
+        })
+
+        // Отправляем уведомление пользователю о успешном пополнении
+        const notificationAmount = updatedRequest.amount ? parseFloat(updatedRequest.amount.toString()).toFixed(2) : '0.00'
+        const notificationBookmaker = updatedRequest.bookmaker || 'казино'
+        const notificationMessage = `✅ <b>Ваша заявка успешно обработана!</b>\n\n` +
+          `💰 Сумма: ${notificationAmount} сом\n` +
+          `🎰 Казино: ${notificationBookmaker}\n\n` +
+          `Ваш баланс пополнен. Спасибо за использование нашего сервиса!`
+        
+        sendTelegramNotification(updatedRequest.userId, notificationMessage).catch(err => {
+          console.error('Failed to send notification:', err)
         })
         
         // Если это депозит, пополняем баланс через казино API

@@ -359,26 +359,30 @@ export default function DepositStep4() {
         const base = process.env.NODE_ENV === 'development' 
           ? 'http://localhost:3001' 
           : 'https://xendro.pro'
-        const response = await fetch(`${base}/api/payment/${transactionId}`)
+        // Используем новый API endpoint для получения полной информации о заявке
+        const response = await fetch(`${base}/api/requests/${transactionId}`)
         if (response.ok) {
           const data = await response.json()
-          // Если заявка оплачена (completed, approved, auto_completed, autodeposit_success)
-          if (data.status && ['completed', 'approved', 'auto_completed', 'autodeposit_success'].includes(data.status)) {
-            if (!isPaid) {
+          if (data.success && data.data) {
+            const requestStatus = data.data.status
+            const processedBy = data.data.processedBy
+            
+            // Проверяем успешные статусы (включая автопополнение)
+            const isAutoDeposit = requestStatus === 'completed' && processedBy === 'автопополнение'
+            const isManualCompleted = ['completed', 'approved', 'auto_completed', 'autodeposit_success'].includes(requestStatus)
+            
+            if ((isAutoDeposit || isManualCompleted) && !isPaid) {
               setIsPaid(true)
               // Останавливаем таймер
               localStorage.removeItem('deposit_timer_start')
               // Отправляем уведомление о принятии заявки
               await sendPaymentConfirmation()
+              // Перенаправляем на страницу ожидания для показа успеха
+              router.push('/deposit/waiting')
             }
           }
         }
       }
-      // Fallback: если время меньше 2 минут, считаем что оплачено (старая логика для теста)
-      // if (timeLeft < 120 && !isPaid) {
-      //   setIsPaid(true)
-      //   await sendPaymentConfirmation()
-      // }
     } catch (error) {
       console.error('Ошибка проверки оплаты:', error)
     }

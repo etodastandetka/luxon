@@ -108,28 +108,12 @@ export default function DashboardPage() {
     return type === 'deposit' ? 'Пополнение' : 'Вывод'
   }
 
-  // Функция для определения типа транзакции (Автопополнение/profile-1)
-  const getTransactionType = (status: string, statusDetail: string | null, requestType: string) => {
-    if (requestType === 'withdraw') {
-      return statusDetail?.match(/profile-\d+/)?.[0] || 'profile-1'
+  // Функция для определения кто обработал транзакцию (логин админа или "автопополнение")
+  const getProcessedBy = (processedBy: string | null | undefined) => {
+    if (!processedBy) {
+      return null
     }
-    
-    if (requestType === 'deposit') {
-      // Автопополнение - если статус autodeposit_success или statusDetail указывает на автопополнение
-      if (status === 'autodeposit_success' || statusDetail?.includes('autodeposit')) {
-        return 'Автопополнение'
-      }
-      
-      // Проверяем наличие profile-* в statusDetail
-      if (statusDetail?.match(/profile-\d+/)) {
-        return statusDetail.match(/profile-(\d+)/)?.[0] || 'profile-1'
-      }
-      
-      // Для всех остальных депозитов показываем profile-1
-      return 'profile-1'
-    }
-    
-    return requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+    return processedBy === 'автопополнение' ? 'автопополнение' : processedBy
   }
 
   // Функция для определения состояния (Успешно/Отклонено/Ожидает)
@@ -330,7 +314,8 @@ export default function DashboardPage() {
               : request.firstName 
                 ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
                 : `ID: ${request.userId}`
-            const transactionType = getTransactionType(request.status, (request as any).status_detail || null, request.requestType)
+            const processedBy = getProcessedBy((request as any).processedBy)
+            const transactionType = processedBy ? (processedBy === 'автопополнение' ? 'автопополнение' : processedBy) : '-'
             const isDeferred = request.status === 'deferred'
             // Если отложено и "Авто пополнение", показываем минус
             const showMinus = isDeferred && transactionType === 'Авто пополнение'

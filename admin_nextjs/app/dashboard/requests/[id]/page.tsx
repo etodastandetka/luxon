@@ -18,6 +18,7 @@ interface RequestDetail {
   status: string
   statusDetail: string | null
   status_detail: string | null
+  processedBy: string | null
   bank: string | null
   phone: string | null
   photoFileUrl: string | null
@@ -325,28 +326,12 @@ export default function RequestDetailPage() {
     return `${day}.${month}.${year} • ${hours}:${minutes}`
   }
 
-  // Функция для определения типа транзакции (Автопополнение/profile-1)
-  const getTransactionType = (status: string, statusDetail: string | null, requestType: string) => {
-    if (requestType === 'withdraw') {
-      return statusDetail?.match(/profile-\d+/)?.[0] || 'profile-1'
+  // Функция для определения кто обработал заявку (логин админа или "автопополнение")
+  const getProcessedBy = (processedBy: string | null | undefined) => {
+    if (!processedBy) {
+      return null
     }
-    
-    if (requestType === 'deposit') {
-      // Автопополнение - если статус autodeposit_success или statusDetail указывает на автопополнение
-      if (status === 'autodeposit_success' || statusDetail?.includes('autodeposit')) {
-        return 'Автопополнение'
-      }
-      
-      // Проверяем наличие profile-* в statusDetail
-      if (statusDetail?.match(/profile-\d+/)) {
-        return statusDetail.match(/profile-(\d+)/)?.[0] || 'profile-1'
-      }
-      
-      // Для всех остальных депозитов показываем profile-1
-      return 'profile-1'
-    }
-    
-    return requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+    return processedBy === 'автопополнение' ? 'автопополнение' : processedBy
   }
 
   // Функция для определения состояния (Успешно/Отклонено/Ожидает)
@@ -499,29 +484,13 @@ export default function RequestDetailPage() {
 
             // Если пополнение успешно, обновляем заявку
             if (depositData.data?.request) {
-              // Определяем тип транзакции для сохранения в statusDetail
-              // Если был автопополнение (status = autodeposit_success или statusDetail содержит autodeposit)
-              // и админ подтверждает вручную - это все равно profile-1
-              // Если был profile-1 - сохраняем profile-1
-              let statusDetail = 'profile-1'
-              
-              // Проверяем текущий тип
-              const currentType = getTransactionType(request.status, request.statusDetail || request.status_detail, request.requestType)
-              if (currentType === 'Автопополнение') {
-                // Если автопополнение не сработало и админ подтверждает - это profile-1
-                statusDetail = 'profile-1'
-              } else if (currentType?.match(/profile-\d+/)) {
-                // Сохраняем текущий profile-*
-                statusDetail = currentType
-              }
-              
-              // Обновляем статус заявки на completed с сохранением типа
+              // Обновляем статус заявки на completed
+              // processedBy будет установлен автоматически на сервере из токена админа
               const updateResponse = await fetch(`/api/requests/${request.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                  status: 'completed',
-                  statusDetail: statusDetail
+                  status: 'completed'
                 }),
               })
               
@@ -537,7 +506,7 @@ export default function RequestDetailPage() {
               const updateData = await updateResponse.json()
               if (updateData.success) {
                 // Обновляем заявку с новым статусом
-                const updatedRequest = { ...request, ...updateData.data, status: 'completed', statusDetail: statusDetail }
+                const updatedRequest = { ...request, ...updateData.data, status: 'completed' }
                 setRequest(updatedRequest)
                 // Перезагружаем данные для получения актуального состояния
                 // Используем setTimeout для асинхронной перезагрузки после обновления состояния
@@ -577,31 +546,13 @@ export default function RequestDetailPage() {
           }
         }
 
-        // Для остальных случаев обновляем статус с сохранением типа
-        // Определяем текущий тип для сохранения в statusDetail
-        let statusDetail = request.statusDetail || request.status_detail
-        
-        // Если отклоняем или подтверждаем, сохраняем тип
-        if (newStatus === 'rejected' || newStatus === 'completed' || newStatus === 'approved') {
-          const currentType = getTransactionType(request.status, request.statusDetail || request.status_detail, request.requestType)
-          if (currentType === 'Автопополнение') {
-            // Если автопополнение отклонено/подтверждено вручную - это profile-1
-            statusDetail = 'profile-1'
-          } else if (currentType?.match(/profile-\d+/)) {
-            // Сохраняем текущий profile-*
-            statusDetail = currentType
-          } else {
-            // По умолчанию profile-1
-            statusDetail = 'profile-1'
-          }
-        }
-        
+        // Обновляем статус заявки
+        // processedBy будет установлен автоматически на сервере из токена админа
         const response = await fetch(`/api/requests/${request.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            status: newStatus,
-            statusDetail: statusDetail
+            status: newStatus
           }),
         })
 
@@ -702,34 +653,10 @@ export default function RequestDetailPage() {
     const isDeferred = request?.status === 'deferred'
     
     // Определяем тип транзакции для проверки
-    const getTransactionTypeForMinus = () => {
-      // Для выводов может быть profile-*
-      if (request?.requestType === 'withdraw') {
-        return request?.status_detail?.match(/profile-\d+/)?.[0] || 'profile-1'
-      }
-      
-      // Для депозитов
-      if (request?.requestType === 'deposit') {
-        // Авто пополнение - только если статус явно указывает на автопополнение
-        if (request?.status === 'autodeposit_success' || request?.status === 'auto_completed' || request?.status_detail?.includes('autodeposit')) {
-          return 'Авто пополнение'
-        }
-        
-        // Проверяем наличие profile-* в status_detail
-        if (request?.status_detail?.match(/profile-\d+/)) {
-          return request.status_detail.match(/profile-(\d+)/)?.[0] || 'profile-1'
-        }
-        
-        // Для всех остальных депозитов (включая отклоненные) показываем profile-1
-        return 'profile-1'
-      }
-      
-      return request?.requestType === 'deposit' ? 'Пополнение' : 'Вывод'
-    }
-    
-    const transactionType = getTransactionTypeForMinus()
-    // Если отложено и "Авто пополнение", показываем минус
-    const showMinus = isDeferred && transactionType === 'Авто пополнение'
+    // Определяем кто обработал заявку
+    const processedBy = getProcessedBy(request?.processedBy)
+    // Если отложено и автопополнение, показываем минус
+    const showMinus = isDeferred && processedBy === 'автопополнение'
     
     const userName = request?.username 
       ? `@${request.username}` 
@@ -872,9 +799,18 @@ export default function RequestDetailPage() {
               </svg>
             </button>
           </div>
-          <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${getStatusColor(request.status)}`}>
-            <div className="w-2 h-2 rounded-full bg-current"></div>
-            <span className="text-xs font-medium">{getStatusState(request.status)}</span>
+          <div className="flex items-center space-x-2">
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${getStatusColor(request.status)}`}>
+              <div className="w-2 h-2 rounded-full bg-current"></div>
+              <span className="text-xs font-medium">{getStatusState(request.status)}</span>
+            </div>
+            {processedBy && (
+              <div className="px-3 py-1 rounded-full bg-gray-700">
+                <span className="text-xs font-medium text-gray-300">
+                  {processedBy === 'автопополнение' ? 'автопополнение' : processedBy}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -960,6 +896,22 @@ export default function RequestDetailPage() {
               <span className="text-sm text-gray-400">Крипто-платеж:</span>
               <span className="text-sm font-medium text-purple-400">
                 {request.cryptoPayment.amount} {request.cryptoPayment.asset}
+              </span>
+            </div>
+          )}
+          {processedBy && (
+            <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+              <span className="text-sm text-gray-400">Обработано:</span>
+              <span className="text-sm font-medium text-white">
+                {processedBy === 'автопополнение' ? 'автопополнение' : processedBy}
+              </span>
+            </div>
+          )}
+          {request.status && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Статус:</span>
+              <span className={`text-sm font-medium ${getStatusColor(request.status).includes('text-') ? getStatusColor(request.status) : 'text-white'}`}>
+                {getStatusState(request.status)}
               </span>
             </div>
           )}

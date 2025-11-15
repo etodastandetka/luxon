@@ -18,7 +18,7 @@
             android:paddingEnd="16dp">
 
             <androidx.cardview.widget.CardView
-                android:id="@+id/totalCard"
+                android:id="@+id/serviceControlCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
@@ -27,6 +27,62 @@
                 app:cardBackgroundColor="@color/card_background_light"
                 app:cardUseCompatPadding="true"
                 app:layout_constraintTop_toTopOf="parent">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Статус отслеживания"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary_light"
+                            android:letterSpacing="0.01" />
+
+                        <TextView
+                            android:id="@+id/serviceStatusText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Включено"
+                            android:textSize="14sp"
+                            android:textColor="@color/text_secondary_light"
+                            android:layout_marginTop="4dp" />
+
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/serviceToggleSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/totalCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/card_background_light"
+                app:cardUseCompatPadding="true"
+                app:layout_constraintTop_toBottomOf="@id/serviceControlCard">
 
                 <LinearLayout
                     android:layout_width="match_parent"

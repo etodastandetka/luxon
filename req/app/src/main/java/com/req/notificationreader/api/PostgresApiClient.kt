@@ -23,7 +23,9 @@ class PostgresApiClient(
     suspend fun sendPaymentToAdmin(payment: PaymentNotification, adminBaseUrl: String): Result<Boolean> = withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
         try {
-            val endpoint = "$adminBaseUrl/api/incoming-payment"
+            // Нормализуем URL: убираем завершающий слэш если есть
+            val normalizedUrl = adminBaseUrl.trimEnd('/')
+            val endpoint = "$normalizedUrl/api/incoming-payment"
             
             AppLogger.info("admin", "Отправка в админку: $endpoint", null, "PostgresApiClient")
             android.util.Log.d("PostgresApiClient", "Отправка в админку: $endpoint")
