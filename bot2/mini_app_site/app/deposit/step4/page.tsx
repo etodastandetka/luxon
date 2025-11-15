@@ -489,36 +489,57 @@ export default function DepositStep4() {
         })
       })
       
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Заявка создана успешно:', data)
-        // Сохраняем ID заявки для последующего обновления статуса
-        localStorage.setItem('deposit_transaction_id', data.id || data.transactionId)
-        localStorage.setItem('deposit_request_id', data.id || data.transactionId) // Сохраняем request_id
-        
-        // Сохраняем время начала таймера при создании заявки (если еще не сохранено)
-        if (!localStorage.getItem('deposit_timer_start')) {
-          localStorage.setItem('deposit_timer_start', Date.now().toString())
-          console.log('⏱️ Timer start saved:', new Date().toISOString())
+      if (!response.ok) {
+        const errorText = await response.text()
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          errorData = { error: errorText || 'Unknown error' }
         }
-        
-        // Синхронизируем с ботом
-        const telegramUser = getTelegramUser()
-        if (telegramUser) {
-          await syncWithBot(telegramUser, 'deposit_request_created', {
-            requestId: data.id || data.transactionId,
-            bookmaker,
-            playerId,
-            amount,
-            bank
-          })
-        }
-      } else {
-        const errorData = await response.json()
-        console.error('❌ Ошибка создания заявки:', errorData)
+        console.error('❌ Ошибка создания заявки:', response.status, errorData)
+        throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`)
       }
+
+      const data = await response.json()
+      
+      if (!data.success && !data.id && !data.transactionId) {
+        console.error('❌ Заявка не создана:', data)
+        throw new Error(data.error || data.message || 'Failed to create request')
+      }
+      
+      console.log('✅ Заявка создана успешно:', data)
+      // Сохраняем ID заявки для последующего обновления статуса
+      const requestId = data.id || data.transactionId || (data.data && data.data.id)
+      if (!requestId) {
+        throw new Error('Request ID not received from server')
+      }
+      
+      localStorage.setItem('deposit_transaction_id', String(requestId))
+      localStorage.setItem('deposit_request_id', String(requestId)) // Сохраняем request_id
+      
+      // Сохраняем время начала таймера при создании заявки (если еще не сохранено)
+      if (!localStorage.getItem('deposit_timer_start')) {
+        localStorage.setItem('deposit_timer_start', Date.now().toString())
+        console.log('⏱️ Timer start saved:', new Date().toISOString())
+      }
+      
+      // Синхронизируем с ботом
+      const telegramUserForSync = getTelegramUser()
+      if (telegramUserForSync) {
+        await syncWithBot(telegramUserForSync, 'deposit_request_created', {
+          requestId: requestId,
+          bookmaker,
+          playerId,
+          amount,
+          bank
+        })
+      }
+      
+      return requestId
     } catch (error) {
       console.error('❌ Ошибка создания заявки:', error)
+      throw error // Пробрасываем ошибку дальше
     }
   }
 
