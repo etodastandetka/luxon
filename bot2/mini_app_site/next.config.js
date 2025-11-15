@@ -9,8 +9,9 @@ const nextConfig = {
     ]
   },
   env: {
-    DJANGO_API_URL: process.env.DJANGO_API_URL || 'http://127.0.0.1:8081',
-    NEXT_PUBLIC_DJANGO_API_URL: process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://127.0.0.1:8081'
+    // Django API больше не используется, оставляем для совместимости
+    DJANGO_API_URL: process.env.DJANGO_API_URL || '',
+    NEXT_PUBLIC_DJANGO_API_URL: process.env.NEXT_PUBLIC_DJANGO_API_URL || ''
   }
 };
 
