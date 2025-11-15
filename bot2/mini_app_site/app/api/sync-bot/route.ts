@@ -1,40 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://127.0.0.1:8081'
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
     console.log('🔄 Next.js API: Получен запрос на синхронизацию с ботом:', body)
     
-    // Проксируем запрос к Django API
-    const response = await fetch(`${DJANGO_API_URL}/bot/api/sync-bot/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body)
+    // Логируем данные синхронизации (Django API больше не используется)
+    // Просто возвращаем успех, чтобы клиент не получал ошибку
+    console.log('✅ Sync data logged:', {
+      user: body.user?.id || body.user?.username || 'unknown',
+      action: body.action || 'unknown',
+      data: body.data || {}
     })
     
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ Django API error:', response.status, errorText)
-      return NextResponse.json(
-        { error: `Django API error: ${response.status} - ${errorText}` },
-        { status: response.status }
-      )
-    }
-    
-    const data = await response.json()
-    console.log('✅ Next.js API: Синхронизация с ботом успешна')
-    
-    return NextResponse.json(data)
+    return NextResponse.json({
+      success: true,
+      message: 'Sync data received'
+    })
     
   } catch (error) {
     console.error('❌ Next.js API error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }
