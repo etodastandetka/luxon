@@ -12,6 +12,7 @@ interface Request {
   amount: string | null
   requestType: string
   status: string
+  processedBy: string | null
   createdAt: string
 }
 
@@ -85,28 +86,12 @@ export default function RequestsPage() {
     }
   }, [fetchRequests, filter])
 
-  // Функция для определения типа транзакции (Автопополнение/profile-1)
-  const getTransactionType = (status: string, statusDetail: string | null, requestType: string) => {
-    if (requestType === 'withdraw') {
-      return statusDetail?.match(/profile-\d+/)?.[0] || 'profile-1'
+  // Функция для определения кто обработал заявку (логин админа или "автопополнение")
+  const getProcessedBy = (processedBy: string | null | undefined) => {
+    if (!processedBy) {
+      return null
     }
-    
-    if (requestType === 'deposit') {
-      // Автопополнение - если статус autodeposit_success или statusDetail указывает на автопополнение
-      if (status === 'autodeposit_success' || statusDetail?.includes('autodeposit')) {
-        return 'Автопополнение'
-      }
-      
-      // Проверяем наличие profile-* в statusDetail
-      if (statusDetail?.match(/profile-\d+/)) {
-        return statusDetail.match(/profile-(\d+)/)?.[0] || 'profile-1'
-      }
-      
-      // Для всех остальных депозитов показываем profile-1
-      return 'profile-1'
-    }
-    
-    return requestType === 'deposit' ? 'Пополнение' : 'Вывод'
+    return processedBy === 'автопополнение' ? 'автопополнение' : processedBy
   }
 
   // Функция для определения состояния (Успешно/Отклонено/Ожидает)
@@ -287,10 +272,16 @@ export default function RequestsPage() {
                     <span className="text-sm font-medium text-white">
                       Заявка #{request.id}
                     </span>
-                    {/* Бейдж типа транзакции слева */}
-                    <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md border border-blue-500 border-opacity-30">
-                      {getTransactionType(request.status, (request as any).status_detail || null, request.requestType)}
+                    {/* Бейдж статуса */}
+                    <span className={`text-xs font-medium whitespace-nowrap px-2 py-0.5 rounded-md ${getStatusTextColor(request.status)}`}>
+                      {getStatusState(request.status)}
                     </span>
+                    {/* Бейдж кто обработал */}
+                    {getProcessedBy(request.processedBy) && (
+                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-300 rounded-md">
+                        {getProcessedBy(request.processedBy) === 'автопополнение' ? 'автопополнение' : getProcessedBy(request.processedBy)}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-400 mb-2">
                     {request.username || request.firstName || request.userId}
@@ -310,10 +301,6 @@ export default function RequestsPage() {
                       maximumFractionDigits: 2,
                     }).replace('.', ',') : '0,00'}
                   </p>
-                  {/* Статус */}
-                  <span className={`text-xs font-medium whitespace-nowrap ${getStatusTextColor(request.status)}`}>
-                    {getStatusState(request.status)}
-                  </span>
                 </div>
               </div>
             </Link>
