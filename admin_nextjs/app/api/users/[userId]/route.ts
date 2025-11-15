@@ -60,6 +60,7 @@ export async function GET(
           amount: req.amount?.toString() || '0',
           status: req.status,
           bookmaker: req.bookmaker,
+          processedBy: (req as any).processedBy || null,
           createdAt: req.createdAt.toISOString(),
         }))
 
@@ -92,14 +93,44 @@ export async function GET(
       )
     }
 
+    // Для транзакций из BotTransaction нужно найти связанный Request для получения processedBy
+    const transactionsWithProcessedBy = await Promise.all(
+      user.transactions.map(async (t) => {
+        // Ищем связанный Request по userId, bookmaker, amount и transType
+        const relatedRequest = await prisma.request.findFirst({
+          where: {
+            userId: user.userId,
+            bookmaker: t.bookmaker || undefined,
+            amount: t.amount,
+            requestType: t.transType,
+            createdAt: {
+              gte: new Date(t.createdAt.getTime() - 60000), // ±1 минута
+              lte: new Date(t.createdAt.getTime() + 60000),
+            },
+          },
+          select: {
+            processedBy: true,
+            status: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+
+        return {
+          ...t,
+          amount: t.amount.toString(),
+          processedBy: relatedRequest?.processedBy || null,
+          status: relatedRequest?.status || t.status,
+        }
+      })
+    )
+
     return NextResponse.json(
       createApiResponse({
         ...user,
         userId: user.userId.toString(),
-        transactions: user.transactions.map(t => ({
-          ...t,
-          amount: t.amount.toString(),
-        })),
+        transactions: transactionsWithProcessedBy,
         referralEarnings: user.referralEarnings.map(e => ({
           ...e,
           amount: e.amount.toString(),

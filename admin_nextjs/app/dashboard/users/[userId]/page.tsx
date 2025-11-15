@@ -21,6 +21,7 @@ interface UserDetail {
     amount: string
     status: string
     bookmaker: string | null
+    processedBy: string | null
     createdAt: string
   }>
   referralMade: Array<{
@@ -377,7 +378,18 @@ export default function UserDetailPage() {
                     </div>
                     {tx.bookmaker && (
                       <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded mb-1">
-                        {tx.transType === 'deposit' ? 'Авто пополнение' : 'profile-6'}
+                        {(() => {
+                          // Если статус pending, показываем "-"
+                          if (tx.status === 'pending' || tx.status === 'processing') {
+                            return '-'
+                          }
+                          // Если есть processedBy, показываем его
+                          if (tx.processedBy) {
+                            return tx.processedBy === 'автопополнение' ? 'автопополнение' : tx.processedBy
+                          }
+                          // Если нет processedBy, но статус не pending, показываем "-"
+                          return '-'
+                        })()}
                       </span>
                     )}
                   </div>
