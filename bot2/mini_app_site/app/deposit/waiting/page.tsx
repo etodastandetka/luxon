@@ -76,6 +76,7 @@ export default function DepositWaitingPage() {
     checkPaymentStatus()
 
     // Проверяем статус каждые 3 секунды для более быстрого обновления
+    // Продолжаем проверять даже если статус изменился, чтобы обновить UI
     const interval = setInterval(() => {
       checkPaymentStatus()
     }, 3000)
@@ -85,7 +86,7 @@ export default function DepositWaitingPage() {
   }, [requestId])
 
   const checkPaymentStatus = async () => {
-    if (!requestId || status !== 'waiting') return
+    if (!requestId) return
 
     try {
       const apiUrl = process.env.NODE_ENV === 'development' 
@@ -95,22 +96,31 @@ export default function DepositWaitingPage() {
       const response = await fetch(`${apiUrl}/api/requests/${requestId}`)
       
       if (!response.ok) {
-        throw new Error('Failed to fetch request status')
+        console.error('Failed to fetch request status:', response.status)
+        return
       }
 
       const data = await response.json()
+      
+      console.log('Payment status check:', { requestId, data })
       
       if (data.success && data.data) {
         const requestStatus = data.data.status
         const processedBy = data.data.processedBy
 
+        console.log('Request status:', { requestStatus, processedBy })
+
         // Проверяем успешные статусы (включая автопополнение)
         // Автопополнение: статус completed с processedBy = 'автопополнение'
         // Ручное подтверждение: статус completed, approved, auto_completed, autodeposit_success
         const isAutoDeposit = requestStatus === 'completed' && processedBy === 'автопополнение'
-        const isManualCompleted = ['completed', 'approved', 'auto_completed', 'autodeposit_success'].includes(requestStatus)
+        const isManualCompleted = requestStatus === 'completed' || 
+                                   requestStatus === 'approved' || 
+                                   requestStatus === 'auto_completed' || 
+                                   requestStatus === 'autodeposit_success'
         
         if (isAutoDeposit || isManualCompleted) {
+          console.log('Payment successful! Setting status to success')
           setStatus('success')
           setShowConfetti(true)
           
@@ -124,8 +134,13 @@ export default function DepositWaitingPage() {
           localStorage.removeItem('deposit_amount_usd')
           localStorage.removeItem('deposit_payment_type')
         } else if (['rejected', 'declined', 'failed'].includes(requestStatus)) {
+          console.log('Payment rejected! Setting status to error')
           setStatus('error')
+        } else {
+          console.log('Payment still pending:', requestStatus)
         }
+      } else {
+        console.error('Invalid response data:', data)
       }
     } catch (error) {
       console.error('Error checking payment status:', error)
