@@ -147,16 +147,19 @@ export async function getMobCashConfig(bookmaker: string): Promise<{
     }
 
     // Fallback на переменные окружения или дефолтные значения
+    // Вариант 2: Используем только логин/пароль для автоматического OAuth2
+    // Токены передаются только если они явно указаны (для гибридного режима)
     return {
       login: process.env.MOBCASH_LOGIN || 'burgoevk',
       password: process.env.MOBCASH_PASSWORD || 'Kanat312###',
       cashdesk_id: process.env.MOBCASH_CASHDESK_ID || '1001098',
       default_lat: parseFloat(process.env.MOBCASH_DEFAULT_LAT || '42.845778'),
       default_lon: parseFloat(process.env.MOBCASH_DEFAULT_LON || '74.568778'),
-      // Готовые токены (полученные через браузер) - см. MOBCASH_SETUP.md
-      bearer_token: process.env.MOBCASH_BEARER_TOKEN,
-      user_id: process.env.MOBCASH_USER_ID,
-      session_id: process.env.MOBCASH_SESSION_ID,
+      // Токены передаются только если они указаны (для гибридного режима)
+      // Если токены не указаны, будет использоваться только OAuth2 flow
+      bearer_token: process.env.MOBCASH_BEARER_TOKEN || undefined,
+      user_id: process.env.MOBCASH_USER_ID || undefined,
+      session_id: process.env.MOBCASH_SESSION_ID || undefined,
     }
   }
 
