@@ -37,11 +37,9 @@ export async function GET(request: NextRequest) {
       id: r.id.toString(),
       user_id: r.userId.toString(),
       account_id: r.accountId || '',
-      user_display_name: r.username
-        ? `@${r.username}`
-        : r.firstName && r.lastName
-        ? `${r.firstName} ${r.lastName}`
-        : r.firstName || 'Unknown',
+      user_display_name: r.firstName
+        ? `${r.firstName}${r.lastName ? ' ' + r.lastName : ''}`
+        : 'Unknown',
       username: r.username || '',
       first_name: r.firstName || '',
       last_name: r.lastName || '',

@@ -309,11 +309,9 @@ export default function DashboardPage() {
         <div className="space-y-3">
           {requests.map((request) => {
             const isDeposit = request.requestType === 'deposit'
-            const userName = request.username 
-              ? `@${request.username}` 
-              : request.firstName 
-                ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
-                : `ID: ${request.userId}`
+            const userName = request.firstName 
+              ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
+              : `ID: ${request.userId}`
             const processedBy = getProcessedBy((request as any).processedBy)
             const transactionType = processedBy ? (processedBy === 'автопополнение' ? 'автопополнение' : processedBy) : '-'
             const isDeferred = request.status === 'deferred'
