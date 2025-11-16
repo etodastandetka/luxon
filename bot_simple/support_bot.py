@@ -760,7 +760,10 @@ def main() -> None:
     # Запускаем бота
     print("🤖 Бот техподдержки запущен!")
     logger.info("Support bot started")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True  # Игнорируем старые обновления при запуске
+    )
 
 if __name__ == '__main__':
     main()
