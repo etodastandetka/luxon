@@ -13,7 +13,7 @@ export default function SupportPage() {
       responseTime: 'Время ответа: 5-30 минут',
       contactMethods: 'Способы связи',
       telegram: 'Telegram',
-      telegramLink: 'https://t.me/luxon_support',
+      telegramLink: 'https://t.me/operator_luxon_bot',
       workingHours: 'Время работы',
       workingHoursText: '24/7 - круглосуточно',
       commonQuestions: 'Частые вопросы',
@@ -52,7 +52,7 @@ export default function SupportPage() {
       messageSent: 'Message sent! We will contact you soon.',
       contactMethods: 'Contact methods',
       telegram: 'Telegram',
-      telegramLink: 'https://t.me/luxon_support',
+      telegramLink: 'https://t.me/operator_luxon_bot',
       workingHours: 'Working hours',
       workingHoursText: '24/7 - around the clock',
       commonQuestions: 'Frequently asked questions',
@@ -106,7 +106,7 @@ export default function SupportPage() {
               rel="noopener noreferrer"
               className="text-green-400 hover:text-green-300 font-semibold"
             >
-              @luxon_support
+              @operator_luxon_bot
             </a>
           </div>
           <div className="text-sm text-white/70">

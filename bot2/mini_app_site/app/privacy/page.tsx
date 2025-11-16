@@ -64,7 +64,7 @@ export default function PrivacyPage() {
           'Отозвать согласие на обработку данных',
           'Подать жалобу в случае нарушения ваших прав'
         ],
-        contact: 'Для реализации этих прав свяжитесь с нами через поддержку: @luxon_support'
+        contact: 'Для реализации этих прав свяжитесь с нами через поддержку: @operator_luxon_bot'
       },
       security: {
         title: '7. Безопасность',
@@ -88,7 +88,7 @@ export default function PrivacyPage() {
       contacts: {
         title: '10. Контакты',
         content: 'Если у вас есть вопросы по поводу обработки ваших персональных данных или вы хотите реализовать свои права, свяжитесь с нами:',
-        telegram: 'Telegram: @luxon_support',
+        telegram: 'Telegram: @operator_luxon_bot',
         responseTime: 'Время ответа: 5-30 минут'
       },
       backToMain: '🔙 На главную'
@@ -150,7 +150,7 @@ export default function PrivacyPage() {
           'Маалыматтарды иштетүүгө макулдугун кайтарып алуу',
           'Укуктарыңыз бузулган учурда арыз берүү'
         ],
-        contact: 'Бул укуктарды ишке ашыруу үчүн биз менен байланышыңыз: @luxon_support'
+        contact: 'Бул укуктарды ишке ашыруу үчүн биз менен байланышыңыз: @operator_luxon_bot'
       },
       security: {
         title: '7. Коопсуздук',
@@ -174,7 +174,7 @@ export default function PrivacyPage() {
       contacts: {
         title: '10. Байланыштар',
         content: 'Эгерде сиздин жеке маалыматтарыңызды иштетүү жөнүндө суроолоруңуз болсо же укуктарыңызды ишке ашыргыңыз келсе, биз менен байланышыңыз:',
-        telegram: 'Telegram: @luxon_support',
+        telegram: 'Telegram: @operator_luxon_bot',
         responseTime: 'Жооп берүү убактысы: 5-30 мүнөт'
       },
       backToMain: '🔙 Башкы баракка'
@@ -236,7 +236,7 @@ export default function PrivacyPage() {
           'Ma\'lumotlarni qayta ishlashga roziligingizni qaytarib olish',
           'Huquqlaringiz buzilgan taqdirda shikoyat qilish'
         ],
-        contact: 'Ushbu huquqlarni amalga oshirish uchun biz bilan bog\'laning: @luxon_support'
+        contact: 'Ushbu huquqlarni amalga oshirish uchun biz bilan bog\'laning: @operator_luxon_bot'
       },
       security: {
         title: '7. Xavfsizlik',
@@ -260,7 +260,7 @@ export default function PrivacyPage() {
       contacts: {
         title: '10. Aloqalar',
         content: 'Agar sizning shaxsiy ma\'lumotlaringizni qayta ishlash bo\'yicha savollaringiz bo\'lsa yoki huquqlaringizni amalga oshirmoqchi bo\'lsangiz, biz bilan bog\'laning:',
-        telegram: 'Telegram: @luxon_support',
+        telegram: 'Telegram: @operator_luxon_bot',
         responseTime: 'Javob berish vaqti: 5-30 daqiqa'
       },
       backToMain: '🔙 Bosh sahifaga'
