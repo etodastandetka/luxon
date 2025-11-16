@@ -699,7 +699,7 @@ export class MobCashClient {
   /**
    * Выполнить JSON-RPC запрос
    */
-  private async makeRequest(method: string, params: any): Promise<any> {
+  private async makeRequest(method: string, params: any, retryOn401: boolean = true): Promise<any> {
     const session = await this.getSession()
     const requestId = this.requestIdCounter++
 
@@ -748,6 +748,58 @@ export class MobCashClient {
         headers,
         body: JSON.stringify([request]),
       })
+
+      // Обработка 401 ошибки - токен истек или недействителен
+      if (response.status === 401 && retryOn401) {
+        console.warn(`[MobCash API] ⚠️ Got 401 error, clearing session cache and retrying...`)
+        
+        // Очищаем кеш сессии для этого пользователя
+        const cacheKey = `${this.config.login}_${this.config.cashdesk_id}`
+        sessionCache.delete(cacheKey)
+        console.log(`[MobCash API] Cleared session cache for key: ${cacheKey}`)
+        
+        // Если токены были предоставлены в конфиге, они могли истечь
+        // В этом случае нужно либо обновить токены, либо использовать OAuth2 flow
+        if (this.config.bearer_token && this.config.user_id && this.config.session_id) {
+          console.warn(`[MobCash API] ⚠️ Provided tokens expired. Please update MOBCASH_BEARER_TOKEN, MOBCASH_USER_ID, and MOBCASH_SESSION_ID in .env or database.`)
+          console.warn(`[MobCash API] ⚠️ Attempting to get new session...`)
+        }
+        
+        // Пытаемся получить новую сессию и повторить запрос
+        try {
+          const newSession = await this.getSession()
+          console.log(`[MobCash API] ✅ Got new session, retrying request...`)
+          
+          // Обновляем заголовок авторизации с новым токеном
+          headers['authorization'] = `Bearer ${newSession.token}`
+          request.params.userID = newSession.userID
+          request.params.sessionID = newSession.sessionID
+          
+          // Повторяем запрос
+          const retryResponse = await fetch(this.baseUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify([request]),
+          })
+          
+          if (!retryResponse.ok) {
+            throw new Error(`HTTP error! status: ${retryResponse.status}`)
+          }
+          
+          const retryData: JsonRpcResponse[] = await retryResponse.json()
+          const retryResult = retryData[0]
+          
+          if (retryResult.error) {
+            throw new Error(`API error: ${retryResult.error.message} (code: ${retryResult.error.code})`)
+          }
+          
+          console.log(`[MobCash API] ✅ Request succeeded after retry`)
+          return retryResult.result
+        } catch (retryError) {
+          console.error(`[MobCash API] ❌ Retry failed:`, retryError)
+          throw new Error(`Authentication failed: Token expired and could not be refreshed. Please update MOBCASH tokens. Original error: ${retryError instanceof Error ? retryError.message : 'Unknown error'}`)
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
