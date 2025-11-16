@@ -123,23 +123,53 @@ export class MobCashClient {
       }
     }
 
-    // Если токены не предоставлены, выбрасываем понятную ошибку
-    console.error('[MobCash Auth] ❌ Tokens not provided in config')
-    console.error('[MobCash Auth] Config check:', {
-      has_bearer_token: !!(this.config.bearer_token && this.config.bearer_token.trim() !== ''),
-      has_user_id: !!(this.config.user_id && this.config.user_id.trim() !== ''),
-      has_session_id: !!(this.config.session_id && this.config.session_id.trim() !== ''),
-      bearer_token_preview: this.config.bearer_token ? this.config.bearer_token.substring(0, 20) + '...' : 'undefined',
-      user_id_value: this.config.user_id || 'undefined',
-      session_id_value: this.config.session_id || 'undefined',
-    })
-    
-    throw new Error(
-      'Mob-cash tokens not configured. OAuth2 flow requires client_secret which is not available. ' +
-      'Please add MOBCASH_BEARER_TOKEN, MOBCASH_USER_ID, and MOBCASH_SESSION_ID to your .env file. ' +
-      'See MOBCASH_SETUP.md for instructions on how to obtain these tokens from browser DevTools.'
-    )
+    // Если токены не предоставлены, выполняем полный OAuth2 flow
+    if (!this.config.login || !this.config.password) {
+      console.error('[MobCash Auth] ❌ Tokens not provided and login/password missing')
+      throw new Error(
+        'Mob-cash tokens not configured. Please either:\n' +
+        '1. Add MOBCASH_BEARER_TOKEN, MOBCASH_USER_ID, and MOBCASH_SESSION_ID to your .env file, OR\n' +
+        '2. Add MOBCASH_LOGIN and MOBCASH_PASSWORD to perform OAuth2 flow automatically.\n' +
+        'See MOBCASH_SETUP.md for instructions on how to obtain tokens from browser DevTools.'
+      )
+    }
 
+    console.log('[MobCash Auth] 🔄 Starting OAuth2 flow with login:', this.config.login)
+    
+    try {
+      // Шаг 1.1: Получение LoginChallenge
+      const { loginChallenge } = await this.getLoginChallenge()
+      
+      // Шаг 1.2: Получение ConsentChallenge
+      const consentChallenge = await this.getConsentChallenge(loginChallenge)
+      
+      // Шаг 1.3: Получение Access Token
+      const accessToken = await this.getAccessToken(consentChallenge)
+      
+      // Шаг 1.4: Получение UserID
+      const userID = await this.getUserProfile(accessToken)
+      
+      // Шаг 1.5: Логин на кассу (получение SessionID)
+      const sessionID = await this.loginToCashbox(accessToken, userID)
+      
+      console.log('[MobCash Auth] ✅ OAuth2 flow completed successfully')
+      console.log('[MobCash Auth] Token:', accessToken.substring(0, 30) + '...')
+      console.log('[MobCash Auth] User ID:', userID)
+      console.log('[MobCash Auth] Session ID:', sessionID)
+      
+      return {
+        token: accessToken,
+        userID,
+        sessionID,
+        expiresAt: Date.now() + SESSION_TTL,
+      }
+    } catch (error) {
+      console.error('[MobCash Auth] ❌ OAuth2 flow failed:', error)
+      throw new Error(
+        `OAuth2 authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+        `Please check MOBCASH_LOGIN and MOBCASH_PASSWORD, or use ready tokens from browser (see MOBCASH_SETUP.md).`
+      )
+    }
   }
 
   /**
