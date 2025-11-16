@@ -22,7 +22,7 @@ export default function FaqPage(){
       limitsQuestion: 'Какие лимиты?',
       limitsAnswer: 'Минимальная сумма пополнения: 35 сом, максимальная: 100,000 сом. Минимальная сумма вывода: 100 сом, максимальная: 50,000 сом.',
       supportQuestion: 'Как связаться с поддержкой?',
-      supportAnswer: 'Напишите в поддержку: @luxon_support. Мы отвечаем в течение 5-15 минут.'
+      supportAnswer: 'Напишите в поддержку: @operator_luxon_bot. Мы отвечаем в течение 5-15 минут.'
     },
     en: {
       title: 'FAQ',
@@ -37,7 +37,7 @@ export default function FaqPage(){
       limitsQuestion: 'What are the limits?',
       limitsAnswer: 'Minimum deposit: 35 som, maximum: 100,000 som. Minimum withdrawal: 100 som, maximum: 50,000 som.',
       supportQuestion: 'How to contact support?',
-      supportAnswer: 'Write to support: @luxon_support. We respond within 5-15 minutes.'
+      supportAnswer: 'Write to support: @operator_luxon_bot. We respond within 5-15 minutes.'
     },
     ky: {
       title: 'Суроолор',
@@ -52,7 +52,7 @@ export default function FaqPage(){
       limitsQuestion: 'Лимиттер кандай?',
       limitsAnswer: 'Эң аз депозит суммасы: 35 сом, эң көп: 100,000 сом. Эң аз чыгаруу суммасы: 100 сом, эң көп: 50,000 сом.',
       supportQuestion: 'Колдоого кантип байланышуу?',
-      supportAnswer: 'Колдоого жазыңыз: @luxon_support. Биз 5-15 мүнөт ичинде жооп беребиз.'
+      supportAnswer: 'Колдоого жазыңыз: @operator_luxon_bot. Биз 5-15 мүнөт ичинде жооп беребиз.'
     },
     uz: {
       title: 'Savollar',
@@ -67,7 +67,7 @@ export default function FaqPage(){
       limitsQuestion: 'Limitlar qanday?',
       limitsAnswer: 'Minimal depozit: 35 som, maksimal: 100,000 som. Minimal chiqarish: 100 som, maksimal: 50,000 som.',
       supportQuestion: 'Qanday qo\'llab-quvvatlash bilan bog\'lanish?',
-      supportAnswer: 'Qo\'llab-quvvatlashga yozing: @luxon_support. Biz 5-15 daqiqa ichida javob beramiz.'
+      supportAnswer: 'Qo\'llab-quvvatlashga yozing: @operator_luxon_bot. Biz 5-15 daqiqa ichida javob beramiz.'
     }
   }
 

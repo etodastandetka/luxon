@@ -39,7 +39,7 @@ export default function InstructionPage() {
       ],
       supportTitle: '🎧 Поддержка',
       supportText: 'Если у вас возникли вопросы или проблемы, обратитесь в поддержку:',
-      supportContact: '@luxon_support',
+      supportContact: '@operator_luxon_bot',
       backToMain: '🔙 На главную'
     },
     en: {
@@ -74,7 +74,7 @@ export default function InstructionPage() {
       ],
       supportTitle: '🎧 Support',
       supportText: 'If you have questions or problems, contact support:',
-      supportContact: '@luxon_support',
+      supportContact: '@operator_luxon_bot',
       backToMain: '🔙 Back to main'
     }
   }
@@ -140,7 +140,7 @@ export default function InstructionPage() {
         <h2 className="text-lg font-semibold text-white">{t.supportTitle}</h2>
         <p className="text-sm text-white/80">{t.supportText}</p>
         <a 
-          href="https://t.me/luxon_support" 
+          href="https://t.me/operator_luxon_bot" 
           className="inline-block bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
         >
           {t.supportContact}

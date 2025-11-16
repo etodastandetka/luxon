@@ -60,7 +60,7 @@ export const useBotSettings = () => {
           min_withdraw: 100,
           max_withdraw: 50000,
           referral_percentage: 5,
-          support_contact: '@luxon_support'
+          support_contact: '@operator_luxon_bot'
         })
       } finally {
         setLoading(false)
