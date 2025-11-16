@@ -16,7 +16,8 @@
     "watcher": "tsx scripts/start-watcher.ts",
     "watcher:check": "tsx scripts/check-watcher-once.ts",
     "test-mobcash": "tsx scripts/test-mobcash.ts",
-    "test-mobcash-auth": "tsx scripts/test-mobcash-auth.ts"
+    "test-mobcash-auth": "tsx scripts/test-mobcash-auth.ts",
+    "check-mobcash-config": "tsx scripts/check-mobcash-config.ts"
   },
   "dependencies": {
     "@koo0ki/send": "^1.1.1",
