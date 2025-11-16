@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
+import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 
 // Функция для отправки уведомления пользователю в Telegram
 async function sendTelegramNotification(userId: bigint, message: string) {
@@ -217,6 +218,37 @@ export async function PATCH(
         sendTelegramNotification(updatedRequest.userId, notificationMessage).catch(err => {
           console.error('Failed to send notification:', err)
         })
+      }
+      
+      // Если это вывод, отправляем уведомление в группу
+      if (updatedRequest.requestType === 'withdraw') {
+        const usernameStr = updatedRequest.username || updatedRequest.firstName || 'Пользователь'
+        const accountIdStr = updatedRequest.accountId || 'не указан'
+        
+        let groupMessage = ''
+        if (body.status === 'completed' || body.status === 'approved') {
+          groupMessage = `✅ <b>Вывод обработан</b>\n\n` +
+            `👤 Пользователь: ${usernameStr}\n` +
+            `💰 Сумма: ${amount} сом\n` +
+            `🎰 Казино: ${bookmaker}\n` +
+            `🆔 ID аккаунта: ${accountIdStr}\n` +
+            `📋 ID заявки: #${updatedRequest.id}\n\n` +
+            `Статус: успешно пополнен`
+        } else if (body.status === 'rejected') {
+          groupMessage = `❌ <b>Вывод отклонен</b>\n\n` +
+            `👤 Пользователь: ${usernameStr}\n` +
+            `💰 Сумма: ${amount} сом\n` +
+            `🎰 Казино: ${bookmaker}\n` +
+            `🆔 ID аккаунта: ${accountIdStr}\n` +
+            `📋 ID заявки: #${updatedRequest.id}\n\n` +
+            `Статус: отклонен`
+        }
+        
+        if (groupMessage) {
+          sendTelegramGroupMessage(groupMessage).catch(err => {
+            console.error('Failed to send withdrawal status notification to group:', err)
+          })
+        }
       }
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/api-helpers'
+import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 
 export async function POST(
   request: NextRequest,
@@ -48,13 +49,28 @@ export async function POST(
       )
       
       // Обновляем статус заявки
-      await prisma.referralWithdrawalRequest.update({
+      const updatedRequest = await prisma.referralWithdrawalRequest.update({
         where: { id: requestId },
         data: {
           status: 'completed',
           processedAt: new Date(),
           updatedAt: new Date()
         }
+      })
+      
+      // Отправляем уведомление в группу о завершении вывода
+      const amountStr = parseFloat(updatedRequest.amount.toString()).toFixed(2)
+      const usernameStr = updatedRequest.username || updatedRequest.firstName || 'Пользователь'
+      
+      const groupMessage = `✅ <b>Вывод обработан</b>\n\n` +
+        `👤 Пользователь: ${usernameStr}\n` +
+        `💰 Сумма: ${amountStr} ${updatedRequest.currency}\n` +
+        `🎰 Казино: ${updatedRequest.bookmaker}\n` +
+        `📋 ID заявки: #${requestId}\n\n` +
+        `Статус: успешно пополнен`
+      
+      sendTelegramGroupMessage(groupMessage).catch(err => {
+        console.error('Failed to send withdrawal completion notification to group:', err)
       })
       
       return NextResponse.json({
