@@ -3,6 +3,47 @@
  * Запуск: tsx scripts/check-mobcash-config.ts
  */
 
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+// Загружаем переменные из .env файла
+function loadEnvFile() {
+  try {
+    const envPath = join(process.cwd(), '.env')
+    const envContent = readFileSync(envPath, 'utf-8')
+    const lines = envContent.split('\n')
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      // Пропускаем комментарии и пустые строки
+      if (!trimmedLine || trimmedLine.startsWith('#')) continue
+      
+      const match = trimmedLine.match(/^([^=]+)=(.*)$/)
+      if (match) {
+        const key = match[1].trim()
+        let value = match[2].trim()
+        
+        // Убираем кавычки если есть
+        if ((value.startsWith('"') && value.endsWith('"')) || 
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1)
+        }
+        
+        // Устанавливаем переменную окружения только если она еще не установлена
+        if (!process.env[key]) {
+          process.env[key] = value
+        }
+      }
+    }
+  } catch (error) {
+    // Если .env файл не найден, это нормально - используем системные переменные
+    console.log('⚠️  .env файл не найден, используем системные переменные окружения')
+  }
+}
+
+// Загружаем .env перед проверкой
+loadEnvFile()
+
 console.log('🔍 Проверка конфигурации MobCash API')
 console.log('=' .repeat(60))
 console.log()
