@@ -16,6 +16,9 @@ export default function HomePage() {
   const { settings, loading: settingsLoading, error: settingsError } = useBotSettings()
 
   useEffect(() => {
+    let progressInterval: NodeJS.Timeout | null = null
+    let checkInterval: NodeJS.Timeout | null = null
+    
     // Инициализируем Telegram WebApp
     const telegramUser = initTelegramWebApp()
     if (telegramUser) {
@@ -28,20 +31,58 @@ export default function HomePage() {
       })
     }
 
-    // Анимация прогресса загрузки от 0 до 100
-    const progressInterval = setInterval(() => {
-      setLoadingProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval)
+    // Функция проверки готовности
+    const checkReady = () => {
+      const isDocumentReady = document.readyState === 'complete'
+      const isSettingsLoaded = !settingsLoading
+      
+      // Проверяем все условия
+      if (isDocumentReady && isSettingsLoaded) {
+        // Если все готово, быстро завершаем загрузку
+        setLoadingProgress(100)
+        setTimeout(() => {
           setIsLoading(false)
-          return 100
-        }
-        return prev + 2 // Увеличиваем на 2% каждые 50мс
-      })
+        }, 200)
+        return true
+      }
+      return false
+    }
+
+    // Быстрая проверка готовности каждые 50мс
+    checkInterval = setInterval(() => {
+      if (checkReady()) {
+        if (checkInterval) clearInterval(checkInterval)
+        if (progressInterval) clearInterval(progressInterval)
+      }
     }, 50)
 
-    return () => clearInterval(progressInterval)
-  }, [language])
+    // Анимация прогресса загрузки (ускоренная)
+    let currentProgress = 0
+    progressInterval = setInterval(() => {
+      currentProgress = Math.min(currentProgress + 5, 95) // Быстрее до 95%
+      setLoadingProgress(currentProgress)
+      
+      // Если достигли 95%, останавливаем анимацию и ждем реальной загрузки
+      if (currentProgress >= 95) {
+        if (progressInterval) clearInterval(progressInterval)
+        // Проверяем готовность
+        if (checkReady()) {
+          if (checkInterval) clearInterval(checkInterval)
+        }
+      }
+    }, 30) // Обновляем каждые 30мс для плавности
+
+    // Проверяем сразу при монтировании
+    if (checkReady()) {
+      if (checkInterval) clearInterval(checkInterval)
+      if (progressInterval) clearInterval(progressInterval)
+    }
+
+    return () => {
+      if (progressInterval) clearInterval(progressInterval)
+      if (checkInterval) clearInterval(checkInterval)
+    }
+  }, [language, settingsLoading])
 
   const handleLoaderComplete = () => {
     setIsLoading(false)
@@ -87,7 +128,7 @@ export default function HomePage() {
   if (isLoading) {
     return (
       <LoadingScreen 
-        message="Загрузка LUX ON.."
+        message="LUX ON"
         showProgress={true}
         progress={loadingProgress}
       />
