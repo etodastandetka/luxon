@@ -28,7 +28,7 @@ module.exports = {
       interpreter: 'none',
       env: {
         PYTHONUNBUFFERED: '1',
-        SUPPORT_BOT_TOKEN: process.env.SUPPORT_BOT_TOKEN || '8390085986:AAH9iS53RgIleXC-JfExWv8SxwvJR1rPdbI'
+        SUPPORT_BOT_TOKEN: '8390085986:AAH9iS53RgIleXC-JfExWv8SxwvJR1rPdbI'
       },
       error_file: '/var/log/pm2/operator_bot-error.log',
       out_file: '/var/log/pm2/operator_bot-out.log',
