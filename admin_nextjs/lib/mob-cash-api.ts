@@ -483,10 +483,87 @@ export class MobCashClient {
           }
         }
         
-        // Если токена нет, пробуем получить код авторизации и обменять его
-        // Но это требует client_secret, поэтому лучше использовать готовые токены
+        // Проверяем, есть ли consent_verifier - нужно следовать редиректу дальше
         const urlParams = new URLSearchParams(location.split('?')[1] || '')
-        const authCode = urlParams.get('code')
+        const consentVerifier = urlParams.get('consent_verifier')
+        
+        if (consentVerifier) {
+          console.log('[MobCash Auth] ✅ Consent verifier найден, следуем редиректу...')
+          
+          // Следуем редиректу, чтобы получить authorization code
+          const redirectResponse = await fetch(location, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json, text/plain, */*',
+              'Cookie': this.cookies,
+            },
+            redirect: 'follow', // Следуем всем редиректам
+          })
+          
+          this.updateCookies(redirectResponse.headers.get('set-cookie'))
+          
+          // Проверяем финальный URL на наличие кода или токена
+          const finalUrl = redirectResponse.url
+          console.log('[MobCash Auth] Final URL after redirects:', finalUrl)
+          
+          // Проверяем, есть ли токен в финальном URL
+          if (finalUrl) {
+            const finalUrlParams = new URLSearchParams(finalUrl.split('?')[1] || '')
+            const tokenInUrl = finalUrlParams.get('access_token')
+            if (tokenInUrl && tokenInUrl.startsWith('ory_at_')) {
+              console.log('[MobCash Auth] ✅ Access token найден в финальном URL')
+              return tokenInUrl
+            }
+            
+            // Проверяем, есть ли authorization code
+            const authCode = finalUrlParams.get('code')
+            if (authCode) {
+              console.log('[MobCash Auth] ⚠️ Authorization code найден, но обмен требует client_secret')
+              console.log('[MobCash Auth] ⚠️ Для автоматического OAuth2 используйте готовые токены из браузера')
+              throw new Error(
+                'OAuth2 flow requires client_secret for token exchange. ' +
+                'Please use ready tokens from browser DevTools (MOBCASH_BEARER_TOKEN, MOBCASH_USER_ID, MOBCASH_SESSION_ID) ' +
+                'or contact API provider for client_secret. ' +
+                'See MOBCASH_SETUP.md for instructions on how to obtain tokens from browser.'
+              )
+            }
+            
+            // Проверяем, есть ли ошибка в URL
+            if (finalUrl.includes('error=')) {
+              const error = finalUrlParams.get('error')
+              const errorDesc = finalUrlParams.get('error_description')
+              console.error('[MobCash Auth] ❌ Ошибка в финальном URL:', error)
+              console.error('[MobCash Auth] Описание:', errorDesc)
+              throw new Error(`OAuth2 error: ${error} - ${errorDesc}`)
+            }
+          }
+          
+          // Пробуем получить токен из тела ответа
+          try {
+            const redirectText = await redirectResponse.text()
+            console.log('[MobCash Auth] Redirect response text (first 500 chars):', redirectText.substring(0, 500))
+            
+            // Пробуем найти токен в ответе
+            const tokenMatch = redirectText.match(/access_token["\s:=]+([^"&\s]+)/i)
+            if (tokenMatch && tokenMatch[1] && tokenMatch[1].startsWith('ory_at_')) {
+              console.log('[MobCash Auth] ✅ Access token найден в теле ответа')
+              return tokenMatch[1].trim()
+            }
+            
+            // Пробуем парсить как JSON
+            const redirectData = JSON.parse(redirectText)
+            if (redirectData.access_token) {
+              console.log('[MobCash Auth] ✅ Access token из JSON ответа редиректа')
+              return redirectData.access_token
+            }
+          } catch (e) {
+            // Не JSON или уже прочитали
+          }
+        }
+        
+        // Если нет consent_verifier, проверяем код авторизации напрямую
+        const urlParams2 = new URLSearchParams(location.split('?')[1] || '')
+        const authCode = urlParams2.get('code')
         
         if (authCode) {
           console.log('[MobCash Auth] ⚠️ Authorization code найден, но обмен требует client_secret')
@@ -501,8 +578,8 @@ export class MobCashClient {
         
         // Проверяем, есть ли ошибка в URL
         if (location.includes('error=')) {
-          const error = urlParams.get('error')
-          const errorDesc = urlParams.get('error_description')
+          const error = urlParams2.get('error')
+          const errorDesc = urlParams2.get('error_description')
           console.error('[MobCash Auth] ❌ Ошибка в редиректе:', error)
           console.error('[MobCash Auth] Описание:', errorDesc)
           throw new Error(`OAuth2 error: ${error} - ${errorDesc}`)
