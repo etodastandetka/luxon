@@ -588,10 +588,21 @@ export default function DepositStep4() {
       // Создаем заявку (cryptoInvoice уже есть в state, передается в createDepositRequest)
       await createDepositRequest()
       
-      console.log('✅ Заявка создана, переходим на страницу ожидания')
+      console.log('✅ Заявка создана')
       
-      // Переходим на страницу ожидания
-      router.push('/deposit/waiting')
+      // Показываем сообщение об успешной отправке заявки
+      showAlert({
+        type: 'success',
+        title: language === 'ru' ? 'Заявка отправлена' : 'Request sent',
+        message: language === 'ru'
+          ? 'Ваша заявка успешно отправлена. Вы получите уведомление в бот, когда баланс будет пополнен.'
+          : 'Your request has been sent successfully. You will receive a notification in the bot when your balance is topped up.'
+      })
+      
+      // Перенаправляем на главную через 2 секунды
+      setTimeout(() => {
+        router.push('/')
+      }, 2000)
     } catch (error: any) {
       console.error('❌ Error creating deposit request:', error)
       showAlert({
@@ -691,8 +702,19 @@ export default function DepositStep4() {
       
       console.log('✅ Таймер остановлен после отправки заявки')
       
-      // Перенаправляем на страницу ожидания
-      router.push('/deposit/waiting')
+      // Показываем сообщение об успешной отправке заявки
+      showAlert({
+        type: 'success',
+        title: language === 'ru' ? 'Заявка отправлена' : 'Request sent',
+        message: language === 'ru'
+          ? 'Ваша заявка успешно отправлена. Вы получите уведомление в бот, когда баланс будет пополнен.'
+          : 'Your request has been sent successfully. You will receive a notification in the bot when your balance is topped up.'
+      })
+      
+      // Перенаправляем на главную через 2 секунды
+      setTimeout(() => {
+        router.push('/')
+      }, 2000)
     } catch (e) {
       console.error(e)
       showAlert({

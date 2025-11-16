@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
+import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 
 // API для создания заявок из внешних источников (мини-приложение, бот и т.д.)
 export async function OPTIONS() {
@@ -165,6 +166,26 @@ export async function POST(request: NextRequest) {
       status: newRequest.status,
       amount: newRequest.amount?.toString()
     })
+
+    // Если это вывод, отправляем уведомление в группу
+    if (type === 'withdraw') {
+      const amountStr = newRequest.amount ? parseFloat(newRequest.amount.toString()).toFixed(2) : '0.00'
+      const bookmakerStr = newRequest.bookmaker || 'не указано'
+      const usernameStr = newRequest.username || newRequest.firstName || 'Пользователь'
+      const accountIdStr = newRequest.accountId || 'не указан'
+      
+      const groupMessage = `🔴 <b>Новая заявка на вывод</b>\n\n` +
+        `👤 Пользователь: ${usernameStr}\n` +
+        `💰 Сумма: ${amountStr} сом\n` +
+        `🎰 Казино: ${bookmakerStr}\n` +
+        `🆔 ID аккаунта: ${accountIdStr}\n` +
+        `📋 ID заявки: #${newRequest.id}\n\n` +
+        `Статус: ожидает обработки`
+      
+      sendTelegramGroupMessage(groupMessage).catch(err => {
+        console.error('Failed to send withdrawal notification to group:', err)
+      })
+    }
 
     const response = NextResponse.json(
       createApiResponse({

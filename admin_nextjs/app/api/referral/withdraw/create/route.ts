@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -136,6 +137,22 @@ export async function POST(request: NextRequest) {
         walletDetails: `Account ID: ${accountId}`,
         status: 'pending'
       }
+    })
+    
+    // Отправляем уведомление в группу о новой заявке на вывод
+    const amountStr = parseFloat(withdrawalRequest.amount.toString()).toFixed(2)
+    const usernameStr = withdrawalRequest.username || withdrawalRequest.firstName || 'Пользователь'
+    
+    const groupMessage = `🔴 <b>Новая заявка на вывод (реферальная)</b>\n\n` +
+      `👤 Пользователь: ${usernameStr}\n` +
+      `💰 Сумма: ${amountStr} ${withdrawalRequest.currency}\n` +
+      `🎰 Казино: ${withdrawalRequest.bookmaker}\n` +
+      `🆔 ID аккаунта: ${withdrawalRequest.bookmakerAccountId}\n` +
+      `📋 ID заявки: #${withdrawalRequest.id}\n\n` +
+      `Статус: ожидает обработки`
+    
+    sendTelegramGroupMessage(groupMessage).catch(err => {
+      console.error('Failed to send referral withdrawal notification to group:', err)
     })
     
     const response = NextResponse.json({
