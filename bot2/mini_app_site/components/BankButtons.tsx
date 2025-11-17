@@ -2,6 +2,7 @@
 
 type Bank = { code: string; name: string; emoji?: string; image?: string }
 const BANKS: Bank[] = [
+  { code: 'kompanion', name: 'Компаньон', emoji: '💼', image: '/images/companion.png' },
   { code: 'demirbank', name: 'DemirBank', emoji: '🏦', image: '/images/demirbank.jpg' },
   { code: 'omoney', name: 'O!Money', emoji: '🟡', image: '/images/omoney.jpg' },
   { code: 'balance', name: 'Balance.kg', emoji: '⚖️', image: '/images/balance.jpg' },
@@ -51,6 +52,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
       // API может вернуть ключи с заглавными буквами ('DemirBank', 'O!Money') 
       // или в нижнем регистре ('demirbank', 'omoney')
       const bankMappingVariants: Record<string, string[]> = {
+        'kompanion': ['Компаньон', 'kompanion', 'Kompanion'],
         'demirbank': ['DemirBank', 'demirbank', 'Demir'],
         'omoney': ['O!Money', 'omoney', 'O!Money', 'Odengi'],
         'balance': ['Balance.kg', 'balance', 'Balance'],
