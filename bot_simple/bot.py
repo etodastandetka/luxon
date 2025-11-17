@@ -27,6 +27,7 @@ API_URL = "https://xendro.pro"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start"""
+    logger.info(f"🔵 Функция start вызвана! Update ID: {update.update_id}")
     try:
         # Получаем пользователя
         if not update.effective_user:
@@ -342,6 +343,8 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     """Обработчик ошибок"""
     error = context.error
     logger.error(f"❌ Ошибка в боте: {error}", exc_info=error)
+    logger.error(f"❌ Update при ошибке: {update.update_id if update else 'None'}")
+    logger.error(f"❌ Context при ошибке: {context}")
     
     # Пытаемся отправить сообщение пользователю об ошибке
     try:
@@ -363,8 +366,14 @@ def main() -> None:
         logger.info("✅ Приложение создано")
         
         # Добавляем обработчик команды /start (должен быть первым!)
-        application.add_handler(CommandHandler("start", start))
+        start_handler = CommandHandler("start", start)
+        application.add_handler(start_handler)
         logger.info("✅ Обработчик /start добавлен")
+        
+        # Добавляем обработчик для всех обновлений для отладки
+        async def debug_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+            logger.info(f"🔍 DEBUG: Получено обновление {update.update_id}, тип: {update.message.message_type if update.message else 'no message'}")
+        # application.add_handler(MessageHandler(filters.ALL, debug_handler))  # Раскомментировать для отладки
         
         # Добавляем обработчик команды /referral для просмотра реферальной статистики
         application.add_handler(CommandHandler("referral", referral_command))
@@ -391,8 +400,8 @@ def main() -> None:
         application.add_error_handler(error_handler)
         logger.info("✅ Обработчик ошибок добавлен")
         
-        # Проверяем подключение к боту
-        logger.info("🔍 Проверка подключения к Telegram API...")
+        # Проверяем подключение к боту (будет проверено при запуске polling)
+        logger.info("🔍 Бот будет проверен при запуске polling...")
         
         # Запускаем бота
         logger.info("🤖 Бот запущен и готов к работе!")
