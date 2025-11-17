@@ -112,11 +112,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 Выберите действие:"""
     
     # Отправляем текст с кнопками (как в 1xbet боте - напрямую через update.message)
-    await update.message.reply_text(
-        welcome_text,
-        reply_markup=reply_markup
-    )
-    logger.info(f"✅ Ответ отправлен пользователю {user_id}")
+    try:
+        await update.message.reply_text(
+            welcome_text,
+            reply_markup=reply_markup
+        )
+        logger.info(f"✅ Ответ отправлен пользователю {user_id}")
+    except Exception as e:
+        # Игнорируем ошибки заблокированных пользователей
+        if "Forbidden: bot was blocked by the user" in str(e):
+            logger.debug(f"⚠️ Пользователь {user_id} заблокировал бота")
+        else:
+            logger.error(f"❌ Ошибка при отправке ответа пользователю {user_id}: {e}")
+            raise
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик всех текстовых сообщений от пользователей (не команд)"""
@@ -299,11 +307,16 @@ async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик ошибок"""
     error = context.error
-    logger.error(f"❌ Ошибка в боте: {error}", exc_info=error)
-    logger.error(f"❌ Update при ошибке: {update.update_id if update else 'None'}")
-    logger.error(f"❌ Context при ошибке: {context}")
     
-    # Пытаемся отправить сообщение пользователю об ошибке
+    # Игнорируем ошибки заблокированных пользователей (это нормально)
+    if "Forbidden: bot was blocked by the user" in str(error):
+        logger.debug(f"⚠️ Пользователь заблокировал бота (update_id: {update.update_id if update else 'None'})")
+        return
+    
+    # Логируем остальные ошибки
+    logger.error(f"❌ Ошибка в боте: {error}", exc_info=error)
+    
+    # Пытаемся отправить сообщение пользователю об ошибке (только если не заблокирован)
     try:
         if update and update.effective_chat:
             await context.bot.send_message(
@@ -311,7 +324,9 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 text="❌ Произошла ошибка. Попробуйте позже или напишите /start"
             )
     except Exception as e:
-        logger.error(f"❌ Не удалось отправить сообщение об ошибке: {e}")
+        # Игнорируем ошибки при отправке сообщения об ошибке (чтобы не зациклиться)
+        if "Forbidden: bot was blocked by the user" not in str(e):
+            logger.error(f"❌ Не удалось отправить сообщение об ошибке: {e}")
 
 def main() -> None:
     """Главная функция"""
