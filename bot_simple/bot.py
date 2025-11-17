@@ -315,6 +315,16 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main() -> None:
     """Главная функция"""
+    # Проверяем, что используется правильный токен
+    expected_token_start = "8372920134"  # Начало токена основного бота
+    if not BOT_TOKEN.startswith(expected_token_start):
+        logger.error(f"❌ ОШИБКА: Используется неправильный токен! Ожидается токен начинающийся с {expected_token_start}, получен: {BOT_TOKEN[:10]}...")
+        print(f"❌ КРИТИЧЕСКАЯ ОШИБКА: Неправильный токен бота!")
+        raise ValueError(f"Неправильный токен бота. Ожидается токен начинающийся с {expected_token_start}")
+    
+    logger.info(f"✅ Используется правильный токен основного бота: {BOT_TOKEN[:10]}...")
+    print(f"✅ Токен бота проверен: {BOT_TOKEN[:10]}...")
+    
     # Создаем приложение
     application = Application.builder().token(BOT_TOKEN).build()
     
