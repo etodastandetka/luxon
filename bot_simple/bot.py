@@ -173,7 +173,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     # Пропускаем команды (они обрабатываются отдельными обработчиками)
     if message_text and message_text.startswith('/'):
-        logger.debug(f"Пропускаем команду: {message_text}")
+        logger.warning(f"⚠️ handle_message получил команду {message_text} - это не должно происходить! Пропускаем.")
         return
     
     logger.info(f"📨 Получено сообщение от пользователя {user_id}: {message_text[:50] if message_text else 'медиа'}")
@@ -359,7 +359,10 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """Главная функция"""
     try:
-        logger.info("🚀 Запуск бота...")
+        logger.info("=" * 50)
+        logger.info("🚀 Запуск бота с улучшенным логированием...")
+        logger.info(f"📅 Версия кода: 2025-11-18 (с debug логированием)")
+        logger.info("=" * 50)
         
         # Создаем приложение
         application = Application.builder().token(BOT_TOKEN).build()
@@ -372,8 +375,13 @@ def main() -> None:
         
         # Добавляем обработчик для всех обновлений для отладки
         async def debug_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-            logger.info(f"🔍 DEBUG: Получено обновление {update.update_id}, тип: {update.message.message_type if update.message else 'no message'}")
-        # application.add_handler(MessageHandler(filters.ALL, debug_handler))  # Раскомментировать для отладки
+            if update.message:
+                logger.info(f"🔍 DEBUG: Получено обновление {update.update_id}, текст: {update.message.text}, команда: {update.message.text if update.message.text and update.message.text.startswith('/') else 'нет'}")
+            else:
+                logger.info(f"🔍 DEBUG: Получено обновление {update.update_id}, тип: {type(update)}")
+        # Включаем debug handler ПЕРЕД всеми остальными, чтобы видеть все обновления
+        from telegram.ext import MessageHandler, filters
+        application.add_handler(MessageHandler(filters.ALL, debug_handler), group=-1)  # group=-1 чтобы выполнился первым
         
         # Добавляем обработчик команды /referral для просмотра реферальной статистики
         application.add_handler(CommandHandler("referral", referral_command))
