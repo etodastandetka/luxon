@@ -42,7 +42,8 @@ export default function HistoryPage(){
       amount: 'Сумма',
       status: 'Статус',
       date: 'Дата',
-      bookmaker: 'Букмекер'
+      bookmaker: 'Букмекер',
+      backToMain: '🔙 На главную'
     },
     en: {
       title: 'Transaction History',
@@ -63,7 +64,8 @@ export default function HistoryPage(){
       amount: 'Amount',
       status: 'Status',
       date: 'Date',
-      bookmaker: 'Bookmaker'
+      bookmaker: 'Bookmaker',
+      backToMain: '🔙 Back to main'
     },
     ky: {
       title: 'Операциялар тарыхы',
@@ -84,7 +86,8 @@ export default function HistoryPage(){
       amount: 'Сумма',
       status: 'Статус',
       date: 'Күн',
-      bookmaker: 'Букмекер'
+      bookmaker: 'Букмекер',
+      backToMain: '🔙 Башкы менюга'
     },
     uz: {
       title: 'Operatsiyalar tarixi',
@@ -105,7 +108,8 @@ export default function HistoryPage(){
       amount: 'Miqdor',
       status: 'Holat',
       date: 'Sana',
-      bookmaker: 'Bukmeker'
+      bookmaker: 'Bukmeker',
+      backToMain: '🔙 Asosiy menyuga'
     }
   }
 
@@ -360,6 +364,16 @@ export default function HistoryPage(){
           </div>
         )}
       </section>
+
+      {/* Навигация */}
+      <div className="text-center px-4 pb-6">
+        <a 
+          href="/" 
+          className="inline-block bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+        >
+          {t.backToMain}
+        </a>
+      </div>
     </main>
   )
 }
