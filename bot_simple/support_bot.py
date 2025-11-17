@@ -433,13 +433,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = update.effective_user.id
     message_text = update.message.text or ""
     
-    # Если пользователь не в состоянии, отправляем главное меню
+    # Если пользователь не в состоянии, игнорируем сообщение (не отвечаем)
     if user_id not in user_states:
-        await start(update, context)
         return
     
     state = user_states[user_id]
     step = state.get('step', 'main_menu')
+    
+    # Если пользователь в главном меню, игнорируем текстовые сообщения
+    if step == 'main_menu':
+        return
     
     # Если пользователь написал /start или "привет", возвращаем в главное меню
     if message_text.lower() in ['/start', 'start', 'привет', 'hi', 'hello', 'начать', 'меню']:
