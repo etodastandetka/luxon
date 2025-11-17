@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'bot_simple',
+      name: 'luxon-bot',
       cwd: '/var/www/luxon/bot_simple',
       script: 'venv/bin/python',
       args: 'bot.py',
@@ -9,9 +9,9 @@ module.exports = {
       env: {
         PYTHONUNBUFFERED: '1'
       },
-      error_file: '/var/log/pm2/bot_simple-error.log',
-      out_file: '/var/log/pm2/bot_simple-out.log',
-      log_file: '/var/log/pm2/bot_simple.log',
+      error_file: '/var/log/pm2/luxon-bot-error.log',
+      out_file: '/var/log/pm2/luxon-bot-out.log',
+      log_file: '/var/log/pm2/luxon-bot.log',
       time: true,
       autorestart: true,
       watch: false,
