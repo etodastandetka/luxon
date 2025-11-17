@@ -218,8 +218,10 @@ export default function WithdrawConfirm() {
 
   const getBankName = (bankCode: string) => {
     const bankNames = {
+      'kompanion': 'Компаньон',
       'demirbank': 'DemirBank',
-      'odengi': 'O! bank',
+      'odengi': 'O!Money',
+      'omoney': 'O!Money',
       'balance': 'Balance.kg',
       'bakai': 'Bakai',
       'megapay': 'MegaPay',
