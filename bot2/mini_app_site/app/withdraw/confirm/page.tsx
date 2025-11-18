@@ -199,8 +199,17 @@ export default function WithdrawConfirm() {
         localStorage.removeItem('withdraw_site_code')
         localStorage.removeItem('withdraw_amount')
         
-        // Возвращаемся на главную
-        router.push('/')
+        // Закрываем мини-приложение через 2 секунды
+        setTimeout(() => {
+          const tg = (window as any).Telegram?.WebApp
+          if (tg && typeof tg.close === 'function') {
+            console.log('✅ Закрываем мини-приложение')
+            tg.close()
+          } else {
+            console.warn('⚠️ Telegram WebApp.close() не доступен, используем fallback')
+            router.push('/')
+          }
+        }, 2000)
       } else {
         const errorData = await response.json()
         console.error('API Error:', errorData)

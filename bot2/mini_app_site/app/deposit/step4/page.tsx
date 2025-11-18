@@ -617,9 +617,16 @@ export default function DepositStep4() {
           : 'Your request has been sent successfully. You will receive a notification in the bot when your balance is topped up.'
       })
       
-      // Перенаправляем на главную через 2 секунды
+      // Закрываем мини-приложение через 2 секунды
       setTimeout(() => {
-        router.push('/')
+        const tg = (window as any).Telegram?.WebApp
+        if (tg && typeof tg.close === 'function') {
+          console.log('✅ Закрываем мини-приложение')
+          tg.close()
+        } else {
+          console.warn('⚠️ Telegram WebApp.close() не доступен, используем fallback')
+          router.push('/')
+        }
       }, 2000)
     } catch (error: any) {
       console.error('❌ Error creating deposit request:', error)
@@ -729,9 +736,16 @@ export default function DepositStep4() {
           : 'Your request has been sent successfully. You will receive a notification in the bot when your balance is topped up.'
       })
       
-      // Перенаправляем на главную через 2 секунды
+      // Закрываем мини-приложение через 2 секунды
       setTimeout(() => {
-        router.push('/')
+        const tg = (window as any).Telegram?.WebApp
+        if (tg && typeof tg.close === 'function') {
+          console.log('✅ Закрываем мини-приложение')
+          tg.close()
+        } else {
+          console.warn('⚠️ Telegram WebApp.close() не доступен, используем fallback')
+          router.push('/')
+        }
       }, 2000)
     } catch (e) {
       console.error(e)
