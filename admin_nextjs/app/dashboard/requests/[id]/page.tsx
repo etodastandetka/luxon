@@ -318,6 +318,18 @@ export default function RequestDetailPage() {
     })
   }, [request])
 
+  // Вычисляем отображаемую сумму: если выбран платеж, используем его сумму, иначе сумму заявки
+  // ВАЖНО: должен вызываться до любых условных возвратов!
+  const displayAmount = useMemo(() => {
+    if (selectedPaymentId && request?.matchingPayments) {
+      const selectedPayment = request.matchingPayments.find((p: MatchingPayment) => p.id === selectedPaymentId)
+      if (selectedPayment) {
+        return parseFloat(selectedPayment.amount).toFixed(2).replace('.', ',')
+      }
+    }
+    return request?.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
+  }, [selectedPaymentId, request?.amount, request?.matchingPayments])
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     alert('Скопировано в буфер обмена')
@@ -655,7 +667,6 @@ export default function RequestDetailPage() {
     )
   }
 
-    const displayAmount = request?.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
     const isDeposit = request?.requestType === 'deposit'
     const isDeferred = request?.status === 'deferred'
     
@@ -664,6 +675,14 @@ export default function RequestDetailPage() {
     const processedBy = getProcessedBy(request?.processedBy)
     // Если отложено и автопополнение, показываем минус
     const showMinus = isDeferred && processedBy === 'автопополнение'
+    
+    // Проверяем, обработана ли заявка (для скрытия блока "Переводы по QR")
+    const isProcessed = request?.status === 'completed' || 
+                        request?.status === 'approved' || 
+                        request?.status === 'rejected' || 
+                        request?.status === 'declined' ||
+                        request?.status === 'auto_completed' || 
+                        request?.status === 'autodeposit_success'
     
     const userName = request?.username 
       ? `@${request.username}` 
@@ -937,8 +956,8 @@ export default function RequestDetailPage() {
         </div>
       )}
 
-      {/* Входящие платежи с поиском */}
-      {request.requestType === 'deposit' && request.matchingPayments && request.matchingPayments.length > 0 && (
+      {/* Входящие платежи с поиском - показываем только для необработанных заявок */}
+      {request.requestType === 'deposit' && request.matchingPayments && request.matchingPayments.length > 0 && !isProcessed && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-lg font-semibold text-white mb-3">Переводы по QR</h3>
           
