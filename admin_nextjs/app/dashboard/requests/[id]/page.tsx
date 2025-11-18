@@ -64,6 +64,8 @@ export default function RequestDetailPage() {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
   const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null)
   const [linkingPayment, setLinkingPayment] = useState(false)
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
+  const [photoZoom, setPhotoZoom] = useState(1)
   const isMountedRef = useRef(true)
 
   useEffect(() => {
