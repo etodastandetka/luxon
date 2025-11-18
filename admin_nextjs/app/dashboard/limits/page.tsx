@@ -74,22 +74,6 @@ export default function LimitsPage() {
     fetchStats()
   }, [fetchStats])
 
-  // Закрываем календарь при клике вне его
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
-        setShowCalendar(false)
-      }
-    }
-
-    if (showCalendar) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showCalendar])
 
   // Инициализация дат из URL
   useEffect(() => {
@@ -422,7 +406,8 @@ export default function LimitsPage() {
 
           {/* Календарь */}
           {showCalendar && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-xl p-4 z-50 shadow-2xl">
+            <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowCalendar(false)}>
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-2xl max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <button
@@ -507,6 +492,7 @@ export default function LimitsPage() {
                 >
                   Очистить
                 </button>
+              </div>
               </div>
             </div>
           )}
