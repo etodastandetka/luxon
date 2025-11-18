@@ -70,6 +70,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     fetchHistory(true) // Сбрасываем при изменении таба
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
   const loadMore = () => {
