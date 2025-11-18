@@ -29,15 +29,34 @@ export async function GET(request: NextRequest) {
       where.requestType = type
     }
 
-    const [requests, total] = await Promise.all([
-      prisma.request.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.request.count({ where }),
-    ])
+    // Оптимизируем запрос - выбираем только нужные поля
+    const requests = await prisma.request.findMany({
+      where,
+      select: {
+        id: true,
+        userId: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        accountId: true,
+        requestType: true,
+        amount: true,
+        status: true,
+        statusDetail: true,
+        bookmaker: true,
+        bank: true,
+        phone: true,
+        createdAt: true,
+        processedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+    })
+
+    // Подсчитываем общее количество только если offset = 0 (первая загрузка)
+    // Это ускоряет последующие запросы
+    const total = offset === 0 ? await prisma.request.count({ where }) : 0
 
     const transactions = requests.map((r) => ({
       id: r.id.toString(),
@@ -61,13 +80,17 @@ export async function GET(request: NextRequest) {
       processed_at: r.processedAt?.toISOString() || null,
     }))
 
+    // Определяем hasMore на основе количества полученных записей
+    // Если получили меньше limit, значит больше нет записей
+    const hasMore = requests.length === limit
+
     const response = NextResponse.json(createApiResponse({ 
       transactions,
       pagination: {
         limit,
         offset,
-        total,
-        hasMore: offset + limit < total,
+        total: total || undefined, // Возвращаем total только для первой страницы
+        hasMore,
       },
     }))
     response.headers.set('Access-Control-Allow-Origin', '*')
