@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 interface PlatformLimit {
@@ -28,7 +28,13 @@ export default function LimitsPage() {
   const searchParams = useSearchParams()
   const [stats, setStats] = useState<LimitsStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [dateRange, setDateRange] = useState('')
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [selectedDates, setSelectedDates] = useState<Date[]>([])
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
+  const calendarRef = useRef<HTMLDivElement>(null)
 
   const fetchStats = useCallback(async () => {
     setLoading(true)
@@ -46,11 +52,15 @@ export default function LimitsPage() {
       if (data.success) {
         setStats(data.data)
         
-        // Устанавливаем значение дат для инпута
-        if (start || end) {
-          setDateRange(`${start || ''} — ${end || ''}`)
+        // Устанавливаем значение дат
+        setStartDate(start || '')
+        setEndDate(end || '')
+        
+        // Устанавливаем выбранные даты для календаря
+        if (start && end) {
+          setSelectedDates([new Date(start), new Date(end)])
         } else {
-          setDateRange('')
+          setSelectedDates([])
         }
       }
     } catch (error) {
@@ -64,17 +74,137 @@ export default function LimitsPage() {
     fetchStats()
   }, [fetchStats])
 
-  const handlePeriodSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const parts = dateRange.split(/\s*[—\-–toдо]+\s*/i).filter(Boolean)
-    const start = parts[0]?.trim() || ''
-    const end = parts[1]?.trim() || ''
+  // Закрываем календарь при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setShowCalendar(false)
+      }
+    }
 
-    const params = new URLSearchParams()
-    if (start) params.append('start', start)
-    if (end) params.append('end', end)
+    if (showCalendar) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
 
-    router.push(`/dashboard/limits?${params.toString()}`)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showCalendar])
+
+  // Инициализация дат из URL
+  useEffect(() => {
+    const start = searchParams.get('start') || ''
+    const end = searchParams.get('end') || ''
+    setStartDate(start)
+    setEndDate(end)
+    if (start && end) {
+      setSelectedDates([new Date(start), new Date(end)])
+    }
+  }, [searchParams])
+
+  const handleDateClick = (date: Date) => {
+    if (selectedDates.length === 0) {
+      // Первая дата - начало периода
+      setSelectedDates([date])
+    } else if (selectedDates.length === 1) {
+      // Вторая дата - конец периода
+      const firstDate = selectedDates[0]
+      if (date < firstDate) {
+        // Если вторая дата раньше первой, меняем местами
+        setSelectedDates([date, firstDate])
+      } else {
+        setSelectedDates([firstDate, date])
+      }
+    } else {
+      // Начинаем новый выбор
+      setSelectedDates([date])
+    }
+  }
+
+  const handleApplyPeriod = () => {
+    if (selectedDates.length === 2) {
+      const start = selectedDates[0].toISOString().split('T')[0]
+      const end = selectedDates[1].toISOString().split('T')[0]
+      
+      const params = new URLSearchParams()
+      params.append('start', start)
+      params.append('end', end)
+      
+      router.push(`/dashboard/limits?${params.toString()}`)
+      setShowCalendar(false)
+    }
+  }
+
+  const handleClearPeriod = () => {
+    setSelectedDates([])
+    setStartDate('')
+    setEndDate('')
+    router.push('/dashboard/limits')
+    setShowCalendar(false)
+  }
+
+  // Навигация по месяцам
+  const goToPreviousMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11)
+      setCurrentYear(currentYear - 1)
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
+  }
+
+  const goToNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0)
+      setCurrentYear(currentYear + 1)
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
+  }
+
+  // Генерация календаря
+  const generateCalendar = () => {
+    const firstDay = new Date(currentYear, currentMonth, 1)
+    const lastDay = new Date(currentYear, currentMonth + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    const startingDayOfWeek = firstDay.getDay()
+    
+    const days: (Date | null)[] = []
+    
+    // Пустые ячейки до первого дня месяца
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null)
+    }
+    
+    // Дни месяца
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(currentYear, currentMonth, day))
+    }
+    
+    return days
+  }
+
+  const getMonthName = () => {
+    return new Date(currentYear, currentMonth).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  }
+
+  const isDateInRange = (date: Date) => {
+    if (selectedDates.length === 0) return false
+    if (selectedDates.length === 1) {
+      return date.toDateString() === selectedDates[0].toDateString()
+    }
+    return date >= selectedDates[0] && date <= selectedDates[1]
+  }
+
+  const isDateSelected = (date: Date) => {
+    return selectedDates.some(d => d.toDateString() === date.toDateString())
+  }
+
+  const formatDateRange = () => {
+    if (startDate && endDate) {
+      return `${startDate} — ${endDate}`
+    }
+    return 'Выберите период'
   }
 
   useEffect(() => {
@@ -273,24 +403,114 @@ export default function LimitsPage() {
         <div className="w-10"></div>
       </div>
 
-      {/* Период */}
+      {/* Период с календарем */}
       <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
         <div className="text-base font-bold text-white mb-3">Период (от — до)</div>
-        <form onSubmit={handlePeriodSubmit} className="flex gap-2">
-          <input
-            type="text"
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            placeholder="ГГГГ-ММ-ДД — ГГГГ-ММ-ДД"
-            className="flex-1 bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
+        <div className="relative" ref={calendarRef}>
           <button
-            type="submit"
-            className="bg-gradient-to-r from-green-500 to-green-600 text-black px-4 py-2 rounded-xl hover:from-green-600 hover:to-green-700 font-medium text-sm whitespace-nowrap"
+            type="button"
+            onClick={() => setShowCalendar(!showCalendar)}
+            className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center justify-between"
           >
-            Применить
+            <span className={startDate && endDate ? 'text-white' : 'text-gray-400'}>
+              {formatDateRange()}
+            </span>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
           </button>
-        </form>
+
+          {/* Календарь */}
+          {showCalendar && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-xl p-4 z-50 shadow-2xl">
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <button
+                    type="button"
+                    onClick={goToPreviousMonth}
+                    className="p-1 hover:bg-gray-700 rounded transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <h3 className="text-white font-semibold">
+                    {getMonthName()}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={goToNextMonth}
+                    className="p-1 hover:bg-gray-700 rounded transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((day) => (
+                    <div key={day} className="text-center text-xs text-gray-400 py-1">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {generateCalendar().map((date, index) => {
+                    if (!date) {
+                      return <div key={index} className="aspect-square" />
+                    }
+                    const isInRange = isDateInRange(date)
+                    const isSelected = isDateSelected(date)
+                    const isToday = date.toDateString() === new Date().toDateString()
+                    
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleDateClick(date)}
+                        className={`aspect-square rounded-lg text-sm transition-colors ${
+                          isSelected
+                            ? 'bg-green-500 text-black font-bold'
+                            : isInRange
+                            ? 'bg-green-500/30 text-white'
+                            : isToday
+                            ? 'bg-gray-700 text-white font-semibold'
+                            : 'text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        {date.getDate()}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              
+              {selectedDates.length === 2 && (
+                <div className="text-center text-sm text-gray-300 mb-3">
+                  Период выбран
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleApplyPeriod}
+                  disabled={selectedDates.length !== 2}
+                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 text-black font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                  Применить
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearPeriod}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                >
+                  Очистить
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <p className="text-xs text-gray-400 mt-2">Оставьте пустым, чтобы показать все время</p>
       </div>
 
@@ -333,18 +553,6 @@ export default function LimitsPage() {
             </div>
             <div className="text-xs text-gray-500 mt-1">
               {stats.totalWithdrawalsCount} операций
-            </div>
-          </div>
-          <div className="bg-gray-900 bg-opacity-50 rounded-xl p-3 border border-gray-700">
-            <div className="text-xs text-gray-400 mb-1">Сумма пополнений</div>
-            <div className="text-green-500 font-bold text-lg">
-              {stats.totalDepositsSum.toFixed(2)} с
-            </div>
-          </div>
-          <div className="bg-gray-900 bg-opacity-50 rounded-xl p-3 border border-gray-700">
-            <div className="text-xs text-gray-400 mb-1">Сумма выводов</div>
-            <div className="text-green-500 font-bold text-lg">
-              {stats.totalWithdrawalsSum.toFixed(2)} с
             </div>
           </div>
         </div>

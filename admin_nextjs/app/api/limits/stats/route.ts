@@ -54,32 +54,36 @@ export async function GET(request: NextRequest) {
     let chartStartDate = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     let chartEndDate = endDate ? new Date(endDate) : new Date()
 
-    // Группировка по датам для графика используя SQL
-    const depositsByDate = await prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-      SELECT 
-        TO_CHAR(created_at, 'YYYY-MM-DD') as date,
-        COUNT(*)::bigint as count
-      FROM requests
-      WHERE request_type = 'deposit'
-        AND created_at >= ${chartStartDate}::timestamp
-        AND created_at <= ${chartEndDate}::timestamp
-      GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
-      ORDER BY date DESC
-      LIMIT 10
-    `
-
-    const withdrawalsByDate = await prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-      SELECT 
-        TO_CHAR(created_at, 'YYYY-MM-DD') as date,
-        COUNT(*)::bigint as count
-      FROM requests
-      WHERE request_type = 'withdraw'
-        AND created_at >= ${chartStartDate}::timestamp
-        AND created_at <= ${chartEndDate}::timestamp
-      GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
-      ORDER BY date DESC
-      LIMIT 10
-    `
+    // Группировка по датам для графика используя SQL (оптимизировано)
+    // Используем только успешные статусы и ограничиваем количество дней
+    const [depositsByDate, withdrawalsByDate] = await Promise.all([
+      prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+        SELECT 
+          TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+          COUNT(*)::bigint as count
+        FROM requests
+        WHERE request_type = 'deposit'
+          AND status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
+          AND created_at >= ${chartStartDate}::timestamp
+          AND created_at <= ${chartEndDate}::timestamp
+        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+        ORDER BY date DESC
+        LIMIT 30
+      `,
+      prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+        SELECT 
+          TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+          COUNT(*)::bigint as count
+        FROM requests
+        WHERE request_type = 'withdraw'
+          AND status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
+          AND created_at >= ${chartStartDate}::timestamp
+          AND created_at <= ${chartEndDate}::timestamp
+        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+        ORDER BY date DESC
+        LIMIT 30
+      `,
+    ])
 
     // Форматируем даты для графика (YYYY-MM-DD -> dd.mm)
     const formatDate = (dateStr: string) => {
