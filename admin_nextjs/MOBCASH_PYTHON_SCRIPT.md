@@ -6,12 +6,23 @@ Python скрипт `update_mobcash_tokens.py` автоматически вып
 
 ## Установка
 
-1. Убедитесь, что установлен Python 3.6+ и библиотека `requests`:
+1. Создайте виртуальное окружение Python:
 ```bash
-pip3 install requests
+cd /var/www/luxon/admin_nextjs
+python3 -m venv venv
 ```
 
-2. Установите переменные окружения в `.env` файле:
+2. Активируйте виртуальное окружение:
+```bash
+source venv/bin/activate
+```
+
+3. Установите необходимые библиотеки:
+```bash
+pip install requests
+```
+
+4. Установите переменные окружения в `.env` файле:
 ```env
 MOBCASH_LOGIN=ваш_логин
 MOBCASH_PASSWORD=ваш_пароль
@@ -26,6 +37,7 @@ MOBCASH_DEFAULT_LON=74.568778
 
 ```bash
 cd /var/www/luxon/admin_nextjs
+source venv/bin/activate
 python3 scripts/update_mobcash_tokens.py
 ```
 
@@ -38,7 +50,12 @@ crontab -e
 
 Добавьте строку:
 ```
-0 */20 * * * cd /var/www/luxon/admin_nextjs && /usr/bin/python3 scripts/update_mobcash_tokens.py >> /var/log/mobcash_tokens.log 2>&1
+0 */20 * * * cd /var/www/luxon/admin_nextjs && /var/www/luxon/admin_nextjs/venv/bin/python3 scripts/update_mobcash_tokens.py >> /var/log/mobcash_tokens.log 2>&1
+```
+
+Или используйте активацию venv:
+```
+0 */20 * * * cd /var/www/luxon/admin_nextjs && source venv/bin/activate && python3 scripts/update_mobcash_tokens.py >> /var/log/mobcash_tokens.log 2>&1
 ```
 
 Это будет запускать скрипт каждые 20 часов.
@@ -47,6 +64,8 @@ crontab -e
 
 Для просмотра текущих токенов:
 ```bash
+cd /var/www/luxon/admin_nextjs
+source venv/bin/activate
 python3 scripts/read_mobcash_tokens.py
 ```
 
