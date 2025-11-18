@@ -428,12 +428,46 @@ def step3_get_access_token(session, consent_challenge, consent_url=None):
                             log('access_token найден в тексте предварительного GET', 'SUCCESS')
                             return access_token
                 
+                # Пробуем извлечь consent_verifier из ответа (может быть в HTML форме или JSON)
+                consent_verifier = None
+                if 'consent_verifier' in pre_text:
+                    import re
+                    match = re.search(r'consent_verifier["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', pre_text)
+                    if match:
+                        consent_verifier = match.group(1)
+                        log(f'Consent verifier найден в ответе предварительного GET: {consent_verifier[:20]}...', 'INFO')
+                
+                # Пробуем из URL
+                if not consent_verifier and pre_url:
+                    import urllib.parse
+                    pre_parsed = urllib.parse.urlparse(pre_url)
+                    if pre_parsed.query:
+                        pre_params = urllib.parse.parse_qs(pre_parsed.query)
+                        if 'consent_verifier' in pre_params:
+                            consent_verifier = pre_params['consent_verifier'][0]
+                            log(f'Consent verifier найден в URL предварительного GET: {consent_verifier[:20]}...', 'INFO')
+                
+                # Если нашли consent_verifier, используем его вместо consent_challenge
+                if consent_verifier:
+                    log(f'Используем consent_verifier для POST запроса: {consent_verifier[:20]}...', 'INFO')
+                    # Обновляем consent_challenge на consent_verifier
+                    consent_challenge = consent_verifier
+                
                 # Если это редирект, проверяем Location header
                 if pre_response.status_code in [302, 303, 307, 308]:
                     pre_location = pre_response.headers.get('Location', '')
                     if pre_location:
                         log(f'Предварительный GET redirect Location: {pre_location[:200]}...', 'INFO')
-                        # Продолжаем обработку ниже
+                        # Извлекаем consent_verifier из Location, если есть
+                        if 'consent_verifier' in pre_location:
+                            import urllib.parse
+                            pre_loc_parsed = urllib.parse.urlparse(pre_location)
+                            if pre_loc_parsed.query:
+                                pre_loc_params = urllib.parse.parse_qs(pre_loc_parsed.query)
+                                if 'consent_verifier' in pre_loc_params:
+                                    consent_verifier = pre_loc_params['consent_verifier'][0]
+                                    log(f'Consent verifier найден в redirect Location: {consent_verifier[:20]}...', 'INFO')
+                                    consent_challenge = consent_verifier
             except Exception as e:
                 log(f'Предварительный GET запрос завершился с ошибкой (продолжаем): {e}', 'WARNING')
         
