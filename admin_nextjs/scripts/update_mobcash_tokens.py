@@ -579,30 +579,41 @@ def step4_get_user_id(access_token):
         # Пробуем разные варианты структуры ответа
         user_id = None
         
-        # Вариант 1: result[0].result.id
-        if result[0].get('result') and result[0]['result'].get('id'):
+        # Вариант 1: result[0].result.user.id (правильная структура согласно логам)
+        if result[0].get('result') and result[0]['result'].get('user') and result[0]['result']['user'].get('id'):
+            user_id = result[0]['result']['user']['id']
+        
+        # Вариант 2: result[0].result.id
+        if not user_id and result[0].get('result') and result[0]['result'].get('id'):
             user_id = result[0]['result']['id']
         
-        # Вариант 2: result[0].id (прямо в первом элементе)
-        if not user_id and result[0].get('id'):
-            user_id = result[0]['id']
+        # Вариант 3: result[0].id (прямо в первом элементе) - НЕ используем, это id запроса!
+        # if not user_id and result[0].get('id'):
+        #     user_id = result[0]['id']
         
-        # Вариант 3: result.id (если это не массив)
+        # Вариант 4: result.id (если это не массив)
         if not user_id and isinstance(result, dict) and result.get('id'):
             user_id = result['id']
         
-        # Вариант 4: result.result.id (если это не массив)
+        # Вариант 5: result.result.id (если это не массив)
         if not user_id and isinstance(result, dict) and result.get('result') and result['result'].get('id'):
             user_id = result['result']['id']
         
-        # Вариант 5: ищем через regex в тексте ответа
+        # Вариант 6: ищем через regex в тексте ответа (ищем user.id, а не просто id)
         if not user_id:
             import re
             response_text = response.text
-            match = re.search(r'"id"\s*:\s*"([^"]+)"', response_text)
+            # Ищем "user": {"id": "..."}
+            match = re.search(r'"user"\s*:\s*\{[^}]*"id"\s*:\s*"([^"]+)"', response_text)
             if match:
                 user_id = match.group(1)
-                log('userID найден через regex в тексте ответа', 'INFO')
+                log('userID найден через regex (user.id) в тексте ответа', 'INFO')
+            else:
+                # Fallback: ищем любой id в кавычках
+                match = re.search(r'"id"\s*:\s*"([^"]+)"', response_text)
+                if match:
+                    user_id = match.group(1)
+                    log('userID найден через regex в тексте ответа', 'INFO')
         
         if not user_id:
             log(f'Структура ответа: {result}', 'ERROR')
@@ -647,21 +658,45 @@ def step5_get_session_id(access_token, user_id):
         response.raise_for_status()
         
         result = response.json()
+        log(f'Полный ответ API для sessionID: {result}', 'INFO')
+        
         if not result or len(result) == 0:
             raise ValueError('Пустой ответ от API')
         
-        session_id = (
-            result[0].get('result', {}).get('sessionID') or
-            result[0].get('result', {}).get('session_id') or
-            result[0].get('result', {}).get('id') or
-            ''
-        )
+        session_id = None
+        
+        # Вариант 1: result[0].result.sessionID
+        if result[0].get('result') and result[0]['result'].get('sessionID'):
+            session_id = result[0]['result']['sessionID']
+        
+        # Вариант 2: result[0].result.session_id
+        if not session_id and result[0].get('result') and result[0]['result'].get('session_id'):
+            session_id = result[0]['result']['session_id']
+        
+        # Вариант 3: result[0].result.id (если sessionID называется просто id)
+        if not session_id and result[0].get('result') and result[0]['result'].get('id'):
+            session_id = result[0]['result']['id']
+        
+        # Вариант 4: result[0].id (если это не массив)
+        if not session_id and isinstance(result, dict) and result.get('id'):
+            session_id = result['id']
+        
+        # Вариант 5: ищем через regex в тексте ответа
+        if not session_id:
+            import re
+            response_text = response.text
+            # Ищем sessionID или session_id
+            match = re.search(r'"session[Ii][Dd]"\s*:\s*"([^"]+)"', response_text)
+            if match:
+                session_id = match.group(1)
+                log('sessionID найден через regex в тексте ответа', 'INFO')
         
         if not session_id:
+            log(f'Структура ответа: {result}', 'ERROR')
             raise ValueError('sessionID не найден в ответе')
         
         log(f'sessionID получен: {session_id}', 'SUCCESS')
-        return session_id
+        return str(session_id)  # Преобразуем в строку
         
     except Exception as e:
         log(f'Ошибка получения sessionID: {e}', 'ERROR')
