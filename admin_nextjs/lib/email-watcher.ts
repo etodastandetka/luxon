@@ -94,7 +94,8 @@ async function processEmail(
             
             if (emailDate < oneHourAgo) {
               console.log(`⚠️ Email UID ${uid} is too old (${emailDate.toISOString()}), marking as read without processing`)
-              imap.addFlags(uid, '\\Seen', (err: Error | null) => {
+              // Используем setFlags вместо addFlags для более надежной установки флага
+              imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
                 if (err) {
                   console.error(`❌ Error marking old email as seen:`, err)
                 } else {
@@ -121,8 +122,13 @@ async function processEmail(
               console.log(`   No amount pattern found`)
             }
             // Помечаем как прочитанное, даже если не смогли распарсить
-            imap.addFlags(uid, '\\Seen', (err: Error | null) => {
-              if (err) console.error(`Error marking unparseable email as seen:`, err)
+            // Используем setFlags вместо addFlags для более надежной установки флага
+            imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
+              if (err) {
+                console.error(`❌ Error marking unparseable email as seen:`, err)
+              } else {
+                console.log(`✅ Unparseable email UID ${uid} marked as read`)
+              }
               resolve()
             })
             return
@@ -158,7 +164,8 @@ async function processEmail(
               console.log(`   Skipping duplicate payment. Marking email as read immediately.`)
               
               // СРАЗУ помечаем письмо как прочитанное, чтобы не обрабатывать его снова
-              imap.addFlags(uid, '\\Seen', (err: Error | null) => {
+              // Используем setFlags вместо addFlags для более надежной установки флага
+              imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
                 if (err) {
                   console.error(`❌ Error marking email as seen:`, err)
                 } else {
@@ -187,7 +194,8 @@ async function processEmail(
 
             // СРАЗУ помечаем письмо как прочитанное ПОСЛЕ успешной обработки
             // Это критично важно, чтобы не обрабатывать письмо повторно
-            imap.addFlags(uid, '\\Seen', (err: Error | null) => {
+            // Используем setFlags вместо addFlags для более надежной установки флага
+            imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
               if (err) {
                 console.error(`❌ Error marking email as seen:`, err)
                 // Даже при ошибке помечания как прочитанное, считаем обработку завершенной
@@ -334,16 +342,17 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           return
         }
 
-        // Ищем непрочитанные письма за последние 30 минут (чтобы не обрабатывать старые письма)
+        // Ищем непрочитанные письма за последние 15 минут (чтобы не обрабатывать старые письма)
         // Это предотвращает обработку старых писем при перезапуске watcher
-        const thirtyMinutesAgo = new Date()
-        thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30)
+        const fifteenMinutesAgo = new Date()
+        fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15)
         const searchDate = [
           'SINCE',
-          thirtyMinutesAgo.toISOString().split('T')[0].replace(/-/g, '-')
+          fifteenMinutesAgo.toISOString().split('T')[0].replace(/-/g, '-')
         ]
         
-        // Дополнительно фильтруем по времени - только письма за последние 30 минут
+        // Дополнительно фильтруем по времени - только письма за последние 15 минут
+        // Используем более строгий фильтр: только UNSEEN письма за последние 15 минут
         imap.search(['UNSEEN', searchDate], (err: Error | null, results?: number[]) => {
           if (err) {
             reject(err)
@@ -357,7 +366,7 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
             return
           }
 
-          console.log(`📬 Found ${results.length} new email(s) (since ${thirtyMinutesAgo.toISOString().split('T')[0]})`)
+          console.log(`📬 Found ${results.length} new email(s) (since ${fifteenMinutesAgo.toISOString().split('T')[0]})`)
 
           // Обрабатываем каждое письмо последовательно (не параллельно), чтобы избежать конфликтов
           const processSequentially = async () => {
