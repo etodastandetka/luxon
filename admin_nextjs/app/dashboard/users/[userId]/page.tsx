@@ -143,9 +143,16 @@ export default function UserDetailPage() {
   const displayName = user.firstName || user.username || `ID: ${user.userId}`
   const displayUsername = user.username ? `@${user.username}` : null
   
-  // Статистика по пополнениям и выводам
-  const deposits = user.transactions.filter(t => t.transType === 'deposit')
-  const withdrawals = user.transactions.filter(t => t.transType === 'withdraw')
+  // Статусы успешных транзакций
+  const successStatuses = ['completed', 'approved', 'auto_completed', 'autodeposit_success']
+  
+  // Статистика по пополнениям и выводам (только успешные)
+  const deposits = user.transactions.filter(t => 
+    t.transType === 'deposit' && successStatuses.includes(t.status)
+  )
+  const withdrawals = user.transactions.filter(t => 
+    t.transType === 'withdraw' && successStatuses.includes(t.status)
+  )
   const totalDeposits = deposits.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0)
   const totalWithdrawals = withdrawals.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0)
 
