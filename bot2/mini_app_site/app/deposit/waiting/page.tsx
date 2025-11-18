@@ -255,7 +255,7 @@ export default function DepositWaitingPage() {
 
   return (
     <PageTransition direction="forward">
-      <div className="min-h-screen bg-gradient-to-b from-green-950 to-green-900 flex flex-col items-center justify-center p-4">
+      <div className="h-screen overflow-hidden flex flex-col items-center justify-center p-4">
         <FixedHeaderControls />
 
         {status === 'waiting' && (
