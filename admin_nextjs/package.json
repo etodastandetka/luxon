@@ -15,6 +15,7 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "watcher": "tsx scripts/start-watcher.ts",
     "watcher:check": "tsx scripts/check-watcher-once.ts",
+    "clear-payments": "tsx scripts/clear-incoming-payments.ts",
     "test-mobcash": "tsx scripts/test-mobcash.ts",
     "test-mobcash-auth": "tsx scripts/test-mobcash-auth.ts",
     "check-mobcash-config": "tsx scripts/check-mobcash-config.ts"
