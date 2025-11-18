@@ -120,25 +120,29 @@ async function processEmail(
 
             // ВАЖНО: Проверяем, не существует ли уже такой платеж (по сумме, дате и банку)
             // Это предотвращает дубликаты при повторной обработке писем
-            // Увеличиваем окно поиска до ±5 минут для более надежной проверки
+            // Увеличиваем окно поиска до ±10 минут для более надежной проверки
             const existingPayment = await prisma.incomingPayment.findFirst({
               where: {
                 amount: amount,
                 bank: bank,
                 paymentDate: {
-                  gte: new Date(paymentDate.getTime() - 5 * 60000), // ±5 минут
-                  lte: new Date(paymentDate.getTime() + 5 * 60000),
+                  gte: new Date(paymentDate.getTime() - 10 * 60000), // ±10 минут
+                  lte: new Date(paymentDate.getTime() + 10 * 60000),
                 },
               },
             })
 
             if (existingPayment) {
               console.log(`⚠️ Payment already exists: ID ${existingPayment.id}, amount: ${amount}, date: ${paymentDate.toISOString()}`)
-              console.log(`   Skipping duplicate payment. Marking email as read.`)
+              console.log(`   Skipping duplicate payment. Marking email as read immediately.`)
               
-              // Помечаем письмо как прочитанное, даже если платеж уже существует
+              // СРАЗУ помечаем письмо как прочитанное, чтобы не обрабатывать его снова
               imap.addFlags(uid, '\\Seen', (err: Error | null) => {
-                if (err) console.error(`Error marking email as seen:`, err)
+                if (err) {
+                  console.error(`❌ Error marking email as seen:`, err)
+                } else {
+                  console.log(`✅ Email UID ${uid} marked as read (duplicate skipped)`)
+                }
                 resolve()
               })
               return
@@ -160,12 +164,14 @@ async function processEmail(
             // Пытаемся найти совпадение и автоматически пополнить баланс
             await matchAndProcessPayment(incomingPayment.id, amount)
 
-            // Помечаем письмо как прочитанное ПОСЛЕ успешной обработки
+            // СРАЗУ помечаем письмо как прочитанное ПОСЛЕ успешной обработки
+            // Это критично важно, чтобы не обрабатывать письмо повторно
             imap.addFlags(uid, '\\Seen', (err: Error | null) => {
               if (err) {
-                console.error(`Error marking email as seen:`, err)
+                console.error(`❌ Error marking email as seen:`, err)
+                // Даже при ошибке помечания как прочитанное, считаем обработку завершенной
               } else {
-                console.log(`✅ Email marked as read (UID: ${uid})`)
+                console.log(`✅ Email UID ${uid} marked as read (payment saved: ID ${incomingPayment.id})`)
               }
               resolve()
             })
@@ -307,16 +313,16 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           return
         }
 
-        // Ищем непрочитанные письма за последние 2 часа (чтобы не обрабатывать старые письма)
+        // Ищем непрочитанные письма за последние 30 минут (чтобы не обрабатывать старые письма)
         // Это предотвращает обработку старых писем при перезапуске watcher
-        const twoHoursAgo = new Date()
-        twoHoursAgo.setHours(twoHoursAgo.getHours() - 2)
+        const thirtyMinutesAgo = new Date()
+        thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30)
         const searchDate = [
           'SINCE',
-          twoHoursAgo.toISOString().split('T')[0].replace(/-/g, '-')
+          thirtyMinutesAgo.toISOString().split('T')[0].replace(/-/g, '-')
         ]
         
-        // Дополнительно фильтруем по времени - только письма за последние 2 часа
+        // Дополнительно фильтруем по времени - только письма за последние 30 минут
         imap.search(['UNSEEN', searchDate], (err: Error | null, results?: number[]) => {
           if (err) {
             reject(err)
@@ -330,7 +336,7 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
             return
           }
 
-          console.log(`📬 Found ${results.length} new email(s) (since ${twoHoursAgo.toISOString().split('T')[0]})`)
+          console.log(`📬 Found ${results.length} new email(s) (since ${thirtyMinutesAgo.toISOString().split('T')[0]})`)
 
           // Обрабатываем каждое письмо последовательно (не параллельно), чтобы избежать конфликтов
           const processSequentially = async () => {
