@@ -1080,7 +1080,8 @@ export default function RequestDetailPage() {
             </div>
           </div>
           
-          <div className="space-y-1.5">
+          {/* Список платежей с ограничением до 4 элементов и скроллом */}
+          <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
             {request.matchingPayments
               .filter((payment: MatchingPayment) => {
                 // Фильтрация по сумме
@@ -1154,6 +1155,7 @@ export default function RequestDetailPage() {
               )
             })}
           </div>
+          {/* Кнопка Подтвердить снизу блока */}
           {selectedPaymentId && !request.matchingPayments?.find((p: MatchingPayment) => p.id === selectedPaymentId && (p.isProcessed && p.requestId === request.id)) && (
             <button
               onClick={async () => {
@@ -1211,9 +1213,12 @@ export default function RequestDetailPage() {
                 }
               }}
               disabled={linkingPayment}
-              className="mt-2 w-full bg-green-500 hover:bg-green-600 text-black font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm"
+              className="mt-3 w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
             >
-              {linkingPayment ? 'Привязка...' : 'Привязать выбранный платеж'}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{linkingPayment ? 'Привязка...' : 'Подтвердить'}</span>
             </button>
           )}
         </div>
