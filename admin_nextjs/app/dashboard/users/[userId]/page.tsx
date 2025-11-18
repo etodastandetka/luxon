@@ -60,9 +60,16 @@ export default function UserDetailPage() {
 
   const fetchUser = useCallback(async () => {
     try {
+      // Используем кэширование для более быстрой загрузки
       const [userRes, photoRes] = await Promise.all([
-        fetch(`/api/users/${params.userId}`),
-        fetch(`/api/users/${params.userId}/profile-photo`)
+        fetch(`/api/users/${params.userId}`, { 
+          cache: 'force-cache',
+          next: { revalidate: 60 } // Перевалидируем каждую минуту
+        }),
+        fetch(`/api/users/${params.userId}/profile-photo`, {
+          cache: 'force-cache',
+          next: { revalidate: 300 } // Фото реже обновляется
+        })
       ])
 
       const userData = await userRes.json()
