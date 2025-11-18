@@ -115,6 +115,7 @@ export default function RequestsPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('storage', handleStorageChange)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]) // Убрали fetchRequests из зависимостей, чтобы избежать лишних перезагрузок
 
   const loadMore = () => {
