@@ -52,7 +52,10 @@ export default function LimitsPage() {
       if (start) params.append('start', start)
       if (end) params.append('end', end)
 
-      const response = await fetch(`/api/limits/stats?${params.toString()}`)
+      const response = await fetch(`/api/limits/stats?${params.toString()}`, {
+        cache: 'default',
+        next: { revalidate: 10 } // Кэшируем на 10 секунд
+      })
       const data = await response.json()
 
       if (data.success) {
