@@ -455,12 +455,40 @@ export default function DepositStep4() {
         console.log('📦 Полный cryptoInvoice объект:', cryptoInvoice)
       }
 
-      console.log('📤 Создаем заявку с данными:', {
+      // Проверяем обязательные поля перед отправкой
+      if (!playerId || !bookmaker || !amount || amount <= 0) {
+        console.error('❌ Недостаточно данных для создания заявки:', {
+          playerId,
+          bookmaker,
+          amount,
+          hasTelegramUser: !!telegramUser
+        })
+        throw new Error('Недостаточно данных для создания заявки. Проверьте, что все поля заполнены.')
+      }
+
+      const requestData = {
         type: 'deposit',
-        amount,
-        amount_usd: amountUsd,
-        payment_method: paymentType,
-        crypto_invoice_id: invoiceId
+        amount: amount, // В сомах (для пополнения в казино)
+        amount_usd: amountUsd, // В долларах (только для крипты)
+        userId: playerId,
+        bookmaker: bookmaker,
+        bank: bank,
+        playerId: playerId, // Добавляем playerId для совместимости
+        payment_method: paymentType, // 'bank' или 'crypto'
+        crypto_invoice_id: invoiceId,
+        // Данные пользователя Telegram (если доступны)
+        telegram_user_id: telegramUser?.id,
+        telegram_username: telegramUser?.username,
+        telegram_first_name: telegramUser?.first_name,
+        telegram_last_name: telegramUser?.last_name,
+        telegram_language_code: telegramUser?.language_code,
+        // Фото чека (если загружено)
+        receipt_photo: receiptPhotoBase64,
+      }
+
+      console.log('📤 Создаем заявку с данными:', {
+        ...requestData,
+        receipt_photo: receiptPhotoBase64 ? `[base64, ${receiptPhotoBase64.length} chars]` : null
       })
 
       const response = await fetch('/api/payment', {
@@ -468,25 +496,7 @@ export default function DepositStep4() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          type: 'deposit',
-          amount: amount, // В сомах (для пополнения в казино)
-          amount_usd: amountUsd, // В долларах (только для крипты)
-          userId: playerId,
-          bookmaker: bookmaker,
-          bank: bank,
-          playerId: playerId, // Добавляем playerId для совместимости
-          payment_method: paymentType, // 'bank' или 'crypto'
-          crypto_invoice_id: invoiceId,
-          // Данные пользователя Telegram
-          telegram_user_id: telegramUser?.id,
-          telegram_username: telegramUser?.username,
-          telegram_first_name: telegramUser?.first_name,
-          telegram_last_name: telegramUser?.last_name,
-          telegram_language_code: telegramUser?.language_code,
-          // Фото чека (если загружено)
-          receipt_photo: receiptPhotoBase64,
-        })
+        body: JSON.stringify(requestData)
       })
       
       if (!response.ok) {
@@ -497,7 +507,15 @@ export default function DepositStep4() {
         } catch {
           errorData = { error: errorText || 'Unknown error' }
         }
-        console.error('❌ Ошибка создания заявки:', response.status, errorData)
+        console.error('❌ Ошибка создания заявки:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          requestData: {
+            ...requestData,
+            receipt_photo: receiptPhotoBase64 ? '[base64]' : null
+          }
+        })
         throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`)
       }
 
