@@ -428,7 +428,7 @@ export default function LimitsPage() {
               />
               {/* Календарь */}
               <div 
-                className="fixed flex items-start justify-center pt-20 px-4 pointer-events-none"
+                className="fixed flex items-start justify-center pt-16 px-4 pointer-events-none"
                 style={{ 
                   position: 'fixed', 
                   top: 0, 
@@ -440,42 +440,42 @@ export default function LimitsPage() {
                 }}
               >
                 <div 
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-2xl max-w-md w-full relative" 
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-2xl max-w-xs w-full relative" 
                   onClick={(e) => e.stopPropagation()}
                   style={{ pointerEvents: 'auto' }}
                 >
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-1.5">
                   <button
                     type="button"
                     onClick={goToPreviousMonth}
-                    className="p-1 hover:bg-gray-700 rounded transition-colors"
+                    className="p-0.5 hover:bg-gray-700 rounded transition-colors"
                   >
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  <h3 className="text-white font-semibold">
+                  <h3 className="text-white font-semibold text-sm">
                     {getMonthName()}
                   </h3>
                   <button
                     type="button"
                     onClick={goToNextMonth}
-                    className="p-1 hover:bg-gray-700 rounded transition-colors"
+                    className="p-0.5 hover:bg-gray-700 rounded transition-colors"
                   >
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
                 </div>
-                <div className="grid grid-cols-7 gap-1 mb-2">
+                <div className="grid grid-cols-7 gap-0.5 mb-1">
                   {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((day) => (
-                    <div key={day} className="text-center text-xs text-gray-400 py-1">
+                    <div key={day} className="text-center text-[10px] text-gray-400 py-0.5">
                       {day}
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7 gap-0.5">
                   {generateCalendar().map((date, index) => {
                     if (!date) {
                       return <div key={index} className="aspect-square" />
@@ -489,7 +489,7 @@ export default function LimitsPage() {
                         key={index}
                         type="button"
                         onClick={() => handleDateClick(date)}
-                        className={`aspect-square rounded-lg text-sm transition-colors ${
+                        className={`aspect-square rounded text-xs transition-colors ${
                           isSelected
                             ? 'bg-green-500 text-black font-bold'
                             : isInRange
@@ -507,24 +507,24 @@ export default function LimitsPage() {
               </div>
               
               {selectedDates.length === 2 && (
-                <div className="text-center text-sm text-gray-300 mb-3">
+                <div className="text-center text-xs text-gray-300 mb-2">
                   Период выбран
                 </div>
               )}
               
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <button
                   type="button"
                   onClick={handleApplyPeriod}
                   disabled={selectedDates.length !== 2}
-                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 text-black font-medium py-2 px-4 rounded-lg transition-colors"
+                  className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 text-black font-medium py-1.5 px-3 rounded-lg transition-colors text-xs"
                 >
                   Применить
                 </button>
                 <button
                   type="button"
                   onClick={handleClearPeriod}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-xs"
                 >
                   Очистить
                 </button>
