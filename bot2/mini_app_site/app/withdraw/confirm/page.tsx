@@ -99,6 +99,36 @@ export default function WithdrawConfirm() {
         telegramUser
       })
 
+      // Получаем Telegram ID пользователя (обязательно для правильной идентификации)
+      let telegramUserId: string | null = null
+      
+      if (tg?.initDataUnsafe?.user?.id) {
+        telegramUserId = String(tg.initDataUnsafe.user.id)
+      } else if (tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          if (userParam) {
+            const userData = JSON.parse(decodeURIComponent(userParam))
+            telegramUserId = String(userData.id)
+          }
+        } catch (e) {
+          console.error('Error parsing initData for telegram_user_id:', e)
+        }
+      }
+      
+      // Если Telegram ID не найден, используем из telegramUser
+      if (!telegramUserId && telegramUser?.id) {
+        telegramUserId = String(telegramUser.id)
+      }
+      
+      // Telegram ID обязателен для правильной идентификации пользователя
+      if (!telegramUserId) {
+        console.error('❌ Telegram user ID not found! Cannot create request without user identification.')
+        alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+        return
+      }
+
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -107,13 +137,14 @@ export default function WithdrawConfirm() {
         body: JSON.stringify({
           type: 'withdraw',
           bookmaker: bookmaker,
-          userId: parseInt(userId),
+          userId: telegramUserId, // Telegram ID пользователя
           phone: phone,
           amount: parseFloat(amount),
           bank: bank,
+          account_id: userId, // ID аккаунта в казино (отдельно от userId)
           playerId: userId, // Добавляем playerId для совместимости
-          // Данные пользователя Telegram
-          telegram_user_id: telegramUser?.id,
+          // Данные пользователя Telegram (обязательно)
+          telegram_user_id: telegramUserId,
           telegram_username: telegramUser?.username,
           telegram_first_name: telegramUser?.first_name,
           telegram_last_name: telegramUser?.last_name,

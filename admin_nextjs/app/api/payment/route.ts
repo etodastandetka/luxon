@@ -39,10 +39,14 @@ export async function POST(request: NextRequest) {
       crypto_invoice_id, // ID крипто invoice
     } = body
 
-    // Определяем user_id (пробуем разные варианты)
-    // Приоритет: telegram_user_id > userId > user_id > playerId
-    const finalUserId = telegram_user_id || userId || user_id || playerId
-    const finalAccountId = account_id || user_id || userId || playerId
+    // Определяем user_id (Telegram ID пользователя - обязателен для правильной идентификации)
+    // Приоритет: telegram_user_id > userId > user_id
+    // НЕ используем playerId как userId, т.к. это ID аккаунта в казино, а не Telegram ID
+    const finalUserId = telegram_user_id || userId || user_id
+    
+    // accountId - это ID аккаунта в казино (может быть одинаковым для разных пользователей)
+    // Приоритет: account_id > playerId (но НЕ userId/user_id, т.к. это Telegram ID)
+    const finalAccountId = account_id || playerId
 
     console.log('📝 Payment API - Creating request:', {
       telegram_user_id,
@@ -56,8 +60,8 @@ export async function POST(request: NextRequest) {
       bank
     })
 
-    // Если user_id не передан, используем playerId как userId (для тестирования)
-    // Но лучше использовать telegram_user_id если он доступен
+    // Telegram user_id обязателен для правильной идентификации пользователя
+    // Разные пользователи могут иметь одинаковый accountId (ID аккаунта в казино)
     if (!finalUserId || !type || !amount) {
       console.error('❌ Payment API: Missing required fields', { 
         userId, 
