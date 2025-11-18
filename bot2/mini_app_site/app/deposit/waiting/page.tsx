@@ -11,47 +11,69 @@ export default function DepositWaitingPage() {
   const [status, setStatus] = useState<'waiting' | 'success' | 'error'>('waiting')
   const [requestId, setRequestId] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null)
+  const [requestAmount, setRequestAmount] = useState<string | null>(null)
 
   const translations = {
     ru: {
-      waiting: 'Ожидание подтверждения',
+      waiting: 'Ожидайте',
       checking: 'Проверяем вашу оплату...',
       success: 'Успешная оплата!',
       successMessage: 'Ваш баланс пополнен!',
       error: 'Заявка отклонена',
-      errorMessage: 'Ваша заявка отклонена. Пожалуйста, обратитесь в поддержку.',
+      errorMessage: 'Ваша заявка отклонена.',
+      rejectionReason: 'Причина отклонения:',
+      checkPayment: 'Проверьте оплату',
+      confirm: 'Подтвердить',
+      checkAmount: 'Посмотрите что вы до копейки скинули',
       back: 'На главную',
-      backHome: 'На главную'
+      backHome: 'На главную',
+      questions: 'Вопросы:'
     },
     en: {
-      waiting: 'Waiting for confirmation',
+      waiting: 'Please wait',
       checking: 'Checking your payment...',
       success: 'Payment successful!',
       successMessage: 'Your balance has been topped up!',
       error: 'Request rejected',
-      errorMessage: 'Your request has been rejected. Please contact support.',
+      errorMessage: 'Your request has been rejected.',
+      rejectionReason: 'Rejection reason:',
+      checkPayment: 'Check payment',
+      confirm: 'Confirm',
+      checkAmount: 'Please check that you sent the exact amount to the penny',
       back: 'Back',
-      backHome: 'Back to home'
+      backHome: 'Back to home',
+      questions: 'Questions:'
     },
     ky: {
-      waiting: 'Ырастоо күтүү',
+      waiting: 'Күтүңүз',
       checking: 'Төлөмүңүздү текшерип жатабыз...',
       success: 'Төлөм ийгиликтүү!',
       successMessage: 'Балансыңыз толукталды!',
       error: 'Өтүнүч четке кагылды',
-      errorMessage: 'Кечиресиз, сиздин өтүнүчүңүз четке кагылды. Сураныч, колдоо кызматына кайрылыңыз.',
+      errorMessage: 'Кечиресиз, сиздин өтүнүчүңүз четке кагылды.',
+      rejectionReason: 'Четке кагуу себеби:',
+      checkPayment: 'Төлөмдү текшериңиз',
+      confirm: 'Ырастоо',
+      checkAmount: 'Сиз тийиштүү сумманы тийиштүү копейкага чейин жөнөткөнүңүздү текшериңиз',
       back: 'Артка',
-      backHome: 'Башкы бетке'
+      backHome: 'Башкы бетке',
+      questions: 'Суроолор:'
     },
     uz: {
-      waiting: 'Tasdiqlash kutilmoqda',
+      waiting: 'Kuting',
       checking: 'To\'lovingizni tekshiryapmiz...',
       success: 'To\'lov muvaffaqiyatli!',
       successMessage: 'Balansingiz to\'ldirildi!',
       error: 'So\'rov rad etildi',
-      errorMessage: 'Afsuski, so\'rovingiz rad etildi. Iltimos, qo\'llab-quvvatlash xizmatiga murojaat qiling.',
+      errorMessage: 'Afsuski, so\'rovingiz rad etildi.',
+      rejectionReason: 'Rad etish sababi:',
+      checkPayment: 'To\'lovni tekshiring',
+      confirm: 'Tasdiqlash',
+      checkAmount: 'Iltimos, siz to\'liq summani to\'liq tiyincha yuborganingizni tekshiring',
       back: 'Orqaga',
-      backHome: 'Bosh sahifaga'
+      backHome: 'Bosh sahifaga',
+      questions: 'Savollar:'
     }
   }
 
@@ -107,8 +129,14 @@ export default function DepositWaitingPage() {
       if (data.success && data.data) {
         const requestStatus = data.data.status
         const processedBy = data.data.processedBy
+        const statusDetail = data.data.statusDetail || data.data.status_detail
+        const amount = data.data.amount
 
-        console.log('Request status:', { requestStatus, processedBy })
+        if (amount) {
+          setRequestAmount(amount)
+        }
+
+        console.log('Request status:', { requestStatus, processedBy, statusDetail })
 
         // Проверяем успешные статусы (включая автопополнение)
         // Автопополнение: статус completed с processedBy = 'автопополнение'
@@ -136,6 +164,22 @@ export default function DepositWaitingPage() {
         } else if (['rejected', 'declined', 'failed'].includes(requestStatus)) {
           console.log('Payment rejected! Setting status to error')
           setStatus('error')
+          
+          // Парсим причину отклонения из statusDetail
+          if (statusDetail) {
+            try {
+              // Если statusDetail это JSON, парсим его
+              const parsed = JSON.parse(statusDetail)
+              if (parsed.reason || parsed.message) {
+                setRejectionReason(parsed.reason || parsed.message)
+              } else {
+                setRejectionReason(statusDetail)
+              }
+            } catch {
+              // Если не JSON, используем как есть
+              setRejectionReason(statusDetail)
+            }
+          }
         } else {
           console.log('Payment still pending:', requestStatus)
         }
@@ -145,6 +189,44 @@ export default function DepositWaitingPage() {
     } catch (error) {
       console.error('Error checking payment status:', error)
       // В случае ошибки продолжаем ждать
+    }
+  }
+
+  const handleCheckPayment = () => {
+    // Перенаправляем на страницу с инструкциями по проверке оплаты
+    // Или показываем модальное окно с информацией
+    alert(t.checkAmount)
+  }
+
+  const handleConfirm = async () => {
+    if (!requestId) return
+
+    try {
+      const apiUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3001' 
+        : 'https://xendro.pro'
+      
+      // Отправляем запрос на подтверждение заявки
+      const response = await fetch(`${apiUrl}/api/requests/${requestId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'approved',
+        }),
+      })
+
+      if (response.ok) {
+        // Обновляем статус на успех
+        setStatus('success')
+        setShowConfetti(true)
+      } else {
+        alert('Ошибка при подтверждении заявки')
+      }
+    } catch (error) {
+      console.error('Error confirming request:', error)
+      alert('Ошибка при подтверждении заявки')
     }
   }
 
@@ -294,14 +376,45 @@ export default function DepositWaitingPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <h1 className="text-4xl font-bold text-red-400">{t.error}</h1>
-              <p className="text-white text-xl">{t.errorMessage}</p>
+            <div className="space-y-4">
+              <div>
+                <h1 className="text-4xl font-bold text-red-400">{t.error}</h1>
+                <p className="text-white text-xl mt-2">{t.errorMessage}</p>
+              </div>
+
+              {rejectionReason && (
+                <div className="bg-red-900/50 rounded-lg p-4 border border-red-700">
+                  <p className="text-red-300 font-semibold mb-2">{t.rejectionReason}</p>
+                  <p className="text-white">{rejectionReason}</p>
+                </div>
+              )}
+
+              {requestAmount && (
+                <div className="bg-yellow-900/50 rounded-lg p-4 border border-yellow-700">
+                  <p className="text-yellow-300 font-semibold mb-2">{t.checkAmount}</p>
+                  <p className="text-white text-lg">Сумма заявки: <span className="font-bold">{requestAmount} сом</span></p>
+                </div>
+              )}
+
+              <div className="space-y-3 pt-4">
+                <button
+                  onClick={handleCheckPayment}
+                  className="w-full px-6 py-3 bg-yellow-500 text-black rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
+                >
+                  {t.checkPayment}
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  className="w-full px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors"
+                >
+                  {t.confirm}
+                </button>
+              </div>
             </div>
 
             <button
               onClick={() => router.push('/')}
-              className="px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors"
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors"
             >
               {t.backHome}
             </button>
@@ -361,5 +474,3 @@ export default function DepositWaitingPage() {
     </PageTransition>
   )
 }
-
-

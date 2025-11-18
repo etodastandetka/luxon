@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
 import { depositCashdeskAPI, depositMostbetAPI, depositMobCashAPI } from './casino-deposit'
-import { getMobCashConfigFromTokens } from '@/lib/mobcash-tokens'
+import { getMobCashConfigFromTokens } from './mobcash-tokens'
 
 // Функция для получения конфигурации API казино из настроек
 export async function getCasinoConfig(bookmaker: string) {
