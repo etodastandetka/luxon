@@ -665,15 +665,19 @@ def step5_get_session_id(access_token, user_id):
         
         session_id = None
         
-        # Вариант 1: result[0].result.sessionID
-        if result[0].get('result') and result[0]['result'].get('sessionID'):
+        # Вариант 1: result[0].result.session.id (правильная структура согласно логам)
+        if result[0].get('result') and result[0]['result'].get('session') and result[0]['result']['session'].get('id'):
+            session_id = result[0]['result']['session']['id']
+        
+        # Вариант 2: result[0].result.sessionID
+        if not session_id and result[0].get('result') and result[0]['result'].get('sessionID'):
             session_id = result[0]['result']['sessionID']
         
-        # Вариант 2: result[0].result.session_id
+        # Вариант 3: result[0].result.session_id
         if not session_id and result[0].get('result') and result[0]['result'].get('session_id'):
             session_id = result[0]['result']['session_id']
         
-        # Вариант 3: result[0].result.id (если sessionID называется просто id)
+        # Вариант 4: result[0].result.id (если sessionID называется просто id)
         if not session_id and result[0].get('result') and result[0]['result'].get('id'):
             session_id = result[0]['result']['id']
         
