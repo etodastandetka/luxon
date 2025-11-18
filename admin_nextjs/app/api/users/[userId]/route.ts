@@ -66,11 +66,11 @@ export async function GET(
         const transactions = allRequests.slice(0, 50).map(req => ({
           id: req.id,
           transType: req.requestType,
-          amount: req.amount?.toString() || '0',
+          amount: req.amount ? parseFloat(req.amount.toString()) : 0,
           status: req.status,
           bookmaker: req.bookmaker,
-          processedBy: (req as any).processedBy || null,
-          createdAt: req.createdAt.toISOString(),
+          processedBy: req.processedBy || null,
+          createdAt: req.createdAt,
         }))
 
         user = {
@@ -125,11 +125,18 @@ export async function GET(
           ? new Date(t.createdAt) 
           : t.createdAt
 
+        // Преобразуем amount в Decimal для сравнения
+        const amountValue = typeof t.amount === 'string' 
+          ? parseFloat(t.amount) 
+          : (typeof t.amount === 'object' && t.amount !== null && 'toNumber' in t.amount)
+            ? (t.amount as any).toNumber()
+            : Number(t.amount)
+
         const relatedRequest = await prisma.request.findFirst({
           where: {
             userId: user.userId,
             bookmaker: t.bookmaker || undefined,
-            amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
+            amount: amountValue,
             requestType: t.transType,
             createdAt: {
               gte: new Date(createdAtDate.getTime() - 60000), // ±1 минута
