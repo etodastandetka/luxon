@@ -117,13 +117,14 @@ async function processEmail(
 
             // ВАЖНО: Проверяем, не существует ли уже такой платеж (по сумме, дате и банку)
             // Это предотвращает дубликаты при повторной обработке писем
+            // Увеличиваем окно поиска до ±5 минут для более надежной проверки
             const existingPayment = await prisma.incomingPayment.findFirst({
               where: {
                 amount: amount,
                 bank: bank,
                 paymentDate: {
-                  gte: new Date(paymentDate.getTime() - 60000), // ±1 минута
-                  lte: new Date(paymentDate.getTime() + 60000),
+                  gte: new Date(paymentDate.getTime() - 5 * 60000), // ±5 минут
+                  lte: new Date(paymentDate.getTime() + 5 * 60000),
                 },
               },
             })
@@ -298,14 +299,16 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           return
         }
 
-        // Ищем непрочитанные письма за последние 24 часа (чтобы не обрабатывать старые письма)
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
+        // Ищем непрочитанные письма за последние 2 часа (чтобы не обрабатывать старые письма)
+        // Это предотвращает обработку старых писем при перезапуске watcher
+        const twoHoursAgo = new Date()
+        twoHoursAgo.setHours(twoHoursAgo.getHours() - 2)
         const searchDate = [
           'SINCE',
-          yesterday.toISOString().split('T')[0].replace(/-/g, '-')
+          twoHoursAgo.toISOString().split('T')[0].replace(/-/g, '-')
         ]
         
+        // Дополнительно фильтруем по времени - только письма за последние 2 часа
         imap.search(['UNSEEN', searchDate], (err: Error | null, results?: number[]) => {
           if (err) {
             reject(err)
@@ -421,6 +424,12 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
               reject(error)
               return
             }
+            // Обрабатываем сетевые ошибки (DNS, таймауты) - не логируем как критичные
+            if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+              console.warn(`⚠️ Network error in polling (${error.code}):`, error.message || error.hostname || 'Connection issue')
+              // Продолжаем работу, попробуем снова через интервал
+              return
+            }
             console.error('Error in quick polling:', error.message || error)
           }
         }, 5000) // Проверка каждые 5 секунд вместо 60
@@ -441,12 +450,20 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
         console.error('   Please check email and password in the active requisite')
         console.error(`   Email: ${settings.email ? '✓ set' : '✗ missing'}`)
         console.error(`   Password: ${settings.password ? '✓ set' : '✗ missing'}`)
+        if (idleInterval) clearInterval(idleInterval)
+        if (keepAliveInterval) clearInterval(keepAliveInterval)
+        reject(err)
+      } else if ((err as any).code === 'ENOTFOUND' || (err as any).code === 'ETIMEDOUT' || (err as any).code === 'ECONNREFUSED') {
+        // Сетевые ошибки - не критичные, просто логируем и продолжаем
+        console.warn(`⚠️ IMAP network error (${(err as any).code}):`, err.message || err)
+        // Не останавливаем интервалы, пусть продолжает пытаться
+        // Не reject, чтобы не прерывать цикл переподключения
       } else {
         console.error('❌ IMAP connection error:', err)
+        if (idleInterval) clearInterval(idleInterval)
+        if (keepAliveInterval) clearInterval(keepAliveInterval)
+        reject(err)
       }
-      if (idleInterval) clearInterval(idleInterval)
-      if (keepAliveInterval) clearInterval(keepAliveInterval)
-      reject(err)
     })
 
     imap.once('end', () => {
