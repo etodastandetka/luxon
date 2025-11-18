@@ -37,9 +37,12 @@ async function getWatcherSettings(): Promise<WatcherSettings> {
   })
 
   // Фиксированные настройки для Timeweb
+  // IMAP сервер: imap.timeweb.ru
+  // Порт SSL: 993
+  // Порт STARTTLS: 143 (не используется, используем SSL)
   return {
     enabled: enabledSetting?.value === '1',
-    imapHost: 'imap.timeweb.ru', // Всегда Timeweb
+    imapHost: 'imap.timeweb.ru', // Timeweb IMAP сервер
     email,
     password,
     folder: 'INBOX', // Всегда INBOX
@@ -286,10 +289,15 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
     const imap = new Imap({
       user: settings.email,
       password: settings.password,
-      host: settings.imapHost,
-      port: 993,
-      tls: true,
-      tlsOptions: { rejectUnauthorized: false },
+      host: settings.imapHost, // imap.timeweb.ru
+      port: 993, // SSL порт для IMAP (Timeweb)
+      tls: true, // Используем SSL/TLS
+      tlsOptions: { 
+        rejectUnauthorized: false, // Разрешаем самоподписанные сертификаты
+        servername: 'imap.timeweb.ru', // Явно указываем имя сервера для SNI
+      },
+      connTimeout: 30000, // Таймаут подключения 30 секунд
+      authTimeout: 10000, // Таймаут авторизации 10 секунд
     })
 
     imap.once('ready', () => {
@@ -369,12 +377,15 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
     const imap = new Imap({
       user: settings.email,
       password: settings.password,
-      host: settings.imapHost,
-      port: 993,
-      tls: true,
-      tlsOptions: { rejectUnauthorized: false },
-      connTimeout: 60000,
-      authTimeout: 60000,
+      host: settings.imapHost, // imap.timeweb.ru
+      port: 993, // SSL порт для IMAP (Timeweb)
+      tls: true, // Используем SSL/TLS
+      tlsOptions: { 
+        rejectUnauthorized: false, // Разрешаем самоподписанные сертификаты
+        servername: 'imap.timeweb.ru', // Явно указываем имя сервера для SNI
+      },
+      connTimeout: 30000, // Таймаут подключения 30 секунд
+      authTimeout: 10000, // Таймаут авторизации 10 секунд
     })
 
     let idleInterval: NodeJS.Timeout | null = null
