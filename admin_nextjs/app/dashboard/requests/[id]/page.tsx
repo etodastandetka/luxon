@@ -804,13 +804,6 @@ export default function RequestDetailPage() {
               <div className="w-2 h-2 rounded-full bg-current"></div>
               <span className="text-xs font-medium">{getStatusState(request.status)}</span>
             </div>
-            {processedBy && (
-              <div className="px-3 py-1 rounded-full bg-gray-700">
-                <span className="text-xs font-medium text-gray-300">
-                  {processedBy === 'автопополнение' ? 'автопополнение' : processedBy}
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -913,8 +906,8 @@ export default function RequestDetailPage() {
               <span className="text-sm font-medium text-white">{request.id}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">ID Telegram:</span>
-              <span className="text-sm font-medium text-white">{request.userId}</span>
+              <span className="text-sm text-gray-400">ID счета:</span>
+              <span className="text-sm font-medium text-white">{request.accountId || 'N/A'}</span>
             </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-400">Дата создания:</span>
@@ -928,12 +921,6 @@ export default function RequestDetailPage() {
             <div className="pt-2 border-t border-gray-700">
               <span className="text-sm text-gray-400 block mb-1">Заметка:</span>
               <span className="text-sm font-medium text-red-400 whitespace-pre-wrap">{request.userNote}</span>
-            </div>
-          )}
-          {request.accountId && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">ID счета:</span>
-              <span className="text-sm font-medium text-white">{request.accountId}</span>
             </div>
           )}
           {request.bank && (
@@ -957,14 +944,6 @@ export default function RequestDetailPage() {
               <span className="text-sm text-gray-400">Крипто-платеж:</span>
               <span className="text-sm font-medium text-purple-400">
                 {request.cryptoPayment.amount} {request.cryptoPayment.asset}
-              </span>
-            </div>
-          )}
-          {processedBy && (
-            <div className="flex justify-between items-center pt-2 border-t border-gray-700">
-              <span className="text-sm text-gray-400">Обработано:</span>
-              <span className="text-sm font-medium text-white">
-                {processedBy === 'автопополнение' ? 'автопополнение' : processedBy}
               </span>
             </div>
           )}
