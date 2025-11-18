@@ -791,34 +791,34 @@ export default function RequestDetailPage() {
       )}
 
       {/* Мини описание */}
-      <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl font-bold text-white">{request.accountId || 'N/A'}</span>
+      <div className="mx-4 mb-4 bg-gray-800 rounded-xl p-3 border border-gray-700">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-lg font-bold text-white">{request.accountId || 'N/A'}</span>
             {request.accountId && (
               <button
                 onClick={() => copyToClipboard(request.accountId || '')}
-                className="p-1 hover:bg-gray-700 rounded transition-colors"
+                className="p-0.5 hover:bg-gray-700 rounded transition-colors"
               >
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               </button>
             )}
           </div>
-          <div className={`flex items-center space-x-2 px-2.5 py-1 rounded-full ${getStatusColor(request.status)}`}>
+          <div className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full ${getStatusColor(request.status)}`}>
             <div className="w-1.5 h-1.5 rounded-full bg-current"></div>
             <span className="text-xs font-medium">{getStatusState(request.status)}</span>
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 mb-2">{formatDate(request.createdAt)}</p>
+        <p className="text-xs text-gray-400 mb-1.5">{formatDate(request.createdAt)}</p>
 
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-400">
+          <p className="text-xs text-gray-400">
             {isDeposit ? 'Пополнение' : 'Вывод'}
           </p>
-          <p className={`text-2xl font-bold ${showMinus ? 'text-red-500' : (isDeposit ? 'text-green-500' : 'text-red-500')}`}>
+          <p className={`text-xl font-bold ${showMinus ? 'text-red-500' : (isDeposit ? 'text-green-500' : 'text-red-500')}`}>
             {showMinus ? '-' : (isDeposit ? '+' : '-')}{displayAmount}
           </p>
         </div>
@@ -847,6 +847,41 @@ export default function RequestDetailPage() {
               }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Кнопки действий для отложенных и ожидающих заявок */}
+      {/* Скрываем кнопки если заявка уже обработана */}
+      {(() => {
+        const isPendingOrDeferred = request.status === 'deferred' || request.status === 'pending'
+        const isProcessed = request.status === 'completed' || 
+                          request.status === 'approved' || 
+                          request.status === 'rejected' || 
+                          request.status === 'auto_completed' || 
+                          request.status === 'autodeposit_success'
+        const hasProcessedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
+        
+        return isPendingOrDeferred && !isProcessed && !hasProcessedPayment
+      })() && (
+        <div className="mx-4 mb-4 flex space-x-3">
+          <button
+            onClick={() => updateRequestStatus('approved')}
+            className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Подтвердить</span>
+          </button>
+          <button
+            onClick={() => updateRequestStatus('rejected')}
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Отклонить</span>
+          </button>
         </div>
       )}
 
@@ -1094,41 +1129,6 @@ export default function RequestDetailPage() {
               {linkingPayment ? 'Привязка...' : 'Привязать выбранный платеж'}
             </button>
           )}
-        </div>
-      )}
-
-      {/* Кнопки действий для отложенных и ожидающих заявок */}
-      {/* Скрываем кнопки если заявка уже обработана */}
-      {(() => {
-        const isPendingOrDeferred = request.status === 'deferred' || request.status === 'pending'
-        const isProcessed = request.status === 'completed' || 
-                          request.status === 'approved' || 
-                          request.status === 'rejected' || 
-                          request.status === 'auto_completed' || 
-                          request.status === 'autodeposit_success'
-        const hasProcessedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
-        
-        return isPendingOrDeferred && !isProcessed && !hasProcessedPayment
-      })() && (
-        <div className="mx-4 mb-4 flex space-x-3">
-          <button
-            onClick={() => updateRequestStatus('approved')}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Подтвердить</span>
-          </button>
-          <button
-            onClick={() => updateRequestStatus('rejected')}
-            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>Отклонить</span>
-          </button>
         </div>
       )}
 
