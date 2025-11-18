@@ -1,23 +1,24 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Luxon Admin Panel',
   description: 'Admin panel for Luxon bot management',
   manifest: '/manifest.json',
-  themeColor: '#22c55e',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Luxon Admin',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover',
-  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#22c55e',
 }
 
 export default function RootLayout({
