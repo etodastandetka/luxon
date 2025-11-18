@@ -20,27 +20,27 @@ export async function GET(request: NextRequest) {
       filters.createdAt = { ...filters.createdAt, lte: new Date(endDate) }
     }
 
-    // Статистика пополнений (только успешные заявки)
-    const depositStats = await prisma.request.aggregate({
-      where: {
-        requestType: 'deposit',
-        status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
-        ...filters,
-      },
-      _count: { id: true },
-      _sum: { amount: true },
-    })
-
-    // Статистика выводов (только успешные заявки)
-    const withdrawalStats = await prisma.request.aggregate({
-      where: {
-        requestType: 'withdraw',
-        status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
-        ...filters,
-      },
-      _count: { id: true },
-      _sum: { amount: true },
-    })
+    // Статистика пополнений и выводов параллельно (только успешные заявки)
+    const [depositStats, withdrawalStats] = await Promise.all([
+      prisma.request.aggregate({
+        where: {
+          requestType: 'deposit',
+          status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
+          ...filters,
+        },
+        _count: { id: true },
+        _sum: { amount: true },
+      }),
+      prisma.request.aggregate({
+        where: {
+          requestType: 'withdraw',
+          status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
+          ...filters,
+        },
+        _count: { id: true },
+        _sum: { amount: true },
+      }),
+    ])
 
     const totalDepositsCount = depositStats._count.id || 0
     const totalDepositsSum = parseFloat(depositStats._sum.amount?.toString() || '0')
@@ -126,16 +126,18 @@ export async function GET(request: NextRequest) {
     const synchronizedDeposits = allLabels.map((label) => depositsDict[label] || 0)
     const synchronizedWithdrawals = allLabels.map((label) => withdrawalsDict[label] || 0)
 
-    // Получаем лимиты платформ через API (каждый раз заново, без кеширования)
-    // Лимиты - это текущие лимиты кассы из API казино, не зависят от периода
-    const { getPlatformLimits } = await import('@/lib/casino-api')
-    console.log(`📊 Fetching platform limits (fresh data, no cache)...`)
-    let platformLimits = await getPlatformLimits()
+    // Получаем настройки казино и лимиты платформ параллельно (с кешированием на 30 секунд)
+    const [casinoSettingsConfig, platformLimitsResult] = await Promise.all([
+      prisma.botConfiguration.findFirst({
+        where: { key: 'casinos' },
+      }),
+      (async () => {
+        const { getPlatformLimits } = await import('@/lib/casino-api')
+        return await getPlatformLimits()
+      })(),
+    ])
     
-    // Фильтруем лимиты по настройкам казино (показываем только включенные)
-    const casinoSettingsConfig = await prisma.botConfiguration.findFirst({
-      where: { key: 'casinos' },
-    })
+    let platformLimits = platformLimitsResult
     
     let casinoSettings: Record<string, boolean> = {
       '1xbet': true,

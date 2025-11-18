@@ -347,12 +347,26 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
   return { balance: 0, limit: 0 }
 }
 
+// Кэш для лимитов платформ (30 секунд)
+let platformLimitsCache: {
+  data: Array<{ key: string; name: string; limit: number }>
+  timestamp: number
+} | null = null
+
+const PLATFORM_LIMITS_CACHE_TTL = 30 * 1000 // 30 секунд
+
 /**
- * Получение лимитов всех платформ
+ * Получение лимитов всех платформ (с кэшированием)
  */
 export async function getPlatformLimits(): Promise<
   Array<{ key: string; name: string; limit: number }>
 > {
+  // Проверяем кэш
+  if (platformLimitsCache && Date.now() - platformLimitsCache.timestamp < PLATFORM_LIMITS_CACHE_TTL) {
+    console.log('📊 Using cached platform limits')
+    return platformLimitsCache.data
+  }
+
   const limits: Array<{ key: string; name: string; limit: number }> = []
 
   try {
@@ -483,13 +497,25 @@ export async function getPlatformLimits(): Promise<
     console.error('Error getting platform limits:', error)
     // Возвращаем значения по умолчанию при ошибке
     // Для 1xbet используем -1 (недоступно), для остальных - 0
-    return [
+    const defaultLimits = [
       { key: '1xbet', name: '1xbet', limit: -1 },
       { key: '888starz', name: '888starz', limit: 0 },
       { key: 'melbet', name: 'Melbet', limit: 0 },
       { key: '1win', name: '1WIN', limit: 0 },
       { key: 'mostbet', name: 'Mostbet', limit: 0 },
     ]
+    // Кэшируем даже ошибки на короткое время, чтобы не спамить API
+    platformLimitsCache = {
+      data: defaultLimits,
+      timestamp: Date.now(),
+    }
+    return defaultLimits
+  }
+
+  // Сохраняем в кэш
+  platformLimitsCache = {
+    data: limits,
+    timestamp: Date.now(),
   }
 
   return limits
