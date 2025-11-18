@@ -227,19 +227,63 @@ def step2_get_consent_challenge(session, login_challenge):
         if session.cookies:
             log(f'  Cookie names: {", ".join(session.cookies.keys())}', 'INFO')
         
+        log(f'Response status: {response.status_code}', 'INFO')
+        
+        # Проверяем разные статусы ответа
         if response.status_code == 200:
-            result = response.json()
-            consent_challenge = result.get('ConsentChallenge')
+            try:
+                result = response.json()
+                consent_challenge = result.get('ConsentChallenge')
+                
+                if consent_challenge:
+                    log(f'ConsentChallenge получен из JSON: {consent_challenge[:20]}...', 'SUCCESS')
+                    return consent_challenge
+                else:
+                    log(f'JSON ответ не содержит ConsentChallenge: {result}', 'WARNING')
+            except Exception as e:
+                log(f'Не удалось распарсить JSON: {e}', 'WARNING')
+                log(f'Response text: {response.text[:500]}', 'WARNING')
+        
+        # Проверяем редирект (302, 303, 307, 308)
+        if response.status_code in [302, 303, 307, 308]:
+            location = response.headers.get('Location', '')
+            log(f'Получен редирект, Location: {location[:200]}...', 'INFO')
             
-            if consent_challenge:
-                log(f'ConsentChallenge получен: {consent_challenge[:20]}...', 'SUCCESS')
+            # Пробуем извлечь consent_challenge из URL редиректа
+            if location:
+                import urllib.parse
+                parsed = urllib.parse.urlparse(location)
+                
+                # Пробуем из query параметров
+                if parsed.query:
+                    query_params = urllib.parse.parse_qs(parsed.query)
+                    if 'consent_challenge' in query_params:
+                        consent_challenge = query_params['consent_challenge'][0]
+                        log(f'ConsentChallenge получен из redirect URL: {consent_challenge[:20]}...', 'SUCCESS')
+                        return consent_challenge
+                
+                # Пробуем через regex
+                import re
+                match = re.search(r'consent_challenge=([^&\s]+)', location)
+                if match:
+                    consent_challenge = match.group(1)
+                    log(f'ConsentChallenge получен через regex: {consent_challenge[:20]}...', 'SUCCESS')
+                    return consent_challenge
+        
+        # Если не получили, пробуем из текста ответа
+        response_text = response.text
+        if 'ConsentChallenge' in response_text:
+            import re
+            match = re.search(r'"ConsentChallenge"\s*:\s*"([^"]+)"', response_text)
+            if match:
+                consent_challenge = match.group(1)
+                log(f'ConsentChallenge получен из текста: {consent_challenge[:20]}...', 'SUCCESS')
                 return consent_challenge
-            else:
-                raise ValueError('ConsentChallenge не найден в ответе')
-        else:
-            error_text = response.text[:500]
-            log(f'Ошибка HTTP {response.status_code}: {error_text}', 'ERROR')
-            response.raise_for_status()
+        
+        # Если ничего не помогло, выводим ошибку
+        error_text = response.text[:1000]
+        log(f'Ошибка HTTP {response.status_code}: {error_text}', 'ERROR')
+        raise ValueError(f'ConsentChallenge не найден в ответе. Status: {response.status_code}')
         
     except requests.exceptions.HTTPError as e:
         log(f'Ошибка получения ConsentChallenge: {e}', 'ERROR')
@@ -262,16 +306,23 @@ def step3_get_access_token(session, consent_challenge):
         'state': state,
     }
     
+    # Логируем параметры запроса
+    log(f'Отправка запроса с consent_challenge: {consent_challenge[:20]}...', 'INFO')
+    log(f'Cookies в запросе: {len(session.cookies)} cookies', 'INFO')
+    if session.cookies:
+        log(f'  Cookie names: {", ".join(session.cookies.keys())}', 'INFO')
+    
     try:
         # Используем session для автоматической передачи cookies
+        # Важно: consent_challenge должен быть в URL параметрах, а не в теле запроса
         response = session.post(
             f'{OAUTH_BASE_URL}/authentication/consent',
-            params={'consent_challenge': consent_challenge},
+            params={'consent_challenge': consent_challenge},  # В URL параметрах
             headers={
                 **OAUTH_HEADERS,
                 'Authorization': 'Bearer ',  # Пустой токен для первого запроса
             },
-            data=data,
+            data=data,  # Form data в теле
             timeout=30,
             allow_redirects=False
         )
