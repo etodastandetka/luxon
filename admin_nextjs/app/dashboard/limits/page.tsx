@@ -406,8 +406,29 @@ export default function LimitsPage() {
 
           {/* Календарь */}
           {showCalendar && (
-            <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowCalendar(false)}>
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-2xl max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
+            <>
+              {/* Затемненный фон */}
+              <div 
+                className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm" 
+                onClick={() => setShowCalendar(false)}
+                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+              />
+              {/* Календарь */}
+              <div 
+                className="fixed z-[10001] flex items-start justify-center pt-20 px-4 pointer-events-none"
+                style={{ 
+                  position: 'fixed', 
+                  top: 0, 
+                  left: 0, 
+                  right: 0, 
+                  bottom: 0,
+                  zIndex: 10001
+                }}
+              >
+                <div 
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-2xl max-w-md w-full relative pointer-events-auto" 
+                  onClick={(e) => e.stopPropagation()}
+                >
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <button
@@ -493,8 +514,9 @@ export default function LimitsPage() {
                   Очистить
                 </button>
               </div>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
         <p className="text-xs text-gray-400 mt-2">Оставьте пустым, чтобы показать все время</p>
