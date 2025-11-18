@@ -467,18 +467,49 @@ export default function DepositStep4() {
         throw new Error('Недостаточно данных для создания заявки. Проверьте, что все поля заполнены.')
       }
 
+      // Получаем Telegram ID пользователя (обязательно для правильной идентификации)
+      let telegramUserId: string | null = null
+      
+      if (tg?.initDataUnsafe?.user?.id) {
+        telegramUserId = String(tg.initDataUnsafe.user.id)
+      } else if (tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          if (userParam) {
+            const userData = JSON.parse(decodeURIComponent(userParam))
+            telegramUserId = String(userData.id)
+          }
+        } catch (e) {
+          console.error('Error parsing initData for telegram_user_id:', e)
+        }
+      }
+      
+      // Если Telegram ID не найден, используем из telegramUser
+      if (!telegramUserId && telegramUser?.id) {
+        telegramUserId = String(telegramUser.id)
+      }
+      
+      // Telegram ID обязателен для правильной идентификации пользователя
+      if (!telegramUserId) {
+        console.error('❌ Telegram user ID not found! Cannot create request without user identification.')
+        throw new Error('Не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+      }
+
       const requestData = {
         type: 'deposit',
         amount: amount, // В сомах (для пополнения в казино)
         amount_usd: amountUsd, // В долларах (только для крипты)
-        userId: playerId,
+        // userId должен быть Telegram ID, а не ID аккаунта в казино
+        userId: telegramUserId, // Telegram ID пользователя
         bookmaker: bookmaker,
         bank: bank,
+        account_id: playerId, // ID аккаунта в казино (отдельно от userId)
         playerId: playerId, // Добавляем playerId для совместимости
         payment_method: paymentType, // 'bank' или 'crypto'
         crypto_invoice_id: invoiceId,
-        // Данные пользователя Telegram (если доступны)
-        telegram_user_id: telegramUser?.id,
+        // Данные пользователя Telegram (обязательно)
+        telegram_user_id: telegramUserId,
         telegram_username: telegramUser?.username,
         telegram_first_name: telegramUser?.first_name,
         telegram_last_name: telegramUser?.last_name,
