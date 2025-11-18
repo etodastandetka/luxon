@@ -23,28 +23,51 @@ from pathlib import Path
 def load_env_file(env_path):
     """Загружает переменные из .env файла"""
     if not os.path.exists(env_path):
+        log(f'Файл .env не найден: {env_path}', 'WARNING')
         return
     
+    log(f'Загрузка переменных из .env файла: {env_path}', 'INFO')
+    
     with open(env_path, 'r', encoding='utf-8') as f:
-        for line in f:
+        for line_num, line in enumerate(f, 1):
             line = line.strip()
             # Пропускаем комментарии и пустые строки
             if not line or line.startswith('#'):
                 continue
             
-            # Парсим KEY="VALUE" или KEY=VALUE
-            match = re.match(r'^([^=]+)=(?:"?)([^"]+)(?:"?)$', line)
+            # Парсим KEY="VALUE" или KEY=VALUE или KEY='VALUE'
+            # Поддерживаем значения в двойных и одинарных кавычках
+            match = re.match(r'^([^=#]+?)=(?:"([^"]*)"|\'([^\']*)\'|([^#\s]+))', line)
             if match:
                 key = match.group(1).strip()
-                value = match.group(2).strip()
+                # Значение может быть в группе 2 (двойные кавычки), 3 (одинарные) или 4 (без кавычек)
+                value = match.group(2) or match.group(3) or match.group(4) or ''
+                value = value.strip()
+                
                 # Устанавливаем переменную окружения, если она еще не установлена
-                if key not in os.environ:
+                if key not in os.environ and value:
                     os.environ[key] = value
+                    log(f'  Загружено: {key}', 'INFO')
+            else:
+                log(f'  Пропущена строка {line_num}: {line[:50]}...', 'WARNING')
 
 # Загружаем .env файл
 script_dir = Path(__file__).parent
 project_dir = script_dir.parent
 env_file = project_dir / '.env'
+
+# Временная функция log для использования до определения основной функции log
+def log(message, level='INFO'):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    prefix = {
+        'INFO': 'ℹ️',
+        'SUCCESS': '✅',
+        'ERROR': '❌',
+        'WARNING': '⚠️',
+        'STEP': '🔐',
+    }.get(level, 'ℹ️')
+    print(f'[{timestamp}] {prefix} {message}')
+
 load_env_file(env_file)
 
 # Конфигурация из переменных окружения
