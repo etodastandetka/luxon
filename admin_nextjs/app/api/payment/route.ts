@@ -64,11 +64,13 @@ export async function POST(request: NextRequest) {
         user_id, 
         telegram_user_id, 
         playerId, 
+        finalUserId,
         type, 
-        amount 
+        amount,
+        body: JSON.stringify(body).substring(0, 500) // Первые 500 символов для отладки
       })
       const errorResponse = NextResponse.json(
-        createApiResponse(null, 'Missing required fields: userId, type, amount'),
+        createApiResponse(null, `Missing required fields: ${!finalUserId ? 'userId' : ''} ${!type ? 'type' : ''} ${!amount ? 'amount' : ''}`.trim()),
         { 
           status: 400,
           headers: {
