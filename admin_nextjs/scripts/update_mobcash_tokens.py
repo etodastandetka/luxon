@@ -237,7 +237,7 @@ def step2_get_consent_challenge(session, login_challenge):
                 
                 if consent_challenge:
                     log(f'ConsentChallenge получен из JSON: {consent_challenge[:20]}...', 'SUCCESS')
-                    return consent_challenge
+                    return consent_challenge, None  # Нет URL для JSON ответа
                 else:
                     log(f'JSON ответ не содержит ConsentChallenge: {result}', 'WARNING')
             except Exception as e:
@@ -267,7 +267,7 @@ def step2_get_consent_challenge(session, login_challenge):
                 
                 if consent_challenge:
                     log(f'ConsentChallenge получен из первого redirect URL: {consent_challenge[:20]}...', 'SUCCESS')
-                    return consent_challenge
+                    return consent_challenge, location  # Возвращаем также URL
                 
                 # Если есть login_verifier, следуем редиректу для получения consent_challenge
                 if login_verifier:
@@ -299,7 +299,7 @@ def step2_get_consent_challenge(session, login_challenge):
                                 consent_challenge = next_params.get('consent_challenge', [None])[0]
                                 if consent_challenge:
                                     log(f'ConsentChallenge получен из второго redirect: {consent_challenge[:20]}...', 'SUCCESS')
-                                    return consent_challenge
+                                    return consent_challenge, next_location  # Возвращаем также URL
                     
                     # Пробуем из JSON ответа редиректа
                     try:
@@ -307,7 +307,7 @@ def step2_get_consent_challenge(session, login_challenge):
                         if redirect_data.get('ConsentChallenge'):
                             consent_challenge = redirect_data['ConsentChallenge']
                             log(f'ConsentChallenge получен из JSON ответа редиректа: {consent_challenge[:20]}...', 'SUCCESS')
-                            return consent_challenge
+                            return consent_challenge, None  # Нет URL для JSON ответа
                     except:
                         pass
                 
@@ -317,7 +317,7 @@ def step2_get_consent_challenge(session, login_challenge):
                 if match:
                     consent_challenge = match.group(1)
                     log(f'ConsentChallenge получен через regex: {consent_challenge[:20]}...', 'SUCCESS')
-                    return consent_challenge
+                    return consent_challenge, location  # Возвращаем также URL
         
         # Если не получили, пробуем из текста ответа
         response_text = response.text
@@ -327,7 +327,7 @@ def step2_get_consent_challenge(session, login_challenge):
             if match:
                 consent_challenge = match.group(1)
                 log(f'ConsentChallenge получен из текста: {consent_challenge[:20]}...', 'SUCCESS')
-                return consent_challenge
+                return consent_challenge, None  # Нет URL для текстового ответа
         
         # Если ничего не помогло, выводим ошибку
         error_text = response.text[:1000]
@@ -344,11 +344,18 @@ def step2_get_consent_challenge(session, login_challenge):
         raise
 
 
-def step3_get_access_token(session, consent_challenge):
-    """Шаг 1.3: Получение access_token"""
+def step3_get_access_token(session, consent_challenge, consent_url=None):
+    """Шаг 1.3: Получение access_token
+    
+    Args:
+        session: requests.Session объект с cookies
+        consent_challenge: consent_challenge строка
+        consent_url: Полный URL редиректа с consent_challenge (опционально)
+    """
     log('Шаг 1.3: Получение access_token...', 'STEP')
     
-    state = str(uuid.uuid4())
+    # Используем фиксированный state, как в TypeScript реализации
+    state = '547f6922-61ec-47f8-8718-c7928dd8f6eb'
     data = {
         'client_id': '4e779103-d67b-42ef-bc9d-ab5ecdec40f8',
         'grant_scope': 'offline',
@@ -362,6 +369,28 @@ def step3_get_access_token(session, consent_challenge):
         log(f'  Cookie names: {", ".join(session.cookies.keys())}', 'INFO')
     
     try:
+        # Если передан полный URL, сначала делаем GET запрос по нему
+        # Это может быть необходимо для инициализации состояния на сервере
+        if consent_url:
+            log(f'Делаем предварительный GET запрос по URL: {consent_url[:200]}...', 'INFO')
+            try:
+                pre_response = session.get(
+                    consent_url,
+                    headers={
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+                    },
+                    timeout=30,
+                    allow_redirects=False
+                )
+                log(f'Предварительный GET response status: {pre_response.status_code}', 'INFO')
+                # Обновляем cookies из предварительного запроса
+                if pre_response.cookies:
+                    session.cookies.update(pre_response.cookies)
+            except Exception as e:
+                log(f'Предварительный GET запрос завершился с ошибкой (продолжаем): {e}', 'WARNING')
+        
         # Используем session для автоматической передачи cookies
         # Важно: consent_challenge должен быть в URL параметрах, а не в теле запроса
         # Согласно документации и TypeScript реализации, нужно делать POST запрос
@@ -663,10 +692,10 @@ def main():
         login_challenge = step1_get_login_challenge(session)
         
         # Шаг 1.2: Получение ConsentChallenge (cookies передаются автоматически через session)
-        consent_challenge = step2_get_consent_challenge(session, login_challenge)
+        consent_challenge, consent_url = step2_get_consent_challenge(session, login_challenge)
         
         # Шаг 1.3: Получение access_token (cookies передаются автоматически через session)
-        access_token = step3_get_access_token(session, consent_challenge)
+        access_token = step3_get_access_token(session, consent_challenge, consent_url)
         
         # Шаг 1.4: Получение userID
         user_id = step4_get_user_id(access_token)
