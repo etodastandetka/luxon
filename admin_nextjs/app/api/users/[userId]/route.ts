@@ -96,16 +96,32 @@ export async function GET(
     // Для транзакций из BotTransaction нужно найти связанный Request для получения processedBy
     const transactionsWithProcessedBy = await Promise.all(
       user.transactions.map(async (t) => {
+        // Если транзакция уже имеет processedBy (из Request), просто возвращаем её
+        if ((t as any).processedBy !== undefined) {
+          return {
+            ...t,
+            amount: typeof t.amount === 'string' ? t.amount : t.amount.toString(),
+            createdAt: typeof t.createdAt === 'string' ? t.createdAt : t.createdAt.toISOString(),
+            processedBy: (t as any).processedBy || null,
+            status: t.status,
+          }
+        }
+
         // Ищем связанный Request по userId, bookmaker, amount и transType
+        // createdAt может быть строкой (из Request) или Date (из BotTransaction)
+        const createdAtDate = typeof t.createdAt === 'string' 
+          ? new Date(t.createdAt) 
+          : t.createdAt
+
         const relatedRequest = await prisma.request.findFirst({
           where: {
             userId: user.userId,
             bookmaker: t.bookmaker || undefined,
-            amount: t.amount,
+            amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
             requestType: t.transType,
             createdAt: {
-              gte: new Date(t.createdAt.getTime() - 60000), // ±1 минута
-              lte: new Date(t.createdAt.getTime() + 60000),
+              gte: new Date(createdAtDate.getTime() - 60000), // ±1 минута
+              lte: new Date(createdAtDate.getTime() + 60000),
             },
           },
           select: {
@@ -119,7 +135,8 @@ export async function GET(
 
         return {
           ...t,
-          amount: t.amount.toString(),
+          amount: typeof t.amount === 'string' ? t.amount : t.amount.toString(),
+          createdAt: typeof t.createdAt === 'string' ? t.createdAt : t.createdAt.toISOString(),
           processedBy: relatedRequest?.processedBy || null,
           status: relatedRequest?.status || t.status,
         }
