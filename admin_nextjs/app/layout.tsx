@@ -29,13 +29,14 @@ export default function RootLayout({
     <html lang="ru">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" href="/icon.jpg" />
+        <link rel="apple-touch-icon" href="/icon.jpg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="application-name" content="Luxon Admin" />
         <meta name="msapplication-TileColor" content="#22c55e" />
-        <meta name="msapplication-TileImage" content="/icon-192.png" />
+        <meta name="msapplication-TileImage" content="/icon.jpg" />
       </head>
       <body>{children}</body>
     </html>
