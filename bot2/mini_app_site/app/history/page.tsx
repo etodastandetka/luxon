@@ -8,6 +8,7 @@ interface Transaction {
   id: string
   type: 'deposit' | 'withdraw'
   bookmaker: string
+  bank?: string
   amount: number
   status: string
   date: string
@@ -160,6 +161,7 @@ export default function HistoryPage(){
             id: tx.id?.toString() || '',
             type: tx.type || tx.request_type || 'deposit',
             bookmaker: tx.bookmaker || '',
+            bank: tx.bank || '',
             amount: tx.amount || 0,
             status: finalStatus,
             date: tx.date || tx.created_at || new Date().toISOString()
@@ -290,6 +292,26 @@ export default function HistoryPage(){
     return names[bookmaker?.toLowerCase()] || bookmaker || 'N/A'
   }
 
+  const getBankIcon = (bankCode: string) => {
+    if (!bankCode) return null
+    
+    // Маппинг кодов банков из API в коды для иконок
+    const bankMapping: Record<string, { image?: string; emoji?: string; name: string }> = {
+      'kompanion': { image: '/images/companion.png', name: 'Компаньон' },
+      'demirbank': { image: '/images/demirbank.jpg', name: 'DemirBank' },
+      'demir': { image: '/images/demirbank.jpg', name: 'DemirBank' },
+      'omoney': { image: '/images/omoney.jpg', name: 'O!Money' },
+      'odengi': { image: '/images/omoney.jpg', name: 'O!Money' },
+      'balance': { image: '/images/balance.jpg', name: 'Balance.kg' },
+      'bakai': { image: '/images/bakai.jpg', name: 'Bakai' },
+      'megapay': { image: '/images/megapay.jpg', name: 'MegaPay' },
+      'mbank': { image: '/images/mbank.png', name: 'MBank' },
+    }
+    
+    const bank = bankMapping[bankCode.toLowerCase()]
+    return bank || null
+  }
+
   return (
     <main className="space-y-6">
       <FixedHeaderControls />
@@ -323,14 +345,28 @@ export default function HistoryPage(){
           </div>
         ) : (
           <div className="space-y-3">
-            {transactions.map((transaction) => (
+            {transactions.map((transaction) => {
+              const bankIcon = getBankIcon(transaction.bank || '')
+              return (
               <div key={transaction.id} className="card hover:bg-white/5 transition-colors">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        transaction.type === 'deposit' ? 'bg-green-400' : 'bg-red-400'
-                      }`}></div>
+                      {bankIcon ? (
+                        bankIcon.image ? (
+                          <img 
+                            src={bankIcon.image} 
+                            alt={bankIcon.name}
+                            className="w-8 h-8 object-contain rounded flex-shrink-0"
+                          />
+                        ) : (
+                          <span className="text-xl flex-shrink-0">{bankIcon.emoji}</span>
+                        )
+                      ) : (
+                        <div className={`w-2 h-2 rounded-full ${
+                          transaction.type === 'deposit' ? 'bg-green-400' : 'bg-red-400'
+                        }`}></div>
+                      )}
                       <div className="font-semibold text-white text-base">
                         {getTypeText(transaction.type)}
                       </div>
@@ -360,7 +396,8 @@ export default function HistoryPage(){
                   </div>
                 </div>
               </div>
-            ))}
+            )
+            })}
           </div>
         )}
       </section>
