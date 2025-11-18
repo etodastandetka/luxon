@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') // deposit or withdraw
     const status = searchParams.get('status')
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
 
     const where: any = {}

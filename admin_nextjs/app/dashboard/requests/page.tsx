@@ -19,16 +19,31 @@ interface Request {
 export default function RequestsPage() {
   const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [filter, setFilter] = useState<{ type?: string; status?: string }>({})
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const limit = 10
 
-  const fetchRequests = useCallback(async (showLoading = true) => {
-    if (showLoading) {
-      setLoading(true)
+  const fetchRequests = useCallback(async (showLoading = true, reset = false) => {
+    if (reset) {
+      setPage(1)
+      setRequests([])
+      setHasMore(true)
     }
+    
+    if (showLoading && reset) {
+      setLoading(true)
+    } else if (!reset) {
+      setLoadingMore(true)
+    }
+    
     try {
       const params = new URLSearchParams()
       if (filter.type) params.append('type', filter.type)
       if (filter.status) params.append('status', filter.status)
+      params.append('page', reset ? '1' : page.toString())
+      params.append('limit', limit.toString())
 
       // Используем кэширование для более быстрой загрузки
       const response = await fetch(`/api/requests?${params.toString()}`, {
@@ -38,37 +53,47 @@ export default function RequestsPage() {
       const data = await response.json()
 
       if (data.success) {
-        setRequests(data.data.requests || [])
+        const newRequests = data.data.requests || []
+        if (reset) {
+          setRequests(newRequests)
+        } else {
+          setRequests(prev => [...prev, ...newRequests])
+        }
+        setHasMore(data.data.pagination?.totalPages > page)
+        if (!reset) {
+          setPage(prev => prev + 1)
+        }
       }
     } catch (error) {
       console.error('Failed to fetch requests:', error)
     } finally {
-      if (showLoading) {
+      if (showLoading && reset) {
         setLoading(false)
       }
+      setLoadingMore(false)
     }
-  }, [filter])
+  }, [filter, page, limit])
 
   useEffect(() => {
-    fetchRequests()
+    fetchRequests(true, true) // Первая загрузка с сбросом
     
     // Автоматическое обновление каждые 5 секунд (увеличено для снижения нагрузки)
     const interval = setInterval(() => {
       if (!document.hidden) {
-        fetchRequests(false) // Не показываем loading при автообновлении
+        fetchRequests(false, true) // Обновляем только первую страницу
       }
     }, 5000)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        fetchRequests(false)
+        fetchRequests(false, true)
       }
     }
     
     // Обновление при возврате фокуса
     const handleFocus = () => {
-      fetchRequests(false)
+      fetchRequests(false, true)
     }
     
     // Синхронизация между вкладками через storage event
@@ -76,7 +101,7 @@ export default function RequestsPage() {
       if (e.key === 'request_updated' && e.newValue) {
         const updatedRequestId = parseInt(e.newValue)
         console.log('🔄 Request updated in another tab:', updatedRequestId)
-        fetchRequests(false)
+        fetchRequests(false, true)
       }
     }
     
@@ -90,7 +115,13 @@ export default function RequestsPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [fetchRequests, filter])
+  }, [filter]) // Убрали fetchRequests из зависимостей, чтобы избежать лишних перезагрузок
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchRequests(false, false)
+    }
+  }
 
   // Функция для определения кто обработал заявку (логин админа или "автопополнение")
   const getProcessedBy = (processedBy: string | null | undefined) => {
@@ -219,7 +250,7 @@ export default function RequestsPage() {
           <p className="text-xs text-gray-300 mt-1">Актуальные транзакции</p>
         </div>
         <button 
-          onClick={() => fetchRequests()}
+          onClick={() => fetchRequests(true, true)}
           className="p-2 bg-gray-800 rounded-lg"
         >
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

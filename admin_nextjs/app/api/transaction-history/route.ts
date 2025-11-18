@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('user_id')
     const type = searchParams.get('type') // deposit, withdraw, or empty for all
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const offset = parseInt(searchParams.get('offset') || '0')
 
     const where: any = {}
     if (userId) {
@@ -27,11 +29,15 @@ export async function GET(request: NextRequest) {
       where.requestType = type
     }
 
-    const requests = await prisma.request.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: userId ? 50 : 100,
-    })
+    const [requests, total] = await Promise.all([
+      prisma.request.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.request.count({ where }),
+    ])
 
     const transactions = requests.map((r) => ({
       id: r.id.toString(),
@@ -55,7 +61,15 @@ export async function GET(request: NextRequest) {
       processed_at: r.processedAt?.toISOString() || null,
     }))
 
-    const response = NextResponse.json(createApiResponse({ transactions }))
+    const response = NextResponse.json(createApiResponse({ 
+      transactions,
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore: offset + limit < total,
+      },
+    }))
     response.headers.set('Access-Control-Allow-Origin', '*')
     return response
   } catch (error: any) {

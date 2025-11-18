@@ -23,32 +23,60 @@ export default function HistoryPage() {
   const router = useRouter()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw'>('all')
+  const [hasMore, setHasMore] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const limit = 10
 
-  const fetchHistory = useCallback(async () => {
-    setLoading(true)
+  const fetchHistory = useCallback(async (reset = false) => {
+    if (reset) {
+      setOffset(0)
+      setTransactions([])
+      setHasMore(true)
+      setLoading(true)
+    } else {
+      setLoadingMore(true)
+    }
+    
     try {
       const params = new URLSearchParams()
       if (activeTab !== 'all') {
         params.append('type', activeTab === 'deposit' ? 'deposit' : 'withdraw')
       }
+      params.append('limit', limit.toString())
+      params.append('offset', reset ? '0' : offset.toString())
 
       const response = await fetch(`/api/transaction-history?${params.toString()}`)
       const data = await response.json()
 
       if (data.success) {
-        setTransactions(data.data.transactions || [])
+        const newTransactions = data.data.transactions || []
+        if (reset) {
+          setTransactions(newTransactions)
+        } else {
+          setTransactions(prev => [...prev, ...newTransactions])
+        }
+        setHasMore(data.data.pagination?.hasMore || false)
+        setOffset(reset ? newTransactions.length : offset + newTransactions.length)
       }
     } catch (error) {
       console.error('Failed to fetch history:', error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }, [activeTab])
+  }, [activeTab, offset, limit])
 
   useEffect(() => {
-    fetchHistory()
-  }, [fetchHistory])
+    fetchHistory(true) // Сбрасываем при изменении таба
+  }, [activeTab])
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchHistory(false)
+    }
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -185,7 +213,7 @@ export default function HistoryPage() {
           <p className="text-xs text-gray-300 mt-1">Все транзакции</p>
         </div>
         <button
-          onClick={() => fetchHistory()}
+          onClick={() => fetchHistory(true)}
           className="p-2 bg-gray-800 rounded-lg"
         >
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -332,6 +360,19 @@ export default function HistoryPage() {
               </Link>
             )
           })}
+        </div>
+      )}
+
+      {/* Кнопка "Загрузить еще" */}
+      {hasMore && (
+        <div className="text-center mt-4">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? 'Загрузка...' : 'Загрузить еще'}
+          </button>
         </div>
       )}
     </div>
