@@ -130,7 +130,7 @@ def log(message, level='INFO'):
     print(f'[{timestamp}] {prefix} {message}')
 
 
-def step1_get_login_challenge():
+def step1_get_login_challenge(session):
     """Шаг 1.1: Получение LoginChallenge"""
     log('Шаг 1.1: Получение LoginChallenge...', 'STEP')
     
@@ -145,29 +145,58 @@ def step1_get_login_challenge():
     }
     
     try:
-        response = requests.post(
+        response = session.post(
             f'{OAUTH_BASE_URL}/hydra/oauth2/auth',
             headers=OAUTH_HEADERS,
             data=data,
-            timeout=30
+            timeout=30,
+            allow_redirects=False
         )
-        response.raise_for_status()
         
-        result = response.json()
-        login_challenge = result.get('LoginChallenge')
+        # Проверяем редирект (302) или успешный ответ (200)
+        if response.status_code in [200, 302]:
+            # Если редирект, пробуем извлечь login_challenge из Location header
+            if response.status_code == 302:
+                location = response.headers.get('Location', '')
+                if 'login_challenge' in location:
+                    import urllib.parse
+                    parsed = urllib.parse.urlparse(location)
+                    params = urllib.parse.parse_qs(parsed.query)
+                    login_challenge = params.get('login_challenge', [None])[0]
+                    if login_challenge:
+                        log(f'LoginChallenge получен из redirect: {login_challenge[:20]}...', 'SUCCESS')
+                        return login_challenge
+            else:
+                # Пробуем получить из JSON ответа
+                try:
+                    result = response.json()
+                    login_challenge = result.get('LoginChallenge')
+                    if login_challenge:
+                        log(f'LoginChallenge получен из JSON: {login_challenge[:20]}...', 'SUCCESS')
+                        return login_challenge
+                except:
+                    pass
         
-        if not login_challenge:
-            raise ValueError('LoginChallenge не найден в ответе')
+        # Если не получили, пробуем из текста ответа
+        response_text = response.text
+        if 'LoginChallenge' in response_text:
+            import re
+            match = re.search(r'"LoginChallenge"\s*:\s*"([^"]+)"', response_text)
+            if match:
+                login_challenge = match.group(1)
+                log(f'LoginChallenge получен из текста: {login_challenge[:20]}...', 'SUCCESS')
+                return login_challenge
         
-        log(f'LoginChallenge получен: {login_challenge[:20]}...', 'SUCCESS')
-        return login_challenge, response.cookies
+        raise ValueError('LoginChallenge не найден в ответе')
         
     except Exception as e:
         log(f'Ошибка получения LoginChallenge: {e}', 'ERROR')
+        log(f'Response status: {response.status_code if "response" in locals() else "N/A"}', 'ERROR')
+        log(f'Response text: {response.text[:500] if "response" in locals() else "N/A"}', 'ERROR')
         raise
 
 
-def step2_get_consent_challenge(login_challenge, cookies):
+def step2_get_consent_challenge(session, login_challenge):
     """Шаг 1.2: Получение ConsentChallenge"""
     log('Шаг 1.2: Получение ConsentChallenge...', 'STEP')
     
@@ -183,31 +212,46 @@ def step2_get_consent_challenge(login_challenge, cookies):
     }
     
     try:
-        response = requests.post(
+        # Используем session для автоматической передачи cookies
+        response = session.post(
             f'{OAUTH_BASE_URL}/authentication/login',
             params={'login_challenge': login_challenge},
             headers=OAUTH_HEADERS,
             data=data,
-            cookies=cookies,
-            timeout=30
+            timeout=30,
+            allow_redirects=False
         )
-        response.raise_for_status()
         
-        result = response.json()
-        consent_challenge = result.get('ConsentChallenge')
+        # Логируем cookies для отладки
+        log(f'Cookies в запросе: {len(session.cookies)} cookies', 'INFO')
+        if session.cookies:
+            log(f'  Cookie names: {", ".join(session.cookies.keys())}', 'INFO')
         
-        if not consent_challenge:
-            raise ValueError('ConsentChallenge не найден в ответе')
+        if response.status_code == 200:
+            result = response.json()
+            consent_challenge = result.get('ConsentChallenge')
+            
+            if consent_challenge:
+                log(f'ConsentChallenge получен: {consent_challenge[:20]}...', 'SUCCESS')
+                return consent_challenge
+            else:
+                raise ValueError('ConsentChallenge не найден в ответе')
+        else:
+            error_text = response.text[:500]
+            log(f'Ошибка HTTP {response.status_code}: {error_text}', 'ERROR')
+            response.raise_for_status()
         
-        log(f'ConsentChallenge получен: {consent_challenge[:20]}...', 'SUCCESS')
-        return consent_challenge, response.cookies
-        
+    except requests.exceptions.HTTPError as e:
+        log(f'Ошибка получения ConsentChallenge: {e}', 'ERROR')
+        if hasattr(e.response, 'text'):
+            log(f'Response text: {e.response.text[:500]}', 'ERROR')
+        raise
     except Exception as e:
         log(f'Ошибка получения ConsentChallenge: {e}', 'ERROR')
         raise
 
 
-def step3_get_access_token(consent_challenge, cookies):
+def step3_get_access_token(session, consent_challenge):
     """Шаг 1.3: Получение access_token"""
     log('Шаг 1.3: Получение access_token...', 'STEP')
     
@@ -219,7 +263,8 @@ def step3_get_access_token(consent_challenge, cookies):
     }
     
     try:
-        response = requests.post(
+        # Используем session для автоматической передачи cookies
+        response = session.post(
             f'{OAUTH_BASE_URL}/authentication/consent',
             params={'consent_challenge': consent_challenge},
             headers={
@@ -227,7 +272,6 @@ def step3_get_access_token(consent_challenge, cookies):
                 'Authorization': 'Bearer ',  # Пустой токен для первого запроса
             },
             data=data,
-            cookies=cookies,
             timeout=30,
             allow_redirects=False
         )
@@ -409,14 +453,18 @@ def main():
     log('')
     
     try:
+        # Создаем сессию для автоматического управления cookies
+        session = requests.Session()
+        log('Создана сессия для управления cookies', 'INFO')
+        
         # Шаг 1.1: Получение LoginChallenge
-        login_challenge, cookies = step1_get_login_challenge()
+        login_challenge = step1_get_login_challenge(session)
         
-        # Шаг 1.2: Получение ConsentChallenge
-        consent_challenge, cookies = step2_get_consent_challenge(login_challenge, cookies)
+        # Шаг 1.2: Получение ConsentChallenge (cookies передаются автоматически через session)
+        consent_challenge = step2_get_consent_challenge(session, login_challenge)
         
-        # Шаг 1.3: Получение access_token
-        access_token, cookies = step3_get_access_token(consent_challenge, cookies)
+        # Шаг 1.3: Получение access_token (cookies передаются автоматически через session)
+        access_token = step3_get_access_token(session, consent_challenge)
         
         # Шаг 1.4: Получение userID
         user_id = step4_get_user_id(access_token)
