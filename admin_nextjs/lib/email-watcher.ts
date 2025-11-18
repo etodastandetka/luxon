@@ -322,7 +322,7 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
             return
           }
 
-          console.log(`📬 Found ${results.length} new email(s) (since ${yesterday.toISOString().split('T')[0]})`)
+          console.log(`📬 Found ${results.length} new email(s) (since ${twoHoursAgo.toISOString().split('T')[0]})`)
 
           // Обрабатываем каждое письмо последовательно (не параллельно), чтобы избежать конфликтов
           const processSequentially = async () => {
