@@ -279,38 +279,83 @@ def step3_get_access_token(session, consent_challenge):
         # access_token может быть в теле ответа или в redirect URL
         access_token = None
         
+        log(f'Response status: {response.status_code}', 'INFO')
+        log(f'Response headers Location: {response.headers.get("Location", "N/A")[:100]}...', 'INFO')
+        
         # Проверяем тело ответа
         if response.status_code == 200:
             try:
                 result = response.json()
                 access_token = result.get('access_token')
-            except:
-                pass
+                if access_token:
+                    log('access_token найден в JSON ответе', 'SUCCESS')
+            except Exception as e:
+                log(f'Не удалось распарсить JSON: {e}', 'WARNING')
+                # Пробуем из текста
+                text = response.text
+                if 'access_token' in text:
+                    import re
+                    match = re.search(r'access_token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', text)
+                    if match:
+                        access_token = match.group(1)
+                        log('access_token найден в тексте ответа', 'SUCCESS')
         
-        # Проверяем redirect URL
+        # Проверяем redirect URL (302, 303, 307, 308)
         if not access_token and response.status_code in [302, 303, 307, 308]:
             location = response.headers.get('Location', '')
-            if 'access_token=' in location:
+            log(f'Обработка redirect URL: {location[:200]}...', 'INFO')
+            
+            if location:
                 import urllib.parse
                 parsed = urllib.parse.urlparse(location)
-                params = urllib.parse.parse_qs(parsed.fragment or parsed.query)
-                if 'access_token' in params:
-                    access_token = params['access_token'][0]
+                
+                # Пробуем из fragment (#) части URL
+                if parsed.fragment:
+                    fragment_params = urllib.parse.parse_qs(parsed.fragment)
+                    if 'access_token' in fragment_params:
+                        access_token = fragment_params['access_token'][0]
+                        log('access_token найден в fragment URL', 'SUCCESS')
+                
+                # Пробуем из query (?) части URL
+                if not access_token and parsed.query:
+                    query_params = urllib.parse.parse_qs(parsed.query)
+                    if 'access_token' in query_params:
+                        access_token = query_params['access_token'][0]
+                        log('access_token найден в query URL', 'SUCCESS')
+                
+                # Пробуем найти в полном URL через regex
+                if not access_token:
+                    import re
+                    # Ищем access_token=... или #access_token=...
+                    match = re.search(r'[#&?]access_token=([^&#\s]+)', location)
+                    if match:
+                        access_token = match.group(1)
+                        log('access_token найден через regex в URL', 'SUCCESS')
         
-        # Если не нашли, пробуем из текста ответа
-        if not access_token:
+        # Если не нашли, пробуем из текста ответа (если это не редирект)
+        if not access_token and response.status_code == 200:
             text = response.text
             if 'access_token' in text:
                 import re
-                match = re.search(r'access_token["\']?\s*[:=]\s*["\']?([^"\'\s]+)', text)
-                if match:
-                    access_token = match.group(1)
+                # Разные варианты формата
+                patterns = [
+                    r'access_token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)',
+                    r'"access_token"\s*:\s*"([^"]+)"',
+                    r'access_token=([^&\s]+)',
+                ]
+                for pattern in patterns:
+                    match = re.search(pattern, text)
+                    if match:
+                        access_token = match.group(1)
+                        log('access_token найден в тексте ответа', 'SUCCESS')
+                        break
         
         if not access_token:
+            log(f'Полный ответ (первые 1000 символов): {response.text[:1000]}', 'ERROR')
             raise ValueError('access_token не найден в ответе')
         
         log(f'access_token получен: {access_token[:30]}...', 'SUCCESS')
-        return access_token, response.cookies
+        return access_token
         
     except Exception as e:
         log(f'Ошибка получения access_token: {e}', 'ERROR')
