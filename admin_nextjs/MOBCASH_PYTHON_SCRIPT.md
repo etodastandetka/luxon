@@ -98,6 +98,52 @@ python3 scripts/read_mobcash_tokens.py
 
 3. Админка автоматически читает токены из этого файла при каждом запросе к MobCash API.
 
+## Автоматический запуск каждые 20 часов
+
+### Вариант 1: Через PM2 (рекомендуется)
+
+1. Установите PM2, если еще не установлен:
+```bash
+npm install -g pm2
+```
+
+2. Запустите скрипт через PM2:
+```bash
+cd /var/www/luxon/admin_nextjs
+pm2 start ecosystem.mobcash.config.js
+pm2 save
+```
+
+3. PM2 будет запускать скрипт каждые 20 часов автоматически.
+
+4. Проверьте статус:
+```bash
+pm2 status
+pm2 logs mobcash-token-updater
+```
+
+### Вариант 2: Через Cron
+
+1. Сделайте wrapper скрипт исполняемым:
+```bash
+chmod +x /var/www/luxon/admin_nextjs/scripts/run_mobcash_update.sh
+```
+
+2. Добавьте в crontab:
+```bash
+crontab -e
+```
+
+3. Добавьте строку (запуск каждые 20 часов):
+```cron
+0 */20 * * * /var/www/luxon/admin_nextjs/scripts/run_mobcash_update.sh >> /var/log/mobcash_tokens.log 2>&1
+```
+
+4. Или используйте более точное расписание (например, в 00:00, 20:00):
+```cron
+0 0,20 * * * /var/www/luxon/admin_nextjs/scripts/run_mobcash_update.sh >> /var/log/mobcash_tokens.log 2>&1
+```
+
 ## Интеграция с админкой
 
 Админка автоматически использует токены из файла `.mobcash_tokens.json`, если он существует. Если файла нет или токены истекли, админка использует токены из переменных окружения или выполняет OAuth2 flow (если указаны логин и пароль).
