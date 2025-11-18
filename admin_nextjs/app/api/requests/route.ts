@@ -25,9 +25,29 @@ export async function GET(request: NextRequest) {
 
     console.log('📋 Requests API - Fetching requests:', { type, status, where, page, limit })
 
+    // Оптимизируем запрос - выбираем только нужные поля
     const [requests, total] = await Promise.all([
       prisma.request.findMany({
         where,
+        select: {
+          id: true,
+          userId: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          bookmaker: true,
+          accountId: true,
+          amount: true,
+          requestType: true,
+          status: true,
+          statusDetail: true,
+          processedBy: true,
+          bank: true,
+          phone: true,
+          createdAt: true,
+          updatedAt: true,
+          processedAt: true,
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,

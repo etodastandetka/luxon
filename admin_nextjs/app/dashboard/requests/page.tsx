@@ -48,10 +48,12 @@ export default function RequestsPage() {
   useEffect(() => {
     fetchRequests()
     
-    // Автоматическое обновление каждые 3 секунды
+    // Автоматическое обновление каждые 5 секунд (увеличено для снижения нагрузки)
     const interval = setInterval(() => {
-      fetchRequests(false) // Не показываем loading при автообновлении
-    }, 3000)
+      if (!document.hidden) {
+        fetchRequests(false) // Не показываем loading при автообновлении
+      }
+    }, 5000)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {

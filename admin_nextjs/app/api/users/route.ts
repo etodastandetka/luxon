@@ -21,13 +21,18 @@ export async function GET(request: NextRequest) {
       ]
     }
 
+    // Оптимизируем запрос - выбираем только нужные поля
     const [users, total] = await Promise.all([
       prisma.botUser.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-        include: {
+        select: {
+          userId: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          language: true,
+          selectedBookmaker: true,
+          createdAt: true,
           _count: {
             select: {
               transactions: true,
@@ -35,6 +40,9 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
       }),
       prisma.botUser.count({ where }),
     ])
