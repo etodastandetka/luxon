@@ -198,36 +198,10 @@ export default function DepositWaitingPage() {
     alert(t.checkAmount)
   }
 
-  const handleConfirm = async () => {
-    if (!requestId) return
-
-    try {
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
-      
-      // Отправляем запрос на подтверждение заявки
-      const response = await fetch(`${apiUrl}/api/requests/${requestId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: 'approved',
-        }),
-      })
-
-      if (response.ok) {
-        // Обновляем статус на успех
-        setStatus('success')
-        setShowConfetti(true)
-      } else {
-        alert('Ошибка при подтверждении заявки')
-      }
-    } catch (error) {
-      console.error('Error confirming request:', error)
-      alert('Ошибка при подтверждении заявки')
-    }
+  const handleConfirm = () => {
+    // Перенаправляем в поддержку для подтверждения заявки
+    const supportLink = 'https://t.me/operator_luxon_bot'
+    window.open(supportLink, '_blank')
   }
 
   // Конфетти анимация
