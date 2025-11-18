@@ -203,7 +203,8 @@ def step2_get_consent_challenge(session, login_challenge):
     if not MOBCASH_LOGIN or not MOBCASH_PASSWORD:
         raise ValueError('MOBCASH_LOGIN и MOBCASH_PASSWORD должны быть установлены')
     
-    state = str(uuid.uuid4())
+    # Используем фиксированный state, как в документации
+    state = '547f6922-61ec-47f8-8718-c7928dd8f6eb'
     data = {
         'nickname': MOBCASH_LOGIN,
         'password': MOBCASH_PASSWORD,
@@ -228,6 +229,25 @@ def step2_get_consent_challenge(session, login_challenge):
             log(f'  Cookie names: {", ".join(session.cookies.keys())}', 'INFO')
         
         log(f'Response status: {response.status_code}', 'INFO')
+        
+        # Сначала пробуем извлечь ConsentChallenge из тела ответа (может быть JSON даже при редиректе)
+        response_text = response.text
+        if 'ConsentChallenge' in response_text:
+            try:
+                result = response.json()
+                consent_challenge = result.get('ConsentChallenge')
+                
+                if consent_challenge:
+                    log(f'ConsentChallenge получен из JSON ответа: {consent_challenge[:20]}...', 'SUCCESS')
+                    return consent_challenge, None  # Нет URL для JSON ответа
+            except Exception as e:
+                # Пробуем через regex, если не JSON
+                import re
+                match = re.search(r'"ConsentChallenge"\s*:\s*"([^"]+)"', response_text)
+                if match:
+                    consent_challenge = match.group(1)
+                    log(f'ConsentChallenge получен из текста ответа: {consent_challenge[:20]}...', 'SUCCESS')
+                    return consent_challenge, None
         
         # Проверяем разные статусы ответа
         if response.status_code == 200:
