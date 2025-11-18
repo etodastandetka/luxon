@@ -249,20 +249,69 @@ def step2_get_consent_challenge(session, login_challenge):
             location = response.headers.get('Location', '')
             log(f'Получен редирект, Location: {location[:200]}...', 'INFO')
             
-            # Пробуем извлечь consent_challenge из URL редиректа
             if location:
                 import urllib.parse
                 parsed = urllib.parse.urlparse(location)
                 
-                # Пробуем из query параметров
+                # Извлекаем login_verifier из первого редиректа
+                login_verifier = None
                 if parsed.query:
                     query_params = urllib.parse.parse_qs(parsed.query)
-                    if 'consent_challenge' in query_params:
-                        consent_challenge = query_params['consent_challenge'][0]
-                        log(f'ConsentChallenge получен из redirect URL: {consent_challenge[:20]}...', 'SUCCESS')
-                        return consent_challenge
+                    login_verifier = query_params.get('login_verifier', [None])[0]
                 
-                # Пробуем через regex
+                # Пробуем извлечь consent_challenge напрямую из первого редиректа
+                consent_challenge = None
+                if parsed.query:
+                    query_params = urllib.parse.parse_qs(parsed.query)
+                    consent_challenge = query_params.get('consent_challenge', [None])[0]
+                
+                if consent_challenge:
+                    log(f'ConsentChallenge получен из первого redirect URL: {consent_challenge[:20]}...', 'SUCCESS')
+                    return consent_challenge
+                
+                # Если есть login_verifier, следуем редиректу для получения consent_challenge
+                if login_verifier:
+                    log(f'Login verifier найден, следуем редиректу: {login_verifier[:20]}...', 'INFO')
+                    
+                    # Следуем редиректу с login_verifier
+                    redirect_response = session.get(
+                        location,
+                        headers={
+                            'Accept': 'application/json, text/plain, */*',
+                            'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+                        },
+                        timeout=30,
+                        allow_redirects=False
+                    )
+                    
+                    log(f'Redirect response status: {redirect_response.status_code}', 'INFO')
+                    
+                    # Проверяем следующий редирект
+                    if redirect_response.status_code in [302, 303, 307, 308]:
+                        next_location = redirect_response.headers.get('Location', '')
+                        log(f'Следующий редирект, Location: {next_location[:200]}...', 'INFO')
+                        
+                        if next_location:
+                            next_parsed = urllib.parse.urlparse(next_location)
+                            if next_parsed.query:
+                                next_params = urllib.parse.parse_qs(next_parsed.query)
+                                consent_challenge = next_params.get('consent_challenge', [None])[0]
+                                if consent_challenge:
+                                    log(f'ConsentChallenge получен из второго redirect: {consent_challenge[:20]}...', 'SUCCESS')
+                                    return consent_challenge
+                    
+                    # Пробуем из JSON ответа редиректа
+                    try:
+                        redirect_data = redirect_response.json()
+                        if redirect_data.get('ConsentChallenge'):
+                            consent_challenge = redirect_data['ConsentChallenge']
+                            log(f'ConsentChallenge получен из JSON ответа редиректа: {consent_challenge[:20]}...', 'SUCCESS')
+                            return consent_challenge
+                    except:
+                        pass
+                
+                # Пробуем через regex в первом редиректе
                 import re
                 match = re.search(r'consent_challenge=([^&\s]+)', location)
                 if match:
