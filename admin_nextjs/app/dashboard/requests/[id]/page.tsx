@@ -864,40 +864,6 @@ export default function RequestDetailPage() {
         </div>
       )}
 
-      {/* Кнопки действий для отложенных и ожидающих заявок */}
-      {/* Скрываем кнопки если заявка уже обработана */}
-      {(() => {
-        const isPendingOrDeferred = request.status === 'deferred' || request.status === 'pending'
-        const isProcessed = request.status === 'completed' || 
-                          request.status === 'approved' || 
-                          request.status === 'rejected' || 
-                          request.status === 'auto_completed' || 
-                          request.status === 'autodeposit_success'
-        const hasProcessedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
-        
-        return isPendingOrDeferred && !isProcessed && !hasProcessedPayment
-      })() && (
-        <div className="mx-4 mb-4 flex space-x-3">
-          <button
-            onClick={() => updateRequestStatus('approved')}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Подтвердить</span>
-          </button>
-          <button
-            onClick={() => updateRequestStatus('rejected')}
-            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>Отклонить</span>
-          </button>
-        </div>
-      )}
 
       {/* Информация о сайте и пользователе */}
       <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
@@ -1145,6 +1111,40 @@ export default function RequestDetailPage() {
         </div>
       )}
 
+      {/* Кнопки действий для отложенных и ожидающих заявок */}
+      {/* Скрываем кнопки если заявка уже обработана */}
+      {(() => {
+        const isPendingOrDeferred = request.status === 'deferred' || request.status === 'pending'
+        const isProcessed = request.status === 'completed' || 
+                          request.status === 'approved' || 
+                          request.status === 'rejected' || 
+                          request.status === 'auto_completed' || 
+                          request.status === 'autodeposit_success'
+        const hasProcessedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
+        
+        return isPendingOrDeferred && !isProcessed && !hasProcessedPayment
+      })() && (
+        <div className="mx-4 mb-4 flex space-x-3">
+          <button
+            onClick={() => updateRequestStatus('approved')}
+            className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Подтвердить</span>
+          </button>
+          <button
+            onClick={() => updateRequestStatus('rejected')}
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Отклонить</span>
+          </button>
+        </div>
+      )}
 
       {/* Список транзакций по ID казино */}
       <div className="mx-4">
@@ -1175,7 +1175,7 @@ export default function RequestDetailPage() {
                           ? 'bg-red-500 text-white'
                           : 'bg-gray-700 text-gray-300'
                       }`}>
-                        {transaction.status}
+                        {getStatusState(transaction.status)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400">{formatDate(transaction.createdAt)}</p>
