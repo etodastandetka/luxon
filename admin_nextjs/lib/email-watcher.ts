@@ -115,6 +115,32 @@ async function processEmail(
               ? new Date(isoDatetime)
               : new Date()
 
+            // ВАЖНО: Проверяем, не существует ли уже такой платеж (по сумме, дате и банку)
+            // Это предотвращает дубликаты при повторной обработке писем
+            const existingPayment = await prisma.incomingPayment.findFirst({
+              where: {
+                amount: amount,
+                bank: bank,
+                paymentDate: {
+                  gte: new Date(paymentDate.getTime() - 60000), // ±1 минута
+                  lte: new Date(paymentDate.getTime() + 60000),
+                },
+              },
+            })
+
+            if (existingPayment) {
+              console.log(`⚠️ Payment already exists: ID ${existingPayment.id}, amount: ${amount}, date: ${paymentDate.toISOString()}`)
+              console.log(`   Skipping duplicate payment. Marking email as read.`)
+              
+              // Помечаем письмо как прочитанное, даже если платеж уже существует
+              imap.addFlags(uid, '\\Seen', (err: Error | null) => {
+                if (err) console.error(`Error marking email as seen:`, err)
+                resolve()
+              })
+              return
+            }
+
+            // Создаем новый платеж только если его еще нет
             const incomingPayment = await prisma.incomingPayment.create({
               data: {
                 amount,
@@ -130,9 +156,13 @@ async function processEmail(
             // Пытаемся найти совпадение и автоматически пополнить баланс
             await matchAndProcessPayment(incomingPayment.id, amount)
 
-            // Помечаем письмо как прочитанное
+            // Помечаем письмо как прочитанное ПОСЛЕ успешной обработки
             imap.addFlags(uid, '\\Seen', (err: Error | null) => {
-              if (err) console.error(`Error marking email as seen:`, err)
+              if (err) {
+                console.error(`Error marking email as seen:`, err)
+              } else {
+                console.log(`✅ Email marked as read (UID: ${uid})`)
+              }
               resolve()
             })
           } catch (error: any) {
@@ -268,8 +298,15 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           return
         }
 
-        // Ищем непрочитанные письма
-        imap.search(['UNSEEN'], (err: Error | null, results?: number[]) => {
+        // Ищем непрочитанные письма за последние 24 часа (чтобы не обрабатывать старые письма)
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const searchDate = [
+          'SINCE',
+          yesterday.toISOString().split('T')[0].replace(/-/g, '-')
+        ]
+        
+        imap.search(['UNSEEN', searchDate], (err: Error | null, results?: number[]) => {
           if (err) {
             reject(err)
             return
@@ -282,10 +319,21 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
             return
           }
 
-          console.log(`📬 Found ${results.length} new email(s)`)
+          console.log(`📬 Found ${results.length} new email(s) (since ${yesterday.toISOString().split('T')[0]})`)
 
-          // Обрабатываем каждое письмо
-          Promise.all(results.map((uid) => processEmail(imap, uid, settings)))
+          // Обрабатываем каждое письмо последовательно (не параллельно), чтобы избежать конфликтов
+          const processSequentially = async () => {
+            for (const uid of results!) {
+              try {
+                await processEmail(imap, uid, settings)
+              } catch (error: any) {
+                console.error(`❌ Error processing email UID ${uid}:`, error.message)
+                // Продолжаем обработку остальных писем даже при ошибке
+              }
+            }
+          }
+
+          processSequentially()
             .then(() => {
               imap.end()
               resolve()
