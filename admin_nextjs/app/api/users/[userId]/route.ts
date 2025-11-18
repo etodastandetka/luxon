@@ -10,6 +10,7 @@ export async function GET(
     requireAuth(request)
 
     const userId = BigInt(params.userId)
+    console.log(`🔍 Looking for user with ID: ${userId.toString()}`)
 
     let user = await prisma.botUser.findUnique({
       where: { userId },
@@ -37,12 +38,20 @@ export async function GET(
       },
     })
 
+    console.log(`📊 BotUser found: ${user ? 'YES' : 'NO'}`)
+
     // Если пользователь не найден в BotUser, пытаемся получить данные из Request
     if (!user) {
+      console.log(`🔍 Searching in Request table for userId: ${userId.toString()}`)
       const latestRequest = await prisma.request.findFirst({
         where: { userId },
         orderBy: { createdAt: 'desc' },
       })
+      
+      console.log(`📋 Latest Request found: ${latestRequest ? 'YES' : 'NO'}`)
+      if (latestRequest) {
+        console.log(`📋 Request ID: ${latestRequest.id}, userId: ${latestRequest.userId.toString()}`)
+      }
 
       if (latestRequest) {
         // Создаем виртуальный объект пользователя на основе данных из Request
@@ -87,11 +96,14 @@ export async function GET(
     }
 
     if (!user) {
+      console.error(`❌ User not found in both BotUser and Request tables for userId: ${userId.toString()}`)
       return NextResponse.json(
         createApiResponse(null, 'User not found'),
         { status: 404 }
       )
     }
+    
+    console.log(`✅ User found, returning data for userId: ${userId.toString()}`)
 
     // Для транзакций из BotTransaction нужно найти связанный Request для получения processedBy
     const transactionsWithProcessedBy = await Promise.all(
