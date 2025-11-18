@@ -15,8 +15,37 @@ import json
 import sys
 import requests
 import uuid
+import re
 from datetime import datetime
 from pathlib import Path
+
+# Загрузка переменных из .env файла
+def load_env_file(env_path):
+    """Загружает переменные из .env файла"""
+    if not os.path.exists(env_path):
+        return
+    
+    with open(env_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            # Пропускаем комментарии и пустые строки
+            if not line or line.startswith('#'):
+                continue
+            
+            # Парсим KEY="VALUE" или KEY=VALUE
+            match = re.match(r'^([^=]+)=(?:"?)([^"]+)(?:"?)$', line)
+            if match:
+                key = match.group(1).strip()
+                value = match.group(2).strip()
+                # Устанавливаем переменную окружения, если она еще не установлена
+                if key not in os.environ:
+                    os.environ[key] = value
+
+# Загружаем .env файл
+script_dir = Path(__file__).parent
+project_dir = script_dir.parent
+env_file = project_dir / '.env'
+load_env_file(env_file)
 
 # Конфигурация из переменных окружения
 MOBCASH_LOGIN = os.getenv('MOBCASH_LOGIN')
