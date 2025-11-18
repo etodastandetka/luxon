@@ -382,12 +382,58 @@ def step3_get_access_token(session, consent_challenge, consent_url=None):
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
                     },
                     timeout=30,
-                    allow_redirects=False
+                    allow_redirects=True  # Следуем редиректам автоматически
                 )
                 log(f'Предварительный GET response status: {pre_response.status_code}', 'INFO')
+                log(f'Предварительный GET final URL: {pre_response.url[:200]}...', 'INFO')
+                
                 # Обновляем cookies из предварительного запроса
                 if pre_response.cookies:
                     session.cookies.update(pre_response.cookies)
+                
+                # Пробуем извлечь access_token из ответа или финального URL
+                pre_text = pre_response.text
+                pre_url = pre_response.url
+                
+                # Проверяем финальный URL на наличие токена
+                if pre_url:
+                    import urllib.parse
+                    pre_parsed = urllib.parse.urlparse(pre_url)
+                    
+                    # Пробуем из query параметров
+                    if pre_parsed.query:
+                        pre_params = urllib.parse.parse_qs(pre_parsed.query)
+                        if 'access_token' in pre_params:
+                            access_token = pre_params['access_token'][0]
+                            if access_token.startswith('ory_at_'):
+                                log('access_token найден в финальном URL предварительного GET', 'SUCCESS')
+                                return access_token
+                    
+                    # Пробуем из fragment
+                    if pre_parsed.fragment:
+                        pre_fragment_params = urllib.parse.parse_qs(pre_parsed.fragment)
+                        if 'access_token' in pre_fragment_params:
+                            access_token = pre_fragment_params['access_token'][0]
+                            if access_token.startswith('ory_at_'):
+                                log('access_token найден в fragment предварительного GET', 'SUCCESS')
+                                return access_token
+                
+                # Пробуем из текста ответа
+                if 'access_token' in pre_text:
+                    import re
+                    match = re.search(r'access_token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', pre_text)
+                    if match:
+                        access_token = match.group(1)
+                        if access_token.startswith('ory_at_'):
+                            log('access_token найден в тексте предварительного GET', 'SUCCESS')
+                            return access_token
+                
+                # Если это редирект, проверяем Location header
+                if pre_response.status_code in [302, 303, 307, 308]:
+                    pre_location = pre_response.headers.get('Location', '')
+                    if pre_location:
+                        log(f'Предварительный GET redirect Location: {pre_location[:200]}...', 'INFO')
+                        # Продолжаем обработку ниже
             except Exception as e:
                 log(f'Предварительный GET запрос завершился с ошибкой (продолжаем): {e}', 'WARNING')
         
