@@ -88,6 +88,23 @@ async function processEmail(
               console.log(`📨 Email preview: ${preview}...`)
             }
 
+            // ВАЖНО: Проверяем дату письма - если письмо старше 1 часа, сразу помечаем как прочитанное
+            const emailDate = parsed.date || new Date()
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+            
+            if (emailDate < oneHourAgo) {
+              console.log(`⚠️ Email UID ${uid} is too old (${emailDate.toISOString()}), marking as read without processing`)
+              imap.addFlags(uid, '\\Seen', (err: Error | null) => {
+                if (err) {
+                  console.error(`❌ Error marking old email as seen:`, err)
+                } else {
+                  console.log(`✅ Old email UID ${uid} marked as read (skipped)`)
+                }
+                resolve()
+              })
+              return
+            }
+
             // Парсим сумму и дату из письма
             const paymentData = parseEmailByBank(text, settings.bank)
 
@@ -103,7 +120,11 @@ async function processEmail(
             } else {
               console.log(`   No amount pattern found`)
             }
-            resolve()
+            // Помечаем как прочитанное, даже если не смогли распарсить
+            imap.addFlags(uid, '\\Seen', (err: Error | null) => {
+              if (err) console.error(`Error marking unparseable email as seen:`, err)
+              resolve()
+            })
             return
           }
 
@@ -116,7 +137,7 @@ async function processEmail(
             // Сохраняем входящий платеж в БД
             const paymentDate = isoDatetime
               ? new Date(isoDatetime)
-              : new Date()
+              : emailDate // Используем дату письма, если не удалось распарсить дату из текста
 
             // ВАЖНО: Проверяем, не существует ли уже такой платеж (по сумме, дате и банку)
             // Это предотвращает дубликаты при повторной обработке писем
