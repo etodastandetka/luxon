@@ -28,7 +28,15 @@ export default function DepositWaitingPage() {
       checkAmount: 'Посмотрите что вы до копейки скинули',
       back: 'На главную',
       backHome: 'На главную',
-      questions: 'Вопросы:'
+      questions: 'Что может помочь:',
+      faq1: 'Проверьте сумму перевода',
+      faq1Desc: 'Убедитесь, что вы отправили точную сумму до копейки',
+      faq2: 'Проверьте реквизиты',
+      faq2Desc: 'Убедитесь, что вы перевели на правильные реквизиты',
+      faq3: 'Проверьте время перевода',
+      faq3Desc: 'Перевод должен быть выполнен в течение времени действия заявки',
+      faq4: 'Обратитесь в поддержку',
+      faq4Desc: 'Если все верно, напишите в поддержку @operator_luxon_bot'
     },
     en: {
       waiting: 'Please wait',
@@ -43,7 +51,15 @@ export default function DepositWaitingPage() {
       checkAmount: 'Please check that you sent the exact amount to the penny',
       back: 'Back',
       backHome: 'Back to home',
-      questions: 'Questions:'
+      questions: 'What can help:',
+      faq1: 'Check the transfer amount',
+      faq1Desc: 'Make sure you sent the exact amount to the penny',
+      faq2: 'Check the details',
+      faq2Desc: 'Make sure you transferred to the correct details',
+      faq3: 'Check the transfer time',
+      faq3Desc: 'The transfer must be completed within the request validity period',
+      faq4: 'Contact support',
+      faq4Desc: 'If everything is correct, write to support @operator_luxon_bot'
     },
     ky: {
       waiting: 'Күтүңүз',
@@ -58,7 +74,15 @@ export default function DepositWaitingPage() {
       checkAmount: 'Сиз тийиштүү сумманы тийиштүү копейкага чейин жөнөткөнүңүздү текшериңиз',
       back: 'Артка',
       backHome: 'Башкы бетке',
-      questions: 'Суроолор:'
+      questions: 'Эмне жардам берет:',
+      faq1: 'Которуу суммасын текшериңиз',
+      faq1Desc: 'Сиз так сумманы копейкага чейин жөнөткөнүңүздү текшериңиз',
+      faq2: 'Реквизиттерди текшериңиз',
+      faq2Desc: 'Сиз туура реквизиттерге которгонуңузду текшериңиз',
+      faq3: 'Которуу убактысын текшериңиз',
+      faq3Desc: 'Которуу өтүнүчтүн жарактуулук мөөнөтүндө аткарылышы керек',
+      faq4: 'Колдоого кайрылыңыз',
+      faq4Desc: 'Эгерде баары туура болсо, колдоого @operator_luxon_bot жазыңыз'
     },
     uz: {
       waiting: 'Kuting',
@@ -73,7 +97,15 @@ export default function DepositWaitingPage() {
       checkAmount: 'Iltimos, siz to\'liq summani to\'liq tiyincha yuborganingizni tekshiring',
       back: 'Orqaga',
       backHome: 'Bosh sahifaga',
-      questions: 'Savollar:'
+      questions: 'Nima yordam beradi:',
+      faq1: 'O\'tkazma summasini tekshiring',
+      faq1Desc: 'Siz aniq summani tiyincha yuborganingizni tekshiring',
+      faq2: 'Rekvizitlarni tekshiring',
+      faq2Desc: 'Siz to\'g\'ri rekvizitlarga o\'tkazganingizni tekshiring',
+      faq3: 'O\'tkazma vaqtini tekshiring',
+      faq3Desc: 'O\'tkazma so\'rovning amal qilish muddati ichida bajarilishi kerak',
+      faq4: 'Qo\'llab-quvvatlashga murojaat qiling',
+      faq4Desc: 'Agar hammasi to\'g\'ri bo\'lsa, qo\'llab-quvvatlashga @operator_luxon_bot yozing'
     }
   }
 
@@ -340,11 +372,11 @@ export default function DepositWaitingPage() {
         )}
 
         {status === 'error' && (
-          <div className="text-center space-y-6 max-w-md animate-fade-in">
+          <div className="text-center space-y-6 max-w-md animate-fade-in px-4">
             {/* Иконка отклонения */}
             <div className="relative">
-              <div className="w-32 h-32 mx-auto bg-red-500 rounded-full flex items-center justify-center animate-scale-in">
-                <svg className="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-24 h-24 mx-auto bg-red-500/20 rounded-full flex items-center justify-center animate-scale-in border-2 border-red-500/50">
+                <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
@@ -352,46 +384,56 @@ export default function DepositWaitingPage() {
 
             <div className="space-y-4">
               <div>
-                <h1 className="text-4xl font-bold text-red-400">{t.error}</h1>
-                <p className="text-white text-xl mt-2">{t.errorMessage}</p>
+                <h1 className="text-3xl font-bold text-red-400">{t.error}</h1>
+                <p className="text-white/80 text-lg mt-2">{t.errorMessage}</p>
+              </div>
+
+              {requestAmount && (
+                <div className="bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20">
+                  <p className="text-white/70 text-sm mb-2">{t.checkAmount}</p>
+                  <p className="text-white text-lg">Сумма заявки: <span className="font-bold text-green-400">{requestAmount} сом</span></p>
+                </div>
+              )}
+
+              {/* Мини FAQ */}
+              <div className="bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20 text-left">
+                <h3 className="text-white font-semibold mb-3 text-lg">{t.questions}</h3>
+                <div className="space-y-3">
+                  <div className="text-sm">
+                    <p className="text-green-400 font-medium mb-1">• {t.faq1}</p>
+                    <p className="text-white/60 text-xs">{t.faq1Desc}</p>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-green-400 font-medium mb-1">• {t.faq2}</p>
+                    <p className="text-white/60 text-xs">{t.faq2Desc}</p>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-green-400 font-medium mb-1">• {t.faq3}</p>
+                    <p className="text-white/60 text-xs">{t.faq3Desc}</p>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-green-400 font-medium mb-1">• {t.faq4}</p>
+                    <p className="text-white/60 text-xs">{t.faq4Desc}</p>
+                  </div>
+                </div>
               </div>
 
               {rejectionReason && (
-                <div className="bg-red-900/50 rounded-lg p-4 border border-red-700">
-                  <p className="text-red-300 font-semibold mb-2">{t.rejectionReason}</p>
-                  <p className="text-white">{rejectionReason}</p>
+                <div className="bg-red-900/30 rounded-xl p-4 border border-red-500/30">
+                  <p className="text-red-300 font-semibold mb-2 text-sm">{t.rejectionReason}</p>
+                  <p className="text-white/80 text-sm">{rejectionReason}</p>
                 </div>
               )}
 
-              {requestAmount && (
-                <div className="bg-yellow-900/50 rounded-lg p-4 border border-yellow-700">
-                  <p className="text-yellow-300 font-semibold mb-2">{t.checkAmount}</p>
-                  <p className="text-white text-lg">Сумма заявки: <span className="font-bold">{requestAmount} сом</span></p>
-                </div>
-              )}
-
-              <div className="space-y-3 pt-4">
+              <div className="pt-2">
                 <button
                   onClick={handleCheckPayment}
-                  className="w-full px-6 py-3 bg-yellow-500 text-black rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
+                  className="w-full px-6 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20"
                 >
                   {t.checkPayment}
                 </button>
-                <button
-                  onClick={handleConfirm}
-                  className="w-full px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors"
-                >
-                  {t.confirm}
-                </button>
               </div>
             </div>
-
-            <button
-              onClick={() => router.push('/')}
-              className="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-            >
-              {t.backHome}
-            </button>
           </div>
         )}
 
