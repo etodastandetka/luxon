@@ -344,6 +344,19 @@ export default function RequestsPage() {
           ))}
         </div>
       )}
+
+      {/* Кнопка "Загрузить еще" */}
+      {hasMore && (
+        <div className="text-center mt-4">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? 'Загрузка...' : 'Загрузить еще'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
