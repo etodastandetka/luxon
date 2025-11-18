@@ -30,7 +30,11 @@ export default function RequestsPage() {
       if (filter.type) params.append('type', filter.type)
       if (filter.status) params.append('status', filter.status)
 
-      const response = await fetch(`/api/requests?${params.toString()}`)
+      // Используем кэширование для более быстрой загрузки
+      const response = await fetch(`/api/requests?${params.toString()}`, {
+        cache: 'default',
+        next: { revalidate: 3 } // Перевалидируем каждые 3 секунды
+      })
       const data = await response.json()
 
       if (data.success) {
