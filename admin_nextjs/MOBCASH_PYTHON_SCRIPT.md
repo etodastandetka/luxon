@@ -35,6 +35,13 @@ MOBCASH_DEFAULT_LON=74.568778
 
 ### Ручной запуск
 
+**Важно:** Сначала убедитесь, что код обновлен на сервере:
+```bash
+cd /var/www/luxon/admin_nextjs
+git pull origin main
+```
+
+Затем запустите скрипт:
 ```bash
 cd /var/www/luxon/admin_nextjs
 source venv/bin/activate
