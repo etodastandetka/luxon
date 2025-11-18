@@ -828,7 +828,14 @@ export default function RequestDetailPage() {
       {request.photoFileUrl && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-base font-semibold text-white mb-3">Фото чека</h3>
-          <div className="relative w-full flex justify-center" style={{ minHeight: '200px', maxHeight: '500px' }}>
+          <div 
+            className="relative w-full flex justify-center cursor-pointer hover:opacity-90 transition-opacity" 
+            style={{ minHeight: '200px', maxHeight: '500px' }}
+            onClick={() => {
+              setShowPhotoModal(true)
+              setPhotoZoom(1)
+            }}
+          >
             <Image
               src={request.photoFileUrl}
               alt="Фото чека об оплате"
@@ -846,6 +853,84 @@ export default function RequestDetailPage() {
                 }
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно для увеличения фото */}
+      {showPhotoModal && request.photoFileUrl && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowPhotoModal(false)}
+        >
+          <div className="relative w-full h-full flex items-center justify-center">
+            <button
+              onClick={() => setShowPhotoModal(false)}
+              className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-2 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <div className="flex items-center space-x-4 absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 bg-gray-800/80 rounded-lg p-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPhotoZoom(Math.max(0.5, photoZoom - 0.25))
+                }}
+                className="bg-gray-700 hover:bg-gray-600 text-white rounded px-3 py-1 text-sm font-medium"
+              >
+                −
+              </button>
+              <span className="text-white text-sm font-medium min-w-[60px] text-center">
+                {Math.round(photoZoom * 100)}%
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPhotoZoom(Math.min(5, photoZoom + 0.25))
+                }}
+                className="bg-gray-700 hover:bg-gray-600 text-white rounded px-3 py-1 text-sm font-medium"
+              >
+                +
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPhotoZoom(1)
+                }}
+                className="bg-gray-700 hover:bg-gray-600 text-white rounded px-3 py-1 text-sm font-medium ml-2"
+              >
+                Сброс
+              </button>
+            </div>
+
+            <div 
+              className="max-w-full max-h-full overflow-auto"
+              onClick={(e) => e.stopPropagation()}
+              onWheel={(e) => {
+                e.preventDefault()
+                const delta = e.deltaY > 0 ? -0.1 : 0.1
+                setPhotoZoom(Math.max(0.5, Math.min(5, photoZoom + delta)))
+              }}
+            >
+              <Image
+                src={request.photoFileUrl}
+                alt="Фото чека об оплате (увеличенное)"
+                width={1200}
+                height={800}
+                className="rounded-lg shadow-2xl"
+                style={{ 
+                  transform: `scale(${photoZoom})`,
+                  transformOrigin: 'center',
+                  transition: 'transform 0.1s ease-out',
+                  maxWidth: '90vw',
+                  maxHeight: '90vh',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
