@@ -937,106 +937,6 @@ export default function RequestDetailPage() {
         </div>
       )}
 
-      {/* Кнопки действий для отложенных и ожидающих заявок */}
-      {/* Скрываем кнопки если заявка уже обработана */}
-      {(() => {
-        const isPendingOrDeferred = request.status === 'deferred' || request.status === 'pending'
-        const isProcessed = request.status === 'completed' || 
-                          request.status === 'approved' || 
-                          request.status === 'rejected' || 
-                          request.status === 'auto_completed' || 
-                          request.status === 'autodeposit_success'
-        const hasProcessedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
-        
-        return isPendingOrDeferred && !isProcessed && !hasProcessedPayment
-      })() && (
-        <div className="mx-4 mb-4 flex space-x-3">
-          <button
-            onClick={() => updateRequestStatus('approved')}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Подтвердить</span>
-          </button>
-          <button
-            onClick={() => updateRequestStatus('rejected')}
-            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>Отклонить</span>
-          </button>
-        </div>
-      )}
-
-
-      {/* Информация о сайте и пользователе */}
-      <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Сайт:</span>
-            <span className="text-sm font-medium text-white">{request.bookmaker || 'N/A'}</span>
-          </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">ID заявки:</span>
-              <span className="text-sm font-medium text-white">{request.id}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">ID счета:</span>
-              <span className="text-sm font-medium text-white">{request.accountId || 'N/A'}</span>
-            </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Дата создания:</span>
-            <span className="text-sm font-medium text-white">{formatDate(request.createdAt)}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Пользователь:</span>
-            <span className="text-sm font-medium text-white">{userName}</span>
-          </div>
-          {request.userNote && (
-            <div className="pt-2 border-t border-gray-700">
-              <span className="text-sm text-gray-400 block mb-1">Заметка:</span>
-              <span className="text-sm font-medium text-red-400 whitespace-pre-wrap">{request.userNote}</span>
-            </div>
-          )}
-          {request.bank && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">Банк:</span>
-              <span className="text-sm font-medium text-white">{request.bank}</span>
-            </div>
-          )}
-          {request.paymentMethod && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">Способ оплаты:</span>
-              <span className={`text-sm font-medium ${
-                request.paymentMethod === 'crypto' ? 'text-purple-400' : 'text-white'
-              }`}>
-                {request.paymentMethod === 'crypto' ? '₿ Криптовалюта' : '💳 Банковский перевод'}
-              </span>
-            </div>
-          )}
-          {request.paymentMethod === 'crypto' && request.cryptoPayment && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">Крипто-платеж:</span>
-              <span className="text-sm font-medium text-purple-400">
-                {request.cryptoPayment.amount} {request.cryptoPayment.asset}
-              </span>
-            </div>
-          )}
-          {request.status && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">Статус:</span>
-              <span className={`text-sm font-medium ${getStatusColor(request.status).includes('text-') ? getStatusColor(request.status) : 'text-white'}`}>
-                {getStatusState(request.status)}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Входящие платежи с поиском */}
       {request.requestType === 'deposit' && request.matchingPayments && request.matchingPayments.length > 0 && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
@@ -1223,6 +1123,105 @@ export default function RequestDetailPage() {
           )}
         </div>
       )}
+
+      {/* Кнопки действий для отложенных и ожидающих заявок */}
+      {/* Скрываем кнопки если заявка уже обработана */}
+      {(() => {
+        const isPendingOrDeferred = request.status === 'deferred' || request.status === 'pending'
+        const isProcessed = request.status === 'completed' || 
+                          request.status === 'approved' || 
+                          request.status === 'rejected' || 
+                          request.status === 'auto_completed' || 
+                          request.status === 'autodeposit_success'
+        const hasProcessedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
+        
+        return isPendingOrDeferred && !isProcessed && !hasProcessedPayment
+      })() && (
+        <div className="mx-4 mb-4 flex space-x-3">
+          <button
+            onClick={() => updateRequestStatus('approved')}
+            className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Подтвердить</span>
+          </button>
+          <button
+            onClick={() => updateRequestStatus('rejected')}
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Отклонить</span>
+          </button>
+        </div>
+      )}
+
+      {/* Информация о сайте и пользователе */}
+      <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Сайт:</span>
+            <span className="text-sm font-medium text-white">{request.bookmaker || 'N/A'}</span>
+          </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">ID заявки:</span>
+              <span className="text-sm font-medium text-white">{request.id}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">ID счета:</span>
+              <span className="text-sm font-medium text-white">{request.accountId || 'N/A'}</span>
+            </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Дата создания:</span>
+            <span className="text-sm font-medium text-white">{formatDate(request.createdAt)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Пользователь:</span>
+            <span className="text-sm font-medium text-white">{userName}</span>
+          </div>
+          {request.userNote && (
+            <div className="pt-2 border-t border-gray-700">
+              <span className="text-sm text-gray-400 block mb-1">Заметка:</span>
+              <span className="text-sm font-medium text-red-400 whitespace-pre-wrap">{request.userNote}</span>
+            </div>
+          )}
+          {request.bank && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Банк:</span>
+              <span className="text-sm font-medium text-white">{request.bank}</span>
+            </div>
+          )}
+          {request.paymentMethod && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Способ оплаты:</span>
+              <span className={`text-sm font-medium ${
+                request.paymentMethod === 'crypto' ? 'text-purple-400' : 'text-white'
+              }`}>
+                {request.paymentMethod === 'crypto' ? '₿ Криптовалюта' : '💳 Банковский перевод'}
+              </span>
+            </div>
+          )}
+          {request.paymentMethod === 'crypto' && request.cryptoPayment && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Крипто-платеж:</span>
+              <span className="text-sm font-medium text-purple-400">
+                {request.cryptoPayment.amount} {request.cryptoPayment.asset}
+              </span>
+            </div>
+          )}
+          {request.status && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Статус:</span>
+              <span className={`text-sm font-medium ${getStatusColor(request.status).includes('text-') ? getStatusColor(request.status) : 'text-white'}`}>
+                {getStatusState(request.status)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Список транзакций по ID казино */}
       <div className="mx-4">
