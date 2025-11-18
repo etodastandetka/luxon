@@ -364,12 +364,14 @@ def step3_get_access_token(session, consent_challenge):
     try:
         # Используем session для автоматической передачи cookies
         # Важно: consent_challenge должен быть в URL параметрах, а не в теле запроса
+        # Согласно документации и TypeScript реализации, нужно делать POST запрос
         response = session.post(
             f'{OAUTH_BASE_URL}/authentication/consent',
             params={'consent_challenge': consent_challenge},  # В URL параметрах
             headers={
                 **OAUTH_HEADERS,
                 'Authorization': 'Bearer ',  # Пустой токен для первого запроса
+                'Content-Type': 'application/x-www-form-urlencoded',  # Явно указываем Content-Type
             },
             data=data,  # Form data в теле
             timeout=30,
@@ -409,6 +411,12 @@ def step3_get_access_token(session, consent_challenge):
                 import urllib.parse
                 parsed = urllib.parse.urlparse(location)
                 
+                # Проверяем, есть ли consent_verifier - нужно следовать редиректу дальше
+                consent_verifier = None
+                if parsed.query:
+                    query_params = urllib.parse.parse_qs(parsed.query)
+                    consent_verifier = query_params.get('consent_verifier', [None])[0]
+                
                 # Пробуем из fragment (#) части URL
                 if parsed.fragment:
                     fragment_params = urllib.parse.parse_qs(parsed.fragment)
@@ -423,6 +431,54 @@ def step3_get_access_token(session, consent_challenge):
                         access_token = query_params['access_token'][0]
                         log('access_token найден в query URL', 'SUCCESS')
                 
+                # Если есть consent_verifier, следуем редиректу для получения токена
+                if not access_token and consent_verifier:
+                    log(f'Consent verifier найден, следуем редиректу: {consent_verifier[:20]}...', 'INFO')
+                    
+                    # Следуем редиректу с consent_verifier
+                    redirect_response = session.get(
+                        location,
+                        headers={
+                            'Accept': 'application/json, text/plain, */*',
+                            'Accept-Language': 'en,ru;q=0.9,ru-RU;q=0.8,en-US;q=0.7',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+                        },
+                        timeout=30,
+                        allow_redirects=True  # Следуем всем редиректам автоматически
+                    )
+                    
+                    log(f'Final redirect URL: {redirect_response.url[:200]}...', 'INFO')
+                    
+                    # Проверяем финальный URL на наличие токена
+                    final_url = redirect_response.url
+                    if final_url:
+                        final_parsed = urllib.parse.urlparse(final_url)
+                        
+                        # Пробуем из query параметров финального URL
+                        if final_parsed.query:
+                            final_params = urllib.parse.parse_qs(final_parsed.query)
+                            if 'access_token' in final_params:
+                                access_token = final_params['access_token'][0]
+                                log('access_token найден в финальном URL query', 'SUCCESS')
+                        
+                        # Пробуем из fragment финального URL
+                        if not access_token and final_parsed.fragment:
+                            final_fragment_params = urllib.parse.parse_qs(final_parsed.fragment)
+                            if 'access_token' in final_fragment_params:
+                                access_token = final_fragment_params['access_token'][0]
+                                log('access_token найден в финальном URL fragment', 'SUCCESS')
+                    
+                    # Пробуем из текста ответа редиректа
+                    if not access_token:
+                        redirect_text = redirect_response.text
+                        if 'access_token' in redirect_text:
+                            import re
+                            match = re.search(r'access_token["\']?\s*[:=]\s*["\']?([^"\'\s,}]+)', redirect_text)
+                            if match:
+                                access_token = match.group(1)
+                                if access_token.startswith('ory_at_'):
+                                    log('access_token найден в тексте ответа редиректа', 'SUCCESS')
+                
                 # Пробуем найти в полном URL через regex
                 if not access_token:
                     import re
@@ -430,7 +486,8 @@ def step3_get_access_token(session, consent_challenge):
                     match = re.search(r'[#&?]access_token=([^&#\s]+)', location)
                     if match:
                         access_token = match.group(1)
-                        log('access_token найден через regex в URL', 'SUCCESS')
+                        if access_token.startswith('ory_at_'):
+                            log('access_token найден через regex в URL', 'SUCCESS')
         
         # Если не нашли, пробуем из текста ответа (если это не редирект)
         if not access_token and response.status_code == 200:
