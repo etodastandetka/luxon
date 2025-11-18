@@ -127,6 +127,7 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
 
   // Ищем заявки с точным совпадением суммы (с точностью до копеек)
+  // ВАЖНО: Исключаем заявки, которые уже имеют связанный платеж (requestId в IncomingPayment)
   const matchingRequests = await prisma.request.findMany({
     where: {
       requestType: 'deposit',
@@ -134,14 +135,33 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
       createdAt: {
         gte: fiveMinutesAgo,
       },
+      // Исключаем заявки, которые уже имеют связанный обработанный платеж
+      incomingPayments: {
+        none: {
+          isProcessed: true,
+        },
+      },
     },
     orderBy: {
-      createdAt: 'desc',
+      createdAt: 'asc', // Берем самую старую заявку (первую по времени)
+    },
+    include: {
+      incomingPayments: {
+        where: {
+          isProcessed: true,
+        },
+      },
     },
   })
 
   // Фильтруем вручную, т.к. Prisma может иметь проблемы с точным сравнением Decimal
+  // И дополнительно проверяем, что у заявки нет обработанных платежей
   const exactMatches = matchingRequests.filter((req) => {
+    // Пропускаем заявки, у которых уже есть обработанный платеж
+    if (req.incomingPayments && req.incomingPayments.length > 0) {
+      return false
+    }
+    
     if (!req.amount) return false
     const reqAmount = parseFloat(req.amount.toString())
     return Math.abs(reqAmount - amount) < 0.01 // Точность до 1 копейки
@@ -151,7 +171,21 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     return null
   }
 
+  // Берем самую первую заявку (самую старую по времени создания)
   const request = exactMatches[0]
+  
+  // Дополнительная проверка: убеждаемся, что платеж еще не обработан
+  const existingProcessedPayment = await prisma.incomingPayment.findFirst({
+    where: {
+      id: paymentId,
+      isProcessed: true,
+    },
+  })
+  
+  if (existingProcessedPayment) {
+    console.log(`⚠️ Payment ${paymentId} is already processed, skipping`)
+    return null
+  }
 
   if (!request.accountId || !request.bookmaker) {
     return null

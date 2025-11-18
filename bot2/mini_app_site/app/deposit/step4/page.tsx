@@ -15,6 +15,7 @@ export default function DepositStep4() {
   const [qrData, setQrData] = useState<any>(null)
   const [timeLeft, setTimeLeft] = useState(300) // 5 минут в секундах
   const [isPaid, setIsPaid] = useState(false)
+  const [isCreatingRequest, setIsCreatingRequest] = useState(false)
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
   const [cryptoInvoice, setCryptoInvoice] = useState<any>(null)
   const [cryptoLoading, setCryptoLoading] = useState(false)
@@ -599,35 +600,36 @@ export default function DepositStep4() {
       return
     }
 
+    // Проверяем, не создается ли уже заявка
+    if (isCreatingRequest || isPaid) {
+      showAlert({
+        type: 'info',
+        title: language === 'ru' ? 'Информация' : 'Info',
+        message: language === 'ru'
+          ? 'Заявка уже отправлена или обрабатывается. Пожалуйста, подождите.'
+          : 'Request already submitted or being processed. Please wait.'
+      })
+      return
+    }
+
+    setIsCreatingRequest(true)
+
     try {
       console.log('🔘 "Я оплатил" нажата для crypto, создаем заявку...')
       console.log('📦 cryptoInvoice:', cryptoInvoice)
       
       // Создаем заявку (cryptoInvoice уже есть в state, передается в createDepositRequest)
-      await createDepositRequest()
+      const requestId = await createDepositRequest()
       
       console.log('✅ Заявка создана')
       
-      // Показываем сообщение об успешной отправке заявки
-      showAlert({
-        type: 'success',
-        title: language === 'ru' ? 'Заявка отправлена' : 'Request sent',
-        message: language === 'ru'
-          ? 'Ваша заявка успешно отправлена. Вы получите уведомление в бот, когда баланс будет пополнен.'
-          : 'Your request has been sent successfully. You will receive a notification in the bot when your balance is topped up.'
-      })
+      // Сохраняем ID заявки для страницы ожидания
+      if (requestId) {
+        localStorage.setItem('deposit_request_id', String(requestId))
+      }
       
-      // Закрываем мини-приложение через 2 секунды
-      setTimeout(() => {
-        const tg = (window as any).Telegram?.WebApp
-        if (tg && typeof tg.close === 'function') {
-          console.log('✅ Закрываем мини-приложение')
-          tg.close()
-        } else {
-          console.warn('⚠️ Telegram WebApp.close() не доступен, используем fallback')
-          router.push('/')
-        }
-      }, 2000)
+      // Перенаправляем на страницу ожидания
+      router.push('/deposit/waiting')
     } catch (error: any) {
       console.error('❌ Error creating deposit request:', error)
       showAlert({
@@ -673,24 +675,28 @@ export default function DepositStep4() {
       return
     }
 
-    // Проверяем, не отправлена ли уже заявка
-    if (isPaid) {
+    // Проверяем, не отправлена ли уже заявка или не создается ли она сейчас
+    if (isPaid || isCreatingRequest) {
       showAlert({
         type: 'info',
         title: language === 'ru' ? 'Информация' : 'Info',
         message: language === 'ru'
-          ? 'Заявка уже отправлена. Ожидайте обработки.'
-          : 'Request already submitted. Please wait for processing.'
+          ? 'Заявка уже отправлена или обрабатывается. Пожалуйста, подождите.'
+          : 'Request already submitted or being processed. Please wait.'
       })
       return
     }
 
-    // Сохраняем время начала таймера при создании заявки (если еще не сохранено)
-    if (!localStorage.getItem('deposit_timer_start')) {
-      localStorage.setItem('deposit_timer_start', Date.now().toString())
-    }
+    // Устанавливаем флаг создания заявки
+    setIsCreatingRequest(true)
+    
     try {
-      await createDepositRequest()
+      const requestId = await createDepositRequest()
+      
+      // Сохраняем ID заявки для страницы ожидания
+      if (requestId) {
+        localStorage.setItem('deposit_request_id', String(requestId))
+      }
       
       // Останавливаем таймер - устанавливаем isPaid в true
       setIsPaid(true)
@@ -725,30 +731,13 @@ export default function DepositStep4() {
         localStorage.setItem('previous_deposit_amount', amount.toString())
       }
       
-      console.log('✅ Таймер остановлен после отправки заявки')
+      console.log('✅ Заявка создана, перенаправляем на страницу ожидания')
       
-      // Показываем сообщение об успешной отправке заявки
-      showAlert({
-        type: 'success',
-        title: language === 'ru' ? 'Заявка отправлена' : 'Request sent',
-        message: language === 'ru'
-          ? 'Ваша заявка успешно отправлена. Вы получите уведомление в бот, когда баланс будет пополнен.'
-          : 'Your request has been sent successfully. You will receive a notification in the bot when your balance is topped up.'
-      })
-      
-      // Закрываем мини-приложение через 2 секунды
-      setTimeout(() => {
-        const tg = (window as any).Telegram?.WebApp
-        if (tg && typeof tg.close === 'function') {
-          console.log('✅ Закрываем мини-приложение')
-          tg.close()
-        } else {
-          console.warn('⚠️ Telegram WebApp.close() не доступен, используем fallback')
-          router.push('/')
-        }
-      }, 2000)
+      // Перенаправляем на страницу ожидания
+      router.push('/deposit/waiting')
     } catch (e) {
       console.error(e)
+      setIsCreatingRequest(false) // Сбрасываем флаг при ошибке
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',

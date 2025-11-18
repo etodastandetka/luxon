@@ -45,7 +45,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    requireAuth(request)
+    // Не требуем авторизацию для публичного доступа к статусу заявки
+    // requireAuth(request)
 
     const id = parseInt(params.id)
 
