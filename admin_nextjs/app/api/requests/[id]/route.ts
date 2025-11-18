@@ -50,11 +50,49 @@ export async function GET(
 
     const id = parseInt(params.id)
 
+    // Оптимизируем запрос - выбираем только нужные поля
     const requestData = await prisma.request.findUnique({
       where: { id },
-      include: {
-        incomingPayments: true,
-        cryptoPayment: true,
+      select: {
+        id: true,
+        userId: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        bookmaker: true,
+        accountId: true,
+        amount: true,
+        requestType: true,
+        status: true,
+        statusDetail: true,
+        processedBy: true,
+        bank: true,
+        phone: true,
+        photoFileUrl: true,
+        paymentMethod: true,
+        createdAt: true,
+        updatedAt: true,
+        processedAt: true,
+        incomingPayments: {
+          select: {
+            id: true,
+            amount: true,
+            paymentDate: true,
+            requestId: true,
+            isProcessed: true,
+          },
+        },
+        cryptoPayment: {
+          select: {
+            id: true,
+            invoice_id: true,
+            amount: true,
+            fee_amount: true,
+            asset: true,
+            status: true,
+            request_id: true,
+          },
+        },
       },
     })
 
