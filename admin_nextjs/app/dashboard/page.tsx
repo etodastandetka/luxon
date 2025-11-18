@@ -39,7 +39,11 @@ export default function DashboardPage() {
         params.append('status', 'deferred')
       }
 
-      const response = await fetch(`/api/requests?${params.toString()}`)
+      // Используем кэширование для более быстрой загрузки
+      const response = await fetch(`/api/requests?${params.toString()}`, {
+        cache: 'default',
+        next: { revalidate: 3 } // Перевалидируем каждые 3 секунды
+      })
       const data = await response.json()
 
       console.log('📋 Fetched requests data:', data)
