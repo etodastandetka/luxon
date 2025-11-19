@@ -203,9 +203,36 @@ export async function POST(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Origin', '*')
     return response
   } catch (error: any) {
-    console.error('Payment API error:', error)
+    console.error('❌ Payment API error:', error)
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack?.substring(0, 500)
+    })
+    
+    // Проверяем, является ли это ошибкой уникального ограничения (duplicate key)
+    if (error.code === 'P2002') {
+      const errorResponse = NextResponse.json(
+        createApiResponse(null, 'Заявка с такими данными уже существует. Пожалуйста, подождите обработки предыдущей заявки.'),
+        { status: 409 }
+      )
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
+    
+    // Проверяем, является ли это ошибкой валидации
+    if (error.code === 'P2003' || error.code === 'P2011') {
+      const errorResponse = NextResponse.json(
+        createApiResponse(null, 'Ошибка валидации данных. Проверьте правильность введенных данных.'),
+        { status: 400 }
+      )
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
+    
     const errorResponse = NextResponse.json(
-      createApiResponse(null, error.message || 'Failed to create request'),
+      createApiResponse(null, error.message || 'Ошибка при создании заявки. Пожалуйста, попробуйте еще раз.'),
       { status: 500 }
     )
     errorResponse.headers.set('Access-Control-Allow-Origin', '*')

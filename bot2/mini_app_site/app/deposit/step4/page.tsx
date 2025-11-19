@@ -523,7 +523,11 @@ export default function DepositStep4() {
         receipt_photo: receiptPhotoBase64 ? `[base64, ${receiptPhotoBase64.length} chars]` : null
       })
 
-      const response = await fetch('/api/payment', {
+      const apiUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3001' 
+        : 'https://xendro.pro'
+      
+      const response = await fetch(`${apiUrl}/api/payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -548,7 +552,20 @@ export default function DepositStep4() {
             receipt_photo: receiptPhotoBase64 ? '[base64]' : null
           }
         })
-        throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`)
+        
+        // Более понятное сообщение об ошибке для пользователя
+        let userFriendlyMessage = 'Ошибка при отправке заявки.'
+        if (response.status === 409) {
+          userFriendlyMessage = errorData.error || 'Заявка уже существует. Пожалуйста, подождите обработки.'
+        } else if (response.status === 400) {
+          userFriendlyMessage = errorData.error || 'Проверьте правильность введенных данных.'
+        } else if (errorData.error) {
+          userFriendlyMessage = errorData.error
+        } else if (errorData.message) {
+          userFriendlyMessage = errorData.message
+        }
+        
+        throw new Error(userFriendlyMessage)
       }
 
       const data = await response.json()
