@@ -907,7 +907,18 @@ export class MobCashClient {
       const result = data[0]
 
       if (result.error) {
-        throw new Error(`API error: ${result.error.message} (code: ${result.error.code})`)
+        // Улучшаем сообщения об ошибках для более понятного вывода
+        let errorMessage = result.error.message || 'Unknown error'
+        const errorCode = result.error.code
+        
+        // Специальная обработка для ошибки "order not found"
+        if (errorMessage.includes('order not found') || errorMessage.includes('withdraw order')) {
+          errorMessage = `Ордер на вывод не найден. Проверьте правильность кода и убедитесь, что ордер создан в казино.`
+        } else if (errorMessage.includes('not found')) {
+          errorMessage = `Не найдено: ${errorMessage}`
+        }
+        
+        throw new Error(`API error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ''}`)
       }
 
       return result.result
