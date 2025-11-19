@@ -1145,15 +1145,15 @@ export default function RequestDetailPage() {
       {/* Модальное окно подтверждения */}
       {showConfirmModal && request && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowConfirmModal(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold text-black mb-4">Подтвердить операцию</h3>
-            <p className="text-gray-700 mb-6">
+          <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-700" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold text-white mb-4">Подтвердить операцию</h3>
+            <p className="text-gray-300 mb-6">
               Вы уверены, что хотите{' '}
-              <span className="text-blue-600 font-semibold">
+              <span className="text-green-400 font-semibold">
                 {request.requestType === 'deposit' ? 'принять' : 'принять'}
               </span>{' '}
               заявку на {request.requestType === 'deposit' ? 'пополнение' : 'вывод'}{' '}
-              <span className="font-semibold">
+              <span className="font-semibold text-white">
                 {request.amount ? parseFloat(request.amount.toString()).toFixed(2).replace('.', ',') : '0,00'} сом
               </span>{' '}
               для {userName}?
@@ -1167,7 +1167,7 @@ export default function RequestDetailPage() {
                     setPendingStatus(null)
                   }
                 }}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
+                className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
               >
                 Да, принять
               </button>
@@ -1176,7 +1176,7 @@ export default function RequestDetailPage() {
                   setShowConfirmModal(false)
                   setPendingStatus(null)
                 }}
-                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-colors"
+                className="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-3 px-4 rounded-xl transition-colors"
               >
                 Отмена
               </button>

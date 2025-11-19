@@ -178,6 +178,48 @@ export async function depositToCasino(
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
 
   try {
+    // Проверка на дублирование пополнений - проверяем, не было ли уже пополнения для этого accountId и суммы в последние 5 минут
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+    
+    // Ищем все недавние пополнения для этого accountId и bookmaker
+    const recentDeposits = await prisma.request.findMany({
+      where: {
+        accountId: String(accountId), // Приводим к строке для сравнения
+        bookmaker: bookmaker,
+        requestType: 'deposit',
+        status: {
+          in: ['completed', 'approved', 'auto_completed', 'autodeposit_success']
+        },
+        processedAt: {
+          gte: fiveMinutesAgo
+        }
+      },
+      orderBy: {
+        processedAt: 'desc'
+      }
+    })
+
+    // Проверяем, есть ли пополнение с такой же суммой (с точностью до 1 копейки)
+    const duplicateDeposit = recentDeposits.find(deposit => {
+      const depositAmount = typeof deposit.amount === 'string' 
+        ? parseFloat(deposit.amount) 
+        : (deposit.amount as any).toNumber ? (deposit.amount as any).toNumber() : Number(deposit.amount)
+      return Math.abs(depositAmount - amount) < 0.01 // Разница не более 1 копейки
+    })
+
+    if (duplicateDeposit) {
+      const timeDiff = Math.floor((Date.now() - duplicateDeposit.processedAt!.getTime()) / 1000 / 60)
+      const remainingMinutes = Math.max(0, 5 - timeDiff)
+      console.warn(`[Deposit Balance] ⚠️ Duplicate deposit detected! Found recent deposit for accountId ${accountId}, amount ${amount}, ${timeDiff} minutes ago (Request ID: ${duplicateDeposit.id})`)
+      return {
+        success: false,
+        message: `Депозит на сумму ${amount.toFixed(2)} игроку № ${accountId} уже был проведен, повторить платеж можно будет через ${remainingMinutes} минут.`,
+        data: {
+          MessageId: 100337,
+          Message: `Депозит на сумму ${amount.toFixed(2)} игроку № ${accountId} уже был проведен, повторить платеж можно будет через ${remainingMinutes} минут.`
+        }
+      }
+    }
           // Для 1xbet используем mob-cash API
           if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
             const mobCashConfig = await getMobCashConfig(bookmaker)
