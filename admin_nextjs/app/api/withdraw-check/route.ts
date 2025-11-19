@@ -152,6 +152,54 @@ export async function POST(request: NextRequest) {
           cashdeskid: process.env['888STARZ_CASHDESKID'] || '1416358',
         }
       }
+
+      // Для 888starz метод Payout сразу выполняет вывод и возвращает summa
+      // Вызываем checkWithdrawAmountCashdesk, который выполнит вывод и вернет сумму
+      const { checkWithdrawAmountCashdesk } = await import('@/lib/casino-withdraw')
+      const checkResult = await checkWithdrawAmountCashdesk(bookmaker, playerId, code, config)
+      
+      if (!checkResult.success) {
+        return NextResponse.json(
+          createApiResponse(null, checkResult.message || 'Код неверный или вывод не найден'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+
+      // Проверяем, что сумма получена
+      if (!checkResult.amount || checkResult.amount <= 0) {
+        return NextResponse.json(
+          createApiResponse(null, 'Не удалось получить сумму вывода. Проверьте код и попробуйте еще раз.'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+
+      // Для 888starz вывод уже выполнен на этом этапе (Payout сразу выполняет вывод)
+      // Возвращаем сумму для создания заявки
+      return NextResponse.json(
+        createApiResponse(
+          {
+            amount: checkResult.amount,
+            message: 'Вывод выполнен успешно. Создайте заявку для подтверждения.',
+            alreadyExecuted: true, // Флаг, что вывод уже выполнен
+          },
+          'Withdrawal executed successfully'
+        ),
+        {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
     }
 
     if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {

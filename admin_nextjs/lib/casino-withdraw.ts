@@ -37,6 +37,10 @@ function generateConfirm(userId: string, hash: string): string {
 
 /**
  * Генерация подписи для вывода 1xbet/Melbet/888starz
+ * Согласно документации CashdeskBotAPI:
+ * 1. SHA256(hash={hash}&lng=ru&userid={user_id})
+ * 2. MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) для Payout
+ * 3. SHA256(step1 + step2)
  */
 function generateSignForWithdraw(
   userId: string,
@@ -49,7 +53,7 @@ function generateSignForWithdraw(
   const step1String = `hash=${hash}&lng=ru&userid=${userId}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
-  // b) MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
+  // b) MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) для Payout
   const step2String = `code=${code}&cashierpass=${cashierpass}&cashdeskid=${cashdeskid}`
   const step2Hash = crypto.createHash('md5').update(step2String).digest('hex')
 
@@ -60,8 +64,10 @@ function generateSignForWithdraw(
 
 /**
  * Проверка суммы вывода через API 1xbet/Melbet/888starz (Cashdesk API)
- * ВАЖНО: Метод Payout сразу выполняет вывод, поэтому используем его только для проверки кода
- * Если код верный - возвращаем успех (сумму нужно брать из заявки или запрашивать отдельно)
+ * ВАЖНО: Метод Payout сразу выполняет вывод и возвращает summa в ответе
+ * Согласно документации: POST Deposit/{userId}/Payout
+ * Request Body: { "cashdeskId": int, "lng": "string", "code": "string", "confirm": "string" }
+ * Response: { "summa": decimal, "success": bool, "messageId": int, "message": "string" }
  */
 export async function checkWithdrawAmountCashdesk(
   bookmaker: string,
@@ -79,7 +85,13 @@ export async function checkWithdrawAmountCashdesk(
       ? userId.toLowerCase() 
       : userId
 
+    // Генерируем confirm: MD5(userId:hash)
     const confirm = generateConfirm(userIdForApi, config.hash!)
+    
+    // Генерируем подпись согласно документации:
+    // 1. SHA256(hash={hash}&lng=ru&userid={user_id})
+    // 2. MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
+    // 3. SHA256(step1 + step2)
     const sign = generateSignForWithdraw(
       userIdForApi,
       code,
@@ -98,11 +110,13 @@ export async function checkWithdrawAmountCashdesk(
       confirm: confirm,
     }
 
-    console.log(`[Cashdesk Withdraw Check] Bookmaker: ${bookmaker}, User ID: ${userIdForApi}, Code: ${code}`)
-    console.log(`[Cashdesk Withdraw Check] URL: ${url}`)
-    console.log(`[Cashdesk Withdraw Check] Request body:`, requestBody)
+    console.log(`[Cashdesk Withdraw] Bookmaker: ${bookmaker}, User ID: ${userIdForApi}, Code: ${code}`)
+    console.log(`[Cashdesk Withdraw] URL: ${url}`)
+    console.log(`[Cashdesk Withdraw] Request body:`, JSON.stringify(requestBody, null, 2))
+    console.log(`[Cashdesk Withdraw] Sign: ${sign}`)
+    console.log(`[Cashdesk Withdraw] Confirm: ${confirm}`)
 
-    // ВАЖНО: Этот запрос ВЫПОЛНЯЕТ вывод, но мы используем его для проверки кода
+    // ВАЖНО: Этот запрос ВЫПОЛНЯЕТ вывод и возвращает summa в ответе
     // Если код верный - вывод будет выполнен и вернется сумма
     // Если код неверный - вернется ошибка
     const response = await fetch(url, {
@@ -115,27 +129,37 @@ export async function checkWithdrawAmountCashdesk(
     })
 
     const data = await response.json()
-    console.log(`[Cashdesk Withdraw Check] Response status: ${response.status}, Data:`, data)
+    console.log(`[Cashdesk Withdraw] Response status: ${response.status}`)
+    console.log(`[Cashdesk Withdraw] Response data:`, JSON.stringify(data, null, 2))
 
     if (!response.ok || !data.success) {
       return {
         success: false,
-        message: data.message || `Failed to check withdrawal: ${response.status}`,
+        message: data.message || `Failed to process withdrawal: ${response.status}`,
       }
     }
 
-    // Если успешно - возвращаем сумму
+    // Если успешно - возвращаем сумму из ответа (summa)
     // ВАЖНО: Вывод уже выполнен! Нужно это учесть при создании заявки
+    const amount = data.summa ? parseFloat(String(data.summa)) : 0
+    
+    if (amount <= 0) {
+      return {
+        success: false,
+        message: 'Сумма вывода не получена из ответа API',
+      }
+    }
+
     return {
       success: true,
-      amount: data.summa || 0,
-      message: data.message || 'Withdrawal processed',
+      amount: amount,
+      message: data.message || 'Withdrawal processed successfully',
     }
   } catch (error: any) {
-    console.error(`[Cashdesk Withdraw Check] Error:`, error)
+    console.error(`[Cashdesk Withdraw] Error:`, error)
     return {
       success: false,
-      message: `Error checking withdrawal: ${error.message}`,
+      message: `Error processing withdrawal: ${error.message}`,
     }
   }
 }

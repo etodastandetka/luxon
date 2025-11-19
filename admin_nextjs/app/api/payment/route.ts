@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       username: telegram_username,
       firstName: telegram_first_name,
       type,
-      amount: parseFloat(amount),
+      amount: amount ? parseFloat(amount) : null,
       bookmaker,
       bank
     })
@@ -180,9 +180,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Для error_log сохраняем информацию об ошибке в statusDetail
     // Для криптоплатежей сохраняем amount_usd в statusDetail
     let statusDetail: string | null = null
-    if (payment_method === 'crypto' && amount_usd) {
+    if (type === 'error_log' && body.error) {
+      // Сохраняем информацию об ошибке
+      statusDetail = JSON.stringify({
+        error: body.error,
+        timestamp: body.error.timestamp || new Date().toISOString(),
+        userAgent: body.error.userAgent,
+        url: body.error.url
+      })
+    } else if (payment_method === 'crypto' && amount_usd) {
       statusDetail = JSON.stringify({
         amount_usd: parseFloat(amount_usd),
         amount_kgs: parseFloat(amount)
@@ -197,12 +206,12 @@ export async function POST(request: NextRequest) {
         lastName: telegram_last_name,
         bookmaker,
         accountId: finalAccountId?.toString(),
-        amount: parseFloat(amount), // В сомах (для пополнения в казино)
+        amount: amount ? parseFloat(amount) : null, // В сомах (для пополнения в казино), null для error_log
         requestType: type,
         bank,
         phone,
         status: 'pending',
-        statusDetail: statusDetail, // Для крипты содержит JSON с amount_usd и amount_kgs
+        statusDetail: statusDetail, // Для error_log содержит JSON с информацией об ошибке, для крипты - amount_usd и amount_kgs
         photoFileUrl: receipt_photo || null, // Сохраняем base64 фото чека
         paymentMethod: payment_method || 'bank', // 'bank' или 'crypto'
         cryptoPaymentId: cryptoPaymentId,

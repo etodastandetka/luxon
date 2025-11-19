@@ -60,6 +60,7 @@ export default function WithdrawConfirm() {
         : 'https://xendro.pro'
 
       // Для 1xbet сначала выполняем вывод (mobile.withdrawal)
+      // Для 888starz вывод уже выполнен на step5 (Payout сразу выполняет вывод)
       const normalizedBookmaker = bookmaker.toLowerCase()
       if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
         console.log('🔄 Выполняем вывод для 1xbet перед созданием заявки...')
@@ -86,6 +87,11 @@ export default function WithdrawConfirm() {
         }
 
         console.log('✅ Вывод выполнен успешно:', withdrawData)
+      }
+      
+      // Для 888starz вывод уже выполнен на step5, просто создаем заявку
+      if (normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
+        console.log('✅ Для 888starz вывод уже выполнен на step5, создаем заявку с суммой:', amount)
       }
       
       // Получаем данные пользователя Telegram
