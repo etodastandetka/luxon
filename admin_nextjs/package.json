@@ -18,7 +18,8 @@
     "clear-payments": "tsx scripts/clear-incoming-payments.ts",
     "test-mobcash": "tsx scripts/test-mobcash.ts",
     "test-mobcash-auth": "tsx scripts/test-mobcash-auth.ts",
-    "check-mobcash-config": "tsx scripts/check-mobcash-config.ts"
+    "check-mobcash-config": "tsx scripts/check-mobcash-config.ts",
+    "test:withdraw": "tsx scripts/test-1xbet-withdraw.ts"
   },
   "dependencies": {
     "@koo0ki/send": "^1.1.1",
