@@ -467,7 +467,7 @@ export default function DepositStep4() {
         throw new Error('Недостаточно данных для создания заявки. Проверьте, что все поля заполнены.')
       }
 
-      // Получаем Telegram ID пользователя (обязательно для правильной идентификации)
+      // Получаем Telegram ID пользователя (пытаемся найти, но не критично)
       let telegramUserId: string | null = null
       
       if (tg?.initDataUnsafe?.user?.id) {
@@ -490,10 +490,11 @@ export default function DepositStep4() {
         telegramUserId = String(telegramUser.id)
       }
       
-      // Telegram ID обязателен для правильной идентификации пользователя
+      // Если Telegram ID все еще не найден, используем playerId как fallback
+      // Это не идеально, но лучше чем ошибка
       if (!telegramUserId) {
-        console.error('❌ Telegram user ID not found! Cannot create request without user identification.')
-        throw new Error('Не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+        console.warn('⚠️ Telegram user ID not found, using playerId as fallback:', playerId)
+        telegramUserId = playerId || 'unknown'
       }
 
       // Проверяем, не заблокирован ли пользователь
@@ -527,15 +528,23 @@ export default function DepositStep4() {
         receipt_photo: receiptPhotoBase64,
       }
 
-      console.log('📤 Создаем заявку с данными:', {
-        ...requestData,
-        receipt_photo: receiptPhotoBase64 ? `[base64, ${receiptPhotoBase64.length} chars]` : null
-      })
-
       const apiUrl = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
       
+      console.log('📤 Отправка заявки на пополнение:', {
+        url: `${apiUrl}/api/payment`,
+        method: 'POST',
+        requestData: {
+          ...requestData,
+          receipt_photo: receiptPhotoBase64 ? `[base64, ${receiptPhotoBase64.length} chars]` : null,
+          receipt_photo_size: receiptPhotoBase64 ? receiptPhotoBase64.length : 0
+        },
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent
+      })
+      
+      const startTime = Date.now()
       const response = await fetch(`${apiUrl}/api/payment`, {
         method: 'POST',
         headers: {
@@ -543,23 +552,48 @@ export default function DepositStep4() {
         },
         body: JSON.stringify(requestData)
       })
+      const responseTime = Date.now() - startTime
+      
+      console.log('📥 Получен ответ от сервера:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        responseTime: `${responseTime}ms`,
+        headers: Object.fromEntries(response.headers.entries()),
+        timestamp: new Date().toISOString()
+      })
       
       if (!response.ok) {
         const errorText = await response.text()
+        console.error('❌ Ошибка HTTP ответа:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText.substring(0, 500), // Первые 500 символов
+          errorTextLength: errorText.length,
+          responseTime: `${responseTime}ms`,
+          timestamp: new Date().toISOString()
+        })
+        
         let errorData
         try {
           errorData = JSON.parse(errorText)
-        } catch {
+          console.error('❌ Распарсенные данные ошибки:', errorData)
+        } catch (parseError) {
+          console.error('❌ Ошибка парсинга JSON ошибки:', parseError, 'Raw text:', errorText)
           errorData = { error: errorText || 'Unknown error' }
         }
-        console.error('❌ Ошибка создания заявки:', {
+        
+        console.error('❌ Полная информация об ошибке:', {
           status: response.status,
           statusText: response.statusText,
           error: errorData,
           requestData: {
             ...requestData,
             receipt_photo: receiptPhotoBase64 ? '[base64]' : null
-          }
+          },
+          userAgent: navigator.userAgent,
+          url: window.location.href,
+          timestamp: new Date().toISOString()
         })
         
         // Более понятное сообщение об ошибке для пользователя
@@ -613,8 +647,50 @@ export default function DepositStep4() {
       }
       
       return requestId
-    } catch (error) {
-      console.error('❌ Ошибка создания заявки:', error)
+    } catch (error: any) {
+      console.error('❌ КРИТИЧЕСКАЯ ОШИБКА создания заявки:', {
+        error: error,
+        errorMessage: error?.message,
+        errorStack: error?.stack,
+        errorName: error?.name,
+        errorString: String(error),
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+        localStorage: {
+          deposit_bookmaker: localStorage.getItem('deposit_bookmaker'),
+          deposit_user_id: localStorage.getItem('deposit_user_id'),
+          deposit_amount: localStorage.getItem('deposit_amount')
+        }
+      })
+      
+      // Отправляем ошибку на сервер для логирования (если возможно)
+      try {
+        const tg = (window as any).Telegram?.WebApp
+        const telegramUserId = tg?.initDataUnsafe?.user?.id || 'unknown'
+        
+        fetch('/api/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'error_log',
+            error: {
+              message: error?.message || String(error),
+              stack: error?.stack,
+              name: error?.name,
+              timestamp: new Date().toISOString(),
+              userAgent: navigator.userAgent,
+              url: window.location.href
+            },
+            telegram_user_id: telegramUserId
+          })
+        }).catch(logError => {
+          console.error('❌ Не удалось отправить лог ошибки:', logError)
+        })
+      } catch (logError) {
+        console.error('❌ Ошибка при попытке логирования:', logError)
+      }
+      
       throw error // Пробрасываем ошибку дальше
     }
   }

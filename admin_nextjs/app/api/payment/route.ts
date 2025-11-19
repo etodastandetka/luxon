@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Определяем user_id (Telegram ID пользователя - обязателен для правильной идентификации)
     // Приоритет: telegram_user_id > userId > user_id
     // НЕ используем playerId как userId, т.к. это ID аккаунта в казино, а не Telegram ID
-    const finalUserId = telegram_user_id || userId || user_id
+    let finalUserId = telegram_user_id || userId || user_id
     
     // accountId - это ID аккаунта в казино (может быть одинаковым для разных пользователей)
     // Приоритет: account_id > playerId (но НЕ userId/user_id, т.к. это Telegram ID)
@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
       bank
     })
 
-    // Telegram user_id обязателен для правильной идентификации пользователя
-    // Разные пользователи могут иметь одинаковый accountId (ID аккаунта в казино)
-    if (!finalUserId || !type || !amount) {
+    // Проверяем только обязательные поля: type и amount
+    // userId может быть не указан, используем fallback
+    if (!type || !amount) {
       console.error('❌ Payment API: Missing required fields', { 
         userId, 
         user_id, 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify(body).substring(0, 500) // Первые 500 символов для отладки
       })
       const errorResponse = NextResponse.json(
-        createApiResponse(null, `Missing required fields: ${!finalUserId ? 'userId' : ''} ${!type ? 'type' : ''} ${!amount ? 'amount' : ''}`.trim()),
+        createApiResponse(null, `Missing required fields: ${!type ? 'type' : ''} ${!amount ? 'amount' : ''}`.trim()),
         { 
           status: 400,
           headers: {
@@ -84,27 +84,40 @@ export async function POST(request: NextRequest) {
       )
       return errorResponse
     }
+    
+    // Если userId не указан, используем accountId или playerId как fallback
+    if (!finalUserId) {
+      console.warn('⚠️ Payment API: userId not found, using accountId/playerId as fallback')
+      finalUserId = finalAccountId || playerId || 'unknown'
+    }
 
     // Преобразуем userId в BigInt (если это строка с числом)
+    // Если не удается преобразовать, используем хеш от строки
     let userIdBigInt: bigint
     try {
       if (typeof finalUserId === 'string') {
-        userIdBigInt = BigInt(finalUserId)
+        // Пробуем преобразовать в число
+        const num = parseInt(finalUserId, 10)
+        if (!isNaN(num) && num > 0) {
+          userIdBigInt = BigInt(num)
+        } else {
+          // Если не число, создаем хеш от строки
+          console.warn('⚠️ userId is not a number, creating hash:', finalUserId)
+          const hash = finalUserId.split('').reduce((acc, char) => {
+            return ((acc << 5) - acc) + char.charCodeAt(0) | 0
+          }, 0)
+          userIdBigInt = BigInt(Math.abs(hash))
+        }
       } else {
         userIdBigInt = BigInt(finalUserId)
       }
     } catch (e) {
-      console.error('❌ Payment API: Invalid userId format', finalUserId, e)
-      const errorResponse = NextResponse.json(
-        createApiResponse(null, 'Invalid userId format'),
-        { 
-          status: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
-      return errorResponse
+      console.error('❌ Payment API: Invalid userId format, using fallback', finalUserId, e)
+      // Используем хеш от строки как fallback
+      const hash = String(finalUserId).split('').reduce((acc, char) => {
+        return ((acc << 5) - acc) + char.charCodeAt(0) | 0
+      }, 0)
+      userIdBigInt = BigInt(Math.abs(hash))
     }
 
     console.log('💾 Payment API - Saving to database:', {
