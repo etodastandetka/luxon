@@ -920,17 +920,43 @@ export class MobCashClient {
           errorMessage = `Неверный ID аккаунта. Проверьте правильность ID аккаунта в казино.`
         }
         
-        // Добавляем дополнительную информацию из error.data, если есть
+        // Извлекаем дополнительную информацию из error.data
+        let causeMessage = ''
         if (result.error.data) {
           const errorData = typeof result.error.data === 'string' 
             ? result.error.data 
             : JSON.stringify(result.error.data)
+          
+          // Пытаемся найти "cause:" в разных форматах
           if (errorData.includes('cause:')) {
             const causeMatch = errorData.match(/cause:\s*(.+?)(?:\s*\(code:|$)/i)
             if (causeMatch) {
-              errorMessage += ` Причина: ${causeMatch[1].trim()}`
+              causeMessage = causeMatch[1].trim()
             }
           }
+          
+          // Также проверяем, может быть ошибка уже содержит полное сообщение
+          if (errorData.includes('order not found') || errorData.includes('withdraw order')) {
+            const orderMatch = errorData.match(/(?:withdraw order for payerID|order not found)[^.]*(?:\.|$)/i)
+            if (orderMatch) {
+              causeMessage = orderMatch[0].trim()
+            }
+          }
+        }
+        
+        // Объединяем сообщение с причиной
+        const fullErrorMessage = errorMessage + (causeMessage ? ` ${causeMessage}` : '')
+        
+        // Улучшаем сообщение для "order not found"
+        if (fullErrorMessage.includes('order not found') || fullErrorMessage.includes('withdraw order')) {
+          // Извлекаем payerID из сообщения, если есть
+          const payerIdMatch = fullErrorMessage.match(/payerID\s+(\d+)/i)
+          const payerIdInfo = payerIdMatch ? ` для аккаунта ${payerIdMatch[1]}` : ''
+          
+          errorMessage = `Ордер на вывод не найден${payerIdInfo}. Убедитесь, что:\n1. Вы создали ордер на вывод в казино\n2. Ввели правильный код ордера\n3. ID аккаунта указан верно`
+        } else if (causeMessage) {
+          // Если есть дополнительная информация, добавляем её
+          errorMessage = `${errorMessage}. ${causeMessage}`
         }
         
         throw new Error(`API error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ''}`)
