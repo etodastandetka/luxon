@@ -899,14 +899,27 @@ export class MobCashClient {
         }
       }
 
+      // Логируем HTTP статус
+      console.log(`[MobCash API] HTTP Response status: ${response.status} ${response.statusText}`)
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const data: JsonRpcResponse[] = await response.json()
+      
+      // Детальное логирование ответа для отладки
+      console.log(`[MobCash API] Full JSON-RPC response:`, JSON.stringify(data, null, 2))
+      
       const result = data[0]
 
       if (result.error) {
+        // Логируем полную информацию об ошибке
+        console.error(`[MobCash API] JSON-RPC Error:`, {
+          code: result.error.code,
+          message: result.error.message,
+          data: result.error.data
+        })
         // Улучшаем сообщения об ошибках для более понятного вывода
         let errorMessage = result.error.message || 'Unknown error'
         const errorCode = result.error.code
@@ -959,9 +972,20 @@ export class MobCashClient {
           errorMessage = `${errorMessage}. ${causeMessage}`
         }
         
-        throw new Error(`API error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ''}`)
+        // Код 200 в JSON-RPC - это не HTTP статус, а код ошибки в протоколе JSON-RPC
+        // Не показываем его пользователю, если это не критично
+        const errorCodeText = errorCode && errorCode !== 200 
+          ? ` (JSON-RPC error code: ${errorCode})` 
+          : errorCode === 200 
+            ? ' (JSON-RPC error)' 
+            : ''
+        
+        throw new Error(`API error: ${errorMessage}${errorCodeText}`)
       }
 
+      // Логируем успешный результат
+      console.log(`[MobCash API] Success result:`, JSON.stringify(result.result, null, 2))
+      
       return result.result
     } catch (error) {
       console.error(`[MobCash API] Error in ${method}:`, error)
