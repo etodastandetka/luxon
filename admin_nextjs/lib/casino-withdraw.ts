@@ -132,28 +132,37 @@ export async function checkWithdrawAmountCashdesk(
     console.log(`[Cashdesk Withdraw] Response status: ${response.status}`)
     console.log(`[Cashdesk Withdraw] Response data:`, JSON.stringify(data, null, 2))
 
-    if (!response.ok || !data.success) {
+    // API может возвращать success (маленькая) или Success (большая)
+    const isSuccess = data.success === true || data.Success === true
+
+    if (!response.ok || !isSuccess) {
       return {
         success: false,
-        message: data.message || `Failed to process withdrawal: ${response.status}`,
+        message: data.Message || data.message || `Failed to process withdrawal: ${response.status}`,
       }
     }
 
-    // Если успешно - возвращаем сумму из ответа (summa)
+    // Если успешно - возвращаем сумму из ответа (summa или Summa)
     // ВАЖНО: Вывод уже выполнен! Нужно это учесть при создании заявки
-    const amount = data.summa ? parseFloat(String(data.summa)) : 0
+    // Для вывода сумма может быть отрицательной (например, -150)
+    const amount = data.summa !== undefined ? parseFloat(String(data.summa)) : 
+                   data.Summa !== undefined ? parseFloat(String(data.Summa)) : 0
     
-    if (amount <= 0) {
+    // Для вывода сумма может быть отрицательной, поэтому проверяем на !== 0
+    if (amount === 0 && data.summa === undefined && data.Summa === undefined) {
       return {
         success: false,
         message: 'Сумма вывода не получена из ответа API',
       }
     }
 
+    // Берем абсолютное значение суммы для вывода (API может вернуть отрицательное)
+    const absoluteAmount = Math.abs(amount)
+
     return {
       success: true,
-      amount: amount,
-      message: data.message || 'Withdrawal processed successfully',
+      amount: absoluteAmount,
+      message: data.Message || data.message || 'Withdrawal processed successfully',
     }
   } catch (error: any) {
     console.error(`[Cashdesk Withdraw] Error:`, error)
