@@ -123,8 +123,11 @@ export async function POST(request: NextRequest) {
  * Функция для сопоставления входящего платежа с заявкой и автоматического пополнения
  */
 async function matchAndProcessPayment(paymentId: number, amount: number) {
-  // Ищем заявки на пополнение со статусом pending за последние 5 минут
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+  // Ищем заявки на пополнение со статусом pending за последние 30 минут
+  // Увеличено с 5 минут, чтобы охватить больше заявок
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
+  
+  console.log(`🔍 Matching payment ${paymentId}: looking for requests with amount ${amount} created after ${thirtyMinutesAgo.toISOString()}`)
 
   // Ищем заявки с точным совпадением суммы (с точностью до копеек)
   // ВАЖНО: Исключаем заявки, которые уже имеют связанный платеж (requestId в IncomingPayment)
@@ -133,7 +136,7 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
       requestType: 'deposit',
       status: 'pending',
       createdAt: {
-        gte: fiveMinutesAgo,
+        gte: thirtyMinutesAgo,
       },
       // Исключаем заявки, которые уже имеют связанный обработанный платеж
       incomingPayments: {
@@ -154,6 +157,8 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     },
   })
 
+  console.log(`📋 Found ${matchingRequests.length} pending deposit requests in the last 30 minutes (without processed payments)`)
+
   // Фильтруем вручную, т.к. Prisma может иметь проблемы с точным сравнением Decimal
   // И дополнительно проверяем, что у заявки нет обработанных платежей
   const exactMatches = matchingRequests.filter((req) => {
@@ -167,7 +172,10 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     return Math.abs(reqAmount - amount) < 0.01 // Точность до 1 копейки
   })
 
+  console.log(`🎯 Found ${exactMatches.length} exact match(es) for payment ${paymentId}`)
+
   if (exactMatches.length === 0) {
+    console.log(`ℹ️ No matching request found for payment ${paymentId} (amount: ${amount})`)
     return null
   }
 
