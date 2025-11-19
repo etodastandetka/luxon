@@ -227,16 +227,6 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     })
 
     // Отправляем уведомление пользователю о успешном автопополнении
-    const amount = updatedRequest.amount ? parseFloat(updatedRequest.amount.toString()).toFixed(2) : '0.00'
-    const bookmaker = updatedRequest.bookmaker || 'казино'
-    const notificationMessage = `✅ <b>Ваша заявка успешно обработана!</b>\n\n` +
-      `💰 Сумма: ${amount} сом\n` +
-      `🎰 Казино: ${bookmaker}\n\n` +
-      `Ваш баланс пополнен. Спасибо за использование нашего сервиса!`
-    
-    sendTelegramNotification(updatedRequest.userId, notificationMessage).catch(err => {
-      console.error('Failed to send notification:', err)
-    })
 
     return {
       requestId: request.id,
