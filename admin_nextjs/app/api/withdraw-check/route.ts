@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     
     let config: any = null
 
-    // Для 1xbet используем mob-cash API
+    // Для 1xbet используем mob-cash API (новый API в 2 шага)
     if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
       const mobCashConfig = await getMobCashConfig(bookmaker)
       
@@ -61,12 +61,12 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Используем mob-cash API для проверки суммы вывода
-      const result = await checkWithdrawAmountMobCash(playerId, code, mobCashConfig)
+      // Шаг 1: Проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
+      const checkResult = await checkWithdrawAmountMobCash(playerId, code, mobCashConfig)
       
-      if (!result.success) {
+      if (!checkResult.success) {
         return NextResponse.json(
-          createApiResponse(null, result.message || 'Failed to check withdrawal'),
+          createApiResponse(null, checkResult.message || 'Код неверный или вывод не найден'),
           { 
             status: 400,
             headers: {
@@ -76,13 +76,35 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      // Шаг 2: Сразу выполняем вывод (mobile.withdrawal)
+      const { processWithdrawMobCash } = await import('@/lib/casino-withdraw')
+      const withdrawResult = await processWithdrawMobCash(
+        playerId,
+        checkResult.amount || 0,
+        code,
+        mobCashConfig
+      )
+
+      if (!withdrawResult.success) {
+        return NextResponse.json(
+          createApiResponse(null, withdrawResult.message || 'Ошибка выполнения вывода'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+
+      // Вывод выполнен успешно - возвращаем сумму
       return NextResponse.json(
         createApiResponse(
           {
-            amount: result.amount,
-            message: result.message,
+            amount: withdrawResult.amount || checkResult.amount,
+            message: withdrawResult.message || 'Вывод выполнен успешно',
           },
-          'Withdrawal checked successfully'
+          'Withdrawal processed successfully'
         ),
         {
           headers: {
