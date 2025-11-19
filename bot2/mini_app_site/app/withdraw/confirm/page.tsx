@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
+import { checkUserBlocked } from '../../../utils/telegram'
 
 export default function WithdrawConfirm() {
     const [bank, setBank] = useState('')
@@ -126,6 +127,15 @@ export default function WithdrawConfirm() {
       if (!telegramUserId) {
         console.error('❌ Telegram user ID not found! Cannot create request without user identification.')
         alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+        return
+      }
+
+      // Проверяем, не заблокирован ли пользователь
+      const isBlocked = await checkUserBlocked(telegramUserId)
+      if (isBlocked) {
+        console.error('❌ Пользователь заблокирован! Нельзя создавать заявки.')
+        alert('Ваш аккаунт заблокирован. Вы не можете создавать заявки на вывод.')
+        window.location.href = '/blocked'
         return
       }
 

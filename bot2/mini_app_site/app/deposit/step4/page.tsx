@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import BankButtons from '../../../components/BankButtons'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
-import { getTelegramUser, syncWithBot, notifyUser } from '../../../utils/telegram'
+import { getTelegramUser, syncWithBot, notifyUser, checkUserBlocked } from '../../../utils/telegram'
 import { useAlert } from '../../../components/useAlert'
 import { formatKgs, formatUsdt, formatUsd } from '../../../utils/crypto-pay'
 
@@ -494,6 +494,15 @@ export default function DepositStep4() {
       if (!telegramUserId) {
         console.error('❌ Telegram user ID not found! Cannot create request without user identification.')
         throw new Error('Не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+      }
+
+      // Проверяем, не заблокирован ли пользователь
+      const isBlocked = await checkUserBlocked(telegramUserId)
+      if (isBlocked) {
+        console.error('❌ Пользователь заблокирован! Нельзя создавать заявки.')
+        alert('Ваш аккаунт заблокирован. Вы не можете создавать заявки на пополнение.')
+        window.location.href = '/blocked'
+        return
       }
 
       const requestData = {

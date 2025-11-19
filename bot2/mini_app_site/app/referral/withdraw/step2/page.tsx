@@ -96,6 +96,15 @@ function ReferralWithdrawStep2Content() {
         return
       }
 
+      // Проверяем, не заблокирован ли пользователь
+      const { checkUserBlocked } = await import('../../../../utils/telegram')
+      const isBlocked = await checkUserBlocked(String(userId))
+      if (isBlocked) {
+        alert('Ваш аккаунт заблокирован. Вы не можете создавать заявки на вывод.')
+        router.push('/blocked')
+        return
+      }
+
       const apiUrl = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'

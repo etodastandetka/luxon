@@ -61,25 +61,45 @@ export default function UserDetailPage() {
 
   const fetchUser = useCallback(async () => {
     try {
-      // Используем кэширование для более быстрой загрузки
+      setLoading(true)
+      // Убираем кэширование для актуальных данных
       const [userRes, photoRes] = await Promise.all([
         fetch(`/api/users/${params.userId}`, { 
-          cache: 'force-cache',
-          next: { revalidate: 60 } // Перевалидируем каждую минуту
+          cache: 'no-store', // Всегда получаем свежие данные
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
         }),
         fetch(`/api/users/${params.userId}/profile-photo`, {
-          cache: 'force-cache',
-          next: { revalidate: 300 } // Фото реже обновляется
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
         })
       ])
 
       const userData = await userRes.json()
       const photoData = await photoRes.json()
 
+      console.log('📊 User data loaded:', {
+        success: userData.success,
+        hasUser: !!userData.data,
+        transactionsCount: userData.data?.transactions?.length || 0,
+        userId: userData.data?.userId
+      })
+
       if (userData.success) {
+        console.log('✅ Setting user data:', {
+          userId: userData.data.userId,
+          transactions: userData.data.transactions?.length || 0,
+          deposits: userData.data.transactions?.filter((t: any) => t.transType === 'deposit').length || 0,
+          withdrawals: userData.data.transactions?.filter((t: any) => t.transType === 'withdraw').length || 0
+        })
         setUser(userData.data)
         setNote(userData.data.note || '')
         setIsActive(userData.data.isActive !== false) // По умолчанию true, если не указано
+      } else {
+        console.error('❌ Failed to load user data:', userData)
       }
 
       if (photoData.success && photoData.data.photoUrl) {
@@ -197,6 +217,20 @@ export default function UserDetailPage() {
   const totalDeposits = deposits.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0)
   const totalWithdrawals = withdrawals.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0)
 
+  // Логирование для отладки
+  console.log('📈 Statistics:', {
+    totalTransactions: user.transactions.length,
+    depositsCount: deposits.length,
+    withdrawalsCount: withdrawals.length,
+    totalDeposits,
+    totalWithdrawals,
+    allTransactions: user.transactions.map(t => ({
+      type: t.transType,
+      amount: t.amount,
+      status: t.status
+    }))
+  })
+
   return (
     <div className="py-4">
       {/* Хедер */}
@@ -212,14 +246,26 @@ export default function UserDetailPage() {
         <div className="flex-1 text-center">
           <h1 className="text-xl font-bold text-white">Профиль</h1>
         </div>
-        <Link
-          href={`/dashboard/users/${user.userId}/chat`}
-          className="relative p-2 hover:bg-gray-800 rounded-lg transition-colors"
-        >
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-        </Link>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => fetchUser()}
+            disabled={loading}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+            title="Обновить данные"
+          >
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <Link
+            href={`/dashboard/users/${user.userId}/chat`}
+            className="relative p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </Link>
+        </div>
       </div>
 
       {/* Карточка пользователя */}
@@ -240,13 +286,15 @@ export default function UserDetailPage() {
             </div>
           )}
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-white mb-1">{displayName}</h2>
+            <h2 className="text-2xl font-bold text-white mb-1">ID: {user.userId}</h2>
             {displayUsername && (
               <p className="text-sm text-gray-400 mb-1">{displayUsername}</p>
             )}
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-xs text-green-500 font-medium">Активен</span>
+              <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className={`text-xs font-medium ${isActive ? 'text-green-500' : 'text-red-500'}`}>
+                {isActive ? 'Активен' : 'Заблокирован'}
+              </span>
             </div>
           </div>
         </div>

@@ -324,6 +324,32 @@ export const initTelegramWebApp = () => {
   return null
 }
 
+// Проверка блокировки пользователя
+export const checkUserBlocked = async (userId: string | number | null): Promise<boolean> => {
+  if (!userId) {
+    return false // Если нет ID, не считаем заблокированным
+  }
+
+  try {
+    const apiUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3001' 
+      : 'https://xendro.pro'
+    
+    const response = await fetch(`${apiUrl}/api/public/check-user-status?user_id=${userId}`)
+    const data = await response.json()
+    
+    if (data.success && data.data.isBlocked) {
+      return true // Пользователь заблокирован
+    }
+    
+    return false // Пользователь не заблокирован
+  } catch (error) {
+    console.error('Error checking user blocked status:', error)
+    // В случае ошибки не блокируем пользователя (разрешаем доступ)
+    return false
+  }
+}
+
 
 
 
