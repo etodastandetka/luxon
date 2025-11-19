@@ -277,6 +277,16 @@ details[open] summary {
   @apply animate-pulse;
 }
 
+/* Скрытие скроллбара для горизонтальной прокрутки */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Стили для мобильных устройств */
 @media (max-width: 480px) {
   .container {

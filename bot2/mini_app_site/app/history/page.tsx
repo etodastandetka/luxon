@@ -345,59 +345,59 @@ export default function HistoryPage(){
           </div>
           <h1 className="text-2xl font-bold text-white pr-20">{t.title}</h1>
         </div>
-        <div className="px-4 overflow-x-auto -mx-4">
-          <div className="flex justify-start gap-1.5 min-w-max px-4 pb-2">
+        <div className="px-4 overflow-x-auto -mx-4 scrollbar-hide">
+          <div className="flex justify-start gap-1 min-w-max px-4 pb-2">
             <button
               onClick={() => setFilter('all')}
-              className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap ${
+              className={`px-1.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap shrink-0 ${
                 filter === 'all'
                   ? 'bg-green-500 text-white'
                   : 'bg-gray-700 text-gray-300'
               }`}
             >
-              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              {t.all}
+              <span>{t.all}</span>
             </button>
             <button
               onClick={() => setFilter('deposit')}
-              className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap ${
+              className={`px-1.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap shrink-0 ${
                 filter === 'deposit'
                   ? 'bg-green-500 text-white'
                   : 'bg-gray-700 text-gray-300'
               }`}
             >
-              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
-              {t.deposit}
+              <span>{t.deposit}</span>
             </button>
             <button
               onClick={() => setFilter('withdraw')}
-              className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap ${
+              className={`px-1.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap shrink-0 ${
                 filter === 'withdraw'
                   ? 'bg-green-500 text-white'
                   : 'bg-gray-700 text-gray-300'
               }`}
             >
-              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
               </svg>
-              {t.withdraw}
+              <span>{t.withdraw}</span>
             </button>
             <button
               onClick={() => setFilter('manual')}
-              className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap ${
+              className={`px-1.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap shrink-0 ${
                 filter === 'manual'
                   ? 'bg-green-500 text-white'
                   : 'bg-gray-700 text-gray-300'
               }`}
             >
-              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
-              {t.manual}
+              <span>{t.manual}</span>
             </button>
           </div>
         </div>
