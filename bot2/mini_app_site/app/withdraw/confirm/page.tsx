@@ -37,70 +37,76 @@ export default function WithdrawConfirm() {
     }
     
     // Проверяем, что все данные есть
-    if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone || !savedUserId || !savedSiteCode) {
+    if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone || !savedUserId || !savedSiteCode || !savedAmount) {
       router.push('/withdraw/step0')
-    } else {
-      // Проверяем, не создана ли уже заявка на step5
-      const requestAlreadyCreated = localStorage.getItem('withdraw_request_created') === 'true'
-      if (!requestAlreadyCreated) {
-        // Создаем заявку на вывод сразу при загрузке страницы (fallback)
-        createWithdrawRequest()
-      } else {
-        console.log('✅ Заявка уже создана на step5, пропускаем создание на confirm')
-      }
     }
   }, [router])
 
-  // Создание заявки на вывод
-  const createWithdrawRequest = async () => {
+
+  const handleConfirm = async () => {
     try {
+      // Получаем данные из localStorage
       const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
       const amount = localStorage.getItem('withdraw_amount') || '0'
       
-      // Получаем данные пользователя Telegram (как в рефералке)
+      // Проверяем, что все данные заполнены
+      if (!bookmaker || !amount || !userId || !phone || !bank || !siteCode) {
+        alert('Не все поля заполнены. Проверьте данные.')
+        return
+      }
+
+      const base = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3001' 
+        : 'https://xendro.pro'
+
+      // Для 1xbet сначала выполняем вывод (mobile.withdrawal)
+      const normalizedBookmaker = bookmaker.toLowerCase()
+      if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
+        console.log('🔄 Выполняем вывод для 1xbet перед созданием заявки...')
+        
+        const withdrawResponse = await fetch(`${base}/api/withdraw-execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            bookmaker: bookmaker,
+            playerId: userId,
+            code: siteCode,
+            amount: parseFloat(amount),
+          }),
+        })
+
+        const withdrawData = await withdrawResponse.json()
+
+        if (!withdrawData.success) {
+          console.error('❌ Ошибка выполнения вывода:', withdrawData)
+          alert(`Ошибка выполнения вывода: ${withdrawData.message || withdrawData.error || 'Неизвестная ошибка'}`)
+          return
+        }
+
+        console.log('✅ Вывод выполнен успешно:', withdrawData)
+      }
+      
+      // Получаем данные пользователя Telegram
       const tg = (window as any).Telegram?.WebApp
       let telegramUser = null
       
-      console.log('=== DEBUG: Telegram WebApp Data ===')
-      console.log('Telegram object:', tg)
-      console.log('initDataUnsafe:', tg?.initDataUnsafe)
-      console.log('initData:', tg?.initData)
-      console.log('user:', tg?.initDataUnsafe?.user)
-      console.log('=====================================')
-      
-      // Правильный способ получения user ID из Telegram WebApp (как в рефералке)
       if (tg?.initDataUnsafe?.user) {
         telegramUser = tg.initDataUnsafe.user
-        console.log('✅ User from initDataUnsafe:', telegramUser)
       } else if (tg?.initData) {
-        // Парсим initData если он есть (правильный способ)
         try {
-          console.log('Parsing initData:', tg.initData)
           const params = new URLSearchParams(tg.initData)
           const userParam = params.get('user')
-          console.log('User param from initData:', userParam)
           if (userParam) {
             telegramUser = JSON.parse(decodeURIComponent(userParam))
-            console.log('✅ User from initData:', telegramUser)
           }
         } catch (e) {
           console.log('❌ Error parsing initData:', e)
         }
       }
-      
-      console.log('🔍 Итоговые данные пользователя:', telegramUser)
-      
-      console.log('🔄 Создаем заявку на вывод...', {
-        type: 'withdraw',
-        bookmaker,
-        userId: parseInt(userId),
-        phone,
-        amount: parseFloat(amount),
-        bank,
-        telegramUser
-      })
 
-      // Получаем Telegram ID пользователя (обязательно для правильной идентификации)
+      // Получаем Telegram ID пользователя
       let telegramUserId: string | null = null
       
       if (tg?.initDataUnsafe?.user?.id) {
@@ -118,14 +124,12 @@ export default function WithdrawConfirm() {
         }
       }
       
-      // Если Telegram ID не найден, используем из telegramUser
       if (!telegramUserId && telegramUser?.id) {
         telegramUserId = String(telegramUser.id)
       }
-      
-      // Telegram ID обязателен для правильной идентификации пользователя
+
       if (!telegramUserId) {
-        console.error('❌ Telegram user ID not found! Cannot create request without user identification.')
+        console.error('❌ Telegram user ID not found!')
         alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
         return
       }
@@ -133,12 +137,14 @@ export default function WithdrawConfirm() {
       // Проверяем, не заблокирован ли пользователь
       const isBlocked = await checkUserBlocked(telegramUserId)
       if (isBlocked) {
-        console.error('❌ Пользователь заблокирован! Нельзя создавать заявки.')
+        console.error('❌ Пользователь заблокирован!')
         alert('Ваш аккаунт заблокирован. Вы не можете создавать заявки на вывод.')
         window.location.href = '/blocked'
         return
       }
 
+      // Создаем заявку в админке
+      console.log('📤 Создаем заявку в админке...')
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -147,13 +153,14 @@ export default function WithdrawConfirm() {
         body: JSON.stringify({
           type: 'withdraw',
           bookmaker: bookmaker,
-          userId: telegramUserId, // Telegram ID пользователя
+          userId: telegramUserId,
           phone: phone,
           amount: parseFloat(amount),
           bank: bank,
-          account_id: userId, // ID аккаунта в казино (отдельно от userId)
-          playerId: userId, // Добавляем playerId для совместимости
-          // Данные пользователя Telegram (обязательно)
+          account_id: userId,
+          playerId: userId,
+          qr_photo: qrPhoto,
+          site_code: siteCode,
           telegram_user_id: telegramUserId,
           telegram_username: telegramUser?.username,
           telegram_first_name: telegramUser?.first_name,
@@ -163,71 +170,11 @@ export default function WithdrawConfirm() {
       })
       
       if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Заявка на вывод создана успешно:', data)
-        // Сохраняем ID заявки
-        localStorage.setItem('withdraw_transaction_id', data.id || data.transactionId)
-      } else {
-        const errorData = await response.json()
-        console.error('❌ Ошибка создания заявки на вывод:', errorData)
-      }
-    } catch (error) {
-      console.error('❌ Ошибка создания заявки на вывод:', error)
-    }
-  }
-
-  const handleConfirm = async () => {
-    try {
-      // Получаем данные из localStorage
-      const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
-      const amount = localStorage.getItem('withdraw_amount') || '0'
-      
-      // Проверяем, что все данные заполнены
-      if (!bookmaker || !amount || !userId || !phone || !bank || !siteCode) {
-        alert('Не все поля заполнены. Проверьте данные.')
-        return
-      }
-      
-      // Генерируем ID заявки
-      const requestId = Math.random().toString(36).slice(2, 8).toUpperCase()
-      
-      console.log('Sending data:', {
-        type: 'withdraw',
-        bookmaker: bookmaker,
-        user_id: parseInt(userId),
-        phone: phone,
-        amount: parseFloat(amount),
-        bank: bank,
-        qr_photo: qrPhoto,
-        site_code: siteCode,
-        request_id: requestId
-      })
-      
-      // Отправляем заявку в Django API
-      const response = await fetch('/api/payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'withdraw',
-          bookmaker: bookmaker,
-          user_id: parseInt(userId),
-          phone: phone,
-          amount: parseFloat(amount),
-          bank: bank,
-          qr_photo: qrPhoto,
-          site_code: siteCode,
-          request_id: requestId
-        })
-      })
-      
-      if (response.ok) {
         const result = await response.json()
-        console.log('Withdraw request created:', result)
+        console.log('✅ Заявка на вывод создана успешно:', result)
         
         // Показываем результат
-        const message = `✅ Заявка на вывод создана!\n\n🏦 Банк: ${getBankName(bank)}\n📱 Телефон: +${phone}\n🆔 ID: ${userId}\n🔑 Код: ${siteCode}\n🆔 ID заявки: ${requestId}\n\n⏳ Ожидайте обработки заявки администратором.`
+        const message = `✅ Заявка на вывод создана!\n\n🏦 Банк: ${getBankName(bank)}\n📱 Телефон: +${phone}\n🆔 ID: ${userId}\n🔑 Код: ${siteCode}\n💰 Сумма: ${amount} сом\n🆔 ID заявки: #${result.id || result.data?.id}\n\n⏳ Ожидайте обработки заявки администратором.`
         
         alert(message)
         
@@ -239,6 +186,7 @@ export default function WithdrawConfirm() {
         localStorage.removeItem('withdraw_user_id')
         localStorage.removeItem('withdraw_site_code')
         localStorage.removeItem('withdraw_amount')
+        localStorage.removeItem('withdraw_request_created')
         
         // Перенаправляем на главную через 2 секунды
         setTimeout(() => {
@@ -246,12 +194,12 @@ export default function WithdrawConfirm() {
         }, 2000)
       } else {
         const errorData = await response.json()
-        console.error('API Error:', errorData)
+        console.error('❌ API Error:', errorData)
         throw new Error(`Failed to create withdraw request: ${errorData.error || 'Unknown error'}`)
       }
-    } catch (error) {
-      console.error('Error creating withdraw request:', error)
-      alert('Ошибка при создании заявки. Попробуйте еще раз.')
+    } catch (error: any) {
+      console.error('❌ Error creating withdraw request:', error)
+      alert(`Ошибка при создании заявки: ${error.message || 'Попробуйте еще раз.'}`)
     }
   }
 

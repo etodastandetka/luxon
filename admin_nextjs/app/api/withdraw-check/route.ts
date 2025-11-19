@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Шаг 1: Проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
+      // Только проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
+      // Выполнение вывода (mobile.withdrawal) будет в confirm странице
       const checkResult = await checkWithdrawAmountMobCash(playerId, code, mobCashConfig)
       
       if (!checkResult.success) {
@@ -76,18 +77,10 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Шаг 2: Сразу выполняем вывод (mobile.withdrawal)
-      const { processWithdrawMobCash } = await import('@/lib/casino-withdraw')
-      const withdrawResult = await processWithdrawMobCash(
-        playerId,
-        checkResult.amount || 0,
-        code,
-        mobCashConfig
-      )
-
-      if (!withdrawResult.success) {
+      // Проверяем, что сумма получена
+      if (!checkResult.amount || checkResult.amount <= 0) {
         return NextResponse.json(
-          createApiResponse(null, withdrawResult.message || 'Ошибка выполнения вывода'),
+          createApiResponse(null, 'Не удалось получить сумму ордера. Проверьте код и попробуйте еще раз.'),
           { 
             status: 400,
             headers: {
@@ -97,14 +90,14 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Вывод выполнен успешно - возвращаем сумму
+      // Возвращаем только сумму ордера (без выполнения вывода)
       return NextResponse.json(
         createApiResponse(
           {
-            amount: withdrawResult.amount || checkResult.amount,
-            message: withdrawResult.message || 'Вывод выполнен успешно',
+            amount: checkResult.amount,
+            message: 'Сумма ордера получена. Подтвердите вывод для выполнения операции.',
           },
-          'Withdrawal processed successfully'
+          'Withdrawal amount retrieved'
         ),
         {
           headers: {

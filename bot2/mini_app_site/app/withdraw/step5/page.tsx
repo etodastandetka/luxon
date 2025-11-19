@@ -12,8 +12,6 @@ export default function WithdrawStep5() {
   const [checkingExists, setCheckingExists] = useState(true)
   const [hasWithdrawals, setHasWithdrawals] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [requestCreated, setRequestCreated] = useState(false)
-  const [creatingRequest, setCreatingRequest] = useState(false)
   const { language } = useLanguage()
     const router = useRouter()
 
@@ -69,134 +67,7 @@ export default function WithdrawStep5() {
     }
   }
 
-  // Создание заявки на вывод в админке
-  const createWithdrawRequest = async (amountValue?: number) => {
-    if (requestCreated || creatingRequest) {
-      return // Уже создана или создается
-    }
-
-    setCreatingRequest(true)
-    
-    try {
-      const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
-      const bank = localStorage.getItem('withdraw_bank') || ''
-      const qrPhoto = localStorage.getItem('withdraw_qr_photo') || ''
-      const phone = localStorage.getItem('withdraw_phone') || ''
-      const userId = localStorage.getItem('withdraw_user_id') || ''
-      const amount = amountValue?.toString() || withdrawAmount?.toString() || localStorage.getItem('withdraw_amount') || '0'
-      
-      // Получаем данные пользователя Telegram
-      const tg = (window as any).Telegram?.WebApp
-      let telegramUser = null
-      
-      if (tg?.initDataUnsafe?.user) {
-        telegramUser = tg.initDataUnsafe.user
-      } else if (tg?.initData) {
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            telegramUser = JSON.parse(decodeURIComponent(userParam))
-          }
-        } catch (e) {
-          console.log('❌ Error parsing initData:', e)
-        }
-      }
-      
-      console.log('🔄 Создаем заявку на вывод на step5...', {
-        type: 'withdraw',
-        bookmaker,
-        userId: parseInt(userId),
-        phone,
-        amount: parseFloat(amount),
-        bank,
-        qrPhoto: qrPhoto ? 'uploaded' : '',
-        siteCode
-      })
-
-      // Получаем Telegram ID пользователя (обязательно для правильной идентификации)
-      let telegramUserId: string | null = null
-      
-      if (tg?.initDataUnsafe?.user?.id) {
-        telegramUserId = String(tg.initDataUnsafe.user.id)
-      } else if (tg?.initData) {
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            const userData = JSON.parse(decodeURIComponent(userParam))
-            telegramUserId = String(userData.id)
-          }
-        } catch (e) {
-          console.error('Error parsing initData for telegram_user_id:', e)
-        }
-      }
-      
-      // Если Telegram ID не найден, используем из telegramUser
-      if (!telegramUserId && telegramUser?.id) {
-        telegramUserId = String(telegramUser.id)
-      }
-      
-      // Telegram ID обязателен для правильной идентификации пользователя
-      if (!telegramUserId) {
-        console.error('❌ Telegram user ID not found! Cannot create request without user identification.')
-        alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
-        return
-      }
-
-      // Проверяем, не заблокирован ли пользователь
-      const isBlocked = await checkUserBlocked(telegramUserId)
-      if (isBlocked) {
-        console.error('❌ Пользователь заблокирован! Нельзя создавать заявки.')
-        alert('Ваш аккаунт заблокирован. Вы не можете создавать заявки на вывод.')
-        window.location.href = '/blocked'
-        return
-      }
-
-      const response = await fetch('/api/payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'withdraw',
-          bookmaker: bookmaker,
-          userId: telegramUserId, // Telegram ID пользователя
-          phone: phone,
-          amount: parseFloat(amount),
-          bank: bank,
-          account_id: userId, // ID аккаунта в казино (отдельно от userId)
-          playerId: userId,
-          qr_photo: qrPhoto,
-          site_code: siteCode,
-          // Данные пользователя Telegram (обязательно)
-          telegram_user_id: telegramUserId,
-          telegram_username: telegramUser?.username,
-          telegram_first_name: telegramUser?.first_name,
-          telegram_last_name: telegramUser?.last_name,
-          telegram_language_code: telegramUser?.language_code
-        })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Заявка на вывод создана успешно на step5:', data)
-        // Сохраняем ID заявки
-        localStorage.setItem('withdraw_transaction_id', data.id || data.transactionId || '')
-        localStorage.setItem('withdraw_request_created', 'true')
-        setRequestCreated(true)
-      } else {
-        const errorData = await response.json()
-        console.error('❌ Ошибка создания заявки на вывод:', errorData)
-      }
-    } catch (error) {
-      console.error('❌ Ошибка создания заявки на вывод:', error)
-    } finally {
-      setCreatingRequest(false)
-    }
-  }
-
-  // Выполнение вывода при изменении кода
+  // Проверка кода и получение суммы ордера при изменении кода
   useEffect(() => {
     const bookmaker = localStorage.getItem('withdraw_bookmaker')
     const userId = localStorage.getItem('withdraw_user_id')
@@ -229,7 +100,8 @@ export default function WithdrawStep5() {
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
       
-      // Выполняем вывод через API - это сразу снимает деньги
+      // Только проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
+      // Вывод будет выполнен на странице подтверждения
       const response = await fetch(`${base}/api/withdraw-check`, {
         method: 'POST',
         headers: {
@@ -245,27 +117,21 @@ export default function WithdrawStep5() {
       const data = await response.json()
       
       if (data.success && data.data && data.data.amount) {
-        // Вывод выполнен успешно - сохраняем данные
-        // Для 1xbet вывод уже выполнен на сервере (в 2 шага: проверка + вывод)
+        // Сумма ордера получена - сохраняем данные
+        // Вывод будет выполнен на странице подтверждения (confirm)
         const amount = data.data.amount
         setWithdrawAmount(amount)
         localStorage.setItem('withdraw_amount', amount.toString())
-        localStorage.setItem('withdraw_transaction_id', data.data.transactionId?.toString() || '')
+        localStorage.setItem('withdraw_site_code', siteCode.trim())
         setError(null)
-        
-        // Создаем заявку в админке сразу после успешного вывода
-        // Передаем amount напрямую, чтобы не ждать обновления state
-        if (!requestCreated && !creatingRequest) {
-          createWithdrawRequest(amount)
-        }
       } else {
         setWithdrawAmount(null)
         setError(data.message || data.error || 'Код неверный или вывод не найден')
       }
     } catch (error: any) {
-      console.error('Ошибка выполнения вывода:', error)
+      console.error('Ошибка проверки кода:', error)
       setWithdrawAmount(null)
-      setError('Ошибка выполнения вывода. Попробуйте еще раз.')
+      setError('Ошибка проверки кода. Попробуйте еще раз.')
     } finally {
       setChecking(false)
     }
@@ -389,10 +255,10 @@ export default function WithdrawStep5() {
               {checking && (
                 <div className="mt-2 p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
                   <p className="text-sm text-blue-300 font-semibold">
-                    ⏳ Проверка кода и выполнение вывода...
+                    ⏳ Проверка кода...
                   </p>
                   <p className="text-xs text-white/70 mt-1">
-                    Пожалуйста, подождите. Деньги будут сняты с вашего счета.
+                    Пожалуйста, подождите. Проверяем код ордера на вывод.
                   </p>
                 </div>
               )}
@@ -408,40 +274,25 @@ export default function WithdrawStep5() {
                 </div>
               )}
               
-              {creatingRequest && (
-                <div className="mt-2 p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
-                  <p className="text-sm text-blue-300 font-semibold">
-                    📤 Создание заявки в админке...
-                  </p>
-                </div>
-              )}
-              
-              {requestCreated && (
-                <div className="mt-2 p-3 bg-green-900/30 border border-green-500 rounded-lg">
-                  <p className="text-sm text-green-300 font-semibold">
-                    ✅ Заявка успешно создана в админке
-                  </p>
-                </div>
-              )}
               
               {withdrawAmount !== null && !error && !checking && (
                 <div className="mt-3 p-4 bg-green-900/30 border border-green-500 rounded-lg space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">✅</span>
                     <p className="text-sm text-green-300 font-semibold">
-                      Вывод выполнен успешно!
+                      Код проверен успешно!
                     </p>
                   </div>
                   <div className="pt-2 border-t border-green-500/30">
                     <div className="flex justify-between items-center">
-                      <span className="text-white/70">Сумма вывода:</span>
+                      <span className="text-white/70">Сумма ордера:</span>
                       <span className="text-2xl text-white font-bold">
                         {withdrawAmount} сом
                       </span>
                     </div>
                   </div>
                   <p className="text-xs text-green-200 mt-2">
-                    Деньги сняты с вашего счета в казино. Проверьте детали и подтвердите заявку.
+                    Код ордера проверен. Перейдите к подтверждению для выполнения вывода.
                   </p>
                 </div>
               )}
