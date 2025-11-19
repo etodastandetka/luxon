@@ -17,11 +17,12 @@ interface Transaction {
 export default function HistoryPage(){
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
   const { language } = useLanguage()
 
   useEffect(() => {
     loadTransactions()
-  }, [])
+  }, [filter])
 
   const translations = {
     ru: {
@@ -44,7 +45,9 @@ export default function HistoryPage(){
       status: 'Статус',
       date: 'Дата',
       bookmaker: 'Букмекер',
-      backToMain: '🔙 На главную'
+      backToMain: '🔙 На главную',
+      all: 'Все',
+      manual: 'Ручное'
     },
     en: {
       title: 'Transaction History',
@@ -66,7 +69,9 @@ export default function HistoryPage(){
       status: 'Status',
       date: 'Date',
       bookmaker: 'Bookmaker',
-      backToMain: '🔙 Back to main'
+      backToMain: '🔙 Back to main',
+      all: 'All',
+      manual: 'Manual'
     },
     ky: {
       title: 'Операциялар тарыхы',
@@ -88,7 +93,9 @@ export default function HistoryPage(){
       status: 'Статус',
       date: 'Күн',
       bookmaker: 'Букмекер',
-      backToMain: '🔙 Башкы менюга'
+      backToMain: '🔙 Башкы менюга',
+      all: 'Баары',
+      manual: 'Кол менен'
     },
     uz: {
       title: 'Operatsiyalar tarixi',
@@ -110,7 +117,9 @@ export default function HistoryPage(){
       status: 'Holat',
       date: 'Sana',
       bookmaker: 'Bukmeker',
-      backToMain: '🔙 Asosiy menyuga'
+      backToMain: '🔙 Asosiy menyuga',
+      all: 'Barchasi',
+      manual: 'Qo\'lda'
     }
   }
 
@@ -136,7 +145,18 @@ export default function HistoryPage(){
       const apiUrl = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
-      const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${finalUserId}`)
+      
+      // Формируем параметры запроса в зависимости от фильтра
+      let url = `${apiUrl}/api/transaction-history?user_id=${finalUserId}`
+      if (filter === 'deposit') {
+        url += '&type=deposit'
+      } else if (filter === 'withdraw') {
+        url += '&type=withdraw'
+      } else if (filter === 'manual') {
+        url += '&manual=true' // Специальный параметр для ручных заявок
+      }
+      
+      const response = await fetch(url)
       const data = await response.json()
       
       // Админ-панель возвращает данные в формате { success: true, data: { transactions: [...] } }
@@ -325,7 +345,59 @@ export default function HistoryPage(){
           </div>
           <h1 className="text-2xl font-bold text-white pr-20">{t.title}</h1>
         </div>
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-2 px-4">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+              filter === 'all'
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-700 text-gray-300'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            {t.all}
+          </button>
+          <button
+            onClick={() => setFilter('deposit')}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+              filter === 'deposit'
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-700 text-gray-300'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            {t.deposit}
+          </button>
+          <button
+            onClick={() => setFilter('withdraw')}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+              filter === 'withdraw'
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-700 text-gray-300'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+            {t.withdraw}
+          </button>
+          <button
+            onClick={() => setFilter('manual')}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+              filter === 'manual'
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-700 text-gray-300'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            {t.manual}
+          </button>
         </div>
       </div>
 
