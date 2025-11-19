@@ -257,7 +257,8 @@ export async function POST(request: NextRequest) {
             paymentMethod: 'crypto',
             cryptoPaymentId: cryptoPayment.id,
             amount: amountInKgs, // Обновляем сумму в сомах (для пополнения в казино)
-            statusDetail: statusDetailData // Сохраняем обе суммы
+            statusDetail: statusDetailData, // Сохраняем обе суммы
+            processedBy: 'автопополнение' as any, // Автопополнение через криптоплатеж
           }
         })
 
@@ -287,11 +288,13 @@ export async function POST(request: NextRequest) {
           
           // Обновляем статус заявки на успешное автопополнение
           // statusDetail = null означает "Автопополнение • Успешно"
+          // processedBy = "автопополнение" означает что заявка закрыта автоматически
           await prisma.request.update({
             where: { id: botRequest.id },
             data: {
               status: 'autodeposit_success',
               statusDetail: null,
+              processedBy: 'автопополнение' as any,
               processedAt: new Date(),
               updatedAt: new Date()
             }
