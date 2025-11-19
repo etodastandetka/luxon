@@ -116,17 +116,29 @@ export default function WithdrawStep5() {
 
       const data = await response.json()
       
+      console.log('[Withdraw Step5] API Response:', data)
+      
       if (data.success && data.data && data.data.amount) {
         // Сумма ордера получена - сохраняем данные
-        // Вывод будет выполнен на странице подтверждения (confirm)
+        // Для 888starz вывод уже выполнен, для 1xbet будет выполнен на confirm
         const amount = data.data.amount
         setWithdrawAmount(amount)
         localStorage.setItem('withdraw_amount', amount.toString())
         localStorage.setItem('withdraw_site_code', siteCode.trim())
         setError(null)
+        console.log('[Withdraw Step5] Success - amount:', amount)
       } else {
+        console.error('[Withdraw Step5] Error response:', data)
         setWithdrawAmount(null)
-        setError(data.message || data.error || 'Код неверный или вывод не найден')
+        // Показываем ошибку только если это действительно ошибка
+        const errorMessage = data.error || data.message || 'Код неверный или вывод не найден'
+        // Не показываем "Withdrawal executed successfully" как ошибку
+        if (!errorMessage.includes('executed successfully') && !errorMessage.includes('успешно')) {
+          setError(errorMessage)
+        } else {
+          // Если сообщение об успехе, но структура ответа неправильная, все равно показываем ошибку
+          setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
+        }
       }
     } catch (error: any) {
       console.error('Ошибка проверки кода:', error)
