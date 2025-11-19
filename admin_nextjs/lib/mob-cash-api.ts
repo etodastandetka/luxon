@@ -1024,10 +1024,16 @@ export class MobCashClient {
    */
   async getWithdrawalAmount(payerID: string, withdrawalCode: string): Promise<{ amount: string; success: boolean; message?: string }> {
     try {
+      // Убеждаемся, что payerID - строка (как в документации)
+      const payerIDString = String(payerID)
+      const withdrawalCodeString = String(withdrawalCode)
+      
+      console.log(`[MobCash API] getWithdrawalAmount: payerID=${payerIDString}, code=${withdrawalCodeString}`)
+      
       const result = await this.makeRequest('mobile.getWithdrawalAmount', {
         withdraw: {
-          payerID,
-          withdrawalCode,
+          payerID: payerIDString,
+          withdrawalCode: withdrawalCodeString,
         },
       })
 
@@ -1051,11 +1057,18 @@ export class MobCashClient {
    */
   async withdrawal(payerID: string, amount: string | number, withdrawalCode: string): Promise<{ success: boolean; message?: string; data?: any }> {
     try {
+      // Убеждаемся, что все параметры - строки (как в документации)
+      const payerIDString = String(payerID)
+      const amountString = String(amount)
+      const withdrawalCodeString = String(withdrawalCode)
+      
+      console.log(`[MobCash API] withdrawal: payerID=${payerIDString}, amount=${amountString}, code=${withdrawalCodeString}`)
+      
       const result = await this.makeRequest('mobile.withdrawal', {
         withdraw: {
-          amount: String(amount),
-          payerID,
-          withdrawalCode,
+          amount: amountString,
+          payerID: payerIDString,
+          withdrawalCode: withdrawalCodeString,
         },
       })
 
