@@ -115,17 +115,6 @@ export async function POST(
           } as any,
         })
 
-        // Отправляем уведомление пользователю о успешном пополнении
-        const notificationAmount = updatedRequest.amount ? parseFloat(updatedRequest.amount.toString()).toFixed(2) : '0.00'
-        const notificationBookmaker = updatedRequest.bookmaker || 'казино'
-        const notificationMessage = `✅ <b>Ваша заявка успешно обработана!</b>\n\n` +
-          `💰 Сумма: ${notificationAmount} сом\n` +
-          `🎰 Казино: ${notificationBookmaker}\n\n` +
-          `Ваш баланс пополнен. Спасибо за использование нашего сервиса!`
-        
-        sendTelegramNotification(updatedRequest.userId, notificationMessage).catch(err => {
-          console.error('Failed to send notification:', err)
-        })
         
         // Если это депозит, пополняем баланс через казино API
         if (linkedRequest.requestType === 'deposit' && linkedRequest.bookmaker && linkedRequest.accountId) {
