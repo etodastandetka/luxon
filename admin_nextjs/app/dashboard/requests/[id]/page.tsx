@@ -66,6 +66,8 @@ export default function RequestDetailPage() {
   const [linkingPayment, setLinkingPayment] = useState(false)
   const [showPhotoModal, setShowPhotoModal] = useState(false)
   const [photoZoom, setPhotoZoom] = useState(1)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState<'completed' | 'approved' | 'rejected' | null>(null)
   const isMountedRef = useRef(true)
 
   useEffect(() => {
@@ -1158,7 +1160,10 @@ export default function RequestDetailPage() {
       })() && (
         <div className="mx-4 mb-4 flex space-x-3">
           <button
-            onClick={() => updateRequestStatus('approved')}
+            onClick={() => {
+              setPendingStatus('approved')
+              setShowConfirmModal(true)
+            }}
             className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1175,6 +1180,49 @@ export default function RequestDetailPage() {
             </svg>
             <span>Отклонить</span>
           </button>
+        </div>
+      )}
+
+      {/* Модальное окно подтверждения */}
+      {showConfirmModal && request && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowConfirmModal(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold text-black mb-4">Подтвердить операцию</h3>
+            <p className="text-gray-700 mb-6">
+              Вы уверены, что хотите{' '}
+              <span className="text-blue-600 font-semibold">
+                {request.requestType === 'deposit' ? 'принять' : 'принять'}
+              </span>{' '}
+              заявку на {request.requestType === 'deposit' ? 'пополнение' : 'вывод'}{' '}
+              <span className="font-semibold">
+                {request.amount ? parseFloat(request.amount.toString()).toFixed(2).replace('.', ',') : '0,00'} сом
+              </span>{' '}
+              для {userName}?
+            </p>
+            <div className="flex flex-col space-y-3">
+              <button
+                onClick={async () => {
+                  setShowConfirmModal(false)
+                  if (pendingStatus) {
+                    await updateRequestStatus(pendingStatus)
+                    setPendingStatus(null)
+                  }
+                }}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
+              >
+                Да, принять
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false)
+                  setPendingStatus(null)
+                }}
+                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
