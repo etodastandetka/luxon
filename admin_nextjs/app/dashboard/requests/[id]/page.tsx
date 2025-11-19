@@ -869,10 +869,12 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      {/* Фото чека (если есть) */}
+      {/* Фото чека или QR-кода (если есть) */}
       {request.photoFileUrl && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
-          <h3 className="text-base font-semibold text-white mb-3">Фото чека</h3>
+          <h3 className="text-base font-semibold text-white mb-3">
+            {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+          </h3>
           <div 
             className="relative w-full flex justify-center cursor-pointer hover:opacity-90 transition-opacity" 
             style={{ minHeight: '200px', maxHeight: '500px' }}
