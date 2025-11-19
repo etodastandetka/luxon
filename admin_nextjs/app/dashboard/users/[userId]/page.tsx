@@ -22,6 +22,7 @@ interface UserDetail {
     status: string
     bookmaker: string | null
     processedBy: string | null
+    bank: string | null
     createdAt: string
   }>
   referralMade: Array<{
@@ -123,6 +124,39 @@ export default function UserDetailPage() {
       default:
         return status
     }
+  }
+
+  const getBankImage = (bank: string | null) => {
+    if (!bank) return null
+    const normalized = bank.toLowerCase()
+    
+    // Маппинг банков на изображения
+    if (normalized.includes('demirbank') || normalized.includes('demir')) {
+      return '/images/demirbank.jpg'
+    }
+    if (normalized.includes('omoney') || normalized.includes('o!money')) {
+      return '/images/omoney.jpg'
+    }
+    if (normalized.includes('balance')) {
+      return '/images/balance.jpg'
+    }
+    if (normalized.includes('bakai')) {
+      return '/images/bakai.jpg'
+    }
+    if (normalized.includes('megapay')) {
+      return '/images/megapay.jpg'
+    }
+    if (normalized.includes('mbank')) {
+      return '/images/mbank.png'
+    }
+    if (normalized.includes('optima')) {
+      return '/images/optima.jpg'
+    }
+    if (normalized.includes('companion') || normalized.includes('kompanion')) {
+      return '/images/companion.png'
+    }
+    
+    return null
   }
 
   if (loading) {
@@ -374,38 +408,48 @@ export default function UserDetailPage() {
                 className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
               >
                 <div className="flex items-center space-x-3">
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                    tx.transType === 'deposit' ? 'bg-purple-600' : 'bg-pink-600'
-                  }`}>
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {tx.transType === 'deposit' ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      )}
-                    </svg>
-                  </div>
+                  {/* Иконка банка или дефолтная иконка */}
+                  {getBankImage(tx.bank) ? (
+                    <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900 relative">
+                      <Image
+                        src={getBankImage(tx.bank) || ''}
+                        alt={tx.bank || 'Bank'}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                      tx.transType === 'deposit' ? 'bg-purple-600' : 'bg-pink-600'
+                    }`}>
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {tx.transType === 'deposit' ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        )}
+                      </svg>
+                    </div>
+                  )}
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
                       <p className="text-sm font-medium text-white">{displayName}</p>
                       <span className="text-xs text-gray-400">ID: {user.userId}</span>
                     </div>
-                    {tx.bookmaker && (
-                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded mb-1">
-                        {(() => {
-                          // Если статус pending, показываем "-"
-                          if (tx.status === 'pending' || tx.status === 'processing') {
-                            return '-'
-                          }
-                          // Если есть processedBy, показываем его
-                          if (tx.processedBy) {
-                            return tx.processedBy === 'автопополнение' ? 'автопополнение' : tx.processedBy
-                          }
-                          // Если нет processedBy, но статус не pending, показываем "-"
+                    <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded mb-1">
+                      {(() => {
+                        // Если статус pending, показываем "-"
+                        if (tx.status === 'pending' || tx.status === 'processing') {
                           return '-'
-                        })()}
-                      </span>
-                    )}
+                        }
+                        // Если есть processedBy, показываем его (если автопополнение, то "автопополнение")
+                        if (tx.processedBy) {
+                          return tx.processedBy === 'автопополнение' ? 'автопополнение' : tx.processedBy
+                        }
+                        // Если нет processedBy, но статус не pending, показываем "-"
+                        return '-'
+                      })()}
+                    </span>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-gray-400 mb-1">{formatDate(tx.createdAt)}</p>

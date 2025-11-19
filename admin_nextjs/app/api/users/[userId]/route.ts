@@ -70,6 +70,7 @@ export async function GET(
           status: req.status,
           bookmaker: req.bookmaker,
           processedBy: req.processedBy || null,
+          bank: req.bank || null,
           createdAt: req.createdAt,
         }))
 
@@ -116,6 +117,7 @@ export async function GET(
             createdAt: typeof t.createdAt === 'string' ? t.createdAt : t.createdAt.toISOString(),
             processedBy: (t as any).processedBy || null,
             status: t.status,
+            bank: (t as any).bank || null,
           }
         }
 
@@ -146,6 +148,7 @@ export async function GET(
           select: {
             processedBy: true,
             status: true,
+            bank: true,
           },
           orderBy: {
             createdAt: 'desc',
@@ -158,6 +161,7 @@ export async function GET(
           createdAt: typeof t.createdAt === 'string' ? t.createdAt : t.createdAt.toISOString(),
           processedBy: relatedRequest?.processedBy || null,
           status: relatedRequest?.status || t.status,
+          bank: relatedRequest?.bank || null,
         }
       })
     )
