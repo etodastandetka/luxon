@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Request {
   id: number
@@ -13,6 +14,7 @@ interface Request {
   requestType: string
   status: string
   processedBy: string | null
+  bank: string | null
   createdAt: string
 }
 
@@ -223,6 +225,39 @@ export default function RequestsPage() {
     return type === 'deposit' ? 'Пополнение' : 'Вывод'
   }
 
+  const getBankImage = (bank: string | null) => {
+    if (!bank) return null
+    const normalized = bank.toLowerCase()
+    
+    // Маппинг банков на изображения
+    if (normalized.includes('demirbank') || normalized.includes('demir')) {
+      return '/images/demirbank.jpg'
+    }
+    if (normalized.includes('omoney') || normalized.includes('o!money')) {
+      return '/images/omoney.jpg'
+    }
+    if (normalized.includes('balance')) {
+      return '/images/balance.jpg'
+    }
+    if (normalized.includes('bakai')) {
+      return '/images/bakai.jpg'
+    }
+    if (normalized.includes('megapay')) {
+      return '/images/megapay.jpg'
+    }
+    if (normalized.includes('mbank')) {
+      return '/images/mbank.png'
+    }
+    if (normalized.includes('optima')) {
+      return '/images/optima.jpg'
+    }
+    if (normalized.includes('companion') || normalized.includes('kompanion')) {
+      return '/images/companion.png'
+    }
+    
+    return null
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const day = String(date.getDate()).padStart(2, '0')
@@ -305,25 +340,52 @@ export default function RequestsPage() {
               className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm"
             >
               <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="text-sm font-medium text-white">
-                      Заявка #{request.id}
-                    </span>
-                    {/* Бейдж статуса */}
-                    <span className={`text-xs font-medium whitespace-nowrap px-2 py-0.5 rounded-md ${getStatusTextColor(request.status)}`}>
-                      {getStatusState(request.status)}
-                    </span>
-                    {/* Бейдж кто обработал */}
-                    {getProcessedBy(request.processedBy) && (
-                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-300 rounded-md">
-                        {getProcessedBy(request.processedBy) === 'автопополнение' ? 'автопополнение' : getProcessedBy(request.processedBy)}
+                {/* Левая часть: Иконка банка и информация */}
+                <div className="flex items-start space-x-3 flex-1">
+                  {/* Иконка банка */}
+                  {getBankImage(request.bank) ? (
+                    <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900 relative">
+                      <Image
+                        src={getBankImage(request.bank) || ''}
+                        alt={request.bank || 'Bank'}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className={`w-10 h-10 ${request.requestType === 'deposit' ? 'bg-green-500' : 'bg-red-500'} rounded-full flex items-center justify-center`}>
+                        <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {request.requestType === 'deposit' ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                          )}
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1 flex-wrap">
+                      <span className="text-sm font-medium text-white">
+                        {request.username || request.firstName || request.userId}
                       </span>
-                    )}
+                      {/* Бейдж статуса */}
+                      <span className={`text-xs font-medium whitespace-nowrap px-2 py-0.5 rounded-md ${getStatusTextColor(request.status)}`}>
+                        {getStatusState(request.status)}
+                      </span>
+                      {/* Бейдж кто обработал */}
+                      {getProcessedBy(request.processedBy) && (
+                        <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-300 rounded-md">
+                          {getProcessedBy(request.processedBy) === 'автопополнение' ? 'автопополнение' : getProcessedBy(request.processedBy)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Заявка #{request.id}
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-400 mb-2">
-                    {request.username || request.firstName || request.userId}
-                  </p>
                 </div>
                 {/* Правая часть: Дата, сумма и статус */}
                 <div className="flex flex-col items-end space-y-2 ml-4">
