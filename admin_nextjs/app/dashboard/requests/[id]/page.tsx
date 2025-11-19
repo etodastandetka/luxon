@@ -63,7 +63,6 @@ export default function RequestDetailPage() {
   const [deferring, setDeferring] = useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
   const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null)
-  const [linkingPayment, setLinkingPayment] = useState(false)
   const [showPhotoModal, setShowPhotoModal] = useState(false)
   const [photoZoom, setPhotoZoom] = useState(1)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
@@ -334,7 +333,7 @@ export default function RequestDetailPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    alert('Скопировано в буфер обмена')
+    // Скопировано в буфер обмена
   }
 
   const formatDate = (dateString: string) => {
@@ -431,7 +430,7 @@ export default function RequestDetailPage() {
       if (!deferContentType || !deferContentType.includes('application/json')) {
         const text = await response.text()
         console.error('❌ Defer API returned non-JSON:', response.status, text.substring(0, 200))
-        alert(`Ошибка отложения заявки: Сервер вернул ошибку ${response.status}`)
+        console.error(`Ошибка отложения заявки: Сервер вернул ошибку ${response.status}`)
         setDeferring(false)
         return
       }
@@ -447,13 +446,12 @@ export default function RequestDetailPage() {
         localStorage.setItem('request_updated', request.id.toString())
         localStorage.removeItem('request_updated') // Триггерим storage event
         
-        alert('Заявка отложена')
+        // Заявка отложена успешно
       } else {
-        alert(data.error || 'Ошибка при откладывании заявки')
+        console.error('Ошибка при откладывании заявки:', data.error)
       }
     } catch (error) {
       console.error('Failed to defer request:', error)
-      alert('Ошибка при откладывании заявки')
     } finally {
       setDeferring(false)
     }
@@ -464,7 +462,40 @@ export default function RequestDetailPage() {
       if (!request) return
       
       try {
-        // Если подтверждаем депозит, сначала пополняем баланс через API казино
+        // Если подтверждаем депозит и выбран платеж, сначала привязываем его
+        if ((newStatus === 'completed' || newStatus === 'approved') && request.requestType === 'deposit' && selectedPaymentId) {
+          try {
+            const linkResponse = await fetch(`/api/incoming-payment/${selectedPaymentId}/link`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ requestId: request.id }),
+            })
+            
+            if (linkResponse.ok) {
+              const linkData = await linkResponse.json()
+              if (linkData.success) {
+                // Обновляем заявку после привязки
+                const fetchResponse = await fetch(`/api/requests/${request.id}`)
+                if (fetchResponse.ok) {
+                  const fetchData = await fetchResponse.json()
+                  if (fetchData.success) {
+                    setRequest(fetchData.data)
+                    // Если заявка уже подтверждена автоматически (сумма совпала), выходим
+                    if (fetchData.data.status === 'completed' || fetchData.data.status === 'approved') {
+                      setSelectedPaymentId(null)
+                      return
+                    }
+                  }
+                }
+              }
+            }
+          } catch (linkError) {
+            console.error('Failed to link payment:', linkError)
+            // Продолжаем выполнение, даже если привязка не удалась
+          }
+        }
+        
+        // Если подтверждаем депозит, пополняем баланс через API казино
         if ((newStatus === 'completed' || newStatus === 'approved') && request.requestType === 'deposit' && request.bookmaker && request.accountId && request.amount) {
           try {
             // Если выбран платеж, используем его сумму, иначе сумму заявки
@@ -492,14 +523,13 @@ export default function RequestDetailPage() {
             if (!contentType || !contentType.includes('application/json')) {
               const text = await depositResponse.text()
               console.error('❌ Deposit API returned non-JSON response:', depositResponse.status, text.substring(0, 200))
-              alert(`Ошибка пополнения баланса: Сервер вернул ошибку ${depositResponse.status}. Проверьте логи на сервере.`)
               return
             }
 
             const depositData = await depositResponse.json()
 
             if (!depositData.success) {
-              alert(`Ошибка пополнения баланса: ${depositData.error || depositData.message || 'Неизвестная ошибка'}`)
+              console.error('❌ Deposit failed:', depositData.error || depositData.message)
               return
             }
 
@@ -520,7 +550,6 @@ export default function RequestDetailPage() {
               if (!updateContentType2 || !updateContentType2.includes('application/json')) {
                 const text = await updateResponse.text()
                 console.error('❌ Update API returned non-JSON:', updateResponse.status, text.substring(0, 200))
-                alert(`Ошибка обновления статуса: Сервер вернул ошибку ${updateResponse.status}`)
                 return
               }
               
@@ -557,12 +586,11 @@ export default function RequestDetailPage() {
               localStorage.setItem('request_updated', request.id.toString())
               localStorage.removeItem('request_updated')
               
-              alert('Баланс игрока пополнен. Заявка подтверждена.')
+              setSelectedPaymentId(null)
               return
             }
           } catch (depositError) {
             console.error('Failed to deposit balance:', depositError)
-            alert('Ошибка при пополнении баланса игрока. Заявка не подтверждена.')
             return
           }
         }
@@ -582,7 +610,6 @@ export default function RequestDetailPage() {
         if (!responseContentType || !responseContentType.includes('application/json')) {
           const text = await response.text()
           console.error('❌ Update status API returned non-JSON:', response.status, text.substring(0, 200))
-          alert(`Ошибка обновления статуса: Сервер вернул ошибку ${response.status}`)
           return
         }
 
@@ -614,26 +641,24 @@ export default function RequestDetailPage() {
           localStorage.setItem('request_updated', request.id.toString())
           localStorage.removeItem('request_updated') // Триггерим storage event
           
-          const statusLabel = newStatus === 'completed' || newStatus === 'approved' ? 'подтверждена' : 'отклонена'
-          alert(`Заявка ${statusLabel}`)
+          setSelectedPaymentId(null)
         } else {
-          alert(data.error || 'Ошибка при обновлении заявки')
+          console.error('Failed to update request:', data.error)
         }
       } catch (error) {
         console.error('Failed to update request status:', error)
-        alert('Ошибка при обновлении заявки')
       }
     }
 
   const handleSearchById = () => {
     if (!searchId.trim()) {
-      alert('Введите ID заявки')
+      console.error('Введите ID заявки')
       return
     }
 
     const id = parseInt(searchId.trim())
     if (isNaN(id)) {
-      alert('ID должен быть числом')
+      console.error('ID должен быть числом')
       return
     }
 
@@ -1076,72 +1101,6 @@ export default function RequestDetailPage() {
               )
             })}
           </div>
-          {/* Кнопка Подтвердить снизу блока */}
-          {selectedPaymentId && !request.matchingPayments?.find((p: MatchingPayment) => p.id === selectedPaymentId && (p.isProcessed && p.requestId === request.id)) && (
-            <button
-              onClick={async () => {
-                if (!request || !selectedPaymentId) return
-                setLinkingPayment(true)
-                try {
-                  const response = await fetch(`/api/incoming-payment/${selectedPaymentId}/link`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ requestId: request.id }),
-                  })
-                  
-                  // Проверяем Content-Type перед парсингом JSON
-                  const linkContentType = response.headers.get('content-type')
-                  if (!linkContentType || !linkContentType.includes('application/json')) {
-                    const text = await response.text()
-                    console.error('❌ Link payment API returned non-JSON:', response.status, text.substring(0, 200))
-                    alert(`Ошибка привязки платежа: Сервер вернул ошибку ${response.status}`)
-                    setLinkingPayment(false)
-                    return
-                  }
-                  
-                  const data = await response.json()
-                  if (data.success) {
-                    // Обновляем заявку (API автоматически обновит статус если сумма совпадает)
-                    const fetchResponse = await fetch(`/api/requests/${request.id}`)
-                    
-                    // Проверяем Content-Type перед парсингом JSON
-                    const fetchContentType = fetchResponse.headers.get('content-type')
-                    if (!fetchContentType || !fetchContentType.includes('application/json')) {
-                      console.error('❌ Fetch API returned non-JSON:', fetchResponse.status)
-                      return
-                    }
-                    
-                    const fetchData = await fetchResponse.json()
-                    if (fetchData.success) {
-                      setRequest(fetchData.data)
-                      
-                      // Проверяем, изменился ли статус на "успешно"
-                      if (fetchData.data.status === 'completed') {
-                        alert('Платеж привязан к заявке. Заявка автоматически подтверждена.')
-                      } else {
-                        alert('Платеж привязан к заявке')
-                      }
-                    }
-                    setSelectedPaymentId(null)
-                  } else {
-                    alert(data.error || 'Ошибка при привязке платежа')
-                  }
-                } catch (error) {
-                  console.error('Failed to link payment:', error)
-                  alert('Ошибка при привязке платежа')
-                } finally {
-                  setLinkingPayment(false)
-                }
-              }}
-              disabled={linkingPayment}
-              className="mt-3 w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{linkingPayment ? 'Привязка...' : 'Подтвердить'}</span>
-            </button>
-          )}
         </div>
       )}
 
