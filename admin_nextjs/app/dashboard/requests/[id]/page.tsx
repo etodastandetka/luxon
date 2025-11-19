@@ -533,58 +533,55 @@ export default function RequestDetailPage() {
               return
             }
 
-            // Если пополнение успешно, обновляем заявку
+            // Если пополнение успешно, API уже обновил статус заявки на completed
+            // Обновляем заявку из ответа API
             if (depositData.data?.request) {
-              // Обновляем статус заявки на completed
-              // processedBy будет установлен автоматически на сервере из токена админа
-              const updateResponse = await fetch(`/api/requests/${request.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                  status: 'completed'
-                }),
-              })
+              console.log('✅ Deposit successful, updating request from API response:', depositData.data.request)
               
-              // Проверяем Content-Type перед парсингом JSON
-              const updateContentType2 = updateResponse.headers.get('content-type')
-              if (!updateContentType2 || !updateContentType2.includes('application/json')) {
-                const text = await updateResponse.text()
-                console.error('❌ Update API returned non-JSON:', updateResponse.status, text.substring(0, 200))
-                return
-              }
+              // Обновляем заявку с данными из ответа API (уже содержит обновленный статус)
+              setRequest(depositData.data.request)
               
-              const updateData = await updateResponse.json()
-              if (updateData.success) {
-                // Обновляем заявку с новым статусом
-                const updatedRequest = { ...request, ...updateData.data, status: 'completed' }
-                setRequest(updatedRequest)
-                // Перезагружаем данные для получения актуального состояния
-                // Используем setTimeout для асинхронной перезагрузки после обновления состояния
-                setTimeout(async () => {
-                  const refreshResponse = await fetch(`/api/requests/${request.id}`)
-                  
-                  // Проверяем Content-Type перед парсингом JSON
-                  const refreshContentType = refreshResponse.headers.get('content-type')
-                  if (!refreshContentType || !refreshContentType.includes('application/json')) {
-                    console.error('❌ Refresh API returned non-JSON:', refreshResponse.status)
-                    return
-                  }
-                  
-                  const refreshData = await refreshResponse.json()
-                  if (refreshData.success && isMountedRef.current) {
-                    setRequest(refreshData.data)
-                  }
-                }, 500)
-              } else {
-                // Если обновление статуса не удалось, но баланс пополнен, обновляем только данные из depositData
-                if (depositData.data?.request) {
-                  setRequest(prevRequest => prevRequest ? { ...prevRequest, ...depositData.data.request } : depositData.data.request)
+              // Перезагружаем данные для получения актуального состояния (включая связанные платежи)
+              setTimeout(async () => {
+                const refreshResponse = await fetch(`/api/requests/${request.id}`)
+                
+                // Проверяем Content-Type перед парсингом JSON
+                const refreshContentType = refreshResponse.headers.get('content-type')
+                if (!refreshContentType || !refreshContentType.includes('application/json')) {
+                  console.error('❌ Refresh API returned non-JSON:', refreshResponse.status)
+                  return
                 }
-              }
+                
+                const refreshData = await refreshResponse.json()
+                if (refreshData.success && isMountedRef.current) {
+                  console.log('✅ Request refreshed after deposit:', refreshData.data)
+                  setRequest(refreshData.data)
+                }
+              }, 500)
               
               // Уведомляем другие вкладки об обновлении
               localStorage.setItem('request_updated', request.id.toString())
               localStorage.removeItem('request_updated')
+              
+              setSelectedPaymentId(null)
+              return
+            } else {
+              // Если в ответе нет данных заявки, перезагружаем вручную
+              console.log('⚠️ No request data in deposit response, refreshing manually')
+              setTimeout(async () => {
+                const refreshResponse = await fetch(`/api/requests/${request.id}`)
+                
+                const refreshContentType = refreshResponse.headers.get('content-type')
+                if (!refreshContentType || !refreshContentType.includes('application/json')) {
+                  console.error('❌ Refresh API returned non-JSON:', refreshResponse.status)
+                  return
+                }
+                
+                const refreshData = await refreshResponse.json()
+                if (refreshData.success && isMountedRef.current) {
+                  setRequest(refreshData.data)
+                }
+              }, 500)
               
               setSelectedPaymentId(null)
               return
