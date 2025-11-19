@@ -30,11 +30,16 @@ export async function GET(request: NextRequest) {
       where.requestType = type
     }
     // Фильтр для ручных заявок: processedBy не равен "автопополнение" и не null
+    // Это означает, что заявка была закрыта админом вручную (processedBy = логин админа)
     if (manual) {
       where.AND = [
         { processedBy: { not: 'автопополнение' } },
         { processedBy: { not: null } }
       ]
+      // Также фильтруем только успешные заявки (completed, approved)
+      where.status = {
+        in: ['completed', 'approved']
+      }
     }
 
     // Оптимизируем запрос - выбираем только нужные поля
