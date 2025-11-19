@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('user_id')
     const type = searchParams.get('type') // deposit, withdraw, or empty for all
+    const manual = searchParams.get('manual') === 'true' // Ручные заявки (не автопополнение)
     const limit = parseInt(searchParams.get('limit') || '10')
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -27,6 +28,13 @@ export async function GET(request: NextRequest) {
     }
     if (type) {
       where.requestType = type
+    }
+    // Фильтр для ручных заявок: processedBy не равен "автопополнение" и не null
+    if (manual) {
+      where.AND = [
+        { processedBy: { not: 'автопополнение' } },
+        { processedBy: { not: null } }
+      ]
     }
 
     // Оптимизируем запрос - выбираем только нужные поля
