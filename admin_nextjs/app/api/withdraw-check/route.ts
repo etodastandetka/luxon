@@ -63,7 +63,26 @@ export async function POST(request: NextRequest) {
 
       // Только проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
       // Выполнение вывода (mobile.withdrawal) будет в confirm странице
+      console.log(`[Withdraw Check] Calling checkWithdrawAmountMobCash with:`)
+      console.log(`  - playerId: ${playerId} (type: ${typeof playerId})`)
+      console.log(`  - code: ${code} (type: ${typeof code})`)
+      console.log(`  - mobCashConfig:`, {
+        login: mobCashConfig.login,
+        cashdesk_id: mobCashConfig.cashdesk_id,
+        has_bearer_token: !!mobCashConfig.bearer_token,
+        has_user_id: !!mobCashConfig.user_id,
+        has_session_id: !!mobCashConfig.session_id,
+        default_lat: mobCashConfig.default_lat,
+        default_lon: mobCashConfig.default_lon,
+      })
+      
       const checkResult = await checkWithdrawAmountMobCash(playerId, code, mobCashConfig)
+      
+      console.log(`[Withdraw Check] checkWithdrawAmountMobCash result:`, {
+        success: checkResult.success,
+        amount: checkResult.amount,
+        message: checkResult.message,
+      })
       
       if (!checkResult.success) {
         return NextResponse.json(

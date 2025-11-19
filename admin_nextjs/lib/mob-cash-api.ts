@@ -901,9 +901,12 @@ export class MobCashClient {
 
       // Логируем HTTP статус
       console.log(`[MobCash API] HTTP Response status: ${response.status} ${response.statusText}`)
+      console.log(`[MobCash API] HTTP Response headers:`, Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorText = await response.text()
+        console.error(`[MobCash API] HTTP Error Response body:`, errorText)
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText.substring(0, 500)}`)
       }
 
       const data: JsonRpcResponse[] = await response.json()
@@ -915,11 +918,11 @@ export class MobCashClient {
 
       if (result.error) {
         // Логируем полную информацию об ошибке
-        console.error(`[MobCash API] JSON-RPC Error:`, {
-          code: result.error.code,
-          message: result.error.message,
-          data: result.error.data
-        })
+        console.error(`[MobCash API] JSON-RPC Error Details:`)
+        console.error(`  - Code: ${result.error.code}`)
+        console.error(`  - Message: ${result.error.message}`)
+        console.error(`  - Data:`, JSON.stringify(result.error.data, null, 2))
+        console.error(`  - Full error object:`, JSON.stringify(result.error, null, 2))
         // Улучшаем сообщения об ошибках для более понятного вывода
         let errorMessage = result.error.message || 'Unknown error'
         const errorCode = result.error.code
@@ -1049,17 +1052,34 @@ export class MobCashClient {
   async getWithdrawalAmount(payerID: string, withdrawalCode: string): Promise<{ amount: string; success: boolean; message?: string }> {
     try {
       // Убеждаемся, что payerID - строка (как в документации)
-      const payerIDString = String(payerID)
-      const withdrawalCodeString = String(withdrawalCode)
+      const payerIDString = String(payerID).trim()
+      const withdrawalCodeString = String(withdrawalCode).trim()
       
-      console.log(`[MobCash API] getWithdrawalAmount: payerID=${payerIDString}, code=${withdrawalCodeString}`)
+      console.log(`[MobCash API] getWithdrawalAmount called:`)
+      console.log(`  - payerID (original): ${payerID} (type: ${typeof payerID})`)
+      console.log(`  - payerID (string): ${payerIDString}`)
+      console.log(`  - withdrawalCode (original): ${withdrawalCode} (type: ${typeof withdrawalCode})`)
+      console.log(`  - withdrawalCode (string): ${withdrawalCodeString}`)
       
-      const result = await this.makeRequest('mobile.getWithdrawalAmount', {
+      // Получаем сессию для логирования
+      const session = await this.getSession()
+      console.log(`[MobCash API] Using session:`)
+      console.log(`  - userID: ${session.userID}`)
+      console.log(`  - sessionID: ${session.sessionID}`)
+      console.log(`  - token: ${session.token.substring(0, 30)}...`)
+      
+      const requestParams = {
         withdraw: {
           payerID: payerIDString,
           withdrawalCode: withdrawalCodeString,
         },
-      })
+      }
+      
+      console.log(`[MobCash API] Request params:`, JSON.stringify(requestParams, null, 2))
+      
+      const result = await this.makeRequest('mobile.getWithdrawalAmount', requestParams)
+      
+      console.log(`[MobCash API] getWithdrawalAmount result:`, JSON.stringify(result, null, 2))
 
       return {
         amount: result?.amount || '0',
@@ -1068,6 +1088,10 @@ export class MobCashClient {
       }
     } catch (error) {
       console.error('[MobCash API] Error getting withdrawal amount:', error)
+      if (error instanceof Error) {
+        console.error('[MobCash API] Error stack:', error.stack)
+        console.error('[MobCash API] Error message:', error.message)
+      }
       return {
         amount: '0',
         success: false,
