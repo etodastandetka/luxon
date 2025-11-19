@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
         phone: true,
         createdAt: true,
         processedAt: true,
+        processedBy: true,
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
       date: r.createdAt.toISOString(),
       created_at: r.createdAt.toISOString(),
       processed_at: r.processedAt?.toISOString() || null,
+      processedBy: r.processedBy || null,
     }))
 
     // Определяем hasMore на основе количества полученных записей
