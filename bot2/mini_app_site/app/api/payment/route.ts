@@ -3,12 +3,26 @@ import { NextRequest, NextResponse } from 'next/server'
 const ADMIN_API_URL = process.env.ADMIN_API_URL || (process.env.NODE_ENV === 'production' ? 'https://xendro.pro' : 'http://localhost:3001')
 
 export async function POST(request: NextRequest) {
+  const requestId = Math.random().toString(36).substring(7)
+  const startTime = Date.now()
+  
   try {
     const body = await request.json()
     
-    console.log('🔄 Next.js API: Получен запрос на создание заявки:', body)
+    console.log(`[${requestId}] 🔄 Next.js API: Получен запрос на создание заявки:`, {
+      type: body.type,
+      bookmaker: body.bookmaker,
+      userId: body.userId,
+      accountId: body.account_id,
+      amount: body.amount,
+      hasReceiptPhoto: !!body.receipt_photo,
+      receiptPhotoSize: body.receipt_photo ? body.receipt_photo.length : 0,
+      timestamp: new Date().toISOString(),
+      userAgent: request.headers.get('user-agent')
+    })
     
     // Проксируем запрос к админ-панели API
+    console.log(`[${requestId}] 📤 Отправка запроса к Admin API: ${ADMIN_API_URL}/api/payment`)
     const response = await fetch(`${ADMIN_API_URL}/api/payment`, {
       method: 'POST',
       headers: {
@@ -17,17 +31,53 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body)
     })
     
+    const responseTime = Date.now() - startTime
+    console.log(`[${requestId}] 📥 Получен ответ от Admin API:`, {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      responseTime: `${responseTime}ms`,
+      timestamp: new Date().toISOString()
+    })
+    
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Admin API error:', response.status, errorText)
+      console.error(`[${requestId}] ❌ Admin API error:`, {
+        status: response.status,
+        statusText: response.statusText,
+        errorText: errorText.substring(0, 1000), // Первые 1000 символов
+        errorTextLength: errorText.length,
+        responseTime: `${responseTime}ms`,
+        timestamp: new Date().toISOString()
+      })
+      
+      let errorData
+      try {
+        errorData = JSON.parse(errorText)
+        console.error(`[${requestId}] ❌ Распарсенные данные ошибки:`, errorData)
+      } catch (parseError) {
+        console.error(`[${requestId}] ❌ Ошибка парсинга JSON:`, parseError)
+        errorData = { error: errorText || 'Unknown error' }
+      }
+      
       return NextResponse.json(
-        { error: `Admin API error: ${response.status} - ${errorText}` },
+        { 
+          error: errorData.error || errorData.message || `Admin API error: ${response.status}`,
+          details: errorData,
+          requestId: requestId
+        },
         { status: response.status }
       )
     }
     
     const data = await response.json()
-    console.log('✅ Next.js API: Заявка создана успешно:', data)
+    console.log(`[${requestId}] ✅ Next.js API: Заявка создана успешно:`, {
+      success: data.success,
+      id: data.data?.id,
+      transactionId: data.data?.id,
+      responseTime: `${responseTime}ms`,
+      timestamp: new Date().toISOString()
+    })
     
     // Преобразуем ответ в формат, который ожидает клиентский сайт
     if (data.data && data.data.id) {
@@ -41,10 +91,25 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(data)
     
-  } catch (error) {
-    console.error('❌ Next.js API error:', error)
+  } catch (error: any) {
+    const responseTime = Date.now() - startTime
+    console.error(`[${requestId}] ❌ КРИТИЧЕСКАЯ ОШИБКА Next.js API (POST):`, {
+      error: error,
+      errorMessage: error?.message,
+      errorStack: error?.stack,
+      errorName: error?.name,
+      responseTime: `${responseTime}ms`,
+      timestamp: new Date().toISOString(),
+      userAgent: request.headers.get('user-agent'),
+      url: request.url
+    })
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: error?.message || 'Internal server error',
+        requestId: requestId,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }

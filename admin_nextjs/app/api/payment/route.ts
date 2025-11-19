@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       receipt_photo, // base64 строка фото чека
       payment_method, // 'bank' или 'crypto'
       crypto_invoice_id, // ID крипто invoice
+      site_code, // Код ордера на вывод (для withdraw)
     } = body
 
     // Определяем user_id (Telegram ID пользователя - обязателен для правильной идентификации)
@@ -205,6 +206,7 @@ export async function POST(request: NextRequest) {
         photoFileUrl: receipt_photo || null, // Сохраняем base64 фото чека
         paymentMethod: payment_method || 'bank', // 'bank' или 'crypto'
         cryptoPaymentId: cryptoPaymentId,
+        withdrawalCode: site_code || null, // Код ордера на вывод (для 1xbet)
       },
     })
     
