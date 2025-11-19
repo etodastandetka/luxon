@@ -246,6 +246,7 @@ export default function WithdrawStep5() {
       
       if (data.success && data.data && data.data.amount) {
         // Вывод выполнен успешно - сохраняем данные
+        // Для 1xbet вывод уже выполнен на сервере (в 2 шага: проверка + вывод)
         const amount = data.data.amount
         setWithdrawAmount(amount)
         localStorage.setItem('withdraw_amount', amount.toString())
@@ -259,7 +260,7 @@ export default function WithdrawStep5() {
         }
       } else {
         setWithdrawAmount(null)
-        setError(data.message || 'Код неверный или вывод не найден')
+        setError(data.message || data.error || 'Код неверный или вывод не найден')
       }
     } catch (error: any) {
       console.error('Ошибка выполнения вывода:', error)
@@ -297,7 +298,7 @@ export default function WithdrawStep5() {
     ru: {
       title: 'Вывод - Шаг 5',
       subtitle: 'Код с сайта',
-      instruction: 'Введите код подтверждения с сайта букмекера. После ввода код будет проверен и средства будут сняты с вашего счета.',
+      instruction: 'Введите код подтверждения с сайта букмекера. После ввода код будет проверен, и средства будут сразу сняты с вашего счета.',
       placeholder: 'Введите код',
       submit: 'Перейти к подтверждению',
       back: 'Назад'
@@ -388,10 +389,10 @@ export default function WithdrawStep5() {
               {checking && (
                 <div className="mt-2 p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
                   <p className="text-sm text-blue-300 font-semibold">
-                    ⏳ Выполняется вывод...
+                    ⏳ Проверка кода и выполнение вывода...
                   </p>
                   <p className="text-xs text-white/70 mt-1">
-                    Пожалуйста, подождите
+                    Пожалуйста, подождите. Деньги будут сняты с вашего счета.
                   </p>
                 </div>
               )}
