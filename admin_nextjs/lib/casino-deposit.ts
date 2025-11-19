@@ -156,17 +156,20 @@ export async function depositCashdeskAPI(
 
     console.log(`[Cashdesk Deposit] Response status: ${response.status}, Data:`, data)
 
-    if (response.ok && data.success) {
+    // API может возвращать success (маленькая) или Success (большая)
+    const isSuccess = data.success === true || data.Success === true
+    
+    if (response.ok && isSuccess) {
       return {
         success: true,
-        message: 'Balance deposited successfully',
+        message: data.Message || data.message || 'Balance deposited successfully',
         data,
       }
     }
 
     return {
       success: false,
-      message: data.message || data.error || data.Message || `Failed to deposit balance (Status: ${response.status})`,
+      message: data.Message || data.message || data.error || `Failed to deposit balance (Status: ${response.status})`,
       data,
     }
   } catch (error: any) {
