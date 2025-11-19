@@ -1113,9 +1113,9 @@ export default function RequestDetailPage() {
                           request.status === 'rejected' || 
                           request.status === 'auto_completed' || 
                           request.status === 'autodeposit_success'
-        const hasProcessedPayment = request.matchingPayments?.some((p: MatchingPayment) => p.requestId === request.id && p.isProcessed)
         
-        return isPendingOrDeferred && !isProcessed && !hasProcessedPayment
+        // Показываем кнопки только для необработанных заявок со статусом pending или deferred
+        return isPendingOrDeferred && !isProcessed
       })() && (
         <div className="mx-4 mb-4 flex space-x-3">
           <button
