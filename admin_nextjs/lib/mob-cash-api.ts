@@ -911,11 +911,26 @@ export class MobCashClient {
         let errorMessage = result.error.message || 'Unknown error'
         const errorCode = result.error.code
         
-        // Специальная обработка для ошибки "order not found"
+        // Обработка специфичных ошибок MobCash
         if (errorMessage.includes('order not found') || errorMessage.includes('withdraw order')) {
-          errorMessage = `Ордер на вывод не найден. Проверьте правильность кода и убедитесь, что ордер создан в казино.`
-        } else if (errorMessage.includes('not found')) {
-          errorMessage = `Не найдено: ${errorMessage}`
+          errorMessage = `Ордер на вывод не найден. Убедитесь, что вы создали ордер на вывод в казино и ввели правильный код.`
+        } else if (errorMessage.includes('invalid code') || errorMessage.includes('code')) {
+          errorMessage = `Неверный код. Проверьте правильность кода ордера на вывод.`
+        } else if (errorMessage.includes('payerID') || errorMessage.includes('payer')) {
+          errorMessage = `Неверный ID аккаунта. Проверьте правильность ID аккаунта в казино.`
+        }
+        
+        // Добавляем дополнительную информацию из error.data, если есть
+        if (result.error.data) {
+          const errorData = typeof result.error.data === 'string' 
+            ? result.error.data 
+            : JSON.stringify(result.error.data)
+          if (errorData.includes('cause:')) {
+            const causeMatch = errorData.match(/cause:\s*(.+?)(?:\s*\(code:|$)/i)
+            if (causeMatch) {
+              errorMessage += ` Причина: ${causeMatch[1].trim()}`
+            }
+          }
         }
         
         throw new Error(`API error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ''}`)

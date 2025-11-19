@@ -61,12 +61,12 @@ export async function POST(request: NextRequest) {
     })
 
     // Проверяем обязательные поля
-    // Для error_log type и amount не требуются
+    // Для error_log не требуется amount
     if (!type) {
       console.error('❌ Payment API: Missing required field: type', { 
         body: JSON.stringify(body).substring(0, 500)
       })
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         createApiResponse(null, 'Missing required field: type'),
         { 
           status: 400,
@@ -75,9 +75,10 @@ export async function POST(request: NextRequest) {
           }
         }
       )
+      return errorResponse
     }
 
-    // Для error_log не требуем amount
+    // Для error_log не требуется amount
     if (type !== 'error_log' && !amount) {
       console.error('❌ Payment API: Missing required field: amount', { 
         userId, 
@@ -87,9 +88,9 @@ export async function POST(request: NextRequest) {
         finalUserId,
         type, 
         amount,
-        body: JSON.stringify(body).substring(0, 500)
+        body: JSON.stringify(body).substring(0, 500) // Первые 500 символов для отладки
       })
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         createApiResponse(null, 'Missing required field: amount'),
         { 
           status: 400,
@@ -98,15 +99,19 @@ export async function POST(request: NextRequest) {
           }
         }
       )
+      return errorResponse
     }
 
     // Для error_log просто логируем и возвращаем успех
     if (type === 'error_log') {
-      console.log('📝 Error log received:', {
-        error: body.error,
-        telegram_user_id: body.telegram_user_id,
-        url: body.error?.url,
-        message: body.error?.message
+      const errorData = body.error || {}
+      console.error('📝 Error log received:', {
+        message: errorData.message,
+        name: errorData.name,
+        url: errorData.url,
+        userAgent: errorData.userAgent,
+        timestamp: errorData.timestamp,
+        telegram_user_id: body.telegram_user_id
       })
       return NextResponse.json(
         createApiResponse({ logged: true }, 'Error logged successfully'),
