@@ -226,9 +226,14 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
     const url = `https://apimb.com/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/balance`
 
+    // API key может быть с префиксом или без
+    const apiKeyFormatted = cfg.api_key.startsWith('api-key:') 
+      ? cfg.api_key
+      : `api-key:${cfg.api_key}`
+
     // Подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Для GET запросов REQUEST_BODY пустой
-    const signString = `${cfg.api_key}${path}${timestamp}`
+    const signString = `${apiKeyFormatted}${path}${timestamp}`
     
     // Используем SHA3-256 согласно документации Mostbet API
     // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
@@ -278,10 +283,9 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
     }
 
     const headers = {
-      'X-Api-Key': cfg.api_key,
+      'X-Api-Key': apiKeyFormatted,
       'X-Timestamp': timestamp,
       'X-Signature': signature,
-      'Content-Type': 'application/json',
       'Accept': '*/*',
     }
 

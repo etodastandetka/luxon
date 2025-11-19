@@ -181,18 +181,32 @@ export async function checkWithdrawsExistMostbet(
   config: CasinoConfig
 ): Promise<{ success: boolean; hasWithdrawals: boolean; message?: string }> {
   try {
-    const baseUrl = 'https://apimb.com/mbc/gateway/v1/api/cashpoint'
+    const baseUrl = 'https://apimb.com'
     const cashpointId = String(config.cashpoint_id)
     
+    // Получаем timestamp в UTC в формате YYYY-MM-DD HH:MM:SS (UTC+0)
     const now = new Date()
-    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+    const year = now.getUTCFullYear()
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(now.getUTCDate()).padStart(2, '0')
+    const hours = String(now.getUTCHours()).padStart(2, '0')
+    const minutes = String(now.getUTCMinutes()).padStart(2, '0')
+    const seconds = String(now.getUTCSeconds()).padStart(2, '0')
+    const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     const apiKey = config.api_key!
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
       ? apiKey
       : `api-key:${apiKey}`
 
-    const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointId}/player/cashout/list/page?page=1&size=10&searchString=${playerId}`
+    // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
+    let cashpointIdForUrl = cashpointId
+    const numericMatch = cashpointIdForUrl.match(/\d+/)
+    if (numericMatch) {
+      cashpointIdForUrl = numericMatch[0]
+    }
+
+    const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/list/page?page=1&size=10&searchString=${playerId}`
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
     const listSignature = crypto.createHmac('sha3-256', config.secret!).update(listString).digest('hex')
 
@@ -242,12 +256,18 @@ export async function checkWithdrawAmountMostbet(
   config: CasinoConfig
 ): Promise<{ success: boolean; amount?: number; transactionId?: number; message?: string }> {
   try {
-    const baseUrl = 'https://apimb.com/mbc/gateway/v1/api/cashpoint'
+    const baseUrl = 'https://apimb.com'
     const cashpointId = String(config.cashpoint_id)
     
-    // Формируем timestamp
+    // Получаем timestamp в UTC в формате YYYY-MM-DD HH:MM:SS (UTC+0)
     const now = new Date()
-    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+    const year = now.getUTCFullYear()
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(now.getUTCDate()).padStart(2, '0')
+    const hours = String(now.getUTCHours()).padStart(2, '0')
+    const minutes = String(now.getUTCMinutes()).padStart(2, '0')
+    const seconds = String(now.getUTCSeconds()).padStart(2, '0')
+    const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // API key может быть с префиксом или без
     const apiKey = config.api_key!
@@ -255,8 +275,15 @@ export async function checkWithdrawAmountMostbet(
       ? apiKey
       : `api-key:${apiKey}`
 
+    // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
+    let cashpointIdForUrl = cashpointId
+    const numericMatch = cashpointIdForUrl.match(/\d+/)
+    if (numericMatch) {
+      cashpointIdForUrl = numericMatch[0]
+    }
+
     // Сначала получаем список запросов на вывод
-    const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointId}/player/cashout/list/page?page=1&size=10&searchString=${playerId}`
+    const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/list/page?page=1&size=10&searchString=${playerId}`
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
     const listSignature = crypto.createHmac('sha3-256', config.secret!).update(listString).digest('hex')
 
@@ -266,6 +293,7 @@ export async function checkWithdrawAmountMostbet(
         'X-Timestamp': timestamp,
         'X-Signature': listSignature,
         'X-Api-Key': apiKeyFormatted,
+        'Accept': '*/*',
       },
     })
 
@@ -290,12 +318,13 @@ export async function checkWithdrawAmountMostbet(
     }
 
     // Подтверждаем вывод кодом, чтобы получить сумму
-    const confirmPath = `/mbc/gateway/v1/api/cashpoint/${cashpointId}/player/cashout/confirmation`
+    const confirmPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/confirmation`
     const confirmBody = {
       code: code,
       transactionId: withdrawal.transactionId,
     }
-    const confirmBodyString = JSON.stringify(confirmBody)
+    // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
+    const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
     const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${timestamp}`
     const confirmSignature = crypto.createHmac('sha3-256', config.secret!).update(confirmString).digest('hex')
 
@@ -307,6 +336,7 @@ export async function checkWithdrawAmountMostbet(
         'X-Signature': confirmSignature,
         'X-Api-Key': apiKeyFormatted,
         'X-Project': 'MBC',
+        'Accept': '*/*',
       },
       body: confirmBodyString,
     })

@@ -320,9 +320,23 @@ export async function depositMostbetAPI(
     console.log(`[Mostbet Deposit] Response status: ${response.status}, Data:`, data)
 
     if (response.ok) {
+      // Согласно документации, статус может быть "NEW", "ACCEPTED", "PROCESSING", "COMPLETED" и т.д.
+      // Если статус "NEW_ERROR" или "PROCESSING_ERROR", это ошибка
+      if (data.status === 'NEW_ERROR' || data.status === 'PROCESSING_ERROR') {
+        return {
+          success: false,
+          message: data.message || data.error || data.Message || 'Transaction creation failed',
+          data,
+        }
+      }
+      
+      // Если статус "COMPLETED", операция успешно завершена
+      // Если статус "NEW", "ACCEPTED", "PROCESSING" - транзакция создана и обрабатывается
       return {
         success: true,
-        message: 'Balance deposited successfully',
+        message: data.status === 'COMPLETED' 
+          ? 'Balance deposited successfully' 
+          : `Transaction created (status: ${data.status})`,
         data,
       }
     }
