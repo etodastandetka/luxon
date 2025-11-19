@@ -233,38 +233,7 @@ export async function PATCH(
       data: updateData,
     })
 
-    // Если это вывод, отправляем уведомление в группу
-    if (body.status && body.status !== requestBeforeUpdate.status && updatedRequest.requestType === 'withdraw') {
-      const amount = updatedRequest.amount ? parseFloat(updatedRequest.amount.toString()).toFixed(2) : '0.00'
-      const bookmaker = updatedRequest.bookmaker || 'казино'
-      const usernameStr = updatedRequest.username || updatedRequest.firstName || 'Пользователь'
-      const accountIdStr = updatedRequest.accountId || 'не указан'
-      
-      let groupMessage = ''
-      if (body.status === 'completed' || body.status === 'approved') {
-        groupMessage = `✅ <b>Вывод обработан</b>\n\n` +
-          `👤 Пользователь: ${usernameStr}\n` +
-          `💰 Сумма: ${amount} сом\n` +
-          `🎰 Казино: ${bookmaker}\n` +
-          `🆔 ID аккаунта: ${accountIdStr}\n` +
-          `📋 ID заявки: #${updatedRequest.id}\n\n` +
-          `Статус: успешно пополнен`
-      } else if (body.status === 'rejected') {
-        groupMessage = `❌ <b>Вывод отклонен</b>\n\n` +
-          `👤 Пользователь: ${usernameStr}\n` +
-          `💰 Сумма: ${amount} сом\n` +
-          `🎰 Казино: ${bookmaker}\n` +
-          `🆔 ID аккаунта: ${accountIdStr}\n` +
-          `📋 ID заявки: #${updatedRequest.id}\n\n` +
-          `Статус: отклонен`
-      }
-      
-      if (groupMessage) {
-        sendTelegramGroupMessage(groupMessage).catch(err => {
-          console.error('Failed to send withdrawal status notification to group:', err)
-        })
-      }
-    }
+    // Уведомления в группу для выводов отключены по запросу пользователя
 
     return NextResponse.json(
       createApiResponse({
