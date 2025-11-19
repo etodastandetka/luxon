@@ -192,7 +192,8 @@ export async function POST(request: NextRequest) {
             message: 'Вывод выполнен успешно. Создайте заявку для подтверждения.',
             alreadyExecuted: true, // Флаг, что вывод уже выполнен
           },
-          'Withdrawal executed successfully'
+          undefined, // error
+          'Withdrawal executed successfully' // message
         ),
         {
           headers: {
