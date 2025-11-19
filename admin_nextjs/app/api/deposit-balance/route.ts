@@ -45,7 +45,7 @@ export const dynamic = 'force-dynamic'
 // API для пополнения баланса игрока
 export async function POST(request: NextRequest) {
   try {
-    requireAuth(request)
+    const authUser = requireAuth(request)
 
     const body = await request.json()
     const { requestId, bookmaker, accountId, amount } = body
@@ -87,11 +87,13 @@ export async function POST(request: NextRequest) {
     console.log(`[Deposit Balance] Success for ${bookmaker}, accountId: ${accountId}`, depositResult)
 
     // Обновляем статус заявки на completed
+    // processedBy устанавливается из токена админа (ручное подтверждение)
     const updatedRequest = await prisma.request.update({
       where: { id: parseInt(requestId) },
       data: {
         status: 'completed',
         processedAt: new Date(),
+        processedBy: authUser.username as any,
       },
     })
 
