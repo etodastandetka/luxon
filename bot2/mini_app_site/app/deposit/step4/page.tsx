@@ -665,30 +665,43 @@ export default function DepositStep4() {
       })
       
       // Отправляем ошибку на сервер для логирования (если возможно)
-      try {
-        const tg = (window as any).Telegram?.WebApp
-        const telegramUserId = tg?.initDataUnsafe?.user?.id || 'unknown'
-        
-        fetch('/api/payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'error_log',
-            error: {
-              message: error?.message || String(error),
-              stack: error?.stack,
-              name: error?.name,
-              timestamp: new Date().toISOString(),
-              userAgent: navigator.userAgent,
-              url: window.location.href
-            },
-            telegram_user_id: telegramUserId
+      // Игнорируем несущественные ошибки загрузки ресурсов
+      const errorMessage = error?.message || String(error)
+      const isNonCriticalError = 
+        errorMessage.includes('Load failed') ||
+        errorMessage.includes('Failed to load') ||
+        errorMessage.includes('NetworkError') ||
+        errorMessage.includes('Failed to fetch') ||
+        (error?.name === 'TypeError' && errorMessage.includes('Load'))
+      
+      if (!isNonCriticalError) {
+        try {
+          const tg = (window as any).Telegram?.WebApp
+          const telegramUserId = tg?.initDataUnsafe?.user?.id || 'unknown'
+          
+          fetch('/api/payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'error_log',
+              error: {
+                message: errorMessage,
+                stack: error?.stack,
+                name: error?.name,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                url: window.location.href
+              },
+              telegram_user_id: telegramUserId
+            })
+          }).catch(logError => {
+            console.error('❌ Не удалось отправить лог ошибки:', logError)
           })
-        }).catch(logError => {
-          console.error('❌ Не удалось отправить лог ошибки:', logError)
-        })
-      } catch (logError) {
-        console.error('❌ Ошибка при попытке логирования:', logError)
+        } catch (logError) {
+          console.error('❌ Ошибка при попытке логирования:', logError)
+        }
+      } else {
+        console.warn('⚠️ Игнорируем несущественную ошибку загрузки ресурса:', errorMessage)
       }
       
       throw error // Пробрасываем ошибку дальше
