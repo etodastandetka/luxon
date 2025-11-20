@@ -748,6 +748,7 @@ export default function DepositStep4() {
 
     // Проверяем, не создается ли уже заявка
     if (isCreatingRequest || isPaid) {
+      console.log('⚠️ Заявка уже отправлена или обрабатывается (crypto):', { isPaid, isCreatingRequest })
       showAlert({
         type: 'info',
         title: language === 'ru' ? 'Информация' : 'Info',
@@ -767,24 +768,36 @@ export default function DepositStep4() {
       // Создаем заявку (cryptoInvoice уже есть в state, передается в createDepositRequest)
       const requestId = await createDepositRequest()
       
-      console.log('✅ Заявка создана')
+      console.log('✅ Заявка создана, requestId:', requestId)
       
       // Сохраняем ID заявки для страницы ожидания
       if (requestId) {
         localStorage.setItem('deposit_request_id', String(requestId))
       }
       
+      // Устанавливаем isPaid, чтобы предотвратить повторное нажатие
+      setIsPaid(true)
+      
       // Перенаправляем на страницу ожидания
       router.push('/deposit/waiting')
     } catch (error: any) {
-      console.error('❌ Error creating deposit request:', error)
+      console.error('❌ Error creating deposit request (crypto):', error)
+      // Сбрасываем флаг при ошибке, чтобы можно было попробовать снова
+      setIsCreatingRequest(false)
+      
+      const errorMessage = error?.message || String(error) || 'Неизвестная ошибка'
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',
-        message: error.message || (language === 'ru' 
-          ? 'Ошибка при создании заявки'
-          : 'Error creating request')
+        message: errorMessage || (language === 'ru' 
+          ? 'Ошибка при создании заявки. Попробуйте ещё раз.'
+          : 'Error creating request. Please try again.')
       })
+    } finally {
+      // Всегда сбрасываем флаг в finally, если заявка не была успешно создана
+      if (!isPaid) {
+        setIsCreatingRequest(false)
+      }
     }
   }
 
@@ -823,6 +836,7 @@ export default function DepositStep4() {
 
     // Проверяем, не отправлена ли уже заявка или не создается ли она сейчас
     if (isPaid || isCreatingRequest) {
+      console.log('⚠️ Заявка уже отправлена или обрабатывается:', { isPaid, isCreatingRequest })
       showAlert({
         type: 'info',
         title: language === 'ru' ? 'Информация' : 'Info',
@@ -837,7 +851,10 @@ export default function DepositStep4() {
     setIsCreatingRequest(true)
     
     try {
+      console.log('🔄 Начинаем создание заявки...')
       const requestId = await createDepositRequest()
+      
+      console.log('✅ Заявка создана успешно, requestId:', requestId)
       
       // Сохраняем ID заявки для страницы ожидания
       if (requestId) {
@@ -881,16 +898,26 @@ export default function DepositStep4() {
       
       // Перенаправляем на страницу ожидания
       router.push('/deposit/waiting')
-    } catch (e) {
-      console.error(e)
-      setIsCreatingRequest(false) // Сбрасываем флаг при ошибке
+    } catch (e: any) {
+      console.error('❌ Ошибка в handleIPaid:', e)
+      // Сбрасываем флаг при ошибке, чтобы можно было попробовать снова
+      setIsCreatingRequest(false)
+      
+      // Показываем понятное сообщение об ошибке
+      const errorMessage = e?.message || String(e) || 'Неизвестная ошибка'
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',
         message: language === 'ru'
-          ? 'Ошибка при отправке заявки.\n\nПожалуйста, попробуйте ещё раз или обратитесь в поддержку.'
-          : 'Error submitting request.\n\nPlease try again or contact support.'
+          ? `Ошибка при отправке заявки: ${errorMessage}\n\nПожалуйста, попробуйте ещё раз или обратитесь в поддержку.`
+          : `Error submitting request: ${errorMessage}\n\nPlease try again or contact support.`
       })
+    } finally {
+      // Всегда сбрасываем флаг в finally, чтобы избежать блокировки
+      // Но только если заявка не была успешно создана
+      if (!isPaid) {
+        setIsCreatingRequest(false)
+      }
     }
   }
 
