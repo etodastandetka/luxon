@@ -332,14 +332,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Для 888starz и Winwin вывод уже выполнен на этом этапе (Payout сразу выполняет вывод)
+    // Для остальных казино вывод будет выполнен позже
+    const isAlreadyExecuted = normalizedBookmaker.includes('888starz') || 
+                              normalizedBookmaker.includes('888') || 
+                              normalizedBookmaker === '888starz' ||
+                              normalizedBookmaker.includes('winwin') ||
+                              normalizedBookmaker === 'winwin'
+
     return NextResponse.json(
       createApiResponse(
         {
           amount: result.amount,
           transactionId: result.transactionId,
           message: result.message,
+          alreadyExecuted: isAlreadyExecuted, // Флаг, что вывод уже выполнен
         },
-        'Withdrawal checked successfully'
+        isAlreadyExecuted ? 'Withdrawal executed successfully' : 'Withdrawal checked successfully'
       ),
       {
         headers: {
