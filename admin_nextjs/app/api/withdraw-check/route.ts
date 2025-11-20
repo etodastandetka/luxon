@@ -376,7 +376,8 @@ export async function POST(request: NextRequest) {
         message: result.message,
         alreadyExecuted: isAlreadyExecuted, // Флаг, что вывод уже выполнен
       },
-      isAlreadyExecuted ? 'Withdrawal executed successfully' : 'Withdrawal checked successfully'
+      undefined, // error - нет ошибки
+      isAlreadyExecuted ? 'Withdrawal executed successfully' : 'Withdrawal checked successfully' // message - сообщение об успехе
     )
 
     console.log(`[Withdraw Check] Response data:`, JSON.stringify(responseData, null, 2))
