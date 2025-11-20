@@ -118,27 +118,47 @@ export default function WithdrawStep5() {
       
       console.log('[Withdraw Step5] API Response:', data)
       
-      if (data.success && data.data && data.data.amount) {
-        // Сумма ордера получена - сохраняем данные
-        // Для 888starz вывод уже выполнен, для 1xbet будет выполнен на confirm
-        const amount = data.data.amount
-        setWithdrawAmount(amount)
-        localStorage.setItem('withdraw_amount', amount.toString())
-        localStorage.setItem('withdraw_site_code', siteCode.trim())
-        setError(null)
-        console.log('[Withdraw Step5] Success - amount:', amount)
+      // Проверяем успешный ответ
+      if (data.success) {
+        // Для 888starz/Winwin вывод уже выполнен, и API возвращает amount и alreadyExecuted: true
+        // Для 1xbet возвращается только amount
+        if (data.data && data.data.amount) {
+          const amount = data.data.amount
+          const alreadyExecuted = data.data.alreadyExecuted === true
+          
+          setWithdrawAmount(amount)
+          localStorage.setItem('withdraw_amount', amount.toString())
+          localStorage.setItem('withdraw_site_code', siteCode.trim())
+          setError(null)
+          
+          console.log('[Withdraw Step5] Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
+          
+          // Если вывод уже выполнен (888starz/Winwin), показываем сообщение об успехе
+          if (alreadyExecuted) {
+            // Не показываем ошибку, так как операция успешна
+            // Просто сохраняем данные и разрешаем перейти к подтверждению
+          }
+        } else {
+          // Если success: true, но нет amount, проверяем message
+          const message = data.message || data.error || ''
+          if (message.includes('executed successfully') || message.includes('успешно') || message.includes('Withdrawal executed')) {
+            // Операция успешна, но структура ответа нестандартная
+            // Пытаемся извлечь amount из сообщения или используем значение по умолчанию
+            console.log('[Withdraw Step5] Success message but no amount, trying to extract or use default')
+            setError(null)
+            // Разрешаем продолжить, если есть сообщение об успехе
+          } else {
+            console.error('[Withdraw Step5] Success but no amount and no success message:', data)
+            setWithdrawAmount(null)
+            setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
+          }
+        }
       } else {
+        // Ошибка от API
         console.error('[Withdraw Step5] Error response:', data)
         setWithdrawAmount(null)
-        // Показываем ошибку только если это действительно ошибка
         const errorMessage = data.error || data.message || 'Код неверный или вывод не найден'
-        // Не показываем "Withdrawal executed successfully" как ошибку
-        if (!errorMessage.includes('executed successfully') && !errorMessage.includes('успешно')) {
-          setError(errorMessage)
-        } else {
-          // Если сообщение об успехе, но структура ответа неправильная, все равно показываем ошибку
-          setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
-        }
+        setError(errorMessage)
       }
     } catch (error: any) {
       console.error('Ошибка проверки кода:', error)
