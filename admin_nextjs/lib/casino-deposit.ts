@@ -31,7 +31,7 @@ export function generateConfirm(userId: string, hash: string, isMelbet: boolean 
   return crypto.createHash('md5').update(confirmString).digest('hex')
 }
 
-// Генерация подписи для пополнения 1xbet
+// Генерация подписи для пополнения 1xbet/Winwin
 export function generateSignForDeposit1xbet(
   userId: string,
   amount: number,
@@ -39,8 +39,8 @@ export function generateSignForDeposit1xbet(
   cashierpass: string,
   cashdeskid: string | number
 ): string {
-  // a) SHA256(hash={hash}&lng=ru&userid={user_id})
-  const step1String = `hash=${hash}&lng=ru&userid=${userId}`
+  // a) SHA256(hash={hash}&lng=ru&UserId={user_id}) - согласно документации UserId с большой буквы
+  const step1String = `hash=${hash}&lng=ru&UserId=${userId}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
   // b) MD5(summa={amount}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
@@ -52,7 +52,7 @@ export function generateSignForDeposit1xbet(
   return crypto.createHash('sha256').update(combined).digest('hex')
 }
 
-// Генерация подписи для пополнения Melbet (userid в lower-case)
+// Генерация подписи для пополнения Melbet (userid в lower-case, но UserId с большой буквы)
 export function generateSignForDepositMelbet(
   userId: string,
   amount: number,
@@ -60,8 +60,8 @@ export function generateSignForDepositMelbet(
   cashierpass: string,
   cashdeskid: string | number
 ): string {
-  // a) SHA256(hash={hash}&lng=ru&userid={user_id.lower()})
-  const step1String = `hash=${hash}&lng=ru&userid=${userId.toLowerCase()}`
+  // a) SHA256(hash={hash}&lng=ru&UserId={user_id.lower()}) - согласно документации UserId с большой буквы
+  const step1String = `hash=${hash}&lng=ru&UserId=${userId.toLowerCase()}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
   // b) MD5(summa={amount}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
@@ -90,6 +90,7 @@ export async function depositCashdeskAPI(
   const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI/'
   const normalizedBookmaker = bookmaker.toLowerCase()
   const isMelbet = normalizedBookmaker.includes('melbet')
+  const isWinwin = normalizedBookmaker.includes('winwin')
   const is888starz = normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888')
 
   // Проверяем, что все обязательные поля заполнены и не пустые
@@ -111,9 +112,11 @@ export async function depositCashdeskAPI(
     // userId здесь - это ID казино (accountId), не Telegram ID
     console.log(`[Cashdesk Deposit] Bookmaker: ${bookmaker}, Casino User ID: ${userId}, Amount: ${amount}`)
     
+    // Для Melbet и Winwin userId должен быть в нижнем регистре для API
     // Для 888starz используем стандартную логику (как 1xbet), но без lowercase для userId
-    const userIdForApi = isMelbet ? userId.toLowerCase() : userId
+    const userIdForApi = (isMelbet || isWinwin) ? userId.toLowerCase() : userId
     const confirm = generateConfirm(userIdForApi, hash, isMelbet)
+    // Для подписи используем userIdForApi (уже в нужном регистре), но в строке подписи UserId с большой буквы
     const sign = isMelbet
       ? generateSignForDepositMelbet(userId, amount, hash, cashierpass, cashdeskid)
       : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
@@ -424,9 +427,9 @@ export async function checkCashdeskBalance(
     // confirm: MD5(cashdeskid:hash)
     const confirm = crypto.createHash('md5').update(`${cashdeskid}:${hash}`).digest('hex')
 
-    // Signature generation:
-    // Step 1: SHA256(hash={hash}&cashdeskid={cashdeskid}&dt={dt})
-    const step1String = `hash=${hash}&cashdeskid=${cashdeskid}&dt=${dt}`
+    // Signature generation согласно документации:
+    // Step 1: SHA256(hash={hash}&cashierpass={cashierpass}&dt={dt})
+    const step1String = `hash=${hash}&cashierpass=${cashierpass}&dt=${dt}`
     const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
     // Step 2: MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
