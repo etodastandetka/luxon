@@ -146,22 +146,37 @@ export async function checkWithdrawAmountCashdesk(
     // Если успешно - возвращаем сумму из ответа (summa или Summa)
     // ВАЖНО: Вывод уже выполнен! Нужно это учесть при создании заявки
     // Для вывода сумма может быть отрицательной (например, -150)
-    const amount = data.summa !== undefined ? parseFloat(String(data.summa)) : 
-                   data.Summa !== undefined ? parseFloat(String(data.Summa)) : 0
+    // Проверяем оба варианта: summa (lowercase) и Summa (capitalized)
+    let amount: number = 0
+    
+    if (data.summa !== undefined && data.summa !== null) {
+      amount = parseFloat(String(data.summa))
+      console.log(`[Cashdesk Withdraw] Found summa (lowercase):`, data.summa, '->', amount)
+    } else if (data.Summa !== undefined && data.Summa !== null) {
+      amount = parseFloat(String(data.Summa))
+      console.log(`[Cashdesk Withdraw] Found Summa (capitalized):`, data.Summa, '->', amount)
+    } else {
+      console.error(`[Cashdesk Withdraw] No summa/Summa field found in response:`, Object.keys(data))
+      return {
+        success: false,
+        message: 'Сумма вывода не получена из ответа API',
+      }
+    }
     
     console.log(`[Cashdesk Withdraw] Extracted amount:`, {
       raw_summa: data.summa,
       raw_Summa: data.Summa,
       parsed_amount: amount,
+      is_zero: amount === 0,
       absolute_amount: Math.abs(amount)
     })
     
     // Для вывода сумма может быть отрицательной, поэтому проверяем на !== 0
-    if (amount === 0 && data.summa === undefined && data.Summa === undefined) {
-      console.error(`[Cashdesk Withdraw] Amount is 0 and no summa/Summa field found`)
+    if (amount === 0 || isNaN(amount)) {
+      console.error(`[Cashdesk Withdraw] Amount is 0 or NaN:`, amount)
       return {
         success: false,
-        message: 'Сумма вывода не получена из ответа API',
+        message: 'Сумма вывода не получена из ответа API (сумма равна 0 или не является числом)',
       }
     }
 
