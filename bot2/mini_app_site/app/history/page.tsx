@@ -17,7 +17,7 @@ interface Transaction {
 export default function HistoryPage(){
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
+  const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw'>('all')
   const { language } = useLanguage()
 
   useEffect(() => {
@@ -46,8 +46,7 @@ export default function HistoryPage(){
       date: 'Дата',
       bookmaker: 'Букмекер',
       backToMain: '🔙 На главную',
-      all: 'Все',
-      manual: 'Ручное'
+      all: 'Все'
     },
     en: {
       title: 'Transaction History',
@@ -70,8 +69,7 @@ export default function HistoryPage(){
       date: 'Date',
       bookmaker: 'Bookmaker',
       backToMain: '🔙 Back to main',
-      all: 'All',
-      manual: 'Manual'
+      all: 'All'
     },
     ky: {
       title: 'Операциялар тарыхы',
@@ -94,8 +92,7 @@ export default function HistoryPage(){
       date: 'Күн',
       bookmaker: 'Букмекер',
       backToMain: '🔙 Башкы менюга',
-      all: 'Баары',
-      manual: 'Кол менен'
+      all: 'Баары'
     },
     uz: {
       title: 'Operatsiyalar tarixi',
@@ -118,8 +115,7 @@ export default function HistoryPage(){
       date: 'Sana',
       bookmaker: 'Bukmeker',
       backToMain: '🔙 Asosiy menyuga',
-      all: 'Barchasi',
-      manual: 'Qo\'lda'
+      all: 'Barchasi'
     }
   }
 
@@ -152,8 +148,6 @@ export default function HistoryPage(){
         url += '&type=deposit'
       } else if (filter === 'withdraw') {
         url += '&type=withdraw'
-      } else if (filter === 'manual') {
-        url += '&manual=true' // Специальный параметр для ручных заявок
       }
       
       const response = await fetch(url)
@@ -385,19 +379,6 @@ export default function HistoryPage(){
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
               </svg>
               <span>{t.withdraw}</span>
-            </button>
-            <button
-              onClick={() => setFilter('manual')}
-              className={`px-1.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap shrink-0 ${
-                filter === 'manual'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-700 text-gray-300'
-              }`}
-            >
-              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              <span>{t.manual}</span>
             </button>
           </div>
         </div>
