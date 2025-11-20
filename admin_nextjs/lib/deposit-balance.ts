@@ -108,6 +108,26 @@ export async function getCasinoConfig(bookmaker: string) {
     }
   }
 
+  // 1win нужен только api_key
+  if (normalizedBookmaker.includes('1win') || normalizedBookmaker === '1win') {
+    const setting = await prisma.botConfiguration.findFirst({
+      where: { key: '1win_api_config' },
+    })
+
+    if (setting) {
+      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+      if (config.api_key) {
+        return {
+          api_key: config.api_key,
+        }
+      }
+    }
+
+    return {
+      api_key: process.env.ONEWIN_API_KEY || process.env['1WIN_API_KEY'] || '',
+    }
+  }
+
   return null
 }
 
@@ -286,13 +306,20 @@ export async function depositToCasino(
       return await depositMostbetAPI(accountId, amount, config)
     }
     
-    // 1win (если нужно будет добавить)
-    if (normalizedBookmaker.includes('1win')) {
+  // 1win использует публичное API
+  if (normalizedBookmaker.includes('1win') || normalizedBookmaker === '1win') {
+    const config = await getCasinoConfig(bookmaker)
+    
+    if (!config) {
       return {
         success: false,
-        message: '1win API not yet implemented',
+        message: '1win API configuration not found in database',
       }
     }
+
+    const { deposit1winAPI } = await import('./casino-deposit')
+    return await deposit1winAPI(accountId, amount, config)
+  }
 
     return {
       success: false,

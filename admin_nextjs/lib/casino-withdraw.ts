@@ -395,6 +395,9 @@ export async function checkWithdrawAmountMostbet(
 
 /**
  * Проверка суммы вывода через API 1win
+ * Согласно документации: POST /v1/client/withdrawal
+ * Параметры: userId (number), code (number)
+ * Ответ: id, cashId, amount, userId
  */
 export async function checkWithdrawAmount1win(
   userId: string,
@@ -404,32 +407,110 @@ export async function checkWithdrawAmount1win(
   try {
     const baseUrl = 'https://api.1win.win/v1/client'
     
-    // Для 1win нужно сначала проверить вывод по коду
+    // Проверяем наличие API ключа
+    if (!config.api_key || config.api_key.trim() === '') {
+      return {
+        success: false,
+        message: 'Missing required 1win API key',
+      }
+    }
+
+    // Парсим userId и code в числа
+    const userIdNum = parseInt(userId)
+    const codeNum = parseInt(code)
+
+    if (isNaN(userIdNum) || isNaN(codeNum)) {
+      return {
+        success: false,
+        message: 'Invalid userId or code format',
+      }
+    }
+
+    const requestBody = {
+      userId: userIdNum,
+      code: codeNum,
+    }
+
+    console.log(`[1win Withdraw Check] User ID: ${userIdNum}, Code: ${codeNum}`)
+    console.log(`[1win Withdraw Check] URL: ${baseUrl}/withdrawal`)
+    console.log(`[1win Withdraw Check] Request body:`, requestBody)
+    console.log(`[1win Withdraw Check] API Key: ${config.api_key.substring(0, 20)}...`)
+
     const response = await fetch(`${baseUrl}/withdrawal`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-KEY': config.api_key!,
+        'X-API-KEY': config.api_key,
       },
-      body: JSON.stringify({
-        userId: parseInt(userId),
-        code: parseInt(code),
-      }),
+      body: JSON.stringify(requestBody),
     })
 
-    const data = await response.json()
-    console.log(`[1win Withdraw Check] Response status: ${response.status}, Data:`, data)
-
-    if (!response.ok) {
+    const responseText = await response.text()
+    let data: any
+    try {
+      data = JSON.parse(responseText)
+    } catch (e) {
+      console.error(`[1win Withdraw Check] Failed to parse response: ${responseText}`)
       return {
         success: false,
-        message: data.message || `Failed to check withdrawal: ${response.status}`,
+        message: `Invalid response from 1win API: ${responseText.substring(0, 100)}`,
+        data: { rawResponse: responseText, status: response.status },
+      }
+    }
+
+    console.log(`[1win Withdraw Check] Response status: ${response.status}, Response ok: ${response.ok}, Data:`, data)
+
+    if (!response.ok) {
+      // Обрабатываем ошибки согласно документации
+      let errorMessage = 'Failed to process withdrawal'
+      if (response.status === 400) {
+        if (data.message) {
+          errorMessage = data.message
+        } else if (responseText.includes('процесс обработки')) {
+          errorMessage = 'Вывод находится в процессе обработки'
+        } else if (responseText.includes('лимиты')) {
+          errorMessage = 'Сумма превышает лимиты'
+        } else if (responseText.includes('неверный идентификатор кассы')) {
+          errorMessage = 'Передан неверный идентификатор кассы'
+        } else if (responseText.includes('Не корректный код')) {
+          errorMessage = 'Не корректный код'
+        } else if (responseText.includes('превышает доступный баланс')) {
+          errorMessage = 'Сумма вывода превышает доступный баланс в кассе'
+        } else if (responseText.includes('Не корректный идентификатор кассы')) {
+          errorMessage = 'Не корректный идентификатор кассы'
+        }
+      } else if (response.status === 403) {
+        errorMessage = 'Не допускается'
+      } else if (response.status === 404) {
+        if (responseText.includes('Вывод не найден')) {
+          errorMessage = 'Вывод не найден'
+        } else if (responseText.includes('Пользователь не найден')) {
+          errorMessage = 'Пользователь не найден'
+        } else {
+          errorMessage = 'Вывод или пользователь не найден'
+        }
+      }
+
+      return {
+        success: false,
+        message: errorMessage,
+        data,
+      }
+    }
+
+    // Успешный ответ содержит: id, cashId, amount, userId
+    const amount = data.amount || 0
+    if (amount === 0 || isNaN(amount)) {
+      return {
+        success: false,
+        message: 'Сумма вывода не получена из ответа API',
+        data,
       }
     }
 
     return {
       success: true,
-      amount: data.amount || 0,
+      amount: parseFloat(String(amount)),
       message: 'Withdrawal confirmed',
     }
   } catch (error: any) {
