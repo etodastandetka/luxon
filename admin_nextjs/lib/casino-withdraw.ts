@@ -36,9 +36,9 @@ function generateConfirm(userId: string, hash: string): string {
 }
 
 /**
- * Генерация подписи для вывода 1xbet/Melbet/888starz
+ * Генерация подписи для вывода 1xbet/Melbet/888starz/Winwin
  * Согласно документации CashdeskBotAPI:
- * 1. SHA256(hash={hash}&lng=ru&userid={user_id})
+ * 1. SHA256(hash={hash}&lng=ru&UserId={user_id}) - UserId с большой буквы
  * 2. MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) для Payout
  * 3. SHA256(step1 + step2)
  */
@@ -49,8 +49,8 @@ function generateSignForWithdraw(
   cashierpass: string,
   cashdeskid: string | number
 ): string {
-  // a) SHA256(hash={hash}&lng=ru&userid={user_id})
-  const step1String = `hash=${hash}&lng=ru&userid=${userId}`
+  // a) SHA256(hash={hash}&lng=ru&UserId={user_id}) - согласно документации UserId с большой буквы
+  const step1String = `hash=${hash}&lng=ru&UserId=${userId}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
   // b) MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) для Payout
