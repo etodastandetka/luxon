@@ -133,6 +133,10 @@ export async function depositCashdeskAPI(
     console.log(`  - userIdForApi (for URL and confirm): ${userIdForApi}`)
     console.log(`  - userId used in signature: ${isMelbet ? userIdStr : userIdForApi}`)
     console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&userid=${isMelbet ? userIdStr.toLowerCase() : userIdForApi}`)
+    console.log(`  - Step 2 string would be: summa=${amount}&cashierpass=${cashierpass}&cashdeskid=${cashdeskid}`)
+    console.log(`  - Hash: ${hash.substring(0, 20)}...`)
+    console.log(`  - Cashierpass: ${cashierpass.substring(0, 5)}...`)
+    console.log(`  - Cashdeskid: ${cashdeskid}`)
 
     const url = `${baseUrl}Deposit/${userIdForApi}/Add`
     const authHeader = generateBasicAuth(login, cashierpass)
@@ -153,19 +157,19 @@ export async function depositCashdeskAPI(
     console.log(`[Cashdesk Deposit] UserId for API: ${userIdForApi}, Original userId: ${userId}`)
     console.log(`[Cashdesk Deposit] Bookmaker flags: isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`)
 
-    // Для Winwin и Melbet может не требоваться Basic Auth (как в Python скриптах)
-    // Но для Winwin попробуем с Basic Auth, так как ошибка 401 обычно означает проблему с авторизацией
+    // Для Winwin и Melbet не требуется Basic Auth (как в Python скриптах)
+    // Для 1xbet и 888starz используется Basic Auth
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'sign': sign,
     }
     
-    // Для 1xbet, 888starz и Winwin используем Basic Auth, для Melbet - без него
-    if (!isMelbet) {
+    // Для 1xbet и 888starz используем Basic Auth, для Winwin и Melbet - без него
+    if (!isMelbet && !isWinwin) {
       headers['Authorization'] = authHeader
       console.log(`[Cashdesk Deposit] Using Basic Auth for ${bookmaker}`)
     } else {
-      console.log(`[Cashdesk Deposit] NOT using Basic Auth for ${bookmaker} (Melbet)`)
+      console.log(`[Cashdesk Deposit] NOT using Basic Auth for ${bookmaker} (Winwin/Melbet)`)
     }
 
     const response = await fetch(url, {
