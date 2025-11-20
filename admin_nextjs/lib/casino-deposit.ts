@@ -138,9 +138,14 @@ export async function depositCashdeskAPI(
 
     // Согласно документации: для Deposit/Add используется cashdeskId (camelCase) в JSON
     // Но в некоторых реализациях используется cashdeskid (lowercase)
-    // Проверяем, что используется правильный формат
-    const requestBody = {
-      cashdeskId: parseInt(String(cashdeskid)), // Используем camelCase согласно документации
+    // Для Winwin попробуем использовать cashdeskid (lowercase), как в некоторых примерах
+    const requestBody = isWinwin ? {
+      cashdeskid: parseInt(String(cashdeskid)), // Для Winwin используем lowercase
+      lng: 'ru',
+      summa: amount,
+      confirm: confirm,
+    } : {
+      cashdeskId: parseInt(String(cashdeskid)), // Для остальных используем camelCase
       lng: 'ru',
       summa: amount,
       confirm: confirm,
@@ -155,18 +160,18 @@ export async function depositCashdeskAPI(
     console.log(`[Cashdesk Deposit] Bookmaker flags: isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`)
 
     // Для Winwin и Melbet может не требоваться Basic Auth (как в Python скриптах)
-    // Попробуем сначала без Basic Auth для Winwin
+    // Но для Winwin попробуем с Basic Auth, так как ошибка 401 обычно означает проблему с авторизацией
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'sign': sign,
     }
     
-    // Для 1xbet и 888starz используем Basic Auth, для Winwin и Melbet - без него
-    if (!isWinwin && !isMelbet) {
+    // Для 1xbet, 888starz и Winwin используем Basic Auth, для Melbet - без него
+    if (!isMelbet) {
       headers['Authorization'] = authHeader
       console.log(`[Cashdesk Deposit] Using Basic Auth for ${bookmaker}`)
     } else {
-      console.log(`[Cashdesk Deposit] NOT using Basic Auth for ${bookmaker} (Winwin/Melbet)`)
+      console.log(`[Cashdesk Deposit] NOT using Basic Auth for ${bookmaker} (Melbet)`)
     }
 
     const response = await fetch(url, {
