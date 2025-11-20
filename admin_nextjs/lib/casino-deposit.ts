@@ -39,8 +39,9 @@ export function generateSignForDeposit1xbet(
   cashierpass: string,
   cashdeskid: string | number
 ): string {
-  // a) SHA256(hash={hash}&lng=ru&UserId={user_id}) - согласно документации UserId с большой буквы
-  const step1String = `hash=${hash}&lng=ru&UserId=${userId}`
+  // a) SHA256(hash={hash}&lng=ru&userid={user_id}) - согласно примеру в документации (пункт 3.5) используется userid с маленькой буквы
+  // В описании (пункт 3.1) указано UserId с большой, но в примере (пункт 3.5) используется userid с маленькой
+  const step1String = `hash=${hash}&lng=ru&userid=${userId}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
   // b) MD5(summa={amount}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
@@ -52,7 +53,7 @@ export function generateSignForDeposit1xbet(
   return crypto.createHash('sha256').update(combined).digest('hex')
 }
 
-// Генерация подписи для пополнения Melbet (userid в lower-case, но UserId с большой буквы)
+// Генерация подписи для пополнения Melbet (userid в lower-case)
 export function generateSignForDepositMelbet(
   userId: string,
   amount: number,
@@ -60,8 +61,8 @@ export function generateSignForDepositMelbet(
   cashierpass: string,
   cashdeskid: string | number
 ): string {
-  // a) SHA256(hash={hash}&lng=ru&UserId={user_id.lower()}) - согласно документации UserId с большой буквы
-  const step1String = `hash=${hash}&lng=ru&UserId=${userId.toLowerCase()}`
+  // a) SHA256(hash={hash}&lng=ru&userid={user_id.lower()}) - согласно примеру в документации используется userid с маленькой буквы
+  const step1String = `hash=${hash}&lng=ru&userid=${userId.toLowerCase()}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
   // b) MD5(summa={amount}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
@@ -120,7 +121,7 @@ export async function depositCashdeskAPI(
     const confirm = generateConfirm(userIdForApi, hash, isMelbet)
     // Для подписи: для Melbet используем userId (оригинальный, но функция сама сделает lowercase)
     // Для Winwin в подписи используем userIdForApi (в нижнем регистре), так как в URL тоже используется lowercase
-    // В строке подписи используется UserId с большой буквы согласно документации
+    // В строке подписи используется userid с маленькой буквы согласно примеру в документации (пункт 3.5)
     const sign = isMelbet
       ? generateSignForDepositMelbet(userIdStr, amount, hash, cashierpass, cashdeskid)
       : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
@@ -131,21 +132,14 @@ export async function depositCashdeskAPI(
     console.log(`  - userIdStr (string): ${userIdStr}`)
     console.log(`  - userIdForApi (for URL and confirm): ${userIdForApi}`)
     console.log(`  - userId used in signature: ${isMelbet ? userIdStr : userIdForApi}`)
-    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&UserId=${isMelbet ? userIdStr.toLowerCase() : userIdForApi}`)
+    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&userid=${isMelbet ? userIdStr.toLowerCase() : userIdForApi}`)
 
     const url = `${baseUrl}Deposit/${userIdForApi}/Add`
     const authHeader = generateBasicAuth(login, cashierpass)
 
     // Согласно документации: для Deposit/Add используется cashdeskId (camelCase) в JSON
-    // Но в некоторых реализациях используется cashdeskid (lowercase)
-    // Для Winwin попробуем использовать cashdeskid (lowercase), как в некоторых примерах
-    const requestBody = isWinwin ? {
-      cashdeskid: parseInt(String(cashdeskid)), // Для Winwin используем lowercase
-      lng: 'ru',
-      summa: amount,
-      confirm: confirm,
-    } : {
-      cashdeskId: parseInt(String(cashdeskid)), // Для остальных используем camelCase
+    const requestBody = {
+      cashdeskId: parseInt(String(cashdeskid)), // Используем camelCase согласно документации
       lng: 'ru',
       summa: amount,
       confirm: confirm,

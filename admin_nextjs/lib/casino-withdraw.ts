@@ -49,8 +49,8 @@ function generateSignForWithdraw(
   cashierpass: string,
   cashdeskid: string | number
 ): string {
-  // a) SHA256(hash={hash}&lng=ru&UserId={user_id}) - согласно документации UserId с большой буквы
-  const step1String = `hash=${hash}&lng=ru&UserId=${userId}`
+  // a) SHA256(hash={hash}&lng=ru&userid={user_id}) - согласно примеру в документации используется userid с маленькой буквы
+  const step1String = `hash=${hash}&lng=ru&userid=${userId}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
   // b) MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) для Payout
