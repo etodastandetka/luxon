@@ -119,10 +119,10 @@ export async function depositCashdeskAPI(
     const userIdStr = String(userId)
     const userIdForApi = (isMelbet || isWinwin) ? userIdStr.toLowerCase() : userIdStr
     const confirm = generateConfirm(userIdForApi, hash, isMelbet)
-    // Для подписи: для Melbet используем userId (оригинальный, но функция сама сделает lowercase)
-    // Для Winwin в подписи используем userIdForApi (в нижнем регистре), так как в URL тоже используется lowercase
+    // Для подписи: для Melbet и Winwin используем userId (оригинальный, но функция сама сделает lowercase)
+    // Для 1xbet и 888starz используем userIdForApi (как есть, без lowercase)
     // В строке подписи используется userid с маленькой буквы согласно примеру в документации (пункт 3.5)
-    const sign = isMelbet
+    const sign = (isMelbet || isWinwin)
       ? generateSignForDepositMelbet(userIdStr, amount, hash, cashierpass, cashdeskid)
       : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
     
@@ -131,8 +131,8 @@ export async function depositCashdeskAPI(
     console.log(`  - userId (original): ${userId} (type: ${typeof userId})`)
     console.log(`  - userIdStr (string): ${userIdStr}`)
     console.log(`  - userIdForApi (for URL and confirm): ${userIdForApi}`)
-    console.log(`  - userId used in signature: ${isMelbet ? userIdStr : userIdForApi}`)
-    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&userid=${isMelbet ? userIdStr.toLowerCase() : userIdForApi}`)
+    console.log(`  - userId used in signature: ${(isMelbet || isWinwin) ? userIdStr : userIdForApi}`)
+    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&userid=${(isMelbet || isWinwin) ? userIdStr.toLowerCase() : userIdForApi}`)
     console.log(`  - Step 2 string would be: summa=${amount}&cashierpass=${cashierpass}&cashdeskid=${cashdeskid}`)
     console.log(`  - Hash: ${hash.substring(0, 20)}...`)
     console.log(`  - Cashierpass: ${cashierpass.substring(0, 5)}...`)
