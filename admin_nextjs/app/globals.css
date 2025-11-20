@@ -50,6 +50,16 @@ body {
   background: rgba(34, 197, 94, 0.5);
 }
 
+/* Скрытие скроллбара */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE и Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari и Opera */
+}
+
 /* Для Firefox */
 * {
   scrollbar-width: thin;
