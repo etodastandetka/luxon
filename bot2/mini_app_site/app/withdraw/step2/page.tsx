@@ -25,7 +25,12 @@ export default function WithdrawStep2() {
       setQrPhoto(file)
       const reader = new FileReader()
       reader.onload = (e) => {
-        setPhotoPreview(e.target?.result as string)
+        const base64 = e.target?.result as string
+        setPhotoPreview(base64)
+        // Сохраняем base64 в localStorage сразу после загрузки
+        if (base64) {
+          localStorage.setItem('withdraw_qr_photo', base64)
+        }
       }
       reader.readAsDataURL(file)
     }
@@ -37,11 +42,25 @@ export default function WithdrawStep2() {
       return
     }
     
-    // Сохраняем данные
-    localStorage.setItem('withdraw_qr_photo', 'uploaded')
-    
-    // Переходим к следующему шагу
-    router.push('/withdraw/step3')
+    // Проверяем, что base64 уже сохранен в localStorage
+    const savedPhoto = localStorage.getItem('withdraw_qr_photo')
+    if (!savedPhoto || savedPhoto === 'uploaded') {
+      // Если base64 еще не сохранен, читаем файл еще раз
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string
+        if (base64) {
+          localStorage.setItem('withdraw_qr_photo', base64)
+          router.push('/withdraw/step3')
+        } else {
+          alert('Ошибка при загрузке фото. Попробуйте еще раз.')
+        }
+      }
+      reader.readAsDataURL(qrPhoto)
+    } else {
+      // Base64 уже сохранен, переходим к следующему шагу
+      router.push('/withdraw/step3')
+    }
   }
 
   const handleBack = () => {
