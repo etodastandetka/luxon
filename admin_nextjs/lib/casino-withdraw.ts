@@ -136,6 +136,7 @@ export async function checkWithdrawAmountCashdesk(
     const isSuccess = data.success === true || data.Success === true
 
     if (!response.ok || !isSuccess) {
+      console.error(`[Cashdesk Withdraw] Request failed: response.ok=${response.ok}, isSuccess=${isSuccess}`)
       return {
         success: false,
         message: data.Message || data.message || `Failed to process withdrawal: ${response.status}`,
@@ -148,8 +149,16 @@ export async function checkWithdrawAmountCashdesk(
     const amount = data.summa !== undefined ? parseFloat(String(data.summa)) : 
                    data.Summa !== undefined ? parseFloat(String(data.Summa)) : 0
     
+    console.log(`[Cashdesk Withdraw] Extracted amount:`, {
+      raw_summa: data.summa,
+      raw_Summa: data.Summa,
+      parsed_amount: amount,
+      absolute_amount: Math.abs(amount)
+    })
+    
     // Для вывода сумма может быть отрицательной, поэтому проверяем на !== 0
     if (amount === 0 && data.summa === undefined && data.Summa === undefined) {
+      console.error(`[Cashdesk Withdraw] Amount is 0 and no summa/Summa field found`)
       return {
         success: false,
         message: 'Сумма вывода не получена из ответа API',
@@ -158,6 +167,8 @@ export async function checkWithdrawAmountCashdesk(
 
     // Берем абсолютное значение суммы для вывода (API может вернуть отрицательное)
     const absoluteAmount = Math.abs(amount)
+
+    console.log(`[Cashdesk Withdraw] Returning success with amount:`, absoluteAmount)
 
     return {
       success: true,
