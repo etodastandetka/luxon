@@ -135,9 +135,11 @@ export async function depositCashdeskAPI(
     const url = `${baseUrl}Deposit/${userIdForApi}/Add`
     const authHeader = generateBasicAuth(login, cashierpass)
 
-    // Согласно документации: для Deposit/Add используется cashdeskid (lowercase)
+    // Согласно документации: для Deposit/Add используется cashdeskId (camelCase) в JSON
+    // Но в некоторых реализациях используется cashdeskid (lowercase)
+    // Проверяем, что используется правильный формат
     const requestBody = {
-      cashdeskid: parseInt(String(cashdeskid)),
+      cashdeskId: parseInt(String(cashdeskid)), // Используем camelCase согласно документации
       lng: 'ru',
       summa: amount,
       confirm: confirm,
