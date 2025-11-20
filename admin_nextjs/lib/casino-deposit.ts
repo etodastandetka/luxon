@@ -114,23 +114,24 @@ export async function depositCashdeskAPI(
     
     // Для Melbet и Winwin userId должен быть в нижнем регистре для API URL и confirm
     // Для 888starz используем стандартную логику (как 1xbet), но без lowercase для userId
-    const userIdForApi = (isMelbet || isWinwin) ? userId.toLowerCase() : userId
+    // Преобразуем userId в строку перед toLowerCase, так как для чисел toLowerCase не работает
+    const userIdStr = String(userId)
+    const userIdForApi = (isMelbet || isWinwin) ? userIdStr.toLowerCase() : userIdStr
     const confirm = generateConfirm(userIdForApi, hash, isMelbet)
-    // Для подписи: для Melbet и Winwin используем userId (оригинальный, но функция сама сделает lowercase для Melbet)
+    // Для подписи: для Melbet используем userId (оригинальный, но функция сама сделает lowercase)
     // Для Winwin в подписи используем userIdForApi (в нижнем регистре), так как в URL тоже используется lowercase
     // В строке подписи используется UserId с большой буквы согласно документации
     const sign = isMelbet
-      ? generateSignForDepositMelbet(userId, amount, hash, cashierpass, cashdeskid)
-      : isWinwin
-      ? generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
+      ? generateSignForDepositMelbet(userIdStr, amount, hash, cashierpass, cashdeskid)
       : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
     
     // Дополнительное логирование для отладки
     console.log(`[Cashdesk Deposit] Signature calculation details:`)
-    console.log(`  - userId (original): ${userId}`)
+    console.log(`  - userId (original): ${userId} (type: ${typeof userId})`)
+    console.log(`  - userIdStr (string): ${userIdStr}`)
     console.log(`  - userIdForApi (for URL and confirm): ${userIdForApi}`)
-    console.log(`  - userId used in signature: ${isMelbet ? userId : userIdForApi}`)
-    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&UserId=${isMelbet ? userId.toLowerCase() : userIdForApi}`)
+    console.log(`  - userId used in signature: ${isMelbet ? userIdStr : userIdForApi}`)
+    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&UserId=${isMelbet ? userIdStr.toLowerCase() : userIdForApi}`)
 
     const url = `${baseUrl}Deposit/${userIdForApi}/Add`
     const authHeader = generateBasicAuth(login, cashierpass)
@@ -153,13 +154,24 @@ export async function depositCashdeskAPI(
     console.log(`[Cashdesk Deposit] UserId for API: ${userIdForApi}, Original userId: ${userId}`)
     console.log(`[Cashdesk Deposit] Bookmaker flags: isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`)
 
+    // Для Winwin и Melbet может не требоваться Basic Auth (как в Python скриптах)
+    // Попробуем сначала без Basic Auth для Winwin
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'sign': sign,
+    }
+    
+    // Для 1xbet и 888starz используем Basic Auth, для Winwin и Melbet - без него
+    if (!isWinwin && !isMelbet) {
+      headers['Authorization'] = authHeader
+      console.log(`[Cashdesk Deposit] Using Basic Auth for ${bookmaker}`)
+    } else {
+      console.log(`[Cashdesk Deposit] NOT using Basic Auth for ${bookmaker} (Winwin/Melbet)`)
+    }
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-        'sign': sign,
-      },
+      headers,
       body: JSON.stringify(requestBody),
     })
 
