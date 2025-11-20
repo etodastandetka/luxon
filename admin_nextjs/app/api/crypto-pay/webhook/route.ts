@@ -203,7 +203,6 @@ export async function POST(request: NextRequest) {
                 const externalApiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'
                 console.log('📡 Fetching USD -> KGS from external API for webhook')
                 const externalResponse = await fetch(externalApiUrl, {
-                  cache: 'no-store',
                   next: { revalidate: 60 }
                 })
                 

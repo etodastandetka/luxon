@@ -62,7 +62,6 @@ export async function GET(request: NextRequest) {
         const externalApiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'
         console.log('📡 Fetching USD -> KGS from external API:', externalApiUrl)
         const externalResponse = await fetch(externalApiUrl, {
-          cache: 'no-store',
           next: { revalidate: 60 } // Кэш на 60 секунд
         })
         
