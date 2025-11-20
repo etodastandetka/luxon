@@ -24,7 +24,7 @@ export default function HistoryPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
   const limit = 10
@@ -41,7 +41,9 @@ export default function HistoryPage() {
     
     try {
       const params = new URLSearchParams()
-      if (activeTab !== 'all') {
+      if (activeTab === 'manual') {
+        params.append('manual', 'true')
+      } else if (activeTab !== 'all') {
         params.append('type', activeTab === 'deposit' ? 'deposit' : 'withdraw')
       }
       params.append('limit', limit.toString())
@@ -224,17 +226,17 @@ export default function HistoryPage() {
       </div>
 
       {/* Табы фильтрации */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setActiveTab('all')}
-          className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+          className={`flex-shrink-0 px-3 py-2.5 rounded-xl font-medium text-xs transition-all whitespace-nowrap ${
             activeTab === 'all'
               ? 'bg-green-500 text-black'
               : 'bg-gray-800 bg-opacity-50 text-gray-300 border border-gray-700'
           }`}
         >
-          <div className="flex items-center justify-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
             <span>Все</span>
@@ -242,14 +244,14 @@ export default function HistoryPage() {
         </button>
         <button
           onClick={() => setActiveTab('deposit')}
-          className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+          className={`flex-shrink-0 px-3 py-2.5 rounded-xl font-medium text-xs transition-all whitespace-nowrap ${
             activeTab === 'deposit'
               ? 'bg-green-500 text-black'
               : 'bg-gray-800 bg-opacity-50 text-gray-300 border border-gray-700'
           }`}
         >
-          <div className="flex items-center justify-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
             </svg>
             <span>Пополнения</span>
@@ -257,17 +259,32 @@ export default function HistoryPage() {
         </button>
         <button
           onClick={() => setActiveTab('withdraw')}
-          className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+          className={`flex-shrink-0 px-3 py-2.5 rounded-xl font-medium text-xs transition-all whitespace-nowrap ${
             activeTab === 'withdraw'
               ? 'bg-green-500 text-black'
               : 'bg-gray-800 bg-opacity-50 text-gray-300 border border-gray-700'
           }`}
         >
-          <div className="flex items-center justify-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7 7V3" />
             </svg>
             <span>Выводы</span>
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('manual')}
+          className={`flex-shrink-0 px-3 py-2.5 rounded-xl font-medium text-xs transition-all whitespace-nowrap ${
+            activeTab === 'manual'
+              ? 'bg-green-500 text-black'
+              : 'bg-gray-800 bg-opacity-50 text-gray-300 border border-gray-700'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span>Ручное</span>
           </div>
         </button>
       </div>
