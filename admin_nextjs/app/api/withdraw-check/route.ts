@@ -340,16 +340,43 @@ export async function POST(request: NextRequest) {
                               normalizedBookmaker.includes('winwin') ||
                               normalizedBookmaker === 'winwin'
 
+    console.log(`[Withdraw Check] Result:`, {
+      success: result.success,
+      amount: result.amount,
+      transactionId: result.transactionId,
+      message: result.message,
+      isAlreadyExecuted,
+      bookmaker: normalizedBookmaker
+    })
+
+    // Проверяем, что amount есть
+    if (!result.amount || result.amount <= 0) {
+      console.error(`[Withdraw Check] Amount is missing or invalid:`, result)
+      return NextResponse.json(
+        createApiResponse(null, 'Не удалось получить сумму вывода. Проверьте код и попробуйте еще раз.'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
+    const responseData = createApiResponse(
+      {
+        amount: result.amount,
+        transactionId: result.transactionId,
+        message: result.message,
+        alreadyExecuted: isAlreadyExecuted, // Флаг, что вывод уже выполнен
+      },
+      isAlreadyExecuted ? 'Withdrawal executed successfully' : 'Withdrawal checked successfully'
+    )
+
+    console.log(`[Withdraw Check] Response data:`, JSON.stringify(responseData, null, 2))
+
     return NextResponse.json(
-      createApiResponse(
-        {
-          amount: result.amount,
-          transactionId: result.transactionId,
-          message: result.message,
-          alreadyExecuted: isAlreadyExecuted, // Флаг, что вывод уже выполнен
-        },
-        isAlreadyExecuted ? 'Withdrawal executed successfully' : 'Withdrawal checked successfully'
-      ),
+      responseData,
       {
         headers: {
           'Access-Control-Allow-Origin': '*',
