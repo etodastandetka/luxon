@@ -403,7 +403,7 @@ export async function checkWithdrawAmount1win(
   userId: string,
   code: string,
   config: CasinoConfig
-): Promise<{ success: boolean; amount?: number; message?: string }> {
+): Promise<{ success: boolean; amount?: number; message?: string; data?: any }> {
   try {
     const baseUrl = 'https://api.1win.win/v1/client'
     
