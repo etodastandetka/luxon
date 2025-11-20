@@ -434,6 +434,103 @@ export async function depositMobCashAPI(
   }
 }
 
+// Пополнение для 1win через публичное API
+export async function deposit1winAPI(
+  userId: string,
+  amount: number,
+  config: CasinoConfig
+): Promise<{ success: boolean; message: string; data?: any }> {
+  const baseUrl = 'https://api.1win.win/v1/client'
+
+  // Проверяем, что все обязательные поля заполнены
+  const apiKey = config.api_key
+
+  if (!apiKey || apiKey.trim() === '') {
+    return {
+      success: false,
+      message: 'Missing required 1win API key. Please configure API settings in database or environment variables.',
+    }
+  }
+
+  try {
+    // userId здесь - это ID игрока в казино (accountId), не Telegram ID
+    console.log(`[1win Deposit] User ID: ${userId}, Amount: ${amount}`)
+
+    const url = `${baseUrl}/deposit`
+    const requestBody = {
+      userId: parseInt(userId),
+      amount: amount,
+    }
+
+    console.log(`[1win Deposit] URL: ${url}`)
+    console.log(`[1win Deposit] Request body:`, requestBody)
+    console.log(`[1win Deposit] API Key: ${apiKey.substring(0, 20)}...`)
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': apiKey,
+      },
+      body: JSON.stringify(requestBody),
+    })
+
+    const responseText = await response.text()
+    let data: any
+    try {
+      data = JSON.parse(responseText)
+    } catch (e) {
+      console.error(`[1win Deposit] Failed to parse response: ${responseText}`)
+      return {
+        success: false,
+        message: `Invalid response from 1win API: ${responseText.substring(0, 100)}`,
+        data: { rawResponse: responseText, status: response.status },
+      }
+    }
+
+    console.log(`[1win Deposit] Response status: ${response.status}, Response ok: ${response.ok}, Data:`, data)
+
+    if (!response.ok) {
+      // Обрабатываем ошибки согласно документации
+      let errorMessage = 'Failed to deposit balance'
+      if (response.status === 400) {
+        if (data.message) {
+          errorMessage = data.message
+        } else if (responseText.includes('лимиты')) {
+          errorMessage = 'Сумма превышает лимиты'
+        } else if (responseText.includes('уже был создан')) {
+          errorMessage = 'Депозит уже был создан для этого пользователя'
+        } else if (responseText.includes('комиссия')) {
+          errorMessage = 'Слишком большая комиссия за внесение депозита'
+        }
+      } else if (response.status === 403) {
+        errorMessage = 'Не допускается'
+      } else if (response.status === 404) {
+        errorMessage = 'Пользователь не найден'
+      }
+
+      return {
+        success: false,
+        message: errorMessage,
+        data,
+      }
+    }
+
+    // Успешный ответ содержит: id, cashId, amount, userId
+    return {
+      success: true,
+      message: 'Balance deposited successfully',
+      data,
+    }
+  } catch (error: any) {
+    console.error(`[1win Deposit] Error for userId: ${userId}:`, error)
+    return {
+      success: false,
+      message: error.message || 'Failed to deposit balance',
+    }
+  }
+}
+
 /**
  * Проверка баланса кассы для 888starz/1xbet/Melbet (Cashdesk API)
  * GET Cashdesk/{cashdeskId}/Balance?confirm=&dt=
