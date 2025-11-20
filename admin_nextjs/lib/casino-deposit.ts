@@ -112,14 +112,25 @@ export async function depositCashdeskAPI(
     // userId здесь - это ID казино (accountId), не Telegram ID
     console.log(`[Cashdesk Deposit] Bookmaker: ${bookmaker}, Casino User ID: ${userId}, Amount: ${amount}`)
     
-    // Для Melbet и Winwin userId должен быть в нижнем регистре для API
+    // Для Melbet и Winwin userId должен быть в нижнем регистре для API URL и confirm
     // Для 888starz используем стандартную логику (как 1xbet), но без lowercase для userId
     const userIdForApi = (isMelbet || isWinwin) ? userId.toLowerCase() : userId
     const confirm = generateConfirm(userIdForApi, hash, isMelbet)
-    // Для подписи используем userIdForApi (уже в нужном регистре), но в строке подписи UserId с большой буквы
+    // Для подписи: для Melbet и Winwin используем userId (оригинальный, но функция сама сделает lowercase для Melbet)
+    // Для Winwin в подписи используем userIdForApi (в нижнем регистре), так как в URL тоже используется lowercase
+    // В строке подписи используется UserId с большой буквы согласно документации
     const sign = isMelbet
       ? generateSignForDepositMelbet(userId, amount, hash, cashierpass, cashdeskid)
+      : isWinwin
+      ? generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
       : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
+    
+    // Дополнительное логирование для отладки
+    console.log(`[Cashdesk Deposit] Signature calculation details:`)
+    console.log(`  - userId (original): ${userId}`)
+    console.log(`  - userIdForApi (for URL and confirm): ${userIdForApi}`)
+    console.log(`  - userId used in signature: ${isMelbet ? userId : userIdForApi}`)
+    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&UserId=${isMelbet ? userId.toLowerCase() : userIdForApi}`)
 
     const url = `${baseUrl}Deposit/${userIdForApi}/Add`
     const authHeader = generateBasicAuth(login, cashierpass)
@@ -132,7 +143,13 @@ export async function depositCashdeskAPI(
       confirm: confirm,
     }
 
-    console.log(`[Cashdesk Deposit] URL: ${url}, Request body:`, requestBody)
+    console.log(`[Cashdesk Deposit] URL: ${url}`)
+    console.log(`[Cashdesk Deposit] Request body:`, requestBody)
+    console.log(`[Cashdesk Deposit] Sign: ${sign}`)
+    console.log(`[Cashdesk Deposit] Confirm: ${confirm}`)
+    console.log(`[Cashdesk Deposit] Authorization header: ${authHeader.substring(0, 20)}...`)
+    console.log(`[Cashdesk Deposit] UserId for API: ${userIdForApi}, Original userId: ${userId}`)
+    console.log(`[Cashdesk Deposit] Bookmaker flags: isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`)
 
     const response = await fetch(url, {
       method: 'POST',
