@@ -19,7 +19,8 @@
     "test-mobcash": "tsx scripts/test-mobcash.ts",
     "test-mobcash-auth": "tsx scripts/test-mobcash-auth.ts",
     "check-mobcash-config": "tsx scripts/check-mobcash-config.ts",
-    "test:withdraw": "tsx scripts/test-1xbet-withdraw.ts"
+    "test:withdraw": "tsx scripts/test-1xbet-withdraw.ts",
+    "add-1win-api-key": "tsx scripts/add-1win-api-key.ts"
   },
   "dependencies": {
     "@koo0ki/send": "^1.1.1",
