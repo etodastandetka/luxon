@@ -349,9 +349,15 @@ export async function POST(request: NextRequest) {
       bookmaker: normalizedBookmaker
     })
 
-    // Проверяем, что amount есть
-    if (!result.amount || result.amount <= 0) {
-      console.error(`[Withdraw Check] Amount is missing or invalid:`, result)
+    // Проверяем, что amount есть и является валидным числом
+    // amount должен быть больше 0 (уже взято абсолютное значение в checkWithdrawAmountCashdesk)
+    if (!result.amount || result.amount <= 0 || isNaN(result.amount)) {
+      console.error(`[Withdraw Check] Amount is missing or invalid:`, {
+        amount: result.amount,
+        type: typeof result.amount,
+        isNaN: isNaN(result.amount),
+        fullResult: result
+      })
       return NextResponse.json(
         createApiResponse(null, 'Не удалось получить сумму вывода. Проверьте код и попробуйте еще раз.'),
         { 
