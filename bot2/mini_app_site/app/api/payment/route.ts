@@ -6,8 +6,25 @@ export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7)
   const startTime = Date.now()
   
+  console.log(`[${requestId}] 🚀 POST /api/payment вызван`, {
+    url: request.url,
+    method: request.method,
+    headers: Object.fromEntries(request.headers.entries()),
+    timestamp: new Date().toISOString()
+  })
+  
   try {
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+      console.log(`[${requestId}] ✅ Body успешно распарсен`)
+    } catch (parseError: any) {
+      console.error(`[${requestId}] ❌ Ошибка парсинга body:`, parseError)
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body', requestId },
+        { status: 400 }
+      )
+    }
     
     console.log(`[${requestId}] 🔄 Next.js API: Получен запрос на создание заявки:`, {
       type: body.type,
@@ -35,14 +52,41 @@ export async function POST(request: NextRequest) {
     })
     
     // Проксируем запрос к админ-панели API
-    console.log(`[${requestId}] 📤 Отправка запроса к Admin API: ${ADMIN_API_URL}/api/payment`)
-    const response = await fetch(`${ADMIN_API_URL}/api/payment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body)
+    const adminApiUrl = `${ADMIN_API_URL}/api/payment`
+    console.log(`[${requestId}] 📤 Отправка запроса к Admin API: ${adminApiUrl}`, {
+      bodySize: JSON.stringify(body).length,
+      bodyKeys: Object.keys(body),
+      timestamp: new Date().toISOString()
     })
+    
+    let response: Response
+    try {
+      response = await fetch(adminApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        // Добавляем таймаут для серверного fetch
+        signal: AbortSignal.timeout(30000) // 30 секунд
+      })
+      console.log(`[${requestId}] ✅ Получен response от Admin API`)
+    } catch (fetchError: any) {
+      console.error(`[${requestId}] ❌ Ошибка fetch к Admin API:`, {
+        error: fetchError,
+        message: fetchError?.message,
+        name: fetchError?.name,
+        stack: fetchError?.stack
+      })
+      return NextResponse.json(
+        { 
+          error: fetchError?.message || 'Failed to connect to admin API',
+          requestId,
+          details: 'Ошибка подключения к серверу. Попробуйте позже.'
+        },
+        { status: 503 }
+      )
+    }
     
     const responseTime = Date.now() - startTime
     console.log(`[${requestId}] 📥 Получен ответ от Admin API:`, {
@@ -122,7 +166,9 @@ export async function POST(request: NextRequest) {
       responseTime: `${responseTime}ms`,
       timestamp: new Date().toISOString(),
       userAgent: request.headers.get('user-agent'),
-      url: request.url
+      url: request.url,
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries())
     })
     
     return NextResponse.json(

@@ -961,13 +961,28 @@ export default function DepositStep4() {
 
   // Кнопка "Я оплатил" — отправляем заявку в админку только по нажатию (только для банковских переводов)
   const handleIPaid = async () => {
+    console.log('🔘 handleIPaid вызвана!', {
+      paymentType,
+      isPaid,
+      isCreatingRequest,
+      requireReceiptPhoto,
+      hasReceiptPhoto: !!receiptPhoto,
+      bookmaker,
+      playerId,
+      amount,
+      bank,
+      timestamp: new Date().toISOString()
+    })
+    
     // Для крипты используется отдельная функция handleCryptoIPaid
     if (paymentType === 'crypto') {
+      console.log('⚠️ paymentType === crypto, используем handleCryptoIPaid')
       return
     }
 
     // Проверяем, требуется ли фото чека
     if (requireReceiptPhoto && !receiptPhoto) {
+      console.log('❌ Требуется фото чека, но оно не загружено')
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',
@@ -992,11 +1007,13 @@ export default function DepositStep4() {
     }
 
     // Устанавливаем флаг создания заявки
+    console.log('✅ Все проверки пройдены, устанавливаем isCreatingRequest=true')
     setIsCreatingRequest(true)
     
     try {
-      console.log('🔄 Начинаем создание заявки...')
+      console.log('🔄 Начинаем создание заявки через createDepositRequest()...')
       const requestId = await createDepositRequest()
+      console.log('✅ createDepositRequest вернула requestId:', requestId)
       
       console.log('✅ Заявка создана успешно, requestId:', requestId)
       
@@ -2045,8 +2062,20 @@ export default function DepositStep4() {
       {/* Большая кнопка "Я оплатил" (для банковских переводов) */}
       {!isPaid && paymentType === 'bank' && (
         <button
-          onClick={handleIPaid}
+          onClick={(e) => {
+            console.log('🔘 Кнопка "Я оплатил" нажата!', {
+              event: e,
+              currentTarget: e.currentTarget,
+              timestamp: new Date().toISOString()
+            })
+            e.preventDefault()
+            e.stopPropagation()
+            handleIPaid().catch((error) => {
+              console.error('❌ Необработанная ошибка в handleIPaid:', error)
+            })
+          }}
           className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+          disabled={isPaid || isCreatingRequest}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
