@@ -84,11 +84,19 @@ export async function POST(request: NextRequest) {
     console.log(`✅ IncomingPayment saved: ID ${incomingPayment.id}, Amount: ${amount} ${bank || ''}`)
 
     // Пытаемся найти совпадение по сумме и автоматически пополнить баланс
-    // Делаем это асинхронно, чтобы не блокировать ответ
-    matchAndProcessPayment(incomingPayment.id, parseFloat(amount)).catch((error) => {
-      console.error(`⚠️ Auto-match failed for payment ${incomingPayment.id}:`, error)
-      // Не возвращаем ошибку, т.к. платеж уже сохранен
-    })
+    // Делаем это асинхронно, чтобы не блокировать ответ, но логируем результат
+    matchAndProcessPayment(incomingPayment.id, parseFloat(amount))
+      .then((result) => {
+        if (result && result.success) {
+          console.log(`✅ Auto-deposit completed for payment ${incomingPayment.id}, request ${result.requestId}`)
+        } else {
+          console.log(`ℹ️ No matching request found for payment ${incomingPayment.id} (amount: ${amount})`)
+        }
+      })
+      .catch((error) => {
+        console.error(`⚠️ Auto-match failed for payment ${incomingPayment.id}:`, error.message || error)
+        // Не возвращаем ошибку, т.к. платеж уже сохранен и может быть обработан вручную
+      })
 
     const response = NextResponse.json(
       createApiResponse(
@@ -213,42 +221,58 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
   console.log(`🔍 Found matching request: ID ${request.id}, Account: ${request.accountId}, Bookmaker: ${request.bookmaker}`)
   console.log(`   Request amount: ${request.amount}, Payment amount: ${amount}`)
 
-  // Обновляем статус платежа - связываем с заявкой
+  // Сначала связываем платеж с заявкой (но не помечаем как обработанный)
   await prisma.incomingPayment.update({
     where: { id: paymentId },
     data: {
       requestId: request.id,
-      isProcessed: true,
+      // НЕ устанавливаем isProcessed=true пока не пополним баланс
     },
   })
+  
+  console.log(`🔗 Payment ${paymentId} linked to request ${request.id}, attempting deposit...`)
 
   // Пополняем баланс через казино API
   try {
     const { depositToCasino } = await import('@/lib/deposit-balance')
+    console.log(`💸 Attempting deposit: Bookmaker=${request.bookmaker}, AccountId=${request.accountId}, Amount=${request.amount}`)
+    
     const depositResult = await depositToCasino(
       request.bookmaker!,
       request.accountId,
       parseFloat(request.amount?.toString() || '0')
     )
 
+    console.log(`📊 Deposit result:`, depositResult)
+
     if (!depositResult.success) {
+      console.error(`❌ Deposit failed: ${depositResult.message}`)
       throw new Error(depositResult.message || 'Deposit failed')
     }
 
-    // Успешное пополнение - обновляем статус заявки
+    // Успешное пополнение - обновляем статус заявки и помечаем платеж как обработанный
     // processedBy = "автопополнение" означает что заявка закрыта автоматически
-    const updatedRequest = await prisma.request.update({
-      where: { id: request.id },
-      data: {
-        status: 'completed',
-        statusDetail: null,
-        processedBy: 'автопополнение' as any,
-        processedAt: new Date(),
-        updatedAt: new Date(),
-      } as any,
-    })
+    // Используем статус 'autodeposit_success' для автопополнения
+    await Promise.all([
+      prisma.request.update({
+        where: { id: request.id },
+        data: {
+          status: 'autodeposit_success',
+          statusDetail: null,
+          processedBy: 'автопополнение' as any,
+          processedAt: new Date(),
+          updatedAt: new Date(),
+        } as any,
+      }),
+      prisma.incomingPayment.update({
+        where: { id: paymentId },
+        data: {
+          isProcessed: true,
+        },
+      }),
+    ])
 
-    console.log(`✅ Auto-deposit successful: Request ${request.id}, Account ${request.accountId}`)
+    console.log(`✅ Auto-deposit successful: Request ${request.id} updated to autodeposit_success, Account ${request.accountId}, Bookmaker ${request.bookmaker}, Payment ${paymentId} marked as processed`)
 
 
     return {
@@ -258,8 +282,22 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
   } catch (error: any) {
     console.error(`❌ Auto-deposit failed for request ${request.id}:`, error)
 
-    // В случае ошибки API казино, оставляем статус pending для ручной обработки
-    // processedBy не устанавливаем, т.к. заявка не закрыта
+    // В случае ошибки API казино:
+    // 1. Откатываем связь платежа с заявкой (убираем requestId и isProcessed)
+    // 2. Оставляем статус заявки pending для ручной обработки
+    try {
+      await prisma.incomingPayment.update({
+        where: { id: paymentId },
+        data: {
+          requestId: null,
+          isProcessed: false,
+        },
+      })
+      console.log(`🔄 Payment ${paymentId} unlinked from request ${request.id} due to deposit failure`)
+    } catch (rollbackError) {
+      console.error(`❌ Failed to rollback payment ${paymentId}:`, rollbackError)
+    }
+    
     throw error
   }
 }
