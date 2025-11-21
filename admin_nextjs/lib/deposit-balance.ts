@@ -219,7 +219,8 @@ export async function getMobCashConfig(bookmaker: string): Promise<{
 export async function depositToCasino(
   bookmaker: string,
   accountId: string,
-  amount: number
+  amount: number,
+  requestId?: number // ID текущей заявки, которую нужно исключить из проверки на дублирование
 ): Promise<{ success: boolean; message: string; data?: any }> {
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
 
@@ -228,22 +229,35 @@ export async function depositToCasino(
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
     
     // Ищем все недавние пополнения для этого accountId и bookmaker
-    const recentDeposits = await prisma.request.findMany({
-      where: {
-        accountId: String(accountId), // Приводим к строке для сравнения
-        bookmaker: bookmaker,
-        requestType: 'deposit',
-        status: {
-          in: ['completed', 'approved', 'auto_completed', 'autodeposit_success']
-        },
-        processedAt: {
-          gte: fiveMinutesAgo
-        }
+    // Исключаем текущую заявку из проверки, если requestId передан
+    const whereClause: any = {
+      accountId: String(accountId), // Приводим к строке для сравнения
+      bookmaker: bookmaker,
+      requestType: 'deposit',
+      status: {
+        in: ['completed', 'approved', 'auto_completed', 'autodeposit_success']
       },
+      processedAt: {
+        gte: fiveMinutesAgo
+      }
+    }
+    
+    // Исключаем текущую заявку из проверки на дублирование
+    if (requestId !== undefined) {
+      whereClause.id = { not: requestId }
+      console.log(`[Deposit Balance] Checking for duplicates, excluding requestId: ${requestId}`)
+    } else {
+      console.log(`[Deposit Balance] Checking for duplicates, no requestId provided`)
+    }
+    
+    const recentDeposits = await prisma.request.findMany({
+      where: whereClause,
       orderBy: {
         processedAt: 'desc'
       }
     })
+    
+    console.log(`[Deposit Balance] Found ${recentDeposits.length} recent deposits (excluding requestId: ${requestId || 'none'})`)
 
     // Проверяем, есть ли пополнение с такой же суммой (с точностью до 1 копейки)
     const duplicateDeposit = recentDeposits.find(deposit => {

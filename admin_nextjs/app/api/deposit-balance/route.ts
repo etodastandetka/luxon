@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Deposit Balance] Bookmaker: ${bookmaker}, Casino Account ID: ${accountId}, Amount: ${amount}, Request ID: ${requestId}`)
     
     // Пополняем баланс через API казино
-    const depositResult = await depositToCasino(bookmaker, accountId, parseFloat(amount))
+    const depositResult = await depositToCasino(bookmaker, accountId, parseFloat(amount), parseInt(requestId))
 
     if (!depositResult.success) {
       console.error(`[Deposit Balance] Failed for ${bookmaker}, accountId: ${accountId}`, depositResult)

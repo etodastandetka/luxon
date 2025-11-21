@@ -123,7 +123,8 @@ export async function POST(
             await depositToCasino(
               linkedRequest.bookmaker,
               linkedRequest.accountId,
-              requestAmount
+              requestAmount,
+              parseInt(requestId) // Передаем requestId чтобы исключить текущую заявку из проверки на дублирование
             )
             console.log(`✅ Auto-deposit successful after linking payment: Request ${requestId}, Account ${linkedRequest.accountId}`)
           } catch (error: any) {
