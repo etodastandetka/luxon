@@ -21,8 +21,13 @@ interface BalanceResult {
 }
 
 // Конфигурация для API (из переменных окружения или дефолтные значения)
-// Примечание: 1xbet теперь использует mob-cash API, поэтому удален из этого списка
 const CASHDESK_CONFIG: Record<string, CashdeskConfig> = {
+  '1xbet': {
+    hash: process.env['1XBET_HASH'] || '97f471a9db92debbda38201af67e15f64d086e94ae4b919d8a6a4f64958912cf',
+    cashierpass: process.env['1XBET_CASHIERPASS'] || 'wiaWAfE9',
+    login: process.env['1XBET_LOGIN'] || 'zhenishbAd',
+    cashdeskid: parseInt(process.env['1XBET_CASHDESKID'] || '1388580'),
+  },
   melbet: {
     hash: process.env.MELBET_HASH || 'f788cc308d9de930b292873b2cf79526da363cb24a85883575426cc7f3c4553d',
     cashierpass: process.env.MELBET_CASHIERPASS || '3nKS3!b7',
@@ -50,11 +55,10 @@ const MOSTBET_CONFIG: MostbetConfig = {
 }
 
 /**
- * Получение баланса и лимита через Cashdesk API (Melbet, Winwin)
- * Примечание: 1xbet теперь использует mob-cash API
+ * Получение баланса и лимита через Cashdesk API (1xbet, Melbet, Winwin, 888starz)
  */
 async function getCashdeskBalance(
-  casino: 'melbet' | 'winwin' | '888starz',
+  casino: '1xbet' | 'melbet' | 'winwin' | '888starz',
   cfg: CashdeskConfig
 ): Promise<BalanceResult> {
   try {
@@ -88,15 +92,11 @@ async function getCashdeskBalance(
     
     console.log(`[${casino} Balance] Confirm calculation: MD5(${cfg.cashdeskid}:${cfg.hash.substring(0, 20)}...) = ${confirm}`)
 
-    // Подпись для баланса:
-    // Согласно русской документации для всех казино (888starz, Melbet, Winwin):
+    // Подпись для баланса согласно документации CashdeskBotAPI пункт 1.1:
     // a. SHA256(hash={hash}&cashierpass={cashierpass}&dt={dt})
     // b. MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
-    // c. SHA256(combined)
-    // Английская документация может быть неточной (указывает hash&cashdeskid&dt для 888starz)
-    let step1: string
-    // Для всех казино используем одинаковую формулу: hash&cashierpass&dt
-    step1 = `hash=${cfg.hash}&cashierpass=${cfg.cashierpass}&dt=${formattedDt}`
+    // c. SHA256(step1 + step2)
+    const step1 = `hash=${cfg.hash}&cashierpass=${cfg.cashierpass}&dt=${formattedDt}`
     const sha1 = crypto.createHash('sha256').update(step1).digest('hex')
 
     // 2. MD5(dt={dt}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) - одинаково для всех
@@ -457,9 +457,38 @@ export async function getPlatformLimits(): Promise<
     // Импортируем prisma для получения конфигурации из БД
     const { prisma } = await import('./prisma')
 
-    // 1xbet - использует mob-cash API, баланс недоступен через старый API
-    // Используем -1 как специальное значение для "недоступно"
-    limits.push({ key: '1xbet', name: '1xbet', limit: -1, balance: 0 })
+    // 1xbet - использует Cashdesk API (как Melbet, Winwin)
+    let xbetCfg: CashdeskConfig | null = null
+    
+    const xbetSetting = await prisma.botConfiguration.findFirst({
+      where: { key: '1xbet_api_config' },
+    })
+
+    if (xbetSetting) {
+      const config = typeof xbetSetting.value === 'string' ? JSON.parse(xbetSetting.value) : xbetSetting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        xbetCfg = {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: parseInt(String(config.cashdeskid)),
+        }
+        console.log(`[1xbet Limits] Using config from database: cashdeskid=${xbetCfg.cashdeskid}, login=${xbetCfg.login}`)
+      }
+    }
+
+    if (!xbetCfg) {
+      xbetCfg = CASHDESK_CONFIG['1xbet']
+      console.log(`[1xbet Limits] Using default config from env: cashdeskid=${xbetCfg.cashdeskid}`)
+    }
+
+    if (xbetCfg && xbetCfg.cashdeskid > 0) {
+      const xbetBal = await getCashdeskBalance('1xbet', xbetCfg)
+      console.log(`📊 1xbet result: balance=${xbetBal.balance}, limit=${xbetBal.limit}`)
+      limits.push({ key: '1xbet', name: '1xbet', limit: xbetBal.limit, balance: xbetBal.balance })
+    } else {
+      limits.push({ key: '1xbet', name: '1xbet', limit: 0, balance: 0 })
+    }
 
     // 888starz - использует Cashdesk API, получаем конфигурацию из БД
     let starzCfg: CashdeskConfig | null = null
@@ -619,7 +648,7 @@ export async function getPlatformLimits(): Promise<
     // Возвращаем значения по умолчанию при ошибке
     // Для 1xbet используем -1 (недоступно), для остальных - 0
     const defaultLimits = [
-      { key: '1xbet', name: '1xbet', limit: -1, balance: 0 },
+      { key: '1xbet', name: '1xbet', limit: 0, balance: 0 },
       { key: '888starz', name: '888starz', limit: 0, balance: 0 },
       { key: 'melbet', name: 'Melbet', limit: 0, balance: 0 },
       { key: '1win', name: '1WIN', limit: 0, balance: 0 },
