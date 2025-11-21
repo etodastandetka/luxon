@@ -261,34 +261,26 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Выполняем автоматическое пополнение в сомах
+        // Выполняем автоматическое пополнение в сомах МГНОВЕННО
+        const bookmaker = botRequest.bookmaker || ''
+        const accountId = botRequest.accountId || botRequest.userId.toString()
+
+        console.log(`💸 [Crypto Auto-Deposit] Processing instantly: Request ${botRequest.id}, ${bookmaker}, Account ${accountId}, Amount ${amountInKgs} KGS`)
+
         try {
-          const bookmaker = botRequest.bookmaker || ''
-          const accountId = botRequest.accountId || botRequest.userId.toString()
-
-          console.log('💸 Attempting auto-deposit:', {
-            bookmaker,
-            accountId,
-            amount_kgs: amountInKgs // Пополняем в сомах
-          })
-
+          // Сразу пополняем баланс (самое важное - делаем мгновенно)
           const depositResult = await depositToCasino(
             bookmaker,
             accountId,
-            amountInKgs, // Используем сумму в сомах для пополнения в казино
-            botRequest.id // Передаем requestId чтобы исключить текущую заявку из проверки на дублирование
+            amountInKgs,
+            botRequest.id
           )
           
-          console.log('📊 Deposit result:', depositResult)
-          
           if (!depositResult.success) {
-            console.error('❌ Deposit failed:', depositResult.message)
             throw new Error(depositResult.message)
           }
           
-          // Обновляем статус заявки на успешное автопополнение
-          // statusDetail = null означает "Автопополнение • Успешно"
-          // processedBy = "автопополнение" означает что заявка закрыта автоматически
+          // После успешного пополнения - обновляем статус заявки
           await prisma.request.update({
             where: { id: botRequest.id },
             data: {
@@ -300,21 +292,9 @@ export async function POST(request: NextRequest) {
             }
           })
 
-          console.log('✅ Auto-deposit successful for crypto payment:', {
-            request_id: botRequest.id,
-            bookmaker,
-            accountId,
-            amount_kgs: amountInKgs,
-            amount_usd: amountUsd,
-            amount_usdt: amountUsdt,
-            transaction_id: depositResult.data?.transactionId
-          })
+          console.log(`✅ [Crypto Auto-Deposit] SUCCESS: Request ${botRequest.id} → autodeposit_success`)
         } catch (error: any) {
-          console.error('❌ Auto-deposit failed for crypto payment:', {
-            request_id: botRequest.id,
-            error: error.message,
-            stack: error.stack
-          })
+          console.error(`❌ [Crypto Auto-Deposit] FAILED for request ${botRequest.id}:`, error.message)
           
           // Обновляем статус заявки для ручной проверки
           await prisma.request.update({
