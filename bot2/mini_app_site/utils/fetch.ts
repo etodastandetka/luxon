@@ -132,6 +132,15 @@ export async function safeFetch(
         errorName: error.name
       })
       
+      // Проверяем если это ошибка 413 (Request Entity Too Large)
+      const is413Error = errorMessage.includes('413') || 
+                        errorMessage.includes('Request Entity Too Large') ||
+                        errorMessage.includes('Entity Too Large')
+      if (is413Error) {
+        console.error('❌ Ошибка 413: Request Entity Too Large')
+        throw new Error('Размер данных слишком большой. Пожалуйста, уменьшите размер фото или попробуйте без фото.')
+      }
+      
       if (isNetworkError) {
         // Для сетевых ошибок пробуем еще раз
         if (attempt < retries) {
