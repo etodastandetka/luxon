@@ -87,24 +87,34 @@ export async function compressImage(
 
 /**
  * Проверяет размер base64 строки и сжимает если нужно
+ * Всегда сжимает изображение для оптимизации, даже если размер в норме
  * @param base64String - Base64 строка изображения
  * @param maxSizeKB - Максимальный размер в KB (по умолчанию 500KB)
- * @returns Сжатая base64 строка или оригинал если размер нормальный
+ * @param alwaysCompress - Всегда сжимать, даже если размер в норме (по умолчанию true)
+ * @returns Сжатая base64 строка
  */
 export async function compressImageIfNeeded(
   base64String: string,
-  maxSizeKB: number = 500
+  maxSizeKB: number = 500,
+  alwaysCompress: boolean = true
 ): Promise<string> {
   const currentSizeKB = (base64String.length * 3) / 4 / 1024
   
-  console.log(`📏 Размер изображения: ${currentSizeKB.toFixed(2)} KB`)
+  console.log(`📏 Размер изображения: ${currentSizeKB.toFixed(2)} KB, лимит: ${maxSizeKB} KB`)
   
-  if (currentSizeKB <= maxSizeKB) {
+  // Если размер уже в норме и не требуется всегда сжимать, возвращаем оригинал
+  if (!alwaysCompress && currentSizeKB <= maxSizeKB) {
     console.log('✅ Размер изображения в норме, сжатие не требуется')
     return base64String
   }
   
-  console.log(`⚠️ Изображение слишком большое (${currentSizeKB.toFixed(2)} KB), начинаем сжатие...`)
+  // Всегда сжимаем для оптимизации и предотвращения ошибки 413
+  if (currentSizeKB > maxSizeKB) {
+    console.log(`⚠️ Изображение слишком большое (${currentSizeKB.toFixed(2)} KB), начинаем сжатие...`)
+  } else {
+    console.log(`📸 Оптимизируем изображение (${currentSizeKB.toFixed(2)} KB)...`)
+  }
+  
   return compressImage(base64String, 1920, 1920, 0.8, maxSizeKB)
 }
 
