@@ -493,10 +493,21 @@ export default function DepositStep4() {
         console.warn('⚠️ Base64 не сохранен, читаем файл заново (fallback)')
         finalReceiptPhotoBase64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()
-          reader.onloadend = () => {
+          reader.onloadend = async () => {
             const base64String = reader.result as string
-            console.log('📸 Фото прочитано заново, размер:', base64String.length)
-            resolve(base64String)
+            const originalSizeKB = (base64String.length * 3) / 4 / 1024
+            console.log('📸 Фото прочитано заново, размер:', `${originalSizeKB.toFixed(2)} KB`)
+            
+            // Сжимаем фото сразу после чтения
+            try {
+              const compressed = await compressImageIfNeeded(base64String, 300)
+              const compressedSizeKB = (compressed.length * 3) / 4 / 1024
+              console.log(`📸 Фото сжато при чтении: ${originalSizeKB.toFixed(2)} KB -> ${compressedSizeKB.toFixed(2)} KB`)
+              resolve(compressed)
+            } catch (compressError) {
+              console.error('❌ Ошибка при сжатии фото при чтении:', compressError)
+              resolve(base64String) // Возвращаем оригинал если сжатие не удалось
+            }
           }
           reader.onerror = (error) => {
             console.error('❌ Ошибка при чтении фото:', error)
@@ -506,14 +517,22 @@ export default function DepositStep4() {
         })
       }
       
-      // Сжимаем фото если оно есть, чтобы избежать ошибки 413
+      // Всегда сжимаем фото перед отправкой, если оно есть (для всех устройств)
       if (finalReceiptPhotoBase64) {
-        console.log('📸 Сжимаем фото чека перед отправкой...')
+        const originalSizeKB = (finalReceiptPhotoBase64.length * 3) / 4 / 1024
+        console.log(`📸 Проверяем и сжимаем фото чека перед отправкой (текущий размер: ${originalSizeKB.toFixed(2)} KB)...`)
+        
         try {
           // Сжимаем до 300KB чтобы точно поместиться в лимит nginx (обычно 1MB)
+          // Это работает для всех устройств, не только iOS
           finalReceiptPhotoBase64 = await compressImageIfNeeded(finalReceiptPhotoBase64, 300)
           const compressedSizeKB = (finalReceiptPhotoBase64.length * 3) / 4 / 1024
-          console.log(`✅ Фото сжато до ${compressedSizeKB.toFixed(2)} KB`)
+          
+          if (compressedSizeKB < originalSizeKB) {
+            console.log(`✅ Фото сжато: ${originalSizeKB.toFixed(2)} KB -> ${compressedSizeKB.toFixed(2)} KB`)
+          } else {
+            console.log(`✅ Фото уже оптимального размера: ${compressedSizeKB.toFixed(2)} KB`)
+          }
         } catch (compressError) {
           console.error('❌ Ошибка при сжатии фото:', compressError)
           // Продолжаем с оригиналом если сжатие не удалось
@@ -1002,21 +1021,26 @@ export default function DepositStep4() {
       const reader = new FileReader()
       reader.onloadend = async () => {
         const base64String = reader.result as string
-        console.log('📸 Фото конвертировано в base64, размер:', base64String.length, 'символов')
+        const originalSizeKB = (base64String.length * 3) / 4 / 1024
+        console.log('📸 Фото конвертировано в base64, размер:', `${originalSizeKB.toFixed(2)} KB`)
         
-        // Сжимаем фото сразу при загрузке
+        // Всегда сжимаем фото при загрузке (для всех устройств)
+        // Это предотвращает ошибку 413 и ускоряет отправку
         try {
           const compressedBase64 = await compressImageIfNeeded(base64String, 300)
-          const originalSizeKB = (base64String.length * 3) / 4 / 1024
           const compressedSizeKB = (compressedBase64.length * 3) / 4 / 1024
           
-          console.log(`📸 Фото сжато: ${originalSizeKB.toFixed(2)} KB -> ${compressedSizeKB.toFixed(2)} KB`)
+          if (compressedSizeKB < originalSizeKB) {
+            console.log(`📸 Фото сжато при загрузке: ${originalSizeKB.toFixed(2)} KB -> ${compressedSizeKB.toFixed(2)} KB`)
+          } else {
+            console.log(`📸 Фото уже оптимального размера: ${compressedSizeKB.toFixed(2)} KB`)
+          }
           
           // Используем сжатое фото для превью и сохранения
           setReceiptPhotoPreview(compressedBase64)
           setReceiptPhotoBase64(compressedBase64)
         } catch (compressError) {
-          console.error('❌ Ошибка при сжатии фото:', compressError)
+          console.error('❌ Ошибка при сжатии фото при загрузке:', compressError)
           // Если сжатие не удалось, используем оригинал
           setReceiptPhotoPreview(base64String)
           setReceiptPhotoBase64(base64String)
