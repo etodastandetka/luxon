@@ -29,18 +29,23 @@ interface MobCashConfig {
 }
 
 /**
- * Генерация confirm для 1xbet/Melbet
+ * Генерация confirm для вывода
+ * Согласно документации CashdeskBotAPI пункт 4.2: confirm = MD5(userId:hash)
+ * Для Melbet и Winwin userId должен быть в lowercase
  */
-function generateConfirm(userId: string, hash: string): string {
-  return crypto.createHash('md5').update(`${userId}:${hash}`).digest('hex')
+function generateConfirm(userId: string, hash: string, isMelbet: boolean = false, isWinwin: boolean = false): string {
+  // Для Melbet и Winwin userId должен быть в lowercase для confirm
+  const userIdForConfirm = (isMelbet || isWinwin) ? userId.toLowerCase() : userId
+  const confirmString = `${userIdForConfirm}:${hash}`
+  return crypto.createHash('md5').update(confirmString).digest('hex')
 }
 
 /**
  * Генерация подписи для вывода 1xbet/Melbet/888starz/Winwin
- * Согласно документации CashdeskBotAPI:
- * 1. SHA256(hash={hash}&lng=ru&UserId={user_id}) - UserId с большой буквы
- * 2. MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid}) для Payout
- * 3. SHA256(step1 + step2)
+ * Согласно документации CashdeskBotAPI пункт 4.1:
+ * a. SHA256(hash={hash}&lng={lng}&UserId={UserId}) - в описании UserId с большой, в примере используется userid с маленькой
+ * b. MD5(code={code}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
+ * c. SHA256(step1 + step2)
  */
 function generateSignForWithdraw(
   userId: string,
@@ -49,7 +54,8 @@ function generateSignForWithdraw(
   cashierpass: string,
   cashdeskid: string | number
 ): string {
-  // a) SHA256(hash={hash}&lng=ru&userid={user_id}) - согласно примеру в документации используется userid с маленькой буквы
+  // a) SHA256(hash={hash}&lng=ru&userid={user_id})
+  // Согласно документации используется userid с маленькой буквы
   const step1String = `hash=${hash}&lng=ru&userid=${userId}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
@@ -78,15 +84,20 @@ export async function checkWithdrawAmountCashdesk(
   try {
     const normalizedBookmaker = bookmaker.toLowerCase()
     const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI'
+    const is1xbet = normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' || normalizedBookmaker.includes('xbet')
+    const isMelbet = normalizedBookmaker.includes('melbet')
+    const isWinwin = normalizedBookmaker.includes('winwin')
+    const is888starz = normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888')
     
-    // Для Melbet и Winwin userid должен быть в нижнем регистре
-    // Для 888starz используем userId как есть (без lowercase)
-    const userIdForApi = (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin'))
+    // Для Melbet и Winwin userid должен быть в нижнем регистре для URL и confirm
+    // Для 1xbet и 888starz используем userId как есть (без lowercase)
+    const userIdForApi = (isMelbet || isWinwin)
       ? userId.toLowerCase() 
       : userId
 
     // Генерируем confirm: MD5(userId:hash)
-    const confirm = generateConfirm(userIdForApi, config.hash!)
+    // Передаем оригинальный userId и флаги, generateConfirm сам обработает lowercase
+    const confirm = generateConfirm(userId, config.hash!, isMelbet, isWinwin)
     
     // Генерируем подпись согласно документации:
     // 1. SHA256(hash={hash}&lng=ru&userid={user_id})
@@ -110,21 +121,40 @@ export async function checkWithdrawAmountCashdesk(
       confirm: confirm,
     }
 
+    // Генерируем Basic Auth для 1xbet и 888starz
+    const generateBasicAuth = (login: string, cashierpass: string): string => {
+      const authString = `${login}:${cashierpass}`
+      const authBase64 = Buffer.from(authString).toString('base64')
+      return `Basic ${authBase64}`
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'sign': sign,
+    }
+
+    // Для 1xbet и 888starz используем Basic Auth, для Winwin и Melbet - без него
+    if (is1xbet || is888starz) {
+      const authHeader = generateBasicAuth(config.login!, config.cashierpass!)
+      headers['Authorization'] = authHeader
+      console.log(`[Cashdesk Withdraw] Using Basic Auth for ${bookmaker}`)
+    } else {
+      console.log(`[Cashdesk Withdraw] NOT using Basic Auth for ${bookmaker} (Winwin/Melbet)`)
+    }
+
     console.log(`[Cashdesk Withdraw] Bookmaker: ${bookmaker}, User ID: ${userIdForApi}, Code: ${code}`)
     console.log(`[Cashdesk Withdraw] URL: ${url}`)
     console.log(`[Cashdesk Withdraw] Request body:`, JSON.stringify(requestBody, null, 2))
     console.log(`[Cashdesk Withdraw] Sign: ${sign}`)
     console.log(`[Cashdesk Withdraw] Confirm: ${confirm}`)
+    console.log(`[Cashdesk Withdraw] Bookmaker flags: is1xbet=${is1xbet}, isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`)
 
     // ВАЖНО: Этот запрос ВЫПОЛНЯЕТ вывод и возвращает summa в ответе
     // Если код верный - вывод будет выполнен и вернется сумма
     // Если код неверный - вернется ошибка
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'sign': sign,
-      },
+      headers,
       body: JSON.stringify(requestBody),
     })
 

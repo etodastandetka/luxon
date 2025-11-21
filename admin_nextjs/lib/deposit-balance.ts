@@ -6,6 +6,32 @@ import { getMobCashConfigFromTokens } from './mobcash-tokens'
 export async function getCasinoConfig(bookmaker: string) {
   const normalizedBookmaker = bookmaker?.toLowerCase() || ''
   
+  // 1xbet использует Cashdesk API (как Melbet, Winwin)
+  if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' || normalizedBookmaker.includes('xbet')) {
+    const setting = await prisma.botConfiguration.findFirst({
+      where: { key: '1xbet_api_config' },
+    })
+
+    if (setting) {
+      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+      if (config.hash && config.cashierpass && config.login && config.cashdeskid) {
+        return {
+          hash: config.hash,
+          cashierpass: config.cashierpass,
+          login: config.login,
+          cashdeskid: String(config.cashdeskid),
+        }
+      }
+    }
+
+    return {
+      hash: process.env['1XBET_HASH'] || '97f471a9db92debbda38201af67e15f64d086e94ae4b919d8a6a4f64958912cf',
+      cashierpass: process.env['1XBET_CASHIERPASS'] || 'wiaWAfE9',
+      login: process.env['1XBET_LOGIN'] || 'zhenishbAd',
+      cashdeskid: process.env['1XBET_CASHDESKID'] || '1388580',
+    }
+  }
+  
   // Для Melbet нужны: hash, cashierpass, login, cashdeskid
   if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {
     const setting = await prisma.botConfiguration.findFirst({
@@ -240,45 +266,9 @@ export async function depositToCasino(
         }
       }
     }
-          // Для 1xbet используем mob-cash API
-          if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
-            const mobCashConfig = await getMobCashConfig(bookmaker)
-            
-            if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
-              return {
-                success: false,
-                message: `${bookmaker} mob-cash API configuration not found. Please configure ${normalizedBookmaker.includes('888') ? '888starz' : '1xbet'}_mobcash_config in database or set MOBCASH_* environment variables.`,
-              }
-            }
-
-            // Логируем конфигурацию для отладки
-            const hasAllTokens = 
-              mobCashConfig.bearer_token && 
-              mobCashConfig.bearer_token.trim() !== '' &&
-              mobCashConfig.user_id && 
-              mobCashConfig.user_id.trim() !== '' &&
-              mobCashConfig.session_id && 
-              mobCashConfig.session_id.trim() !== ''
-            
-            console.log('[Deposit Balance] Mob-cash config:', {
-              has_all_tokens: hasAllTokens,
-              has_bearer_token: !!(mobCashConfig.bearer_token && mobCashConfig.bearer_token.trim() !== ''),
-              has_user_id: !!(mobCashConfig.user_id && mobCashConfig.user_id.trim() !== ''),
-              has_session_id: !!(mobCashConfig.session_id && mobCashConfig.session_id.trim() !== ''),
-              login: mobCashConfig.login,
-              cashdesk_id: mobCashConfig.cashdesk_id,
-            })
-            
-            if (!hasAllTokens) {
-              console.warn('[Deposit Balance] ⚠️ Mob-cash tokens not fully configured. OAuth2 flow will fail without client_secret.')
-              console.warn('[Deposit Balance] Please add MOBCASH_BEARER_TOKEN, MOBCASH_USER_ID, and MOBCASH_SESSION_ID to .env file.')
-            }
-
-            return await depositMobCashAPI(accountId, amount, mobCashConfig)
-          }
-    
-    // Melbet, Winwin и 888starz используют Cashdesk API
-    if (normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin') ||
+    // 1xbet, Melbet, Winwin и 888starz используют Cashdesk API
+    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' ||
+        normalizedBookmaker.includes('melbet') || normalizedBookmaker.includes('winwin') ||
         normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
       const config = await getCasinoConfig(bookmaker)
       

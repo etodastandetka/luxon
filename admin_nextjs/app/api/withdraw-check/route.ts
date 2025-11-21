@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
-import { processWithdraw, checkWithdrawAmountMobCash } from '@/lib/casino-withdraw'
-import { getMobCashConfig } from '@/lib/deposit-balance'
+import { processWithdraw, checkWithdrawAmountCashdesk } from '@/lib/casino-withdraw'
+import { getCasinoConfig } from '@/lib/deposit-balance'
 
 /**
  * API для проверки суммы вывода и подтверждения вывода
@@ -45,13 +45,48 @@ export async function POST(request: NextRequest) {
     
     let config: any = null
 
-    // Для 1xbet используем mob-cash API (новый API в 2 шага)
-    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
-      const mobCashConfig = await getMobCashConfig(bookmaker)
+    // 1xbet, Melbet, Winwin, 888starz используют Cashdesk API
+    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' ||
+        normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet' ||
+        normalizedBookmaker.includes('winwin') || normalizedBookmaker === 'winwin' ||
+        normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
       
-      if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
+      // Определяем ключ конфигурации
+      let configKey = ''
+      if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
+        configKey = '1xbet_api_config'
+      } else if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {
+        configKey = 'melbet_api_config'
+      } else if (normalizedBookmaker.includes('winwin')) {
+        configKey = 'winwin_api_config'
+      } else if (normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
+        configKey = '888starz_api_config'
+      }
+
+      const setting = await prisma.botConfiguration.findFirst({
+        where: { key: configKey },
+      })
+
+      if (setting) {
+        const settingConfig = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+        if (settingConfig.hash && settingConfig.cashierpass && settingConfig.login && settingConfig.cashdeskid) {
+          config = {
+            hash: settingConfig.hash,
+            cashierpass: settingConfig.cashierpass,
+            login: settingConfig.login,
+            cashdeskid: String(settingConfig.cashdeskid),
+          }
+        }
+      }
+
+      // Fallback на переменные окружения
+      if (!config) {
+        config = await getCasinoConfig(bookmaker)
+      }
+
+      if (!config || !config.hash || !config.cashierpass || !config.cashdeskid) {
         return NextResponse.json(
-          createApiResponse(null, '1xbet mob-cash API configuration not found. Please configure 1xbet_mobcash_config in database or set MOBCASH_* environment variables.'),
+          createApiResponse(null, `${bookmaker} API configuration not found. Please configure ${configKey} in database.`),
           { 
             status: 400,
             headers: {
@@ -61,24 +96,13 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Только проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
-      // Выполнение вывода (mobile.withdrawal) будет в confirm странице
-      console.log(`[Withdraw Check] Calling checkWithdrawAmountMobCash with:`)
-      console.log(`  - playerId: ${playerId} (type: ${typeof playerId})`)
-      console.log(`  - code: ${code} (type: ${typeof code})`)
-      console.log(`  - mobCashConfig:`, {
-        login: mobCashConfig.login,
-        cashdesk_id: mobCashConfig.cashdesk_id,
-        has_bearer_token: !!mobCashConfig.bearer_token,
-        has_user_id: !!mobCashConfig.user_id,
-        has_session_id: !!mobCashConfig.session_id,
-        default_lat: mobCashConfig.default_lat,
-        default_lon: mobCashConfig.default_lon,
-      })
+      console.log(`[Withdraw Check] Calling checkWithdrawAmountCashdesk for ${bookmaker}`)
+      console.log(`  - playerId: ${playerId}`)
+      console.log(`  - code: ${code}`)
       
-      const checkResult = await checkWithdrawAmountMobCash(playerId, code, mobCashConfig)
+      const checkResult = await checkWithdrawAmountCashdesk(bookmaker, playerId, code, config)
       
-      console.log(`[Withdraw Check] checkWithdrawAmountMobCash result:`, {
+      console.log(`[Withdraw Check] checkWithdrawAmountCashdesk result:`, {
         success: checkResult.success,
         amount: checkResult.amount,
         message: checkResult.message,
@@ -97,7 +121,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Проверяем, что сумма получена
-      if (!checkResult.amount || checkResult.amount <= 0) {
+      if (checkResult.amount === undefined || checkResult.amount === null || isNaN(checkResult.amount)) {
         return NextResponse.json(
           createApiResponse(null, 'Не удалось получить сумму ордера. Проверьте код и попробуйте еще раз.'),
           { 
@@ -109,91 +133,18 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Возвращаем только сумму ордера (без выполнения вывода)
-      return NextResponse.json(
-        createApiResponse(
-          {
-            amount: checkResult.amount,
-            message: 'Сумма ордера получена. Подтвердите вывод для выполнения операции.',
-          },
-          'Withdrawal amount retrieved'
-        ),
-        {
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
-    }
-
-    // 888starz использует Cashdesk API
-    if (normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
-      const setting = await prisma.botConfiguration.findFirst({
-        where: { key: '888starz_api_config' },
-      })
-
-      if (setting) {
-        const settingConfig = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
-        if (settingConfig.hash && settingConfig.cashierpass && settingConfig.login && settingConfig.cashdeskid) {
-          config = {
-            hash: settingConfig.hash,
-            cashierpass: settingConfig.cashierpass,
-            login: settingConfig.login,
-            cashdeskid: String(settingConfig.cashdeskid),
-          }
-        }
-      }
-
-      if (!config) {
-        config = {
-          hash: process.env['888STARZ_HASH'] || '6e978b90d2e3d7010390c680cf036b49e521bf91e32839021db8c3637f1cbc56',
-          cashierpass: process.env['888STARZ_CASHIERPASS'] || 'ydsuHiK^',
-          login: process.env['888STARZ_LOGIN'] || 'burgoevka',
-          cashdeskid: process.env['888STARZ_CASHDESKID'] || '1416358',
-        }
-      }
-
-      // Для 888starz метод Payout сразу выполняет вывод и возвращает summa
-      // Вызываем checkWithdrawAmountCashdesk, который выполнит вывод и вернет сумму
-      const { checkWithdrawAmountCashdesk } = await import('@/lib/casino-withdraw')
-      const checkResult = await checkWithdrawAmountCashdesk(bookmaker, playerId, code, config)
+      // Для Cashdesk API метод Payout сразу выполняет вывод
+      // Возвращаем флаг alreadyExecuted для 1xbet, Winwin, 888starz (как у других Cashdesk казино)
+      const amount = Math.abs(checkResult.amount) // Сумма может быть отрицательной
       
-      if (!checkResult.success) {
-        return NextResponse.json(
-          createApiResponse(null, checkResult.message || 'Код неверный или вывод не найден'),
-          { 
-            status: 400,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
-      }
-
-      // Проверяем, что сумма получена
-      if (!checkResult.amount || checkResult.amount <= 0) {
-        return NextResponse.json(
-          createApiResponse(null, 'Не удалось получить сумму вывода. Проверьте код и попробуйте еще раз.'),
-          { 
-            status: 400,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
-      }
-
-      // Для 888starz вывод уже выполнен на этом этапе (Payout сразу выполняет вывод)
-      // Возвращаем сумму для создания заявки
       return NextResponse.json(
         createApiResponse(
           {
-            amount: checkResult.amount,
-            message: 'Вывод выполнен успешно. Создайте заявку для подтверждения.',
-            alreadyExecuted: true, // Флаг, что вывод уже выполнен
+            amount: amount,
+            alreadyExecuted: true, // Cashdesk API Payout сразу выполняет вывод
+            message: 'Вывод выполнен успешно',
           },
-          undefined, // error
-          'Withdrawal executed successfully' // message
+          'Withdrawal executed'
         ),
         {
           headers: {
@@ -203,59 +154,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet') {
-      const setting = await prisma.botConfiguration.findFirst({
-        where: { key: 'melbet_api_config' },
-      })
-
-      if (setting) {
-        const settingConfig = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
-        if (settingConfig.hash && settingConfig.cashierpass && settingConfig.login && settingConfig.cashdeskid) {
-          config = {
-            hash: settingConfig.hash,
-            cashierpass: settingConfig.cashierpass,
-            login: settingConfig.login,
-            cashdeskid: String(settingConfig.cashdeskid),
-          }
-        }
-      }
-
-      if (!config) {
-        config = {
-          hash: process.env.MELBET_HASH || 'f788cc308d9de930b292873b2cf79526da363cb24a85883575426cc7f3c4553d',
-          cashierpass: process.env.MELBET_CASHIERPASS || '3nKS3!b7',
-          login: process.env.MELBET_LOGIN || 'burgoevk',
-          cashdeskid: process.env.MELBET_CASHDESKID || '1415842',
-        }
-      }
-    }
-
-    if (normalizedBookmaker.includes('winwin') || normalizedBookmaker === 'winwin') {
-      const setting = await prisma.botConfiguration.findFirst({
-        where: { key: 'winwin_api_config' },
-      })
-
-      if (setting) {
-        const settingConfig = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
-        if (settingConfig.hash && settingConfig.cashierpass && settingConfig.login && settingConfig.cashdeskid) {
-          config = {
-            hash: settingConfig.hash,
-            cashierpass: settingConfig.cashierpass,
-            login: settingConfig.login,
-            cashdeskid: String(settingConfig.cashdeskid),
-          }
-        }
-      }
-
-      if (!config) {
-        config = {
-          hash: process.env.WINWIN_HASH || 'ca4c49cea830e2fbebf7e3894659df1cd74abb2e0e79d58b17ecf82ea148cf2d',
-          cashierpass: process.env.WINWIN_CASHIERPASS || 'yYRbyQeX',
-          login: process.env.WINWIN_LOGIN || 'burgoevkan',
-          cashdeskid: process.env.WINWIN_CASHDESKID || '1416579',
-        }
-      }
-    }
 
     // Для Mostbet
     if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
@@ -332,9 +230,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Для 888starz и Winwin вывод уже выполнен на этом этапе (Payout сразу выполняет вывод)
+    // Для 1xbet, 888starz и Winwin вывод уже выполнен на этом этапе (Cashdesk API Payout сразу выполняет вывод)
     // Для остальных казино вывод будет выполнен позже
-    const isAlreadyExecuted = normalizedBookmaker.includes('888starz') || 
+    const isAlreadyExecuted = normalizedBookmaker.includes('1xbet') || 
+                              normalizedBookmaker === '1xbet' ||
+                              normalizedBookmaker.includes('888starz') || 
                               normalizedBookmaker.includes('888') || 
                               normalizedBookmaker === '888starz' ||
                               normalizedBookmaker.includes('winwin') ||

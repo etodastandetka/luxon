@@ -549,11 +549,18 @@ export default function LimitsPage() {
           <div className="space-y-2">
             {stats.platformLimits.map((platform) => {
               // Для 1win показываем баланс вместо лимита
-              const displayValue = platform.key === '1win' && platform.balance !== undefined && platform.balance > 0
-                ? platform.balance
-                : platform.limit
+              // Для остальных показываем limit, если он > 0, иначе balance если есть
+              let displayValue = platform.limit
               
-              const isNA = displayValue < 0
+              if (platform.key === '1win' && platform.balance !== undefined && platform.balance > 0) {
+                displayValue = platform.balance
+              } else if (platform.limit <= 0 && platform.balance !== undefined && platform.balance > 0) {
+                // Если limit не доступен, показываем balance
+                displayValue = platform.balance
+              }
+              
+              // N/A только если значение действительно недоступно (меньше или равно 0)
+              const isNA = displayValue <= 0 || isNaN(displayValue)
               
               return (
                 <div key={platform.key} className="flex items-center justify-between py-2">

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
-import { processWithdrawMobCash } from '@/lib/casino-withdraw'
-import { getMobCashConfig } from '@/lib/deposit-balance'
+import { processWithdraw, checkWithdrawAmountCashdesk } from '@/lib/casino-withdraw'
+import { getCasinoConfig } from '@/lib/deposit-balance'
 
 /**
  * API для выполнения вывода средств (mobile.withdrawal)
@@ -42,50 +42,22 @@ export async function POST(request: NextRequest) {
 
     const normalizedBookmaker = bookmaker.toLowerCase()
 
-    // Для 1xbet используем mob-cash API
-    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
-      const mobCashConfig = await getMobCashConfig(bookmaker)
+    // 1xbet, Melbet, Winwin, 888starz используют Cashdesk API
+    // Для Cashdesk API метод Payout уже выполнил вывод на этапе check
+    // Этот endpoint используется только для других казино, которые требуют отдельного выполнения
+    if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' ||
+        normalizedBookmaker.includes('melbet') || normalizedBookmaker === 'melbet' ||
+        normalizedBookmaker.includes('winwin') || normalizedBookmaker === 'winwin' ||
+        normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
       
-      if (!mobCashConfig || !mobCashConfig.login || !mobCashConfig.password || !mobCashConfig.cashdesk_id) {
-        return NextResponse.json(
-          createApiResponse(null, '1xbet mob-cash API configuration not found. Please configure 1xbet_mobcash_config in database or set MOBCASH_* environment variables.'),
-          { 
-            status: 400,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
-      }
-
-      // Выполняем вывод (mobile.withdrawal)
-      const withdrawResult = await processWithdrawMobCash(
-        playerId,
-        parseFloat(amount),
-        code,
-        mobCashConfig
-      )
-
-      if (!withdrawResult.success) {
-        return NextResponse.json(
-          createApiResponse(null, withdrawResult.message || 'Ошибка выполнения вывода'),
-          { 
-            status: 400,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
-      }
-
-      // Вывод выполнен успешно
+      // Для Cashdesk API вывод уже выполнен на этапе check
       return NextResponse.json(
         createApiResponse(
           {
-            amount: withdrawResult.amount,
-            message: withdrawResult.message || 'Вывод выполнен успешно',
+            amount: parseFloat(amount),
+            message: 'Вывод уже выполнен на этапе проверки кода',
           },
-          'Withdrawal executed successfully'
+          'Withdrawal already executed'
         ),
         {
           headers: {
@@ -95,11 +67,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Для других казино возвращаем ошибку (пока не поддерживается)
+    // Для других казино (Mostbet, 1win и т.д.) может потребоваться отдельное выполнение
+    const config = await getCasinoConfig(bookmaker)
+    
+    if (!config) {
+      return NextResponse.json(
+        createApiResponse(null, `${bookmaker} API configuration not found`),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
+    const withdrawResult = await processWithdraw(bookmaker, playerId, code, config)
+
+    if (!withdrawResult.success) {
+      return NextResponse.json(
+        createApiResponse(null, withdrawResult.message || 'Ошибка выполнения вывода'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
     return NextResponse.json(
-      createApiResponse(null, `Withdrawal execution for ${bookmaker} is not supported via this endpoint`),
-      { 
-        status: 400,
+      createApiResponse(
+        {
+          amount: withdrawResult.amount,
+          message: withdrawResult.message || 'Вывод выполнен успешно',
+        },
+        'Withdrawal executed successfully'
+      ),
+      {
         headers: {
           'Access-Control-Allow-Origin': '*',
         }
