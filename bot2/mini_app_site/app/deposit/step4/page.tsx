@@ -9,6 +9,7 @@ import { getTelegramUser, syncWithBot, notifyUser, checkUserBlocked } from '../.
 import { useAlert } from '../../../components/useAlert'
 import { formatKgs, formatUsdt, formatUsd } from '../../../utils/crypto-pay'
 import { safeFetch } from '../../../utils/fetch'
+import { compressImageIfNeeded } from '../../../utils/image-compress'
 
 export default function DepositStep4() {
   const [bank, setBank] = useState('omoney') // По умолчанию O!Money
@@ -504,6 +505,20 @@ export default function DepositStep4() {
           reader.readAsDataURL(receiptPhoto)
         })
       }
+      
+      // Сжимаем фото если оно есть, чтобы избежать ошибки 413
+      if (finalReceiptPhotoBase64) {
+        console.log('📸 Сжимаем фото чека перед отправкой...')
+        try {
+          // Сжимаем до 300KB чтобы точно поместиться в лимит nginx (обычно 1MB)
+          finalReceiptPhotoBase64 = await compressImageIfNeeded(finalReceiptPhotoBase64, 300)
+          const compressedSizeKB = (finalReceiptPhotoBase64.length * 3) / 4 / 1024
+          console.log(`✅ Фото сжато до ${compressedSizeKB.toFixed(2)} KB`)
+        } catch (compressError) {
+          console.error('❌ Ошибка при сжатии фото:', compressError)
+          // Продолжаем с оригиналом если сжатие не удалось
+        }
+      }
 
       // Для крипты получаем сумму в долларах
       const savedAmountUsd = paymentType === 'crypto' ? localStorage.getItem('deposit_amount_usd') : null
@@ -622,9 +637,18 @@ export default function DepositStep4() {
         isIOS
       })
       
-      // Предупреждение если body слишком большой (больше 5MB)
-      if (bodySize > 5 * 1024 * 1024) {
-        console.warn('⚠️ Body слишком большой:', bodySize, 'bytes. Может быть проблема на iOS.')
+      // Проверяем размер body и предупреждаем если слишком большой
+      const maxBodySize = 1024 * 1024 // 1MB - лимит nginx по умолчанию
+      if (bodySize > maxBodySize) {
+        const errorMsg = language === 'ru'
+          ? `Размер данных слишком большой (${(bodySize / 1024).toFixed(2)} KB). Пожалуйста, загрузите фото меньшего размера или попробуйте без фото.`
+          : `Data size too large (${(bodySize / 1024).toFixed(2)} KB). Please upload a smaller photo or try without photo.`
+        console.error('❌ Body слишком большой:', bodySize, 'bytes')
+        throw new Error(errorMsg)
+      }
+      
+      if (bodySize > 500 * 1024) {
+        console.warn('⚠️ Body большой:', `${(bodySize / 1024).toFixed(2)} KB. Может быть проблема с nginx лимитом.`)
       }
       
       const startTime = Date.now()
@@ -968,11 +992,27 @@ export default function DepositStep4() {
       
       // Создаем превью и сохраняем base64 сразу
       const reader = new FileReader()
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64String = reader.result as string
         console.log('📸 Фото конвертировано в base64, размер:', base64String.length, 'символов')
-        setReceiptPhotoPreview(base64String)
-        setReceiptPhotoBase64(base64String)
+        
+        // Сжимаем фото сразу при загрузке
+        try {
+          const compressedBase64 = await compressImageIfNeeded(base64String, 300)
+          const originalSizeKB = (base64String.length * 3) / 4 / 1024
+          const compressedSizeKB = (compressedBase64.length * 3) / 4 / 1024
+          
+          console.log(`📸 Фото сжато: ${originalSizeKB.toFixed(2)} KB -> ${compressedSizeKB.toFixed(2)} KB`)
+          
+          // Используем сжатое фото для превью и сохранения
+          setReceiptPhotoPreview(compressedBase64)
+          setReceiptPhotoBase64(compressedBase64)
+        } catch (compressError) {
+          console.error('❌ Ошибка при сжатии фото:', compressError)
+          // Если сжатие не удалось, используем оригинал
+          setReceiptPhotoPreview(base64String)
+          setReceiptPhotoBase64(base64String)
+        }
       }
       reader.onerror = (error) => {
         console.error('❌ Ошибка при чтении фото:', error)
