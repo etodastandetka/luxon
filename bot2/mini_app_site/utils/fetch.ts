@@ -23,21 +23,42 @@ export async function safeFetch(
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    console.log(`🔄 safeFetch: попытка ${attempt + 1}/${retries + 1} для ${url}`)
+    
     try {
       // Создаем AbortController для таймаута
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), timeout)
+      const timeoutId = setTimeout(() => {
+        console.warn(`⏱️ Таймаут запроса ${url} после ${timeout}ms`)
+        controller.abort()
+      }, timeout)
 
       try {
+        console.log(`📤 Отправка fetch запроса: ${url}`, {
+          method: fetchOptions.method || 'GET',
+          hasBody: !!fetchOptions.body,
+          bodySize: fetchOptions.body ? String(fetchOptions.body).length : 0
+        })
+        
         const response = await fetch(url, {
           ...fetchOptions,
           signal: controller.signal,
         })
 
         clearTimeout(timeoutId)
+        console.log(`✅ Получен response от ${url}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
+        })
         return response
       } catch (fetchError: any) {
         clearTimeout(timeoutId)
+        console.error(`❌ Ошибка fetch для ${url}:`, {
+          name: fetchError.name,
+          message: fetchError.message,
+          attempt: attempt + 1
+        })
         
         // Если это AbortError (таймаут), пробуем еще раз
         if (fetchError.name === 'AbortError') {
@@ -64,6 +85,13 @@ export async function safeFetch(
         errorMessage.includes('ERR_INTERNET_DISCONNECTED') ||
         errorMessage.includes('ERR_NETWORK_CHANGED') ||
         error.name === 'TypeError' && errorMessage.includes('fetch')
+      
+      console.error(`❌ Ошибка в safeFetch (попытка ${attempt + 1}/${retries + 1}):`, {
+        url,
+        errorMessage,
+        isNetworkError,
+        errorName: error.name
+      })
       
       if (isNetworkError) {
         // Для сетевых ошибок пробуем еще раз

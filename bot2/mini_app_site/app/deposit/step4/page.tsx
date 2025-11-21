@@ -426,6 +426,19 @@ export default function DepositStep4() {
 
   // Создание заявки на пополнение
   const createDepositRequest = async () => {
+    console.log('🚀 createDepositRequest вызвана')
+    console.log('📋 Текущие данные:', {
+      bookmaker,
+      playerId,
+      amount,
+      paymentType,
+      bank,
+      hasReceiptPhoto: !!receiptPhoto,
+      hasCryptoInvoice: !!cryptoInvoice,
+      isPaid,
+      isCreatingRequest
+    })
+    
     try {
       // Получаем данные пользователя Telegram (как в рефералке)
       const tg = (window as any).Telegram?.WebApp
@@ -510,14 +523,18 @@ export default function DepositStep4() {
       }
 
       // Проверяем обязательные поля перед отправкой
+      console.log('🔍 Проверка обязательных полей:', {
+        playerId: playerId || 'MISSING',
+        bookmaker: bookmaker || 'MISSING',
+        amount: amount || 'MISSING',
+        amountValid: amount > 0,
+        hasTelegramUser: !!telegramUser
+      })
+      
       if (!playerId || !bookmaker || !amount || amount <= 0) {
-        console.error('❌ Недостаточно данных для создания заявки:', {
-          playerId,
-          bookmaker,
-          amount,
-          hasTelegramUser: !!telegramUser
-        })
-        throw new Error('Недостаточно данных для создания заявки. Проверьте, что все поля заполнены.')
+        const errorMsg = `Недостаточно данных для создания заявки: playerId=${playerId}, bookmaker=${bookmaker}, amount=${amount}`
+        console.error('❌', errorMsg)
+        throw new Error(errorMsg)
       }
 
       // Получаем Telegram ID пользователя (пытаемся найти, но не критично)
@@ -597,17 +614,41 @@ export default function DepositStep4() {
         userAgent: navigator.userAgent
       })
       
-      const startTime = Date.now()
-      const response = await safeFetch(`${apiUrl}/api/payment`, {
+      console.log('📤 Отправка запроса на создание заявки:', {
+        url: `${apiUrl}/api/payment`,
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+        requestDataKeys: Object.keys(requestData),
+        requestData: {
+          ...requestData,
+          receipt_photo: finalReceiptPhotoBase64 ? `[base64, ${finalReceiptPhotoBase64.length} chars]` : null
         },
-        body: JSON.stringify(requestData),
-        timeout: 30000, // 30 секунд таймаут
-        retries: 1, // 1 дополнительная попытка при ошибке
-        retryDelay: 2000 // 2 секунды между попытками
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent
       })
+      
+      const startTime = Date.now()
+      let response: Response
+      try {
+        response = await safeFetch(`${apiUrl}/api/payment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestData),
+          timeout: 30000, // 30 секунд таймаут
+          retries: 1, // 1 дополнительная попытка при ошибке
+          retryDelay: 2000 // 2 секунды между попытками
+        })
+        console.log('✅ Запрос отправлен успешно, получен response')
+      } catch (fetchError: any) {
+        console.error('❌ Ошибка при вызове safeFetch:', {
+          error: fetchError,
+          message: fetchError?.message,
+          name: fetchError?.name,
+          stack: fetchError?.stack
+        })
+        throw fetchError
+      }
       const responseTime = Date.now() - startTime
       
       console.log('📥 Получен ответ от сервера:', {
@@ -726,6 +767,14 @@ export default function DepositStep4() {
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
         url: window.location.href,
+        currentState: {
+          bookmaker,
+          playerId,
+          amount,
+          paymentType,
+          isPaid,
+          isCreatingRequest
+        },
         localStorage: {
           deposit_bookmaker: localStorage.getItem('deposit_bookmaker'),
           deposit_user_id: localStorage.getItem('deposit_user_id'),
@@ -994,23 +1043,44 @@ export default function DepositStep4() {
       // Перенаправляем на страницу ожидания
       router.push('/deposit/waiting')
     } catch (e: any) {
-      console.error('❌ Ошибка в handleIPaid:', e)
+      console.error('❌ Ошибка в handleIPaid:', {
+        error: e,
+        message: e?.message,
+        name: e?.name,
+        stack: e?.stack,
+        currentState: { isPaid, isCreatingRequest, bookmaker, playerId, amount }
+      })
+      
       // Сбрасываем флаг при ошибке, чтобы можно было попробовать снова
       setIsCreatingRequest(false)
       
       // Показываем понятное сообщение об ошибке
       const errorMessage = e?.message || String(e) || 'Неизвестная ошибка'
+      
+      // Определяем тип ошибки для более понятного сообщения
+      let userFriendlyMessage = errorMessage
+      if (errorMessage.includes('интернет') || errorMessage.includes('connection') || errorMessage.includes('Таймаут') || errorMessage.includes('Failed to fetch')) {
+        userFriendlyMessage = language === 'ru'
+          ? 'Нет подключения к интернету. Проверьте соединение и попробуйте снова.'
+          : 'No internet connection. Check your connection and try again.'
+      } else if (errorMessage.includes('Недостаточно данных')) {
+        userFriendlyMessage = language === 'ru'
+          ? 'Не все данные заполнены. Пожалуйста, вернитесь и проверьте введенные данные.'
+          : 'Not all data is filled. Please go back and check the entered data.'
+      }
+      
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',
         message: language === 'ru'
-          ? `Ошибка при отправке заявки: ${errorMessage}\n\nПожалуйста, попробуйте ещё раз или обратитесь в поддержку.`
-          : `Error submitting request: ${errorMessage}\n\nPlease try again or contact support.`
+          ? `Ошибка при отправке заявки.\n\n${userFriendlyMessage}\n\nПожалуйста, попробуйте ещё раз или обратитесь в поддержку.`
+          : `Error submitting request.\n\n${userFriendlyMessage}\n\nPlease try again or contact support.`
       })
     } finally {
       // Всегда сбрасываем флаг в finally, чтобы избежать блокировки
       // Но только если заявка не была успешно создана
       if (!isPaid) {
+        console.log('🔄 Сбрасываем isCreatingRequest в finally')
         setIsCreatingRequest(false)
       }
     }
