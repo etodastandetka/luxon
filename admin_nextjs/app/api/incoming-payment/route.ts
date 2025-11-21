@@ -428,9 +428,10 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
       })
       console.log(`🔄 [Auto-Deposit] Payment ${paymentId} unlinked from request ${request.id} due to deposit failure`)
     } catch (rollbackError) {
-      console.error(`❌ Failed to rollback payment ${paymentId}:`, rollbackError)
+      console.error(`❌ [Auto-Deposit] Failed to rollback payment ${paymentId}:`, rollbackError)
     }
     
+    console.error(`❌ [Auto-Deposit] ===== END MATCH PROCESS (EXCEPTION) =====`)
     throw error
   }
 }
