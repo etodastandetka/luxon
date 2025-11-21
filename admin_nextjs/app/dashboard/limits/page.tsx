@@ -547,25 +547,23 @@ export default function LimitsPage() {
         <div className="text-base font-bold text-white mb-3">Лимиты платформ</div>
         {stats.platformLimits.length > 0 ? (
           <div className="space-y-2">
-            {stats.platformLimits.map((platform) => (
-              <div key={platform.key} className="flex flex-col py-2">
-                <div className="flex items-center justify-between">
+            {stats.platformLimits.map((platform) => {
+              // Для 1win показываем баланс вместо лимита
+              const displayValue = platform.key === '1win' && platform.balance !== undefined && platform.balance > 0
+                ? platform.balance
+                : platform.limit
+              
+              const isNA = displayValue < 0
+              
+              return (
+                <div key={platform.key} className="flex items-center justify-between py-2">
                   <span className="text-white">{platform.name}</span>
-                  <span className={platform.limit < 0 ? "text-gray-400 font-bold" : "text-green-500 font-bold"}>
-                    {platform.limit < 0 ? 'N/A' : `${platform.limit.toFixed(2)} с`}
+                  <span className={isNA ? "text-gray-400 font-bold" : "text-green-500 font-bold"}>
+                    {isNA ? 'N/A' : `${displayValue.toFixed(2)} с`}
                   </span>
                 </div>
-                {/* Для 1win показываем текущий баланс кассы из ошибки */}
-                {platform.key === '1win' && platform.balance !== undefined && platform.balance > 0 && (
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-gray-400">Текущий баланс кассы</span>
-                    <span className="text-xs text-yellow-400 font-semibold">
-                      {platform.balance.toFixed(2)} с
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div className="text-gray-400 text-sm">Нет данных по лимитам</div>
