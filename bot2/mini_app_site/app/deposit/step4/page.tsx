@@ -723,7 +723,9 @@ export default function DepositStep4() {
           errorText: errorText.substring(0, 500),
           errorTextLength: errorText.length,
           responseTime: `${responseTime}ms`,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          bodySize: `${(bodySize / 1024).toFixed(2)} KB`,
+          bodySizeBytes: bodySize
         })
         
         let errorData: any
@@ -738,7 +740,13 @@ export default function DepositStep4() {
           ? 'Ошибка при отправке заявки. Попробуйте еще раз.'
           : 'Error sending request. Please try again.'
         
-        if (response.status === 409) {
+        if (response.status === 413) {
+          // Ошибка 413 - Request Entity Too Large от nginx
+          userFriendlyMessage = language === 'ru'
+            ? 'Фото чека слишком большое. Пожалуйста, загрузите фото меньшего размера или попробуйте без фото.'
+            : 'Receipt photo is too large. Please upload a smaller photo or try without photo.'
+          console.error('❌ Ошибка 413: Request Entity Too Large. Body size:', bodySize, 'bytes')
+        } else if (response.status === 409) {
           userFriendlyMessage = errorData.error || (language === 'ru' 
             ? 'Заявка уже существует. Пожалуйста, подождите обработки.'
             : 'Request already exists. Please wait for processing.')
