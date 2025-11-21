@@ -12,23 +12,27 @@ export default function WithdrawStep5() {
   const [checkingExists, setCheckingExists] = useState(true)
   const [hasWithdrawals, setHasWithdrawals] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [bookmaker, setBookmaker] = useState('')
   const { language } = useLanguage()
-    const router = useRouter()
+  const router = useRouter()
 
   useEffect(() => {
     // Проверяем, что пользователь прошел предыдущие шаги
-    const bookmaker = localStorage.getItem('withdraw_bookmaker')
+    const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
     const bank = localStorage.getItem('withdraw_bank')
     const qrPhoto = localStorage.getItem('withdraw_qr_photo')
     const phone = localStorage.getItem('withdraw_phone')
     const userId = localStorage.getItem('withdraw_user_id')
-    if (!bookmaker || !bank || !qrPhoto || !phone || !userId) {
+    
+    if (!savedBookmaker || !bank || !qrPhoto || !phone || !userId) {
       router.push('/withdraw/step0')
       return
     }
 
+    setBookmaker(savedBookmaker)
+
     // Проверяем наличие выводов для этого ID
-    checkWithdrawsExist(bookmaker, userId)
+    checkWithdrawsExist(savedBookmaker, userId)
   }, [router])
 
   // Проверка наличия выводов при загрузке страницы
@@ -188,6 +192,19 @@ export default function WithdrawStep5() {
     router.push('/withdraw/confirm')
   }
 
+  // Получаем адрес для указания в казино в зависимости от букмекера
+  const getWithdrawalAddress = () => {
+    const normalizedBookmaker = bookmaker.toLowerCase()
+    if (normalizedBookmaker.includes('lux') || normalizedBookmaker === 'luxon' || normalizedBookmaker === 'lux on') {
+      return 'Lux on'
+    } else if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' || normalizedBookmaker.includes('xbet')) {
+      return 'TSUM LUX'
+    }
+    return null
+  }
+
+  const withdrawalAddress = getWithdrawalAddress()
+
   const handleBack = () => {
     router.push('/withdraw/step4')
   }
@@ -196,7 +213,7 @@ export default function WithdrawStep5() {
     ru: {
       title: 'Вывод - Шаг 5',
       subtitle: 'Код с сайта',
-      instruction: 'Введите код подтверждения с сайта букмекера. После ввода код будет проверен, и средства будут сразу сняты с вашего счета.',
+      instruction: 'Введите код подтверждения с сайта букмекера. После ввода код будет проверен, и средства будут сразу сняты с вашего счета. Не забудьте указать правильный адрес при создании заявки в казино.',
       placeholder: 'Введите код',
       submit: 'Перейти к подтверждению',
       back: 'Назад'
@@ -246,6 +263,30 @@ export default function WithdrawStep5() {
         </div>
         
         <p className="text-white/80 text-center">{t.instruction}</p>
+        
+        {/* Информация об адресе для указания в казино */}
+        {withdrawalAddress && (
+          <div className="p-4 bg-blue-900/30 border border-blue-500 rounded-lg">
+            <div className="flex items-start gap-2">
+              <span className="text-xl">📍</span>
+              <div className="flex-1">
+                <p className="text-sm text-blue-300 font-semibold mb-1">
+                  {language === 'ru' ? 'Важно! Укажите в казино адрес:' : language === 'en' ? 'Important! Specify in casino address:' : 'Маанилүү! Казинодо дарегиңизди көрсөтүңүз:'}
+                </p>
+                <p className="text-lg text-white font-bold text-center py-2 bg-blue-950/50 rounded border border-blue-400">
+                  {withdrawalAddress}
+                </p>
+                <p className="text-xs text-blue-200 mt-2">
+                  {language === 'ru' 
+                    ? 'При создании заявки на вывод в казино укажите именно этот адрес'
+                    : language === 'en'
+                    ? 'When creating a withdrawal request in casino, specify exactly this address'
+                    : 'Казинодо чыгаруу өтүнүчүн түзгөндө ушул дареги так көрсөтүңүз'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="space-y-3">
           {checkingExists && (
