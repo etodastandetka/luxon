@@ -4,12 +4,12 @@ import { prisma } from './prisma'
  * Функция для сопоставления входящего платежа с заявкой и автоматического пополнения
  * Работает секунду в секунду - мгновенно
  */
+/**
+ * ЕДИНСТВЕННАЯ функция автопополнения - работает только здесь
+ * Все вызовы должны использовать эту функцию из @/lib/auto-deposit
+ */
 export async function matchAndProcessPayment(paymentId: number, amount: number) {
-  try {
-    console.log(`🔍 [Auto-Deposit] matchAndProcessPayment called: paymentId=${paymentId}, amount=${amount}`)
-  } catch (err) {
-    console.error(`❌ [Auto-Deposit] Error in matchAndProcessPayment start:`, err)
-  }
+  console.log(`🔍 [Auto-Deposit] matchAndProcessPayment called: paymentId=${paymentId}, amount=${amount}`)
   
   // Ищем заявки на пополнение со статусом pending за последние 5 минут
   // Это защищает от случайного пополнения если пользователь не пополнял
@@ -107,7 +107,8 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     
     // После успешного пополнения - атомарно обновляем все в одной транзакции
     // ВАЖНО: Проверяем что заявка все еще pending и не была обработана автопополнением
-    await prisma.$transaction(async (tx) => {
+    // ВАЖНО: Используем транзакцию чтобы гарантировать что статус ОБЯЗАТЕЛЬНО обновится
+    const updateResult = await prisma.$transaction(async (tx) => {
       // Проверяем что заявка все еще pending и платеж не обработан
       const [currentRequest, currentPayment] = await Promise.all([
         tx.request.findUnique({
@@ -123,17 +124,17 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
       // Если уже обработано - пропускаем (защита от двойного пополнения)
       if (currentRequest?.status !== 'pending' || currentPayment?.isProcessed) {
         console.log(`⚠️ [Auto-Deposit] Request ${request.id} already processed (status: ${currentRequest?.status}), skipping`)
-        return
+        return { skipped: true }
       }
       
       // Дополнительная проверка: если заявка уже обработана автопополнением - не трогаем
       if (currentRequest?.processedBy === 'автопополнение') {
         console.log(`⚠️ [Auto-Deposit] Request ${request.id} already processed by autodeposit, skipping`)
-        return
+        return { skipped: true }
       }
       
-      // Обновляем заявку и платеж атомарно
-      await Promise.all([
+      // Обновляем заявку и платеж атомарно - ВАЖНО: это должно обязательно выполниться
+      const [updatedRequest, updatedPayment] = await Promise.all([
         tx.request.update({
           where: { id: request.id },
           data: {
@@ -152,9 +153,36 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
           },
         }),
       ])
+      
+      console.log(`✅ [Auto-Deposit] Transaction: Request ${request.id} status updated to autodeposit_success`)
+      console.log(`✅ [Auto-Deposit] Transaction: Payment ${paymentId} marked as processed`)
+      
+      return { updatedRequest, updatedPayment, skipped: false }
     })
     
-    console.log(`✅ [Auto-Deposit] SUCCESS: Request ${request.id} → autodeposit_success`)
+    // Проверяем что транзакция действительно обновила статус
+    if (updateResult?.skipped) {
+      console.log(`⚠️ [Auto-Deposit] Transaction skipped for request ${request.id}`)
+      return null
+    }
+    
+    if (!updateResult?.updatedRequest) {
+      console.error(`❌ [Auto-Deposit] Transaction failed to update request ${request.id}`)
+      throw new Error('Failed to update request status in transaction')
+    }
+    
+    // Дополнительная проверка что статус действительно обновился
+    const verifyRequest = await prisma.request.findUnique({
+      where: { id: request.id },
+      select: { status: true, processedBy: true },
+    })
+    
+    if (verifyRequest?.status !== 'autodeposit_success') {
+      console.error(`❌ [Auto-Deposit] CRITICAL: Request ${request.id} status is ${verifyRequest?.status}, expected autodeposit_success`)
+      throw new Error(`Failed to update request status: current status is ${verifyRequest?.status}`)
+    }
+    
+    console.log(`✅ [Auto-Deposit] SUCCESS: Request ${request.id} → autodeposit_success (verified)`)
 
     return {
       requestId: request.id,
