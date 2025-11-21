@@ -598,46 +598,49 @@ export default function DepositStep4() {
         receipt_photo: finalReceiptPhotoBase64,
       }
 
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      // Используем относительный URL для избежания CORS проблем на iOS внутри Telegram
+      const apiUrl = '/api/payment'
+      
+      // Проверяем размер body
+      const bodyString = JSON.stringify(requestData)
+      const bodySize = new Blob([bodyString]).size
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
       
       console.log('📤 Отправка заявки на пополнение:', {
-        url: `${apiUrl}/api/payment`,
+        url: apiUrl,
         method: 'POST',
-        requestData: {
-          ...requestData,
-          receipt_photo: finalReceiptPhotoBase64 ? `[base64, ${finalReceiptPhotoBase64.length} chars]` : null,
-          receipt_photo_size: finalReceiptPhotoBase64 ? finalReceiptPhotoBase64.length : 0
-        },
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent
-      })
-      
-      console.log('📤 Отправка запроса на создание заявки:', {
-        url: `${apiUrl}/api/payment`,
-        method: 'POST',
+        bodySize: `${(bodySize / 1024).toFixed(2)} KB`,
+        bodySizeBytes: bodySize,
         requestDataKeys: Object.keys(requestData),
         requestData: {
           ...requestData,
-          receipt_photo: finalReceiptPhotoBase64 ? `[base64, ${finalReceiptPhotoBase64.length} chars]` : null
+          receipt_photo: finalReceiptPhotoBase64 ? `[base64, ${finalReceiptPhotoBase64.length} chars]` : null,
+          receiptPhotoSize: finalReceiptPhotoBase64 ? finalReceiptPhotoBase64.length : 0
         },
         timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent
+        userAgent: navigator.userAgent,
+        isIOS
       })
+      
+      // Предупреждение если body слишком большой (больше 5MB)
+      if (bodySize > 5 * 1024 * 1024) {
+        console.warn('⚠️ Body слишком большой:', bodySize, 'bytes. Может быть проблема на iOS.')
+      }
       
       const startTime = Date.now()
       let response: Response
+      
       try {
-        response = await safeFetch(`${apiUrl}/api/payment`, {
+        // На iOS делаем меньше retry чтобы избежать проблем
+        response = await safeFetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(requestData),
-          timeout: 30000, // 30 секунд таймаут
-          retries: 1, // 1 дополнительная попытка при ошибке
-          retryDelay: 2000 // 2 секунды между попытками
+          body: bodyString,
+          timeout: 30000,
+          retries: isIOS ? 0 : 1, // На iOS не делаем retry
+          retryDelay: 2000
         })
         console.log('✅ Запрос отправлен успешно, получен response')
       } catch (fetchError: any) {
@@ -645,9 +648,31 @@ export default function DepositStep4() {
           error: fetchError,
           message: fetchError?.message,
           name: fetchError?.name,
-          stack: fetchError?.stack
+          stack: fetchError?.stack,
+          isIOS
         })
-        throw fetchError
+        
+        // Fallback: пробуем обычный fetch на iOS если safeFetch не работает
+        if (isIOS && (fetchError.name === 'AbortError' || fetchError.message?.includes('AbortController'))) {
+          console.log('🔄 Fallback: пробуем обычный fetch без таймаута на iOS')
+          try {
+            response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: bodyString
+            })
+            console.log('✅ Fallback fetch успешен')
+          } catch (fallbackError: any) {
+            console.error('❌ Fallback fetch тоже failed:', fallbackError)
+            throw new Error(language === 'ru' 
+              ? 'Ошибка подключения к серверу. Проверьте интернет и попробуйте снова.'
+              : 'Connection error. Check your internet and try again.')
+          }
+        } else {
+          throw fetchError
+        }
       }
       const responseTime = Date.now() - startTime
       
