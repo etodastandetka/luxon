@@ -8,7 +8,8 @@ import {
   playWithdrawSound, 
   isSoundsEnabled, 
   setSoundsEnabled,
-  initAudioContext 
+  initAudioContext,
+  activateAudioContext
 } from '@/lib/sounds'
 
 interface Request {
@@ -70,21 +71,29 @@ export default function DashboardPage() {
           const previousIds = new Set(previousRequestsRef.current.map((r: Request) => r.id))
           const newRequests = requestsList.filter((r: Request) => !previousIds.has(r.id))
           
+          console.log(`🔍 [Dashboard] Checking for new requests: previous=${previousRequestsRef.current.length}, current=${requestsList.length}, new=${newRequests.length}, isFirstLoad=${isFirstLoadRef.current}, showLoading=${showLoading}`)
+          
           if (newRequests.length > 0) {
-            console.log(`🔔 Found ${newRequests.length} new request(s)`)
+            console.log(`🔔 [Dashboard] Found ${newRequests.length} new request(s):`, newRequests.map((r: Request) => ({ id: r.id, type: r.requestType })))
             
-            // Воспроизводим звуки для новых заявок
-            // Добавляем небольшую задержку между звуками если несколько заявок
-            newRequests.forEach((request: Request, index: number) => {
-              setTimeout(() => {
-                if (request.requestType === 'deposit') {
-                  playDepositSound()
-                  console.log(`🔊 Played deposit sound for request ${request.id}`)
-                } else if (request.requestType === 'withdraw') {
-                  playWithdrawSound()
-                  console.log(`🔊 Played withdraw sound for request ${request.id}`)
-                }
-              }, index * 300) // Задержка 300ms между звуками
+            // Активируем AudioContext перед воспроизведением звуков
+            activateAudioContext().then(() => {
+              // Воспроизводим звуки для новых заявок
+              // Добавляем небольшую задержку между звуками если несколько заявок
+              newRequests.forEach((request: Request, index: number) => {
+                setTimeout(() => {
+                  console.log(`🔊 [Dashboard] Playing sound for request ${request.id}, type: ${request.requestType}`)
+                  if (request.requestType === 'deposit') {
+                    playDepositSound()
+                    console.log(`🔊 [Dashboard] Played deposit sound for request ${request.id}`)
+                  } else if (request.requestType === 'withdraw') {
+                    playWithdrawSound()
+                    console.log(`🔊 [Dashboard] Played withdraw sound for request ${request.id}`)
+                  }
+                }, index * 300) // Задержка 300ms между звуками
+              })
+            }).catch(err => {
+              console.error('🔊 [Dashboard] Failed to activate AudioContext:', err)
             })
           }
         }
@@ -308,13 +317,18 @@ export default function DashboardPage() {
       {/* Хедер с заголовком */}
       <div className="flex items-center justify-between mb-4">
         <button 
-          onClick={() => {
+          onClick={async () => {
             const newState = !soundsEnabled
             setSoundsEnabledState(newState)
             setSoundsEnabled(newState)
             // Воспроизводим тестовый звук при включении
             if (newState) {
-              playDepositSound()
+              // Принудительно активируем AudioContext при включении звуков
+              await activateAudioContext()
+              // Небольшая задержка чтобы AudioContext успел активироваться
+              setTimeout(() => {
+                playDepositSound()
+              }, 100)
             }
           }}
           className={`p-2 rounded-lg transition-colors ${

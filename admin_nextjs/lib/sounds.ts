@@ -1,96 +1,82 @@
 /**
- * Утилита для воспроизведения звуковых уведомлений через Web Audio API
+ * Утилита для воспроизведения звуковых уведомлений через HTML5 Audio
  */
 
-// Проверка поддержки Web Audio API
-const isAudioContextSupported = () => {
-  return typeof window !== 'undefined' && 
-         (typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined')
-}
+// Пути к звуковым файлам
+const SOUND_DEPOSIT = '/social-media-logout-sound.mp3'
+const SOUND_WITHDRAW = '/ringtone-sms-notification.mp3'
 
-// Создание AudioContext
-let audioContext: AudioContext | null = null
+// Кэш для Audio объектов чтобы не создавать их каждый раз
+const audioCache: Map<string, HTMLAudioElement> = new Map()
 
-const getAudioContext = (): AudioContext | null => {
+/**
+ * Создание или получение Audio объекта из кэша
+ */
+const getAudio = (src: string): HTMLAudioElement | null => {
   if (typeof window === 'undefined') return null
   
-  if (!audioContext) {
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-      audioContext = new AudioContextClass()
-    } catch (e) {
-      console.warn('Web Audio API not supported:', e)
-      return null
-    }
+  // Проверяем кэш
+  if (audioCache.has(src)) {
+    const audio = audioCache.get(src)!
+    // Сбрасываем позицию на начало для повторного воспроизведения
+    audio.currentTime = 0
+    return audio
   }
   
-  // Восстанавливаем контекст если он приостановлен (браузеры требуют взаимодействия пользователя)
-  if (audioContext.state === 'suspended') {
-    audioContext.resume().catch(() => {})
+  // Создаем новый Audio объект
+  try {
+    const audio = new Audio(src)
+    audio.volume = 0.7 // Устанавливаем громкость 70%
+    audio.preload = 'auto' // Предзагрузка для быстрого воспроизведения
+    
+    // Обработка ошибок загрузки
+    audio.addEventListener('error', (e) => {
+      console.error(`🔊 [Sounds] Failed to load audio: ${src}`, e)
+      audioCache.delete(src)
+    })
+    
+    // Сохраняем в кэш
+    audioCache.set(src, audio)
+    return audio
+  } catch (error) {
+    console.error(`🔊 [Sounds] Failed to create Audio object for ${src}:`, error)
+    return null
   }
-  
-  return audioContext
 }
 
 /**
- * Генерация простого тонального звука
+ * Воспроизведение звукового файла
  */
-const playTone = (
-  frequency: number,
-  duration: number = 200,
-  type: OscillatorType = 'sine',
-  volume: number = 0.3
-): void => {
-  const ctx = getAudioContext()
-  if (!ctx) {
-    console.warn('AudioContext not available')
+const playSound = (src: string): void => {
+  if (typeof window === 'undefined') return
+  
+  const audio = getAudio(src)
+  if (!audio) {
+    console.warn(`🔊 [Sounds] Audio not available for ${src}`)
     return
   }
-
+  
   try {
-    // Убеждаемся что контекст активен
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {
-        console.warn('Failed to resume AudioContext')
-        return
-      })
+    // Сбрасываем позицию на начало
+    audio.currentTime = 0
+    
+    // Воспроизводим звук
+    const playPromise = audio.play()
+    
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          console.log(`🔊 [Sounds] Playing sound: ${src}`)
+        })
+        .catch((error) => {
+          // Браузер может блокировать автовоспроизведение
+          // Это нормально, пользователь должен сначала взаимодействовать со страницей
+          console.warn(`🔊 [Sounds] Playback failed for ${src}, user interaction may be required:`, error)
+        })
     }
-
-    const oscillator = ctx.createOscillator()
-    const gainNode = ctx.createGain()
-
-    oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination)
-
-    oscillator.frequency.value = frequency
-    oscillator.type = type
-
-    // Плавное нарастание и затухание для избежания щелчков
-    const now = ctx.currentTime
-    gainNode.gain.setValueAtTime(0, now)
-    gainNode.gain.linearRampToValueAtTime(volume, now + 0.01)
-    gainNode.gain.linearRampToValueAtTime(0, now + duration / 1000)
-
-    oscillator.start(now)
-    oscillator.stop(now + duration / 1000)
   } catch (error) {
-    console.warn('Failed to play tone:', error)
+    console.error(`🔊 [Sounds] Error playing sound ${src}:`, error)
   }
-}
-
-/**
- * Воспроизведение последовательности тонов
- */
-const playSequence = (frequencies: number[], durations: number[] = [], gap: number = 100): void => {
-  const ctx = getAudioContext()
-  if (!ctx) return
-
-  frequencies.forEach((freq, index) => {
-    const duration = durations[index] || 150
-    setTimeout(() => {
-      playTone(freq, duration)
-    }, index * (duration + gap))
-  })
 }
 
 /**
@@ -111,23 +97,29 @@ export const setSoundsEnabled = (enabled: boolean): void => {
 }
 
 /**
- * Звук для нового пополнения (более высокий, позитивный тон)
+ * Звук для нового пополнения
  */
 export const playDepositSound = (): void => {
-  if (!isSoundsEnabled()) return
+  console.log('🔊 [Sounds] playDepositSound called, enabled:', isSoundsEnabled())
+  if (!isSoundsEnabled()) {
+    console.log('🔊 [Sounds] Sounds are disabled, skipping')
+    return
+  }
   
-  // Два восходящих тона - звук успеха/пополнения
-  playSequence([523.25, 659.25], [150, 200], 50) // C5, E5
+  playSound(SOUND_DEPOSIT)
 }
 
 /**
- * Звук для нового вывода (более низкий, нейтральный тон)
+ * Звук для нового вывода
  */
 export const playWithdrawSound = (): void => {
-  if (!isSoundsEnabled()) return
+  console.log('🔊 [Sounds] playWithdrawSound called, enabled:', isSoundsEnabled())
+  if (!isSoundsEnabled()) {
+    console.log('🔊 [Sounds] Sounds are disabled, skipping')
+    return
+  }
   
-  // Два нисходящих тона - звук уведомления
-  playSequence([392.00, 329.63], [150, 200], 50) // G4, E4
+  playSound(SOUND_WITHDRAW)
 }
 
 /**
@@ -135,34 +127,60 @@ export const playWithdrawSound = (): void => {
  */
 export const playNotificationSound = (): void => {
   if (!isSoundsEnabled()) return
-  
-  // Простой короткий звук
-  playTone(440, 150, 'sine', 0.3) // A4
+  playSound(SOUND_DEPOSIT)
 }
 
 /**
- * Инициализация AudioContext при первом взаимодействии пользователя
+ * Инициализация звуков - предзагрузка аудио файлов
  */
 export const initAudioContext = (): void => {
   if (typeof window === 'undefined') return
   
-  // Пытаемся создать контекст сразу, но он может быть suspended
-  // до первого взаимодействия пользователя
-  getAudioContext()
+  console.log('🔊 [Sounds] Initializing sounds, preloading audio files...')
   
-  // Также слушаем первое взаимодействие для активации контекста
-  const initOnInteraction = () => {
-    const ctx = getAudioContext()
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().catch(() => {})
-    }
-    document.removeEventListener('click', initOnInteraction)
-    document.removeEventListener('touchstart', initOnInteraction)
-    document.removeEventListener('keydown', initOnInteraction)
+  // Предзагружаем оба звуковых файла
+  const depositAudio = getAudio(SOUND_DEPOSIT)
+  const withdrawAudio = getAudio(SOUND_WITHDRAW)
+  
+  if (depositAudio) {
+    depositAudio.load()
+    console.log('🔊 [Sounds] Deposit sound preloaded')
   }
   
-  document.addEventListener('click', initOnInteraction, { once: true })
-  document.addEventListener('touchstart', initOnInteraction, { once: true })
-  document.addEventListener('keydown', initOnInteraction, { once: true })
+  if (withdrawAudio) {
+    withdrawAudio.load()
+    console.log('🔊 [Sounds] Withdraw sound preloaded')
+  }
 }
 
+/**
+ * Принудительная активация AudioContext (для совместимости)
+ * В случае с HTML5 Audio это просто попытка воспроизвести тестовый звук
+ */
+export const activateAudioContext = async (): Promise<boolean> => {
+  if (typeof window === 'undefined') return false
+  
+  console.log('🔊 [Sounds] Activating audio context (HTML5 Audio)')
+  
+  // Пытаемся воспроизвести очень короткий тихий звук для активации
+  // Это поможет разблокировать автовоспроизведение в некоторых браузерах
+  try {
+    const testAudio = getAudio(SOUND_DEPOSIT)
+    if (testAudio) {
+      testAudio.volume = 0.01 // Очень тихо
+      const playPromise = testAudio.play()
+      if (playPromise !== undefined) {
+        await playPromise
+        testAudio.pause()
+        testAudio.currentTime = 0
+        testAudio.volume = 0.7 // Возвращаем нормальную громкость
+        console.log('🔊 [Sounds] Audio context activated successfully')
+        return true
+      }
+    }
+  } catch (error) {
+    console.warn('🔊 [Sounds] Failed to activate audio context:', error)
+  }
+  
+  return false
+}
