@@ -8,6 +8,7 @@ import { useLanguage } from '../../../components/LanguageContext'
 import { getTelegramUser, syncWithBot, notifyUser, checkUserBlocked } from '../../../utils/telegram'
 import { useAlert } from '../../../components/useAlert'
 import { formatKgs, formatUsdt, formatUsd } from '../../../utils/crypto-pay'
+import { safeFetch } from '../../../utils/fetch'
 
 export default function DepositStep4() {
   const [bank, setBank] = useState('omoney') // По умолчанию O!Money
@@ -30,6 +31,7 @@ export default function DepositStep4() {
   const [requireReceiptPhoto, setRequireReceiptPhoto] = useState(false)
   const [receiptPhoto, setReceiptPhoto] = useState<File | null>(null)
   const [receiptPhotoPreview, setReceiptPhotoPreview] = useState<string | null>(null)
+  const [receiptPhotoBase64, setReceiptPhotoBase64] = useState<string | null>(null)
   const { language } = useLanguage()
 
   useEffect(() => {
@@ -179,7 +181,7 @@ export default function DepositStep4() {
         telegram_user_id: telegramUserId
       })
       
-      const response = await fetch(`${apiUrl}/api/crypto-pay/create-invoice`, {
+      const response = await safeFetch(`${apiUrl}/api/crypto-pay/create-invoice`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,11 +191,24 @@ export default function DepositStep4() {
           asset: 'USDT',
           description: `Пополнение баланса ${bookmaker} - ID: ${playerId}`,
           payload: payload,
-        })
+        }),
+        timeout: 30000,
+        retries: 1,
+        retryDelay: 2000
       })
       
       if (response.ok) {
-        const data = await response.json()
+        let data
+        try {
+          const text = await response.text()
+          data = text ? JSON.parse(text) : {}
+        } catch (parseError) {
+          console.error('❌ Ошибка парсинга JSON ответа crypto invoice:', parseError)
+          throw new Error(language === 'ru' 
+            ? 'Ошибка при обработке ответа сервера. Попробуйте еще раз.'
+            : 'Error processing server response. Please try again.')
+        }
+        
         if (data.success && data.data) {
           const invoiceData = data.data
           console.log('✅ Crypto invoice created and saved to state:', invoiceData)
@@ -207,22 +222,40 @@ export default function DepositStep4() {
           // Заявка будет создана только после нажатия кнопки "Я оплатил"
         } else {
           console.error('❌ Invoice creation failed:', data)
+          const errorMsg = data.error || data.message || (language === 'ru' 
+            ? 'Не удалось создать счет на оплату'
+            : 'Failed to create payment invoice')
+          throw new Error(errorMsg)
         }
       } else {
-        const errorData = await response.json()
+        let errorData: any = {}
+        try {
+          const text = await response.text()
+          errorData = text ? JSON.parse(text) : { error: `HTTP ${response.status}` }
+        } catch (e) {
+          errorData = { error: `HTTP ${response.status} ${response.statusText}` }
+        }
+        
         console.error('❌ Failed to create crypto invoice:', errorData)
-        showAlert({
-          type: 'error',
-          title: language === 'ru' ? 'Ошибка' : 'Error',
-          message: errorData.error || 'Не удалось создать счет на оплату'
-        })
+        throw new Error(errorData.error || errorData.message || (language === 'ru'
+          ? 'Не удалось создать счет на оплату'
+          : 'Failed to create payment invoice'))
       }
     } catch (error: any) {
       console.error('❌ Error creating crypto invoice:', error)
+      const errorMessage = error?.message || String(error)
+      const userMessage = errorMessage.includes('интернет') || errorMessage.includes('connection') || errorMessage.includes('Таймаут')
+        ? (language === 'ru' 
+            ? 'Нет подключения к интернету. Проверьте соединение и попробуйте снова.'
+            : 'No internet connection. Check your connection and try again.')
+        : (errorMessage || (language === 'ru' 
+            ? 'Ошибка при создании счета на оплату. Попробуйте еще раз.'
+            : 'Error creating payment invoice. Please try again.'))
+      
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',
-        message: error.message || 'Ошибка при создании счета на оплату'
+        message: userMessage
       })
     } finally {
       setCryptoLoading(false)
@@ -306,7 +339,7 @@ export default function DepositStep4() {
       // Отклоняем заявку в Django API
       const transactionId = localStorage.getItem('deposit_transaction_id')
       if (transactionId) {
-        const response = await fetch('/api/payment', {
+        const response = await safeFetch('/api/payment', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -315,7 +348,9 @@ export default function DepositStep4() {
             id: transactionId,
             status: 'rejected',
             reason: 'Время на оплату истекло'
-          })
+          }),
+          timeout: 10000,
+          retries: 0
         })
         
         if (response.ok) {
@@ -425,16 +460,34 @@ export default function DepositStep4() {
       
       console.log('🔍 Итоговые данные пользователя:', telegramUser)
 
-      // Конвертируем фото чека в base64, если есть
-      let receiptPhotoBase64: string | null = null
-      if (receiptPhoto) {
-        receiptPhotoBase64 = await new Promise<string>((resolve, reject) => {
+      // Используем уже сохраненный base64 фото чека (читается сразу при загрузке)
+      // Это предотвращает race condition когда пользователь быстро меняет фото
+      const currentReceiptPhotoBase64 = receiptPhotoBase64
+      
+      console.log('📸 Фото чека для отправки:', {
+        hasFile: !!receiptPhoto,
+        hasBase64: !!currentReceiptPhotoBase64,
+        base64Length: currentReceiptPhotoBase64?.length || 0,
+        fileName: receiptPhoto?.name,
+        fileSize: receiptPhoto?.size,
+        fileType: receiptPhoto?.type
+      })
+      
+      // Если base64 не сохранен, но есть файл - читаем его (fallback)
+      let finalReceiptPhotoBase64: string | null = currentReceiptPhotoBase64
+      if (!finalReceiptPhotoBase64 && receiptPhoto) {
+        console.warn('⚠️ Base64 не сохранен, читаем файл заново (fallback)')
+        finalReceiptPhotoBase64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()
           reader.onloadend = () => {
             const base64String = reader.result as string
+            console.log('📸 Фото прочитано заново, размер:', base64String.length)
             resolve(base64String)
           }
-          reader.onerror = reject
+          reader.onerror = (error) => {
+            console.error('❌ Ошибка при чтении фото:', error)
+            reject(error)
+          }
           reader.readAsDataURL(receiptPhoto)
         })
       }
@@ -524,8 +577,8 @@ export default function DepositStep4() {
         telegram_first_name: telegramUser?.first_name,
         telegram_last_name: telegramUser?.last_name,
         telegram_language_code: telegramUser?.language_code,
-        // Фото чека (если загружено)
-        receipt_photo: receiptPhotoBase64,
+        // Фото чека (если загружено) - используем сохраненный base64
+        receipt_photo: finalReceiptPhotoBase64,
       }
 
       const apiUrl = process.env.NODE_ENV === 'development' 
@@ -537,20 +590,23 @@ export default function DepositStep4() {
         method: 'POST',
         requestData: {
           ...requestData,
-          receipt_photo: receiptPhotoBase64 ? `[base64, ${receiptPhotoBase64.length} chars]` : null,
-          receipt_photo_size: receiptPhotoBase64 ? receiptPhotoBase64.length : 0
+          receipt_photo: finalReceiptPhotoBase64 ? `[base64, ${finalReceiptPhotoBase64.length} chars]` : null,
+          receipt_photo_size: finalReceiptPhotoBase64 ? finalReceiptPhotoBase64.length : 0
         },
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent
       })
       
       const startTime = Date.now()
-      const response = await fetch(`${apiUrl}/api/payment`, {
+      const response = await safeFetch(`${apiUrl}/api/payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
+        timeout: 30000, // 30 секунд таймаут
+        retries: 1, // 1 дополнительная попытка при ошибке
+        retryDelay: 2000 // 2 секунды между попытками
       })
       const responseTime = Date.now() - startTime
       
@@ -564,44 +620,46 @@ export default function DepositStep4() {
       })
       
       if (!response.ok) {
-        const errorText = await response.text()
+        let errorText = ''
+        try {
+          errorText = await response.text()
+        } catch (e) {
+          errorText = `HTTP ${response.status} ${response.statusText}`
+        }
+        
         console.error('❌ Ошибка HTTP ответа:', {
           status: response.status,
           statusText: response.statusText,
-          errorText: errorText.substring(0, 500), // Первые 500 символов
+          errorText: errorText.substring(0, 500),
           errorTextLength: errorText.length,
           responseTime: `${responseTime}ms`,
           timestamp: new Date().toISOString()
         })
         
-        let errorData
+        let errorData: any
         try {
           errorData = JSON.parse(errorText)
-          console.error('❌ Распарсенные данные ошибки:', errorData)
         } catch (parseError) {
-          console.error('❌ Ошибка парсинга JSON ошибки:', parseError, 'Raw text:', errorText)
           errorData = { error: errorText || 'Unknown error' }
         }
         
-        console.error('❌ Полная информация об ошибке:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-          requestData: {
-            ...requestData,
-            receipt_photo: receiptPhotoBase64 ? '[base64]' : null
-          },
-          userAgent: navigator.userAgent,
-          url: window.location.href,
-          timestamp: new Date().toISOString()
-        })
-        
         // Более понятное сообщение об ошибке для пользователя
-        let userFriendlyMessage = 'Ошибка при отправке заявки.'
+        let userFriendlyMessage = language === 'ru' 
+          ? 'Ошибка при отправке заявки. Попробуйте еще раз.'
+          : 'Error sending request. Please try again.'
+        
         if (response.status === 409) {
-          userFriendlyMessage = errorData.error || 'Заявка уже существует. Пожалуйста, подождите обработки.'
+          userFriendlyMessage = errorData.error || (language === 'ru' 
+            ? 'Заявка уже существует. Пожалуйста, подождите обработки.'
+            : 'Request already exists. Please wait for processing.')
         } else if (response.status === 400) {
-          userFriendlyMessage = errorData.error || 'Проверьте правильность введенных данных.'
+          userFriendlyMessage = errorData.error || (language === 'ru'
+            ? 'Проверьте правильность введенных данных.'
+            : 'Please check the entered data.')
+        } else if (response.status >= 500) {
+          userFriendlyMessage = language === 'ru'
+            ? 'Ошибка сервера. Попробуйте позже или обратитесь в поддержку.'
+            : 'Server error. Please try later or contact support.'
         } else if (errorData.error) {
           userFriendlyMessage = errorData.error
         } else if (errorData.message) {
@@ -611,7 +669,16 @@ export default function DepositStep4() {
         throw new Error(userFriendlyMessage)
       }
 
-      const data = await response.json()
+      let data
+      try {
+        const text = await response.text()
+        data = text ? JSON.parse(text) : {}
+      } catch (parseError) {
+        console.error('❌ Ошибка парсинга JSON ответа:', parseError)
+        throw new Error(language === 'ru' 
+          ? 'Ошибка при обработке ответа сервера. Попробуйте еще раз.'
+          : 'Error processing server response. Please try again.')
+      }
       
       if (!data.success && !data.id && !data.transactionId) {
         console.error('❌ Заявка не создана:', data)
@@ -648,9 +715,11 @@ export default function DepositStep4() {
       
       return requestId
     } catch (error: any) {
+      const errorMessage = error?.message || String(error)
+      
       console.error('❌ КРИТИЧЕСКАЯ ОШИБКА создания заявки:', {
         error: error,
-        errorMessage: error?.message,
+        errorMessage: errorMessage,
         errorStack: error?.stack,
         errorName: error?.name,
         errorString: String(error),
@@ -666,12 +735,10 @@ export default function DepositStep4() {
       
       // Отправляем ошибку на сервер для логирования (если возможно)
       // Игнорируем несущественные ошибки загрузки ресурсов
-      const errorMessage = error?.message || String(error)
       const isNonCriticalError = 
         errorMessage.includes('Load failed') ||
         errorMessage.includes('Failed to load') ||
         errorMessage.includes('NetworkError') ||
-        errorMessage.includes('Failed to fetch') ||
         (error?.name === 'TypeError' && errorMessage.includes('Load'))
       
       if (!isNonCriticalError) {
@@ -679,7 +746,8 @@ export default function DepositStep4() {
           const tg = (window as any).Telegram?.WebApp
           const telegramUserId = tg?.initDataUnsafe?.user?.id || 'unknown'
           
-          fetch('/api/payment', {
+          // Используем safeFetch для логирования ошибки, но без retry чтобы не зациклиться
+          safeFetch('/api/payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -693,7 +761,9 @@ export default function DepositStep4() {
                 url: window.location.href
               },
               telegram_user_id: telegramUserId
-            })
+            }),
+            timeout: 5000,
+            retries: 0 // Не повторяем при логировании ошибки
           }).catch(logError => {
             console.error('❌ Не удалось отправить лог ошибки:', logError)
           })
@@ -713,7 +783,7 @@ export default function DepositStep4() {
     try {
       const requestId = localStorage.getItem('deposit_request_id')
       
-      const response = await fetch('/api/payment', {
+      const response = await safeFetch('/api/payment', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -722,7 +792,9 @@ export default function DepositStep4() {
           id: requestId,
           status: 'completed',
           type: 'deposit'
-        })
+        }),
+        timeout: 10000,
+        retries: 1
       })
       
       if (response.ok) {
@@ -805,11 +877,34 @@ export default function DepositStep4() {
   const handleReceiptPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      console.log('📸 Загружено новое фото чека:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: new Date(file.lastModified).toISOString()
+      })
+      
+      // Сбрасываем предыдущие значения
+      setReceiptPhoto(null)
+      setReceiptPhotoPreview(null)
+      setReceiptPhotoBase64(null)
+      
+      // Устанавливаем файл
       setReceiptPhoto(file)
-      // Создаем превью
+      
+      // Создаем превью и сохраняем base64 сразу
       const reader = new FileReader()
       reader.onloadend = () => {
-        setReceiptPhotoPreview(reader.result as string)
+        const base64String = reader.result as string
+        console.log('📸 Фото конвертировано в base64, размер:', base64String.length, 'символов')
+        setReceiptPhotoPreview(base64String)
+        setReceiptPhotoBase64(base64String)
+      }
+      reader.onerror = (error) => {
+        console.error('❌ Ошибка при чтении фото:', error)
+        setReceiptPhoto(null)
+        setReceiptPhotoPreview(null)
+        setReceiptPhotoBase64(null)
       }
       reader.readAsDataURL(file)
     }
