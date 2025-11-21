@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
     })
 
     console.log(`✅ IncomingPayment saved: ID ${incomingPayment.id}, Amount: ${amount} ${bank || ''}`)
+    console.log(`🔍 [Incoming Payment] Starting auto-match for payment ${incomingPayment.id}, amount: ${amount}`)
 
     // Пытаемся найти совпадение по сумме и автоматически пополнить баланс
     // Вызываем асинхронно, но не блокируем ответ
@@ -89,13 +90,17 @@ export async function POST(request: NextRequest) {
     matchAndProcessPayment(incomingPayment.id, parseFloat(amount))
       .then((result) => {
         if (result && result.success) {
-          console.log(`✅ Auto-deposit completed for payment ${incomingPayment.id}, request ${result.requestId}`)
+          console.log(`✅ [Incoming Payment] Auto-deposit completed for payment ${incomingPayment.id}, request ${result.requestId}`)
         } else {
-          console.log(`ℹ️ No matching request found for payment ${incomingPayment.id} (amount: ${amount})`)
+          console.log(`ℹ️ [Incoming Payment] No matching request found for payment ${incomingPayment.id} (amount: ${amount})`)
+          if (result) {
+            console.log(`   [Incoming Payment] Match result:`, result)
+          }
         }
       })
       .catch((error) => {
-        console.error(`⚠️ Auto-match failed for payment ${incomingPayment.id}:`, error.message || error)
+        console.error(`❌ [Incoming Payment] Auto-match failed for payment ${incomingPayment.id}:`, error.message || error)
+        console.error(`   [Incoming Payment] Error stack:`, error.stack)
         // Не возвращаем ошибку, т.к. платеж уже сохранен и может быть обработан вручную
       })
     
@@ -134,30 +139,42 @@ export async function POST(request: NextRequest) {
  * Функция для сопоставления входящего платежа с заявкой и автоматического пополнения
  */
 async function matchAndProcessPayment(paymentId: number, amount: number) {
+  try {
+    console.log(`🔍 [Auto-Deposit] matchAndProcessPayment called: paymentId=${paymentId}, amount=${amount}`)
+  } catch (err) {
+    console.error(`❌ [Auto-Deposit] Error in matchAndProcessPayment start:`, err)
+  }
+  
   // Ищем заявки на пополнение со статусом pending за последние 24 часа
   // Увеличено до 24 часов, чтобы охватить заявки которые могут прийти с задержкой
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
+  console.log(`🔍 [Auto-Deposit] ===== STARTING MATCH PROCESS =====`)
   console.log(`🔍 [Auto-Deposit] Matching payment ${paymentId}: looking for requests with amount ${amount} created after ${twentyFourHoursAgo.toISOString()}`)
   console.log(`🔍 [Auto-Deposit] Payment amount: ${amount}, type: ${typeof amount}`)
+  console.log(`🔍 [Auto-Deposit] Time window: last 24 hours (from ${twentyFourHoursAgo.toISOString()})`)
 
   // Ищем заявки с точным совпадением суммы (с точностью до копеек)
   // ВАЖНО: Исключаем заявки, которые уже имеют связанный обработанный платеж
   // Также исключаем заявки которые уже не в статусе pending (на случай race condition)
-  const matchingRequests = await prisma.request.findMany({
-    where: {
-      requestType: 'deposit',
-      status: 'pending', // Только ожидающие заявки
-      createdAt: {
-        gte: twentyFourHoursAgo,
-      },
-      // Исключаем заявки, которые уже имеют связанный обработанный платеж
-      incomingPayments: {
-        none: {
-          isProcessed: true,
-        },
+  const whereClause = {
+    requestType: 'deposit',
+    status: 'pending', // Только ожидающие заявки
+    createdAt: {
+      gte: twentyFourHoursAgo,
+    },
+    // Исключаем заявки, которые уже имеют связанный обработанный платеж
+    incomingPayments: {
+      none: {
+        isProcessed: true,
       },
     },
+  }
+  
+  console.log(`🔍 [Auto-Deposit] Query where clause:`, JSON.stringify(whereClause, null, 2))
+  
+  const matchingRequests = await prisma.request.findMany({
+    where: whereClause,
     orderBy: {
       createdAt: 'asc', // Берем самую старую заявку (первую по времени)
     },
@@ -179,6 +196,8 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
       },
     },
   })
+  
+  console.log(`🔍 [Auto-Deposit] Database query completed, found ${matchingRequests.length} requests`)
 
   console.log(`📋 [Auto-Deposit] Found ${matchingRequests.length} pending deposit requests in the last 24 hours (without processed payments)`)
   
@@ -236,8 +255,18 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
   })
 
   if (exactMatches.length === 0) {
+    console.log(`ℹ️ [Auto-Deposit] ===== NO MATCH FOUND =====`)
     console.log(`ℹ️ [Auto-Deposit] No matching request found for payment ${paymentId} (amount: ${amount})`)
-    console.log(`   [Auto-Deposit] Searched ${matchingRequests.length} requests. Amounts found: ${matchingRequests.map(r => r.amount?.toString() || 'N/A').join(', ')}`)
+    console.log(`   [Auto-Deposit] Searched ${matchingRequests.length} requests.`)
+    if (matchingRequests.length > 0) {
+      console.log(`   [Auto-Deposit] Request details:`)
+      matchingRequests.forEach(r => {
+        console.log(`     - Request ${r.id}: amount=${r.amount?.toString() || 'N/A'}, accountId=${r.accountId || 'N/A'}, bookmaker=${r.bookmaker || 'N/A'}, status=${r.status}, createdAt=${r.createdAt.toISOString()}`)
+        console.log(`       Payments: ${r.incomingPayments?.length || 0} (processed: ${r.incomingPayments?.filter(p => p.isProcessed).length || 0})`)
+      })
+    } else {
+      console.log(`   [Auto-Deposit] No pending deposit requests found in the last 24 hours`)
+    }
     return null
   }
 
@@ -268,12 +297,19 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
   
   if (!currentRequest || currentRequest.status !== 'pending') {
     console.log(`⚠️ [Auto-Deposit] Request ${request.id} is no longer pending (current status: ${currentRequest?.status}), skipping`)
+    console.log(`   [Auto-Deposit] This might indicate the request was already processed by another process`)
     return null
   }
 
   if (!currentRequest.accountId || !currentRequest.bookmaker) {
-    console.warn(`⚠️ [Auto-Deposit] Request ${request.id} missing accountId or bookmaker`)
-    console.warn(`   [Auto-Deposit] accountId: ${currentRequest.accountId}, bookmaker: ${currentRequest.bookmaker}`)
+    console.error(`❌ [Auto-Deposit] Request ${request.id} missing accountId or bookmaker - CANNOT PROCESS`)
+    console.error(`   [Auto-Deposit] accountId: ${currentRequest.accountId || 'MISSING'}, bookmaker: ${currentRequest.bookmaker || 'MISSING'}`)
+    console.error(`   [Auto-Deposit] Request details:`, {
+      id: request.id,
+      userId: currentRequest.userId?.toString(),
+      amount: currentRequest.amount?.toString(),
+      status: currentRequest.status
+    })
     return null
   }
   
@@ -359,19 +395,25 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     
     console.log(`✅ [Auto-Deposit] Transaction completed: Request ${request.id} status updated, Payment ${paymentId} marked as processed`)
 
+    console.log(`✅ [Auto-Deposit] ===== SUCCESS =====`)
     console.log(`✅ [Auto-Deposit] SUCCESS: Request ${request.id} updated to autodeposit_success`)
     console.log(`   [Auto-Deposit] Account: ${request.accountId}, Bookmaker: ${request.bookmaker}`)
+    console.log(`   [Auto-Deposit] Amount: ${request.amount?.toString()}, Payment: ${amount}`)
     console.log(`   [Auto-Deposit] Payment ${paymentId} marked as processed`)
     console.log(`   [Auto-Deposit] Request should now disappear from pending list`)
+    console.log(`✅ [Auto-Deposit] ===== END MATCH PROCESS =====`)
 
     return {
       requestId: request.id,
       success: true,
     }
   } catch (error: any) {
+    console.error(`❌ [Auto-Deposit] ===== FAILED =====`)
     console.error(`❌ [Auto-Deposit] FAILED for request ${request.id}:`, error)
     console.error(`   [Auto-Deposit] Error message:`, error.message)
     console.error(`   [Auto-Deposit] Error stack:`, error.stack)
+    console.error(`   [Auto-Deposit] Payment ID: ${paymentId}, Amount: ${amount}`)
+    console.error(`   [Auto-Deposit] Request ID: ${request.id}, Account: ${request.accountId}, Bookmaker: ${request.bookmaker}`)
 
     // В случае ошибки API казино:
     // 1. Откатываем связь платежа с заявкой (убираем requestId и isProcessed)
