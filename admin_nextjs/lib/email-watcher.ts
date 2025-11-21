@@ -18,6 +18,12 @@ interface WatcherSettings {
   intervalSec: number
 }
 
+// Rate limiting для логов сетевых ошибок
+let lastNetworkErrorLog = 0
+const NETWORK_ERROR_LOG_INTERVAL = 60000 // Логируем не чаще раза в минуту
+let consecutiveNetworkErrors = 0
+const MAX_CONSECUTIVE_ERRORS_BEFORE_LOG = 3 // Логируем только после 3+ ошибок подряд
+
 /**
  * Получение настроек watcher из БД
  * Упрощенная версия: только флаг включен/выключен в БД, остальное фиксировано
@@ -378,6 +384,8 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
     })
 
     imap.once('ready', () => {
+      // Сбрасываем счетчик ошибок при успешном подключении
+      consecutiveNetworkErrors = 0
       imap.openBox(settings.folder, false, (err: Error | null) => {
         if (err) {
           reject(err)
@@ -403,6 +411,8 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
 
           if (!results || results.length === 0) {
             console.log('📭 No new emails')
+            // Сбрасываем счетчик при успешной проверке
+            consecutiveNetworkErrors = 0
             imap.end()
             resolve()
             return
@@ -424,6 +434,8 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
 
           processSequentially()
             .then(() => {
+              // Сбрасываем счетчик при успешной обработке
+              consecutiveNetworkErrors = 0
               imap.end()
               resolve()
             })
@@ -436,6 +448,21 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
     })
 
     imap.once('error', (err: Error) => {
+      // Обрабатываем сетевые ошибки с rate limiting
+      if ((err as any).code === 'ENOTFOUND' || (err as any).code === 'ETIMEDOUT' || (err as any).code === 'ECONNREFUSED') {
+        consecutiveNetworkErrors++
+        const now = Date.now()
+        
+        // Логируем только если прошло достаточно времени и есть несколько ошибок подряд
+        if (consecutiveNetworkErrors >= MAX_CONSECUTIVE_ERRORS_BEFORE_LOG && 
+            (now - lastNetworkErrorLog) > NETWORK_ERROR_LOG_INTERVAL) {
+          console.warn(`⚠️ IMAP network error in checkEmails (${(err as any).code}): ${err.message || err} (${consecutiveNetworkErrors} consecutive errors)`)
+          lastNetworkErrorLog = now
+        }
+        // Не reject при сетевых ошибках, просто resolve чтобы продолжить работу
+        resolve()
+        return
+      }
       reject(err)
     })
 
@@ -471,6 +498,8 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
 
     imap.once('ready', () => {
       console.log(`✅ Connected to IMAP (${settings.email})`)
+      // Сбрасываем счетчик ошибок при успешном подключении
+      consecutiveNetworkErrors = 0
       imap.openBox(settings.folder, false, (err: Error | null) => {
         if (err) {
           reject(err)
@@ -486,8 +515,21 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
           console.log('📬 New email detected! Processing...')
           try {
             await checkEmails(settings)
+            // Сбрасываем счетчик при успешной обработке
+            consecutiveNetworkErrors = 0
           } catch (error: any) {
-            console.error('Error processing new emails:', error)
+            // Обрабатываем сетевые ошибки с rate limiting
+            if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+              consecutiveNetworkErrors++
+              const now = Date.now()
+              if (consecutiveNetworkErrors >= MAX_CONSECUTIVE_ERRORS_BEFORE_LOG && 
+                  (now - lastNetworkErrorLog) > NETWORK_ERROR_LOG_INTERVAL) {
+                console.warn(`⚠️ Network error processing new emails (${error.code}): ${error.message || error} (${consecutiveNetworkErrors} consecutive errors)`)
+                lastNetworkErrorLog = now
+              }
+            } else {
+              console.error('Error processing new emails:', error)
+            }
           }
         })
 
@@ -515,10 +557,21 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
             }
             // Обрабатываем сетевые ошибки (DNS, таймауты) - не логируем как критичные
             if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-              console.warn(`⚠️ Network error in polling (${error.code}):`, error.message || error.hostname || 'Connection issue')
+              consecutiveNetworkErrors++
+              const now = Date.now()
+              
+              // Логируем только если прошло достаточно времени и есть несколько ошибок подряд
+              if (consecutiveNetworkErrors >= MAX_CONSECUTIVE_ERRORS_BEFORE_LOG && 
+                  (now - lastNetworkErrorLog) > NETWORK_ERROR_LOG_INTERVAL) {
+                console.warn(`⚠️ Network error in polling (${error.code}): ${error.message || error.hostname || 'Connection issue'} (${consecutiveNetworkErrors} consecutive errors)`)
+                lastNetworkErrorLog = now
+              }
               // Продолжаем работу, попробуем снова через интервал
               return
             }
+            
+            // Сбрасываем счетчик при других ошибках или успехе
+            consecutiveNetworkErrors = 0
             console.error('Error in quick polling:', error.message || error)
           }
         }, 5000) // Проверка каждые 5 секунд вместо 60
@@ -543,12 +596,21 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
         if (keepAliveInterval) clearInterval(keepAliveInterval)
         reject(err)
       } else if ((err as any).code === 'ENOTFOUND' || (err as any).code === 'ETIMEDOUT' || (err as any).code === 'ECONNREFUSED') {
-        // Сетевые ошибки - не критичные, просто логируем и продолжаем
-        console.warn(`⚠️ IMAP network error (${(err as any).code}):`, err.message || err)
+        // Сетевые ошибки - не критичные, логируем с rate limiting
+        consecutiveNetworkErrors++
+        const now = Date.now()
+        
+        // Логируем только если прошло достаточно времени и есть несколько ошибок подряд
+        if (consecutiveNetworkErrors >= MAX_CONSECUTIVE_ERRORS_BEFORE_LOG && 
+            (now - lastNetworkErrorLog) > NETWORK_ERROR_LOG_INTERVAL) {
+          console.warn(`⚠️ IMAP network error (${(err as any).code}): ${err.message || err} (${consecutiveNetworkErrors} consecutive errors)`)
+          lastNetworkErrorLog = now
+        }
         // Не останавливаем интервалы, пусть продолжает пытаться
         // Не reject, чтобы не прерывать цикл переподключения
       } else {
         console.error('❌ IMAP connection error:', err)
+        consecutiveNetworkErrors = 0 // Сбрасываем при других ошибках
         if (idleInterval) clearInterval(idleInterval)
         if (keepAliveInterval) clearInterval(keepAliveInterval)
         reject(err)
