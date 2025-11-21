@@ -102,17 +102,17 @@ export async function compressImageIfNeeded(
   
   console.log(`📏 Размер изображения: ${currentSizeKB.toFixed(2)} KB, лимит: ${maxSizeKB} KB`)
   
-  // Если размер уже в норме и не требуется всегда сжимать, возвращаем оригинал
-  if (!alwaysCompress && currentSizeKB <= maxSizeKB) {
+  // Всегда сжимаем изображение для всех устройств (не только iPhone)
+  // Это предотвращает ошибку 413 и оптимизирует размер данных
+  if (currentSizeKB > maxSizeKB) {
+    console.log(`⚠️ Изображение слишком большое (${currentSizeKB.toFixed(2)} KB > ${maxSizeKB} KB), начинаем сжатие...`)
+  } else if (alwaysCompress) {
+    // Даже если размер в норме, сжимаем для оптимизации (по умолчанию alwaysCompress = true)
+    console.log(`📸 Оптимизируем изображение (${currentSizeKB.toFixed(2)} KB)...`)
+  } else {
+    // Только если explicitly отключено alwaysCompress и размер в норме
     console.log('✅ Размер изображения в норме, сжатие не требуется')
     return base64String
-  }
-  
-  // Всегда сжимаем для оптимизации и предотвращения ошибки 413
-  if (currentSizeKB > maxSizeKB) {
-    console.log(`⚠️ Изображение слишком большое (${currentSizeKB.toFixed(2)} KB), начинаем сжатие...`)
-  } else {
-    console.log(`📸 Оптимизируем изображение (${currentSizeKB.toFixed(2)} KB)...`)
   }
   
   return compressImage(base64String, 1920, 1920, 0.8, maxSizeKB)
