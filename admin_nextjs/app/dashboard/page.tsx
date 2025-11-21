@@ -11,6 +11,7 @@ import {
   initAudioContext,
   activateAudioContext
 } from '@/lib/sounds'
+import { initNotifications, showDepositNotification, showWithdrawNotification } from '@/lib/notifications'
 
 interface Request {
   id: number
@@ -51,13 +52,30 @@ export default function DashboardPage() {
         // Показываем только отложенные заявки
         params.append('status', 'deferred')
       }
-
+      
       // Используем кэширование для более быстрой загрузки
       const response = await fetch(`/api/requests?${params.toString()}`, {
         cache: 'default',
         next: { revalidate: 3 } // Перевалидируем каждые 3 секунды
       })
       const data = await response.json()
+      
+      // Также проверяем недавние автопополнения для уведомлений
+      // Делаем отдельный запрос для автопополнений
+      let autodepositRequests: Request[] = []
+      if (!isFirstLoadRef.current && !showLoading) {
+        try {
+          const autodepositResponse = await fetch('/api/requests?status=autodeposit_success&limit=20', {
+            cache: 'no-store'
+          })
+          const autodepositData = await autodepositResponse.json()
+          if (autodepositData.success && autodepositData.data) {
+            autodepositRequests = autodepositData.data.requests || []
+          }
+        } catch (err) {
+          console.error('Error fetching autodeposit requests:', err)
+        }
+      }
 
       console.log('📋 Fetched requests data:', data)
 
@@ -66,31 +84,84 @@ export default function DashboardPage() {
         
         console.log(`✅ Loaded ${requestsList.length} requests for tab: ${activeTab}`)
         
-        // Определяем новые заявки только для вкладки "Ожидает" и не при первой загрузке
-        if (activeTab === 'pending' && !isFirstLoadRef.current && !showLoading) {
-          const previousIds = new Set(previousRequestsRef.current.map((r: Request) => r.id))
-          const newRequests = requestsList.filter((r: Request) => !previousIds.has(r.id))
+        // Определяем новые заявки и изменения статуса
+        if (!isFirstLoadRef.current && !showLoading) {
+          const previousMap = new Map(previousRequestsRef.current.map((r: Request) => [r.id, r]))
+          const newRequests = requestsList.filter((r: Request) => !previousMap.has(r.id))
           
-          console.log(`🔍 [Dashboard] Checking for new requests: previous=${previousRequestsRef.current.length}, current=${requestsList.length}, new=${newRequests.length}, isFirstLoad=${isFirstLoadRef.current}, showLoading=${showLoading}`)
+          // Проверяем изменения статуса существующих заявок (для автопополнений)
+          const statusChangedRequests = requestsList.filter((r: Request) => {
+            const prev = previousMap.get(r.id)
+            return prev && prev.status !== r.status && 
+                   (r.status === 'autodeposit_success' || r.status === 'completed')
+          })
           
-          if (newRequests.length > 0) {
-            console.log(`🔔 [Dashboard] Found ${newRequests.length} new request(s):`, newRequests.map((r: Request) => ({ id: r.id, type: r.requestType })))
+          // Также проверяем автопополнения из отдельного запроса
+          const previousAutodepositIds = new Set(
+            previousRequestsRef.current
+              .filter(r => r.status === 'autodeposit_success')
+              .map(r => r.id)
+          )
+          const newAutodepositRequests = autodepositRequests.filter(
+            (r: Request) => !previousAutodepositIds.has(r.id) && 
+                           r.status === 'autodeposit_success'
+          )
+          
+          const allRequestsToNotify = [...newRequests, ...statusChangedRequests, ...newAutodepositRequests]
+          
+          console.log(`🔍 [Dashboard] New: ${newRequests.length}, Status changed: ${statusChangedRequests.length}`)
+          
+          if (allRequestsToNotify.length > 0) {
+            console.log(`🔔 [Dashboard] Found ${allRequestsToNotify.length} request(s) to notify:`, 
+              allRequestsToNotify.map((r: Request) => ({ id: r.id, type: r.requestType, status: r.status })))
             
             // Активируем AudioContext перед воспроизведением звуков
             activateAudioContext().then(() => {
-              // Воспроизводим звуки для новых заявок
-              // Добавляем небольшую задержку между звуками если несколько заявок
-              newRequests.forEach((request: Request, index: number) => {
+              allRequestsToNotify.forEach((request: Request, index: number) => {
                 setTimeout(() => {
-                  console.log(`🔊 [Dashboard] Playing sound for request ${request.id}, type: ${request.requestType}`)
-                  if (request.requestType === 'deposit') {
+                  const amount = request.amount ? parseFloat(request.amount) : 0
+                  const bookmaker = request.bookmaker || 'не указано'
+                  const accountId = request.accountId || 'не указан'
+                  
+                  if (request.requestType === 'deposit' && 
+                      (request.status === 'autodeposit_success' || request.status === 'completed')) {
+                    // Автопополнение или ручное пополнение
                     playDepositSound()
-                    console.log(`🔊 [Dashboard] Played deposit sound for request ${request.id}`)
-                  } else if (request.requestType === 'withdraw') {
+                    console.log(`🔊 [Dashboard] Deposit completed: request ${request.id}`)
+                    
+                    showDepositNotification(amount, bookmaker, accountId, request.id).catch(err => {
+                      console.error('Error showing deposit notification:', err)
+                    })
+                    
+                    // Отправляем в Service Worker для работы даже когда сайт закрыт
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                      navigator.serviceWorker.controller.postMessage({
+                        type: 'SHOW_DEPOSIT_NOTIFICATION',
+                        data: { requestId: request.id, amount, bookmaker, accountId }
+                      })
+                    }
+                  } else if (request.requestType === 'withdraw' && request.status === 'pending') {
+                    // Новая заявка на вывод
                     playWithdrawSound()
-                    console.log(`🔊 [Dashboard] Played withdraw sound for request ${request.id}`)
+                    console.log(`🔊 [Dashboard] New withdraw: request ${request.id}`)
+                    
+                    showWithdrawNotification(amount, bookmaker, accountId, request.id).catch(err => {
+                      console.error('Error showing withdraw notification:', err)
+                    })
+                    
+                    // Отправляем в Service Worker
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                      navigator.serviceWorker.controller.postMessage({
+                        type: 'SHOW_WITHDRAW_NOTIFICATION',
+                        data: { requestId: request.id, amount, bookmaker, accountId }
+                      })
+                    }
+                  } else if (request.requestType === 'deposit' && request.status === 'pending' && newRequests.includes(request)) {
+                    // Новая заявка на пополнение (только звук, уведомление будет когда статус изменится)
+                    playDepositSound()
+                    console.log(`🔊 [Dashboard] New deposit request: ${request.id}`)
                   }
-                }, index * 300) // Задержка 300ms между звуками
+                }, index * 300)
               })
             }).catch(err => {
               console.error('🔊 [Dashboard] Failed to activate AudioContext:', err)
@@ -126,6 +197,20 @@ export default function DashboardPage() {
   }, [])
   
   useEffect(() => {
+    // Инициализируем уведомления при загрузке
+    initNotifications().then(success => {
+      if (success) {
+        console.log('✅ Уведомления инициализированы')
+      }
+    })
+    
+    // Слушаем сообщения от Service Worker для уведомлений
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        console.log('📨 Message from Service Worker:', event.data)
+      })
+    }
+    
     fetchRequests()
     
     // Автоматическое обновление каждые 5 секунд (увеличено для снижения нагрузки)
