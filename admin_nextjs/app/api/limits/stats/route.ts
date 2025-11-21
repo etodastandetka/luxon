@@ -20,12 +20,15 @@ export async function GET(request: NextRequest) {
       filters.createdAt = { ...filters.createdAt, lte: new Date(endDate) }
     }
 
-    // Статистика пополнений и выводов параллельно (только успешные заявки)
+    // Статистика пополнений и выводов параллельно (только успешные заявки, исключаем отклоненные)
+    // Используем только успешные статусы, что автоматически исключает rejected, declined, cancelled
+    const successStatuses = ['completed', 'approved', 'auto_completed', 'autodeposit_success']
+    
     const [depositStats, withdrawalStats] = await Promise.all([
       prisma.request.aggregate({
         where: {
           requestType: 'deposit',
-          status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
+          status: { in: successStatuses },
           ...filters,
         },
         _count: { id: true },
@@ -34,7 +37,7 @@ export async function GET(request: NextRequest) {
       prisma.request.aggregate({
         where: {
           requestType: 'withdraw',
-          status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
+          status: { in: successStatuses },
           ...filters,
         },
         _count: { id: true },
@@ -55,7 +58,7 @@ export async function GET(request: NextRequest) {
     let chartEndDate = endDate ? new Date(endDate) : new Date()
 
     // Группировка по датам для графика используя SQL (оптимизировано)
-    // Используем только успешные статусы и ограничиваем количество дней
+    // Используем только успешные статусы, что автоматически исключает отклоненные
     const [depositsByDate, withdrawalsByDate] = await Promise.all([
       prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
         SELECT 
