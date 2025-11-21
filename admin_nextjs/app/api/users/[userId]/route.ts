@@ -12,13 +12,10 @@ export async function GET(
     const userId = BigInt(params.userId)
     console.log(`🔍 Looking for user with ID: ${userId.toString()}`)
 
+    // Сначала получаем данные пользователя из BotUser
     let user = await prisma.botUser.findUnique({
       where: { userId },
       include: {
-        transactions: {
-          take: 50,
-          orderBy: { createdAt: 'desc' },
-        },
         referralMade: {
           include: {
             referred: true,
@@ -40,60 +37,61 @@ export async function GET(
 
     console.log(`📊 BotUser found: ${user ? 'YES' : 'NO'}`)
 
-    // Если пользователь не найден в BotUser, пытаемся получить данные из Request
-    if (!user) {
-      console.log(`🔍 Searching in Request table for userId: ${userId.toString()}`)
-      const latestRequest = await prisma.request.findFirst({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-      })
-      
-      console.log(`📋 Latest Request found: ${latestRequest ? 'YES' : 'NO'}`)
-      if (latestRequest) {
-        console.log(`📋 Request ID: ${latestRequest.id}, userId: ${latestRequest.userId.toString()}`)
-      }
+    // ВСЕГДА получаем транзакции из Request, так как это основная таблица заявок
+    // Request содержит все заявки на пополнение и вывод с полной информацией
+    console.log(`🔍 Loading transactions from Request table for userId: ${userId.toString()}`)
+    const allRequests = await prisma.request.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 100, // Берем больше для статистики
+    })
+    
+    console.log(`📋 Found ${allRequests.length} requests for user ${userId.toString()}`)
 
-      if (latestRequest) {
-        // Создаем виртуальный объект пользователя на основе данных из Request
-        const allRequests = await prisma.request.findMany({
-          where: { userId },
-        })
+    // Преобразуем Request в формат транзакций
+    const transactionsFromRequests = allRequests.map(req => ({
+      id: req.id,
+      transType: req.requestType,
+      amount: req.amount ? req.amount.toString() : '0',
+      status: req.status,
+      bookmaker: req.bookmaker,
+      processedBy: req.processedBy || null,
+      bank: req.bank || null,
+      createdAt: req.createdAt,
+    }))
 
-        const deposits = allRequests.filter(r => r.requestType === 'deposit')
-        const withdrawals = allRequests.filter(r => r.requestType === 'withdraw')
-        
-        // Получаем транзакции из Request
-        const transactions = allRequests.slice(0, 50).map(req => ({
-          id: req.id,
-          transType: req.requestType,
-          amount: req.amount ? parseFloat(req.amount.toString()) : 0,
-          status: req.status,
-          bookmaker: req.bookmaker,
-          processedBy: req.processedBy || null,
-          bank: req.bank || null,
-          createdAt: req.createdAt,
-        }))
+    console.log(`📊 Transactions from Request: ${transactionsFromRequests.length}`)
 
-        user = {
-          userId,
-          username: latestRequest.username,
-          firstName: latestRequest.firstName,
-          lastName: latestRequest.lastName,
-          language: 'ru',
-          selectedBookmaker: latestRequest.bookmaker,
-          note: null,
-          isActive: true,
-          createdAt: latestRequest.createdAt,
-          transactions,
-          referralMade: [],
-          referralEarnings: [],
-          _count: {
-            transactions: allRequests.length,
-            referralMade: 0,
-            referralEarnings: 0,
-          },
-        } as any
-      }
+    // Если пользователь не найден в BotUser, создаем виртуальный объект на основе Request
+    if (!user && allRequests.length > 0) {
+      const latestRequest = allRequests[0]
+      console.log(`📋 Creating virtual user from Request, latest request ID: ${latestRequest.id}`)
+
+      user = {
+        userId,
+        username: latestRequest.username,
+        firstName: latestRequest.firstName,
+        lastName: latestRequest.lastName,
+        language: 'ru',
+        selectedBookmaker: latestRequest.bookmaker,
+        note: null,
+        isActive: true,
+        createdAt: latestRequest.createdAt,
+        transactions: transactionsFromRequests,
+        referralMade: [],
+        referralEarnings: [],
+        _count: {
+          transactions: allRequests.length,
+          referralMade: 0,
+          referralEarnings: 0,
+        },
+      } as any
+    } else if (user) {
+      // Если пользователь найден в BotUser, заменяем транзакции на данные из Request
+      // так как Request содержит более полную информацию
+      console.log(`📊 Replacing BotTransaction data with Request data for user ${userId.toString()}`)
+      ;(user as any).transactions = transactionsFromRequests
+      ;(user as any)._count.transactions = allRequests.length
     }
 
     if (!user) {
@@ -105,78 +103,46 @@ export async function GET(
     }
     
     console.log(`✅ User found, returning data for userId: ${userId.toString()}`)
+    
+    // Транзакции уже приходят из Request с полной информацией (processedBy, bank, status)
+    // Просто форматируем их для ответа
+    const userTransactions = (user as any).transactions || []
+    console.log(`📊 Total transactions to return: ${userTransactions.length}`)
+    
+    const transactionsFormatted = userTransactions.map((t: any) => ({
+      id: t.id,
+      transType: t.transType,
+      amount: typeof t.amount === 'string' ? t.amount : (t.amount?.toString() || '0'),
+      status: t.status,
+      bookmaker: t.bookmaker,
+      processedBy: t.processedBy || null,
+      bank: t.bank || null,
+      createdAt: typeof t.createdAt === 'string' ? t.createdAt : (t.createdAt?.toISOString() || new Date().toISOString()),
+    }))
 
-    // Для транзакций из BotTransaction нужно найти связанный Request для получения processedBy
-    const transactionsWithProcessedBy = await Promise.all(
-      user.transactions.map(async (t) => {
-        // Если транзакция уже имеет processedBy (из Request), просто возвращаем её
-        if ((t as any).processedBy !== undefined) {
-          return {
-            ...t,
-            amount: typeof t.amount === 'string' ? t.amount : t.amount.toString(),
-            createdAt: typeof t.createdAt === 'string' ? t.createdAt : t.createdAt.toISOString(),
-            processedBy: (t as any).processedBy || null,
-            status: t.status,
-            bank: (t as any).bank || null,
-          }
-        }
+    console.log(`📊 Formatted transactions: ${transactionsFormatted.length}`)
+    console.log(`📊 Sample transaction:`, transactionsFormatted[0] || 'none')
 
-        // Ищем связанный Request по userId, bookmaker, amount и transType
-        // createdAt может быть строкой (из Request) или Date (из BotTransaction)
-        const createdAtDate = typeof t.createdAt === 'string' 
-          ? new Date(t.createdAt) 
-          : t.createdAt
+    const responseData = {
+      ...user,
+      userId: (user as any).userId.toString(),
+      transactions: transactionsFormatted,
+      referralEarnings: ((user as any).referralEarnings || []).map((e: any) => ({
+        ...e,
+        amount: e.amount?.toString() || '0',
+        commissionAmount: e.commissionAmount?.toString() || '0',
+      })),
+    }
 
-        // Преобразуем amount в Decimal для сравнения
-        const amountValue = typeof t.amount === 'string' 
-          ? parseFloat(t.amount) 
-          : (typeof t.amount === 'object' && t.amount !== null && 'toNumber' in t.amount)
-            ? (t.amount as any).toNumber()
-            : Number(t.amount)
-
-        const relatedRequest = await prisma.request.findFirst({
-          where: {
-            userId: user.userId,
-            bookmaker: t.bookmaker || undefined,
-            amount: amountValue,
-            requestType: t.transType,
-            createdAt: {
-              gte: new Date(createdAtDate.getTime() - 60000), // ±1 минута
-              lte: new Date(createdAtDate.getTime() + 60000),
-            },
-          },
-          select: {
-            processedBy: true,
-            status: true,
-            bank: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        })
-
-        return {
-          ...t,
-          amount: typeof t.amount === 'string' ? t.amount : t.amount.toString(),
-          createdAt: typeof t.createdAt === 'string' ? t.createdAt : t.createdAt.toISOString(),
-          processedBy: relatedRequest?.processedBy || null,
-          status: relatedRequest?.status || t.status,
-          bank: relatedRequest?.bank || null,
-        }
-      })
-    )
+    console.log(`📊 Returning user data:`, {
+      userId: responseData.userId,
+      transactionsCount: responseData.transactions.length,
+      depositsCount: responseData.transactions.filter((t: any) => t.transType === 'deposit').length,
+      withdrawalsCount: responseData.transactions.filter((t: any) => t.transType === 'withdraw').length,
+    })
 
     return NextResponse.json(
-      createApiResponse({
-        ...user,
-        userId: user.userId.toString(),
-        transactions: transactionsWithProcessedBy,
-        referralEarnings: user.referralEarnings.map(e => ({
-          ...e,
-          amount: e.amount.toString(),
-          commissionAmount: e.commissionAmount.toString(),
-        })),
-      })
+      createApiResponse(responseData)
     )
   } catch (error: any) {
     return NextResponse.json(
