@@ -265,8 +265,8 @@ export async function POST(request: NextRequest) {
           const payment = incomingPayments[0]
           console.log(`✅ [Auto-Deposit] Found matching payment ${payment.id} for NEW request ${newRequest.id}, processing INSTANTLY...`)
           
-          // Импортируем функцию автопополнения
-          const { matchAndProcessPayment } = await import('../incoming-payment/route')
+          // Импортируем функцию автопополнения из отдельного модуля
+          const { matchAndProcessPayment } = await import('@/lib/auto-deposit')
           
           // Вызываем автопополнение СИНХРОННО - ждем результат
           // Это гарантирует что автопополнение произойдет секунду в секунду
