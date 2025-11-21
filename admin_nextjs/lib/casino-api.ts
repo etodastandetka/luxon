@@ -351,9 +351,89 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
   return { balance: 0, limit: 0 }
 }
 
+/**
+ * Получение лимита кассы 1win через попытку депозита
+ * Делает депозит на большую сумму и парсит ошибку для получения баланса и лимита
+ */
+async function get1winLimit(apiKey: string): Promise<BalanceResult> {
+  try {
+    // Тестовый ID и большая сумма для получения ошибки с лимитом
+    const testUserId = 306751296
+    const testAmount = 500000
+
+    console.log(`[1win Limit] Making test deposit to get cash limit:`)
+    console.log(`[1win Limit]   - User ID: ${testUserId}`)
+    console.log(`[1win Limit]   - Amount: ${testAmount}`)
+    console.log(`[1win Limit]   - API Key: ${apiKey.substring(0, 20)}...`)
+
+    const response = await fetch('https://api.1win.win/v1/client/deposit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': apiKey,
+      },
+      body: JSON.stringify({
+        userId: testUserId,
+        amount: testAmount,
+      }),
+    })
+
+    const responseText = await response.text()
+    console.log(`[1win Limit] Response status: ${response.status}, Response ok: ${response.ok}`)
+    console.log(`[1win Limit] Response body:`, responseText.substring(0, 500))
+    
+    let data: any
+    try {
+      data = JSON.parse(responseText)
+    } catch (e) {
+      console.error(`[1win Limit] Failed to parse response:`, responseText)
+      return { balance: 0, limit: 0 }
+    }
+
+    // Ожидаем ошибку с информацией о лимите
+    if (response.ok) {
+      console.warn(`[1win Limit] ⚠️ Deposit succeeded unexpectedly. This should not happen with such a large amount.`)
+      return { balance: 0, limit: 0 }
+    }
+
+    // Парсим ошибку для получения баланса и лимита
+    if (data.errorCode === 'CASH07' || data.errorMessage) {
+      const errorMessage = data.errorMessage || data.message || ''
+      console.log(`[1win Limit] Error message:`, errorMessage)
+
+      // Парсим формат: "Cash limit exceeded: 22236.57 >= 5000000"
+      const patterns = [
+        /Cash limit exceeded:\s*([\d.]+)\s*>=\s*([\d.]+)/i,
+        /limit exceeded:\s*([\d.]+)\s*>=\s*([\d.]+)/i,
+        /([\d.]+)\s*>=\s*([\d.]+)/,
+      ]
+
+      for (const pattern of patterns) {
+        const match = errorMessage.match(pattern)
+        if (match && match.length >= 3) {
+          const balance = parseFloat(match[1])
+          const limit = parseFloat(match[2])
+          
+          if (!isNaN(balance) && !isNaN(limit) && limit > 0) {
+            console.log(`[1win Limit] ✅ Parsed: balance=${balance}, limit=${limit}`)
+            return { balance, limit }
+          }
+        }
+      }
+
+      console.error(`[1win Limit] ❌ Could not parse balance and limit from error message:`, errorMessage)
+    }
+
+    return { balance: 0, limit: 0 }
+  } catch (error: any) {
+    console.error(`[1win Limit] ❌ Error:`, error.message)
+    return { balance: 0, limit: 0 }
+  }
+}
+
 // Кэш для лимитов платформ (30 секунд)
 let platformLimitsCache: {
-  data: Array<{ key: string; name: string; limit: number }>
+  data: Array<{ key: string; name: string; limit: number; balance?: number }>
   timestamp: number
 } | null = null
 
@@ -363,7 +443,7 @@ const PLATFORM_LIMITS_CACHE_TTL = 30 * 1000 // 30 секунд
  * Получение лимитов всех платформ (с кэшированием)
  */
 export async function getPlatformLimits(): Promise<
-  Array<{ key: string; name: string; limit: number }>
+  Array<{ key: string; name: string; limit: number; balance?: number }>
 > {
   // Проверяем кэш
   if (platformLimitsCache && Date.now() - platformLimitsCache.timestamp < PLATFORM_LIMITS_CACHE_TTL) {
@@ -371,7 +451,7 @@ export async function getPlatformLimits(): Promise<
     return platformLimitsCache.data
   }
 
-  const limits: Array<{ key: string; name: string; limit: number }> = []
+  const limits: Array<{ key: string; name: string; limit: number; balance?: number }> = []
 
   try {
     // Импортируем prisma для получения конфигурации из БД
@@ -379,7 +459,7 @@ export async function getPlatformLimits(): Promise<
 
     // 1xbet - использует mob-cash API, баланс недоступен через старый API
     // Используем -1 как специальное значение для "недоступно"
-    limits.push({ key: '1xbet', name: '1xbet', limit: -1 })
+    limits.push({ key: '1xbet', name: '1xbet', limit: -1, balance: 0 })
 
     // 888starz - использует Cashdesk API, получаем конфигурацию из БД
     let starzCfg: CashdeskConfig | null = null
@@ -416,10 +496,10 @@ export async function getPlatformLimits(): Promise<
       })
       const starzBal = await getCashdeskBalance('888starz', starzCfg)
       console.log(`📊 888starz result: balance=${starzBal.balance}, limit=${starzBal.limit}`)
-      limits.push({ key: '888starz', name: '888starz', limit: starzBal.limit })
+      limits.push({ key: '888starz', name: '888starz', limit: starzBal.limit, balance: starzBal.balance })
     } else {
       console.log(`⚠️ [888starz] Config not found or invalid:`, { starzCfg, hasSetting: !!starzSetting })
-      limits.push({ key: '888starz', name: '888starz', limit: 0 })
+      limits.push({ key: '888starz', name: '888starz', limit: 0, balance: 0 })
     }
 
     // Melbet - получаем конфигурацию из БД
@@ -448,13 +528,50 @@ export async function getPlatformLimits(): Promise<
     if (melbetCfg && melbetCfg.cashdeskid > 0) {
       const melbetBal = await getCashdeskBalance('melbet', melbetCfg)
       console.log(`📊 Melbet result: balance=${melbetBal.balance}, limit=${melbetBal.limit}`)
-      limits.push({ key: 'melbet', name: 'Melbet', limit: melbetBal.limit })
+      limits.push({ key: 'melbet', name: 'Melbet', limit: melbetBal.limit, balance: melbetBal.balance })
     } else {
-      limits.push({ key: 'melbet', name: 'Melbet', limit: 0 })
+      limits.push({ key: 'melbet', name: 'Melbet', limit: 0, balance: 0 })
     }
 
-    // 1WIN (пока нет API)
-    limits.push({ key: '1win', name: '1WIN', limit: 0 })
+    // 1WIN - получаем лимит через попытку депозита
+    let onewinApiKey: string | undefined
+    const onewinSetting = await prisma.botConfiguration.findFirst({
+      where: { key: '1win_api_config' },
+    })
+
+    console.log(`[1win Limit] Checking API key configuration...`)
+    console.log(`[1win Limit] Database setting found: ${!!onewinSetting}`)
+
+    if (onewinSetting) {
+      const config = typeof onewinSetting.value === 'string' ? JSON.parse(onewinSetting.value) : onewinSetting.value
+      onewinApiKey = config.api_key
+      console.log(`[1win Limit] API key from DB: ${onewinApiKey ? onewinApiKey.substring(0, 20) + '...' : 'not found'}`)
+    }
+
+    if (!onewinApiKey) {
+      onewinApiKey = process.env.ONEWIN_API_KEY || process.env['1WIN_API_KEY'] || ''
+      console.log(`[1win Limit] API key from env: ${onewinApiKey ? onewinApiKey.substring(0, 20) + '...' : 'not found'}`)
+    }
+
+    if (onewinApiKey && onewinApiKey.trim() !== '') {
+      console.log(`[1win Limit] ✅ API key found, calling get1winLimit...`)
+      try {
+        const onewinLimit = await get1winLimit(onewinApiKey)
+        console.log(`📊 1win result: balance=${onewinLimit.balance}, limit=${onewinLimit.limit}`)
+        limits.push({ 
+          key: '1win', 
+          name: '1WIN', 
+          limit: onewinLimit.limit,
+          balance: onewinLimit.balance 
+        })
+      } catch (error: any) {
+        console.error(`[1win Limit] ❌ Error calling get1winLimit:`, error.message)
+        limits.push({ key: '1win', name: '1WIN', limit: 0, balance: 0 })
+      }
+    } else {
+      console.warn(`[1win Limit] ⚠️ 1win API key not configured`)
+      limits.push({ key: '1win', name: '1WIN', limit: 0, balance: 0 })
+    }
 
     // Winwin - получаем конфигурацию из БД
     let winwinCfg: CashdeskConfig | null = null
@@ -482,9 +599,9 @@ export async function getPlatformLimits(): Promise<
     if (winwinCfg && winwinCfg.cashdeskid > 0) {
       const winwinBal = await getCashdeskBalance('winwin', winwinCfg)
       console.log(`📊 Winwin result: balance=${winwinBal.balance}, limit=${winwinBal.limit}`)
-      limits.push({ key: 'winwin', name: 'Winwin', limit: winwinBal.limit })
+      limits.push({ key: 'winwin', name: 'Winwin', limit: winwinBal.limit, balance: winwinBal.balance })
     } else {
-      limits.push({ key: 'winwin', name: 'Winwin', limit: 0 })
+      limits.push({ key: 'winwin', name: 'Winwin', limit: 0, balance: 0 })
     }
 
     // Mostbet
@@ -493,20 +610,20 @@ export async function getPlatformLimits(): Promise<
       const mostbetBal = await getMostbetBalance(mostbetCfg)
       // Для Mostbet лимит недоступен в API, показываем баланс вместо лимита
       console.log(`📊 Mostbet result: balance=${mostbetBal.balance}, limit=${mostbetBal.limit}`)
-      limits.push({ key: 'mostbet', name: 'Mostbet', limit: mostbetBal.balance })
+      limits.push({ key: 'mostbet', name: 'Mostbet', limit: mostbetBal.balance, balance: mostbetBal.balance })
     } else {
-      limits.push({ key: 'mostbet', name: 'Mostbet', limit: 0 })
+      limits.push({ key: 'mostbet', name: 'Mostbet', limit: 0, balance: 0 })
     }
   } catch (error) {
     console.error('Error getting platform limits:', error)
     // Возвращаем значения по умолчанию при ошибке
     // Для 1xbet используем -1 (недоступно), для остальных - 0
     const defaultLimits = [
-      { key: '1xbet', name: '1xbet', limit: -1 },
-      { key: '888starz', name: '888starz', limit: 0 },
-      { key: 'melbet', name: 'Melbet', limit: 0 },
-      { key: '1win', name: '1WIN', limit: 0 },
-      { key: 'mostbet', name: 'Mostbet', limit: 0 },
+      { key: '1xbet', name: '1xbet', limit: -1, balance: 0 },
+      { key: '888starz', name: '888starz', limit: 0, balance: 0 },
+      { key: 'melbet', name: 'Melbet', limit: 0, balance: 0 },
+      { key: '1win', name: '1WIN', limit: 0, balance: 0 },
+      { key: 'mostbet', name: 'Mostbet', limit: 0, balance: 0 },
     ]
     // Кэшируем даже ошибки на короткое время, чтобы не спамить API
     platformLimitsCache = {
