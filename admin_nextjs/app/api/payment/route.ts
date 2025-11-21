@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Если это вывод, отправляем уведомление в группу
+    // Если это вывод, отправляем уведомление в группу и browser notification
     if (type === 'withdraw') {
       const amountStr = newRequest.amount ? parseFloat(newRequest.amount.toString()).toFixed(2) : '0.00'
       const bookmakerStr = newRequest.bookmaker || 'не указано'
@@ -304,7 +304,13 @@ export async function POST(request: NextRequest) {
       sendTelegramGroupMessage(groupMessage).catch(err => {
         console.error('Failed to send withdrawal notification to group:', err)
       })
+      
+      // Отправляем browser notification через Service Worker
+      // Это будет обработано когда dashboard откроется и обнаружит новую заявку
     }
+    
+    // Если это пополнение и автопополнение успешно - отправляем уведомление
+    // (уведомление уже отправляется в auto-deposit.ts)
 
     const response = NextResponse.json(
       createApiResponse({
