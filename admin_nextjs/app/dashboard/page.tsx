@@ -1,8 +1,15 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { 
+  playDepositSound, 
+  playWithdrawSound, 
+  isSoundsEnabled, 
+  setSoundsEnabled,
+  initAudioContext 
+} from '@/lib/sounds'
 
 interface Request {
   id: number
@@ -24,6 +31,11 @@ export default function DashboardPage() {
   const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'pending' | 'deferred'>('pending')
+  const [soundsEnabled, setSoundsEnabledState] = useState(true)
+  
+  // Сохраняем предыдущий список заявок для определения новых
+  const previousRequestsRef = useRef<Request[]>([])
+  const isFirstLoadRef = useRef(true)
 
   const fetchRequests = useCallback(async (showLoading = true) => {
     if (showLoading) {
@@ -52,6 +64,37 @@ export default function DashboardPage() {
         const requestsList = data.data.requests || []
         
         console.log(`✅ Loaded ${requestsList.length} requests for tab: ${activeTab}`)
+        
+        // Определяем новые заявки только для вкладки "Ожидает" и не при первой загрузке
+        if (activeTab === 'pending' && !isFirstLoadRef.current && !showLoading) {
+          const previousIds = new Set(previousRequestsRef.current.map((r: Request) => r.id))
+          const newRequests = requestsList.filter((r: Request) => !previousIds.has(r.id))
+          
+          if (newRequests.length > 0) {
+            console.log(`🔔 Found ${newRequests.length} new request(s)`)
+            
+            // Воспроизводим звуки для новых заявок
+            // Добавляем небольшую задержку между звуками если несколько заявок
+            newRequests.forEach((request: Request, index: number) => {
+              setTimeout(() => {
+                if (request.requestType === 'deposit') {
+                  playDepositSound()
+                  console.log(`🔊 Played deposit sound for request ${request.id}`)
+                } else if (request.requestType === 'withdraw') {
+                  playWithdrawSound()
+                  console.log(`🔊 Played withdraw sound for request ${request.id}`)
+                }
+              }, index * 300) // Задержка 300ms между звуками
+            })
+          }
+        }
+        
+        // Обновляем предыдущий список только после обработки новых заявок
+        previousRequestsRef.current = requestsList
+        if (isFirstLoadRef.current) {
+          isFirstLoadRef.current = false
+        }
+        
         setRequests(requestsList)
       } else {
         console.error('❌ Failed to fetch requests:', data.error || data)
@@ -67,6 +110,12 @@ export default function DashboardPage() {
     }
   }, [activeTab])
 
+  // Инициализация звуков и загрузка настройки
+  useEffect(() => {
+    initAudioContext()
+    setSoundsEnabledState(isSoundsEnabled())
+  }, [])
+  
   useEffect(() => {
     fetchRequests()
     
@@ -258,14 +307,42 @@ export default function DashboardPage() {
     <div className="py-4">
       {/* Хедер с заголовком */}
       <div className="flex items-center justify-between mb-4">
-        <div className="w-10"></div>
+        <button 
+          onClick={() => {
+            const newState = !soundsEnabled
+            setSoundsEnabledState(newState)
+            setSoundsEnabled(newState)
+            // Воспроизводим тестовый звук при включении
+            if (newState) {
+              playDepositSound()
+            }
+          }}
+          className={`p-2 rounded-lg transition-colors ${
+            soundsEnabled 
+              ? 'bg-green-500 hover:bg-green-600' 
+              : 'bg-gray-800 hover:bg-gray-700'
+          }`}
+          title={soundsEnabled ? 'Звуки включены' : 'Звуки выключены'}
+        >
+          {soundsEnabled ? (
+            <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+          )}
+        </button>
         <div className="flex-1 text-center">
           <h1 className="text-xl font-bold text-white">Заявки</h1>
           <p className="text-xs text-gray-300 mt-1">Актуальные транзакции</p>
         </div>
         <button 
           onClick={() => fetchRequests()}
-          className="p-2 bg-gray-800 rounded-lg"
+          className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+          title="Обновить"
         >
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
