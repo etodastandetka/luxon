@@ -22,30 +22,60 @@ export async function safeFetch(
 
   let lastError: Error | null = null
 
+  // Проверяем поддержку AbortController (может быть проблема на старых iOS)
+  const hasAbortController = typeof AbortController !== 'undefined'
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent || '')
+  
+  console.log(`🔄 safeFetch: начало для ${url}`, {
+    hasAbortController,
+    isIOS,
+    retries,
+    timeout
+  })
+  
   for (let attempt = 0; attempt <= retries; attempt++) {
     console.log(`🔄 safeFetch: попытка ${attempt + 1}/${retries + 1} для ${url}`)
     
     try {
-      // Создаем AbortController для таймаута
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => {
-        console.warn(`⏱️ Таймаут запроса ${url} после ${timeout}ms`)
-        controller.abort()
-      }, timeout)
+      let controller: AbortController | null = null
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
+      
+      // Создаем AbortController только если поддерживается
+      if (hasAbortController) {
+        try {
+          controller = new AbortController()
+          timeoutId = setTimeout(() => {
+            console.warn(`⏱️ Таймаут запроса ${url} после ${timeout}ms`)
+            if (controller) {
+              controller.abort()
+            }
+          }, timeout)
+        } catch (controllerError) {
+          console.warn('⚠️ Ошибка создания AbortController:', controllerError)
+          // Продолжаем без таймаута
+        }
+      } else {
+        console.warn('⚠️ AbortController не поддерживается, таймаут не будет работать')
+      }
 
       try {
         console.log(`📤 Отправка fetch запроса: ${url}`, {
           method: fetchOptions.method || 'GET',
           hasBody: !!fetchOptions.body,
-          bodySize: fetchOptions.body ? String(fetchOptions.body).length : 0
+          bodySize: fetchOptions.body ? String(fetchOptions.body).length : 0,
+          hasSignal: !!controller?.signal
         })
         
-        const response = await fetch(url, {
-          ...fetchOptions,
-          signal: controller.signal,
-        })
+        const fetchOptionsWithSignal = controller?.signal 
+          ? { ...fetchOptions, signal: controller.signal }
+          : fetchOptions
+        
+        const response = await fetch(url, fetchOptionsWithSignal)
 
-        clearTimeout(timeoutId)
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
         console.log(`✅ Получен response от ${url}:`, {
           status: response.status,
           statusText: response.statusText,
@@ -53,16 +83,25 @@ export async function safeFetch(
         })
         return response
       } catch (fetchError: any) {
-        clearTimeout(timeoutId)
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
         console.error(`❌ Ошибка fetch для ${url}:`, {
           name: fetchError.name,
           message: fetchError.message,
-          attempt: attempt + 1
+          attempt: attempt + 1,
+          isIOS
         })
         
-        // Если это AbortError (таймаут), пробуем еще раз
+        // Если это AbortError (таймаут), пробуем еще раз только если не iOS
         if (fetchError.name === 'AbortError') {
           lastError = new Error(`Таймаут запроса (${timeout}ms). Проверьте интернет-соединение.`)
+          // На iOS не делаем retry при AbortError, так как это может быть проблема с AbortController
+          if (isIOS) {
+            console.warn('🍎 iOS: AbortError, не делаем retry')
+            throw lastError
+          }
           if (attempt < retries) {
             console.warn(`⏱️ Таймаут запроса, попытка ${attempt + 1}/${retries + 1}`)
             await new Promise(resolve => setTimeout(resolve, retryDelay))
