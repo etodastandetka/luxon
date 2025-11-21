@@ -236,6 +236,56 @@ export async function POST(request: NextRequest) {
       amount: newRequest.amount?.toString()
     })
 
+    // Если это заявка на пополнение - СРАЗУ проверяем есть ли входящие платежи с такой суммой
+    // Автопополнение должно работать секунду в секунду - мгновенно при создании заявки
+    if (type === 'deposit' && newRequest.amount) {
+      const requestAmount = parseFloat(newRequest.amount.toString())
+      console.log(`🔍 [Auto-Deposit] Instantly checking for incoming payments with amount ${requestAmount} for request ${newRequest.id}`)
+      
+      // Ищем необработанные входящие платежи с точным совпадением суммы
+      // Делаем это СИНХРОННО (await) чтобы автопополнение сработало мгновенно
+      try {
+        // Ищем входящие платежи только за последние 5 минут
+        // Это защищает от случайного пополнения если пользователь не пополнял
+        const incomingPayments = await prisma.incomingPayment.findMany({
+          where: {
+            isProcessed: false,
+            amount: requestAmount,
+            paymentDate: {
+              gte: new Date(Date.now() - 5 * 60 * 1000) // Только последние 5 минут
+            }
+          },
+          orderBy: {
+            paymentDate: 'desc' // Берем самый свежий
+          },
+          take: 1 // Только один
+        })
+
+        if (incomingPayments.length > 0) {
+          const payment = incomingPayments[0]
+          console.log(`✅ [Auto-Deposit] Found matching payment ${payment.id} for NEW request ${newRequest.id}, processing INSTANTLY...`)
+          
+          // Импортируем функцию автопополнения
+          const { matchAndProcessPayment } = await import('../incoming-payment/route')
+          
+          // Вызываем автопополнение СИНХРОННО - ждем результат
+          // Это гарантирует что автопополнение произойдет секунду в секунду
+          const result = await matchAndProcessPayment(payment.id, requestAmount)
+          
+          if (result && result.success) {
+            console.log(`✅ [Auto-Deposit] INSTANT auto-deposit completed for request ${newRequest.id} with payment ${payment.id}`)
+          } else {
+            console.log(`ℹ️ [Auto-Deposit] Auto-deposit check completed for request ${newRequest.id}`)
+          }
+        } else {
+          console.log(`ℹ️ [Auto-Deposit] No matching incoming payments yet for request ${newRequest.id} (amount: ${requestAmount})`)
+        }
+      } catch (error: any) {
+        console.error(`❌ [Auto-Deposit] Error checking incoming payments for request ${newRequest.id}:`, error.message)
+        // Не блокируем создание заявки если проверка не удалась
+      }
+    }
+
     // Если это вывод, отправляем уведомление в группу
     if (type === 'withdraw') {
       const amountStr = newRequest.amount ? parseFloat(newRequest.amount.toString()).toFixed(2) : '0.00'
