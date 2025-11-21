@@ -1,12 +1,10 @@
 import { prisma } from './prisma'
 
 /**
- * Функция для сопоставления входящего платежа с заявкой и автоматического пополнения
- * Работает секунду в секунду - мгновенно
- */
-/**
  * ЕДИНСТВЕННАЯ функция автопополнения - работает только здесь
  * Все вызовы должны использовать эту функцию из @/lib/auto-deposit
+ * Работает секунду в секунду - мгновенно
+ * ВАЖНО: Гарантирует что статус заявки ОБЯЗАТЕЛЬНО обновится на autodeposit_success
  */
 export async function matchAndProcessPayment(paymentId: number, amount: number) {
   console.log(`🔍 [Auto-Deposit] matchAndProcessPayment called: paymentId=${paymentId}, amount=${amount}`)
