@@ -45,7 +45,8 @@ export async function POST(
       await depositToCasino(
         withdrawalRequest.bookmaker,
         withdrawalRequest.bookmakerAccountId,
-        parseFloat(withdrawalRequest.amount.toString())
+        parseFloat(withdrawalRequest.amount.toString()),
+        undefined // Для referral withdrawal не передаем requestId, так как это другая таблица
       )
       
       // Обновляем статус заявки

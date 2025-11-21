@@ -306,7 +306,8 @@ async function matchAndProcessPayment(paymentId: number, amount: number) {
     const depositResult = await depositToCasino(
       request.bookmaker!,
       request.accountId,
-      parseFloat(request.amount?.toString() || '0')
+      parseFloat(request.amount?.toString() || '0'),
+      request.id // Передаем requestId чтобы исключить текущую заявку из проверки на дублирование
     )
 
     console.log(`📊 [Auto-Deposit] Deposit result:`, depositResult)

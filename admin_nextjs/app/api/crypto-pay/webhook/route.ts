@@ -275,7 +275,8 @@ export async function POST(request: NextRequest) {
           const depositResult = await depositToCasino(
             bookmaker,
             accountId,
-            amountInKgs // Используем сумму в сомах для пополнения в казино
+            amountInKgs, // Используем сумму в сомах для пополнения в казино
+            botRequest.id // Передаем requestId чтобы исключить текущую заявку из проверки на дублирование
           )
           
           console.log('📊 Deposit result:', depositResult)
