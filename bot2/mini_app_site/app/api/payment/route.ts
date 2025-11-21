@@ -12,13 +12,26 @@ export async function POST(request: NextRequest) {
     console.log(`[${requestId}] 🔄 Next.js API: Получен запрос на создание заявки:`, {
       type: body.type,
       bookmaker: body.bookmaker,
-      userId: body.userId,
-      accountId: body.account_id,
+      userId: body.userId || body.telegram_user_id,
+      accountId: body.account_id || body.playerId,
       amount: body.amount,
+      payment_method: body.payment_method,
       hasReceiptPhoto: !!body.receipt_photo,
       receiptPhotoSize: body.receipt_photo ? body.receipt_photo.length : 0,
       timestamp: new Date().toISOString(),
-      userAgent: request.headers.get('user-agent')
+      userAgent: request.headers.get('user-agent'),
+      // Для error_log не требуются эти поля, поэтому undefined нормально
+      ...(body.type !== 'error_log' && {
+        fullBody: Object.keys(body).reduce((acc, key) => {
+          // Не логируем большие поля как receipt_photo
+          if (key === 'receipt_photo' || key === 'qr_photo') {
+            acc[key] = body[key] ? `[base64, ${body[key].length} chars]` : undefined
+          } else {
+            acc[key] = body[key]
+          }
+          return acc
+        }, {} as any)
+      })
     })
     
     // Проксируем запрос к админ-панели API
@@ -78,6 +91,14 @@ export async function POST(request: NextRequest) {
       responseTime: `${responseTime}ms`,
       timestamp: new Date().toISOString()
     })
+    
+    // Для error_log просто возвращаем успех без id
+    if (body.type === 'error_log') {
+      return NextResponse.json({
+        success: data.success,
+        message: data.message || 'Error logged successfully'
+      })
+    }
     
     // Преобразуем ответ в формат, который ожидает клиентский сайт
     if (data.data && data.data.id) {

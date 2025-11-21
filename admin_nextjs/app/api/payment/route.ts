@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         telegram_user_id: body.telegram_user_id
       })
       return NextResponse.json(
-        createApiResponse({ logged: true }, 'Error logged successfully'),
+        createApiResponse({ logged: true }, undefined, 'Error logged successfully'),
         {
           headers: {
             'Access-Control-Allow-Origin': '*',
