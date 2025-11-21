@@ -61,17 +61,36 @@ export async function POST(request: NextRequest) {
     
     let response: Response
     try {
+      // Создаем AbortController для таймаута
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        console.warn(`[${requestId}] ⏱️ Таймаут запроса к Admin API`)
+        controller.abort()
+      }, 30000) // 30 секунд
+      
       response = await fetch(adminApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
-        // Добавляем таймаут для серверного fetch
-        signal: AbortSignal.timeout(30000) // 30 секунд
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
       console.log(`[${requestId}] ✅ Получен response от Admin API`)
     } catch (fetchError: any) {
+      if (fetchError.name === 'AbortError') {
+        console.error(`[${requestId}] ❌ Таймаут запроса к Admin API`)
+        return NextResponse.json(
+          { 
+            error: 'Request timeout',
+            requestId,
+            details: 'Сервер не ответил вовремя. Попробуйте позже.'
+          },
+          { status: 504 }
+        )
+      }
       console.error(`[${requestId}] ❌ Ошибка fetch к Admin API:`, {
         error: fetchError,
         message: fetchError?.message,
