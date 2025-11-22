@@ -250,22 +250,19 @@ export default function WithdrawStep5() {
           console.log('[Withdraw Step5] ✅ Amount is valid, clearing error and setting amount')
           
           // ВАЖНО: Сначала очищаем ошибку, потом устанавливаем сумму
-          // Используем функциональную форму setError, чтобы гарантировать обновление
-          setError((prevError) => {
-            console.log('[Withdraw Step5] Clearing error, previous error was:', prevError)
-            return null
-          })
+          setError(null)
+          setWithdrawAmount(amount)
           
-          setWithdrawAmount((prevAmount) => {
-            console.log('[Withdraw Step5] Setting amount, previous amount was:', prevAmount)
-            return amount
-          })
-          
-          localStorage.setItem('withdraw_amount', amount.toString())
+          // Сохраняем в localStorage для использования при создании заявки
+          const amountStr = amount.toString()
+          localStorage.setItem('withdraw_amount', amountStr)
           localStorage.setItem('withdraw_site_code', siteCode.trim())
           
+          // Проверяем, что сумма сохранилась
+          const savedAmount = localStorage.getItem('withdraw_amount')
           console.log('[Withdraw Step5] ✅ Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
-          console.log('[Withdraw Step5] ✅ Amount saved to localStorage:', amount.toString())
+          console.log('[Withdraw Step5] ✅ Amount saved to localStorage:', amountStr)
+          console.log('[Withdraw Step5] ✅ Verified localStorage amount:', savedAmount)
           console.log('[Withdraw Step5] ✅ Error cleared, amount set to:', amount)
         } else {
           // Если success: true, но нет amount, проверяем message
@@ -500,20 +497,7 @@ export default function WithdrawStep5() {
               )}
               
               {/* Показываем ошибку ТОЛЬКО если сумма НЕ извлечена И есть ошибка */}
-              {/* ВАЖНО: проверяем, что withdrawAmount === null ИЛИ withdrawAmount === 0 */}
-              {error && hasWithdrawals === true && withdrawAmount !== null && withdrawAmount > 0 === false && !checking && (
-                <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
-                  <p className="text-sm text-red-300 font-semibold">
-                    ❌ Ошибка вывода
-                  </p>
-                  <p className="text-sm text-red-200 mt-1">
-                    {error}
-                  </p>
-                </div>
-              )}
-              
-              {/* Альтернативная проверка: если сумма null или 0 */}
-              {error && hasWithdrawals === true && (withdrawAmount === null || withdrawAmount === 0) && !checking && !(withdrawAmount !== null && withdrawAmount > 0) && (
+              {error && hasWithdrawals === true && (withdrawAmount === null || withdrawAmount === 0) && !checking && (
                 <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
                   <p className="text-sm text-red-300 font-semibold">
                     ❌ Ошибка вывода
