@@ -38,6 +38,9 @@ export default function DashboardPage() {
   // Сохраняем предыдущий список заявок для определения новых
   const previousRequestsRef = useRef<Request[]>([])
   const isFirstLoadRef = useRef(true)
+  // Отслеживаем уже воспроизведенные звуки для конкретных заявок
+  // Используем строковый ключ: "type-status-id" для уникальности
+  const playedSoundsRef = useRef<Set<string>>(new Set())
 
   const fetchRequests = useCallback(async (showLoading = true) => {
     if (showLoading) {
@@ -85,8 +88,9 @@ export default function DashboardPage() {
         console.log(`✅ Loaded ${requestsList.length} requests for tab: ${activeTab}`)
         
         // Определяем новые заявки и изменения статуса
-        // ВАЖНО: Только для вкладки "Ожидает" и только если есть реальные изменения
-        if (activeTab === 'pending' && !isFirstLoadRef.current && !showLoading) {
+        // ВАЖНО: Только для вкладки "Ожидает", не при первой загрузке и не при showLoading
+        // Дополнительная проверка: previousRequestsRef должен быть не пустым
+        if (activeTab === 'pending' && !isFirstLoadRef.current && !showLoading && previousRequestsRef.current.length > 0) {
           const previousMap = new Map(previousRequestsRef.current.map((r: Request) => [r.id, r]))
           const newRequests = requestsList.filter((r: Request) => !previousMap.has(r.id))
           
@@ -150,65 +154,115 @@ export default function DashboardPage() {
             if (!isSoundsEnabled()) {
               console.log(`🔇 [Dashboard] Sounds disabled, skipping sound playback`)
             } else {
-              // Активируем AudioContext перед воспроизведением звуков
-              activateAudioContext().then(() => {
-                allRequestsToNotify.forEach((request: Request, index: number) => {
-                  setTimeout(() => {
-                    const amount = request.amount ? parseFloat(request.amount) : 0
-                    const bookmaker = request.bookmaker || 'не указано'
-                    const accountId = request.accountId || 'не указан'
-                    
-                    if (request.requestType === 'deposit' && 
-                        (request.status === 'autodeposit_success' || request.status === 'completed')) {
-                      // Автопополнение или ручное пополнение
-                      playDepositSound()
-                      console.log(`🔊 [Dashboard] Deposit completed: request ${request.id}`)
-                      
-                      showDepositNotification(amount, bookmaker, accountId, request.id).catch(err => {
-                        console.error('Error showing deposit notification:', err)
-                      })
-                      
-                      // Отправляем в Service Worker для работы даже когда сайт закрыт
-                      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({
-                          type: 'SHOW_DEPOSIT_NOTIFICATION',
-                          data: { requestId: request.id, amount, bookmaker, accountId }
-                        })
-                      }
-                    } else if (request.requestType === 'withdraw' && request.status === 'pending') {
-                      // Новая заявка на вывод
-                      playWithdrawSound()
-                      console.log(`🔊 [Dashboard] New withdraw: request ${request.id}`)
-                      
-                      showWithdrawNotification(amount, bookmaker, accountId, request.id).catch(err => {
-                        console.error('Error showing withdraw notification:', err)
-                      })
-                      
-                      // Отправляем в Service Worker
-                      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({
-                          type: 'SHOW_WITHDRAW_NOTIFICATION',
-                          data: { requestId: request.id, amount, bookmaker, accountId }
-                        })
-                      }
-                    } else if (request.requestType === 'deposit' && request.status === 'pending') {
-                      // Новая заявка на пополнение (только звук, уведомление будет когда статус изменится)
-                      playDepositSound()
-                      console.log(`🔊 [Dashboard] New deposit request: ${request.id}`)
-                    }
-                  }, index * 300)
+              // ВАЖНО: Воспроизводим звук ТОЛЬКО ОДИН РАЗ для всех заявок одного типа
+              // Определяем какие звуки нужно воспроизвести (приоритет: withdraw > deposit completed > deposit pending)
+              
+              const withdrawRequests = allRequestsToNotify.filter(r => r.requestType === 'withdraw' && r.status === 'pending')
+              const depositCompletedRequests = allRequestsToNotify.filter(r => 
+                r.requestType === 'deposit' && (r.status === 'autodeposit_success' || r.status === 'completed')
+              )
+              const depositPendingRequests = allRequestsToNotify.filter(r => 
+                r.requestType === 'deposit' && r.status === 'pending'
+              )
+              
+              // Воспроизводим звуки ОДИН РАЗ СРАЗУ, без активации AudioContext (она уже должна быть активирована)
+              // Используем уникальный ключ на основе ID всех заявок этого типа
+              let soundToPlay: 'withdraw' | 'deposit' | null = null
+              let soundKey = ''
+              
+              if (withdrawRequests.length > 0) {
+                const ids = withdrawRequests.map(r => r.id).sort().join(',')
+                soundKey = `withdraw-${ids}`
+                soundToPlay = 'withdraw'
+              } else if (depositCompletedRequests.length > 0) {
+                const ids = depositCompletedRequests.map(r => r.id).sort().join(',')
+                soundKey = `deposit-completed-${ids}`
+                soundToPlay = 'deposit'
+              } else if (depositPendingRequests.length > 0) {
+                const ids = depositPendingRequests.map(r => r.id).sort().join(',')
+                soundKey = `deposit-pending-${ids}`
+                soundToPlay = 'deposit'
+              }
+              
+              // Воспроизводим звук ТОЛЬКО если он еще не воспроизводился
+              if (soundToPlay && soundKey && !playedSoundsRef.current.has(soundKey)) {
+                // Активируем AudioContext и воспроизводим звук ОДИН РАЗ
+                activateAudioContext().then(() => {
+                  if (soundToPlay === 'withdraw') {
+                    playWithdrawSound()
+                    console.log(`🔊 [Dashboard] Withdraw sound played ONCE for ${withdrawRequests.length} new withdraw(s)`)
+                  } else if (soundToPlay === 'deposit') {
+                    playDepositSound()
+                    const count = depositCompletedRequests.length || depositPendingRequests.length
+                    console.log(`🔊 [Dashboard] Deposit sound played ONCE for ${count} new deposit(s)`)
+                  }
+                  playedSoundsRef.current.add(soundKey)
+                }).catch(err => {
+                  console.error('🔊 [Dashboard] Failed to activate AudioContext:', err)
                 })
-              }).catch(err => {
-                console.error('🔊 [Dashboard] Failed to activate AudioContext:', err)
+              } else if (soundKey && playedSoundsRef.current.has(soundKey)) {
+                console.log(`🔇 [Dashboard] Sound already played for key: ${soundKey}, skipping`)
+              }
+                
+              // Теперь показываем уведомления для каждой заявки (без звуков)
+              allRequestsToNotify.forEach((request: Request, index: number) => {
+                // Минимальная задержка только для уведомлений
+                setTimeout(() => {
+                  const amount = request.amount ? parseFloat(request.amount) : 0
+                  const bookmaker = request.bookmaker || 'не указано'
+                  const accountId = request.accountId || 'не указан'
+                  
+                  if (request.requestType === 'deposit' && 
+                      (request.status === 'autodeposit_success' || request.status === 'completed')) {
+                    // Автопополнение или ручное пополнение
+                    showDepositNotification(amount, bookmaker, accountId, request.id).catch(err => {
+                      console.error('Error showing deposit notification:', err)
+                    })
+                    
+                    // Отправляем в Service Worker для работы даже когда сайт закрыт
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                      navigator.serviceWorker.controller.postMessage({
+                        type: 'SHOW_DEPOSIT_NOTIFICATION',
+                        data: { requestId: request.id, amount, bookmaker, accountId }
+                      })
+                    }
+                  } else if (request.requestType === 'withdraw' && request.status === 'pending') {
+                    // Новая заявка на вывод
+                    showWithdrawNotification(amount, bookmaker, accountId, request.id).catch(err => {
+                      console.error('Error showing withdraw notification:', err)
+                    })
+                    
+                    // Отправляем в Service Worker
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                      navigator.serviceWorker.controller.postMessage({
+                        type: 'SHOW_WITHDRAW_NOTIFICATION',
+                        data: { requestId: request.id, amount, bookmaker, accountId }
+                      })
+                    }
+                  }
+                }, index * 50) // Минимальная задержка 50ms только для уведомлений
               })
+              
+              // Очищаем старые записи из playedSoundsRef чтобы не накапливать память
+              // Оставляем только последние 200 заявок
+              if (playedSoundsRef.current.size > 200) {
+                const ids = Array.from(playedSoundsRef.current)
+                playedSoundsRef.current = new Set(ids.slice(-200))
+              }
             }
           }
         }
         
-        // Обновляем предыдущий список только после обработки новых заявок
-        previousRequestsRef.current = requestsList
+        // ВАЖНО: Обновляем предыдущий список ДО обработки новых заявок при первой загрузке
+        // чтобы при следующем обновлении все заявки не считались новыми
         if (isFirstLoadRef.current) {
+          // При первой загрузке просто сохраняем список без воспроизведения звуков
+          previousRequestsRef.current = requestsList
           isFirstLoadRef.current = false
+          console.log(`🔇 [Dashboard] First load: ${requestsList.length} requests loaded, sounds skipped`)
+        } else {
+          // Обновляем предыдущий список только после обработки новых заявок
+          previousRequestsRef.current = requestsList
         }
         
         setRequests(requestsList)
