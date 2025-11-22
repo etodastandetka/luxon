@@ -982,68 +982,71 @@ export default function RequestDetailPage() {
         </div>
       )}
 
-      {/* Входящие платежи с поиском - показываем только для необработанных заявок */}
-      {request.requestType === 'deposit' && request.matchingPayments && request.matchingPayments.length > 0 && !isProcessed && (
+      {/* Входящие платежи с поиском - показываем для всех pending заявок */}
+      {request.requestType === 'deposit' && request.status === 'pending' && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-lg font-semibold text-white mb-3">Переводы по QR</h3>
           
-          {/* Поиск и фильтры */}
-          <div className="mb-3">
-            <div className="flex space-x-2 mb-2">
-              <div className="flex-1 relative">
-                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Поиск по сумме..."
-                  value={searchAmount}
-                  onChange={(e) => setSearchAmount(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-sm bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
-                />
+          {/* Проверяем есть ли платежи */}
+          {request.matchingPayments && request.matchingPayments.length > 0 ? (
+            <>
+              {/* Поиск и фильтры */}
+              <div className="mb-3">
+                <div className="flex space-x-2 mb-2">
+                  <div className="flex-1 relative">
+                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Поиск по сумме..."
+                      value={searchAmount}
+                      onChange={(e) => setSearchAmount(e.target.value)}
+                      className="w-full pl-9 pr-3 py-1.5 text-sm bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex space-x-3">
+                  <label className="flex items-center space-x-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={exactAmount}
+                      onChange={(e) => setExactAmount(e.target.checked)}
+                      className="w-3.5 h-3.5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-xs text-gray-300">Точная сумма</span>
+                  </label>
+                  <label className="flex items-center space-x-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={processedOnly}
+                      onChange={(e) => setProcessedOnly(e.target.checked)}
+                      className="w-3.5 h-3.5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-xs text-gray-300">Обработанные</span>
+                  </label>
+                </div>
               </div>
-            </div>
-            <div className="flex space-x-3">
-              <label className="flex items-center space-x-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={exactAmount}
-                  onChange={(e) => setExactAmount(e.target.checked)}
-                  className="w-3.5 h-3.5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                />
-                <span className="text-xs text-gray-300">Точная сумма</span>
-              </label>
-              <label className="flex items-center space-x-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={processedOnly}
-                  onChange={(e) => setProcessedOnly(e.target.checked)}
-                  className="w-3.5 h-3.5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                />
-                <span className="text-xs text-gray-300">Обработанные</span>
-              </label>
-            </div>
-          </div>
-          
-          {/* Список платежей с ограничением до 4 элементов и скроллом */}
-          <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
-            {request.matchingPayments
-              .filter((payment: MatchingPayment) => {
-                // Фильтрация по сумме
-                if (searchAmount) {
-                  const searchValue = parseFloat(searchAmount.replace(',', '.'))
-                  const paymentAmount = parseFloat(payment.amount)
-                  if (exactAmount) {
-                    if (Math.abs(paymentAmount - searchValue) > 0.01) return false
-                  } else {
-                    if (paymentAmount < searchValue * 0.9 || paymentAmount > searchValue * 1.1) return false
-                  }
-                }
-                // Фильтрация по обработанным
-                if (processedOnly && !payment.isProcessed) return false
-                return true
-              })
-              .map((payment: MatchingPayment) => {
+              
+              {/* Список платежей с ограничением до 4 элементов и скроллом */}
+              <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+                {request.matchingPayments
+                  .filter((payment: MatchingPayment) => {
+                    // Фильтрация по сумме
+                    if (searchAmount) {
+                      const searchValue = parseFloat(searchAmount.replace(',', '.'))
+                      const paymentAmount = parseFloat(payment.amount)
+                      if (exactAmount) {
+                        if (Math.abs(paymentAmount - searchValue) > 0.01) return false
+                      } else {
+                        if (paymentAmount < searchValue * 0.9 || paymentAmount > searchValue * 1.1) return false
+                      }
+                    }
+                    // Фильтрация по обработанным
+                    if (processedOnly && !payment.isProcessed) return false
+                    return true
+                  })
+                  .map((payment: MatchingPayment) => {
               const isAttached = payment.requestId === request.id && payment.isProcessed
               const isAutoCompleted = request.status === 'autodeposit_success' || request.status === 'auto_completed'
               // Платеж нередактируемый если он привязан или обработан для другой заявки
@@ -1099,7 +1102,14 @@ export default function RequestDetailPage() {
                 </div>
               )
             })}
-          </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-gray-400 text-sm">Платежи не найдены</p>
+              <p className="text-gray-500 text-xs mt-1">Ожидание платежа на сумму {request.amount ? parseFloat(request.amount.toString()).toFixed(2).replace('.', ',') : '0,00'} сом</p>
+            </div>
+          )}
         </div>
       )}
 
