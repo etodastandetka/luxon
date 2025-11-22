@@ -250,6 +250,7 @@ export default function WithdrawStep5() {
           console.log('[Withdraw Step5] ✅ Amount is valid, clearing error and setting amount')
           
           // ВАЖНО: Сначала очищаем ошибку, потом устанавливаем сумму
+          // Используем setTimeout для гарантии, что состояние обновится
           setError(null)
           setWithdrawAmount(amount)
           
@@ -264,6 +265,17 @@ export default function WithdrawStep5() {
           console.log('[Withdraw Step5] ✅ Amount saved to localStorage:', amountStr)
           console.log('[Withdraw Step5] ✅ Verified localStorage amount:', savedAmount)
           console.log('[Withdraw Step5] ✅ Error cleared, amount set to:', amount)
+          
+          // Дополнительная проверка через небольшую задержку
+          setTimeout(() => {
+            const currentAmount = localStorage.getItem('withdraw_amount')
+            console.log('[Withdraw Step5] ✅ Post-set verification - localStorage amount:', currentAmount)
+            if (currentAmount !== amountStr) {
+              console.error('[Withdraw Step5] ❌ Amount mismatch! Expected:', amountStr, 'Got:', currentAmount)
+              // Пересохраняем, если не совпадает
+              localStorage.setItem('withdraw_amount', amountStr)
+            }
+          }, 50)
         } else {
           // Если success: true, но нет amount, проверяем message
           console.error('[Withdraw Step5] ❌ Amount validation failed:', {
