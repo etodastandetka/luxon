@@ -206,13 +206,15 @@ export default function WithdrawStep5() {
         
         // Валидация суммы
         if (amount !== null && !isNaN(amount) && amount > 0) {
+          // ВАЖНО: Сначала очищаем ошибку, потом устанавливаем сумму
+          setError(null)
           setWithdrawAmount(amount)
           localStorage.setItem('withdraw_amount', amount.toString())
           localStorage.setItem('withdraw_site_code', siteCode.trim())
-          setError(null) // Очищаем ошибку, если сумма успешно извлечена
           
           console.log('[Withdraw Step5] ✅ Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
           console.log('[Withdraw Step5] ✅ Amount saved to localStorage:', amount.toString())
+          console.log('[Withdraw Step5] ✅ Error cleared, amount set to:', amount)
         } else {
           // Если success: true, но нет amount, проверяем message
           if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
@@ -426,8 +428,8 @@ export default function WithdrawStep5() {
                 </div>
               )}
               
-              {/* Показываем ошибку только если сумма не извлечена */}
-              {error && hasWithdrawals === true && withdrawAmount === null && !checking && (
+              {/* Показываем ошибку только если сумма не извлечена И есть ошибка */}
+              {error && hasWithdrawals === true && (withdrawAmount === null || withdrawAmount === 0) && !checking && (
                 <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
                   <p className="text-sm text-red-300 font-semibold">
                     ❌ Ошибка вывода
@@ -438,7 +440,7 @@ export default function WithdrawStep5() {
                 </div>
               )}
               
-              {/* Показываем успех, если сумма извлечена, даже если есть сообщение об executed */}
+              {/* Показываем успех, если сумма извлечена - это приоритетнее ошибки */}
               {withdrawAmount !== null && withdrawAmount > 0 && !checking && (
                 <div className="mt-2 p-3 bg-green-900/30 border border-green-500 rounded-lg">
                   <p className="text-sm text-green-300 font-semibold">
