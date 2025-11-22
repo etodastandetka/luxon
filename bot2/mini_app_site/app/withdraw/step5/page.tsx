@@ -167,42 +167,65 @@ export default function WithdrawStep5() {
         let amount: number | null = null
         let alreadyExecuted = false
         
-        // Вариант 1: amount в data.data.amount
-        if (data.data && data.data.amount) {
-          amount = parseFloat(data.data.amount)
+        console.log('[Withdraw Step5] Parsing response:', {
+          hasData: !!data.data,
+          dataKeys: data.data ? Object.keys(data.data) : [],
+          dataAmount: data.data?.amount,
+          dataAlreadyExecuted: data.data?.alreadyExecuted,
+          message: data.message
+        })
+        
+        // Вариант 1: amount в data.data.amount (основной путь для всех казино)
+        if (data.data && data.data.amount !== undefined && data.data.amount !== null) {
+          amount = parseFloat(String(data.data.amount))
           alreadyExecuted = data.data.alreadyExecuted === true
+          console.log('[Withdraw Step5] Found amount in data.data.amount:', amount)
         }
         // Вариант 2: amount напрямую в data.amount
-        else if (data.amount) {
-          amount = parseFloat(data.amount)
+        else if (data.amount !== undefined && data.amount !== null) {
+          amount = parseFloat(String(data.amount))
+          console.log('[Withdraw Step5] Found amount in data.amount:', amount)
         }
         // Вариант 3: amount в data.data напрямую (если это число)
         else if (data.data && typeof data.data === 'number') {
           amount = parseFloat(data.data.toString())
+          console.log('[Withdraw Step5] Found amount in data.data (number):', amount)
         }
         
         // Проверяем message для определения, выполнен ли вывод
         const message = (data.message || data.error || '').toLowerCase()
         if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
           alreadyExecuted = true
+          console.log('[Withdraw Step5] Withdrawal executed detected from message')
         }
         
-        if (amount && amount > 0 && !isNaN(amount)) {
+        // Если alreadyExecuted установлен в data.data, используем его
+        if (data.data && data.data.alreadyExecuted !== undefined) {
+          alreadyExecuted = data.data.alreadyExecuted === true
+        }
+        
+        // Валидация суммы
+        if (amount !== null && !isNaN(amount) && amount > 0) {
           setWithdrawAmount(amount)
           localStorage.setItem('withdraw_amount', amount.toString())
           localStorage.setItem('withdraw_site_code', siteCode.trim())
           setError(null)
           
-          console.log('[Withdraw Step5] Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
+          console.log('[Withdraw Step5] ✅ Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
         } else {
           // Если success: true, но нет amount, проверяем message
           if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
             // Операция успешна, но amount не найден - это критическая ошибка
-            console.error('[Withdraw Step5] Success message but no amount found in response:', data)
+            console.error('[Withdraw Step5] ❌ Success message but no valid amount found in response:', {
+              data,
+              parsedAmount: amount,
+              isNaN: amount !== null ? isNaN(amount) : 'N/A',
+              isPositive: amount !== null ? amount > 0 : 'N/A'
+            })
             setWithdrawAmount(null)
             setError('Вывод выполнен, но не удалось получить сумму. Обратитесь в поддержку.')
           } else {
-            console.error('[Withdraw Step5] Success but no amount and no success message:', data)
+            console.error('[Withdraw Step5] ❌ Success but no amount and no success message:', data)
             setWithdrawAmount(null)
             setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
           }
@@ -401,23 +424,12 @@ export default function WithdrawStep5() {
                 </div>
               )}
               
-              {error && hasWithdrawals === true && !error.includes('выполнен') && !error.includes('executed') && (
+              {error && hasWithdrawals === true && withdrawAmount === null && (
                 <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
                   <p className="text-sm text-red-300 font-semibold">
                     ❌ Ошибка вывода
                   </p>
                   <p className="text-sm text-red-200 mt-1">
-                    {error}
-                  </p>
-                </div>
-              )}
-              
-              {error && (error.includes('выполнен') || error.includes('executed')) && (
-                <div className="mt-2 p-3 bg-yellow-900/30 border border-yellow-500 rounded-lg">
-                  <p className="text-sm text-yellow-300 font-semibold">
-                    ⚠️ Внимание
-                  </p>
-                  <p className="text-sm text-yellow-200 mt-1">
                     {error}
                   </p>
                 </div>
