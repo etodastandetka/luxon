@@ -238,12 +238,16 @@ export default function WithdrawStep5() {
           isNull: amount === null,
           isNaN: amount !== null ? isNaN(amount) : 'N/A',
           isPositive: amount !== null ? amount > 0 : 'N/A',
-          type: typeof amount
+          type: typeof amount,
+          rawAmount: data.data?.amount,
+          rawAmountType: typeof data.data?.amount
         })
         
+        // КРИТИЧНО: Если сумма найдена и валидна - ВСЕГДА очищаем ошибку и устанавливаем сумму
         if (amount !== null && !isNaN(amount) && amount > 0) {
-          // ВАЖНО: Сначала очищаем ошибку, потом устанавливаем сумму
           console.log('[Withdraw Step5] ✅ Amount is valid, clearing error and setting amount')
+          
+          // ВАЖНО: Сначала очищаем ошибку, потом устанавливаем сумму
           setError(null)
           setWithdrawAmount(amount)
           localStorage.setItem('withdraw_amount', amount.toString())
@@ -252,6 +256,11 @@ export default function WithdrawStep5() {
           console.log('[Withdraw Step5] ✅ Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
           console.log('[Withdraw Step5] ✅ Amount saved to localStorage:', amount.toString())
           console.log('[Withdraw Step5] ✅ Error cleared, amount set to:', amount)
+          
+          // Убеждаемся, что ошибка действительно очищена
+          setTimeout(() => {
+            console.log('[Withdraw Step5] ✅ Post-set: withdrawAmount=', withdrawAmount, 'error=', error)
+          }, 100)
         } else {
           // Если success: true, но нет amount, проверяем message
           console.error('[Withdraw Step5] ❌ Amount validation failed:', {
@@ -260,6 +269,7 @@ export default function WithdrawStep5() {
             isNaN: amount !== null ? isNaN(amount) : 'N/A',
             isPositive: amount !== null ? amount > 0 : 'N/A',
             message,
+            dataData: data.data,
             fullData: JSON.stringify(data, null, 2)
           })
           
@@ -466,19 +476,7 @@ export default function WithdrawStep5() {
                 </div>
               )}
               
-              {/* Показываем ошибку только если сумма не извлечена И есть ошибка */}
-              {error && hasWithdrawals === true && (withdrawAmount === null || withdrawAmount === 0) && !checking && (
-                <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
-                  <p className="text-sm text-red-300 font-semibold">
-                    ❌ Ошибка вывода
-                  </p>
-                  <p className="text-sm text-red-200 mt-1">
-                    {error}
-                  </p>
-                </div>
-              )}
-              
-              {/* Показываем успех, если сумма извлечена - это приоритетнее ошибки */}
+              {/* КРИТИЧНО: Показываем успех ПЕРВЫМ, если сумма извлечена - это приоритетнее ошибки */}
               {withdrawAmount !== null && withdrawAmount > 0 && !checking && (
                 <div className="mt-2 p-3 bg-green-900/30 border border-green-500 rounded-lg">
                   <p className="text-sm text-green-300 font-semibold">
@@ -489,6 +487,18 @@ export default function WithdrawStep5() {
                   </p>
                   <p className="text-xs text-green-300/70 mt-1">
                     Вы можете перейти к подтверждению заявки
+                  </p>
+                </div>
+              )}
+              
+              {/* Показываем ошибку ТОЛЬКО если сумма НЕ извлечена И есть ошибка */}
+              {error && hasWithdrawals === true && (withdrawAmount === null || withdrawAmount === 0) && !checking && (
+                <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
+                  <p className="text-sm text-red-300 font-semibold">
+                    ❌ Ошибка вывода
+                  </p>
+                  <p className="text-sm text-red-200 mt-1">
+                    {error}
                   </p>
                 </div>
               )}
