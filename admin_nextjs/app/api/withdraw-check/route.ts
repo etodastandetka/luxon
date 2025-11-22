@@ -142,9 +142,9 @@ export async function POST(request: NextRequest) {
           {
             amount: amount,
             alreadyExecuted: true, // Cashdesk API Payout сразу выполняет вывод
-            message: 'Вывод выполнен успешно',
           },
-          'Withdrawal executed'
+          undefined, // error - нет ошибки
+          'Withdrawal executed' // message - сообщение об успехе
         ),
         {
           headers: {
