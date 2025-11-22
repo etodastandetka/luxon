@@ -9,7 +9,11 @@ export interface ParsedEmail {
   bank: string
 }
 
-const AMOUNT_RE = /на\s+сумму\s+([0-9]+(?:[\.,][0-9]{1,2})?)\s*(KGS|сом|сомов)?/i
+// Улучшенное регулярное выражение для сумм:
+// Поддерживает числа с пробелами как разделителями тысяч: "1 000", "10 000", "100 000"
+// Поддерживает числа без пробелов: "1000", "10000", "100000"
+// Поддерживает десятичные дроби: "1 000.50", "10,000.50"
+const AMOUNT_RE = /на\s+сумму\s+([0-9]{1,3}(?:\s+[0-9]{3})*(?:[\.,][0-9]{1,2})?|[0-9]+(?:[\.,][0-9]{1,2})?)\s*(KGS|сом|сомов)?/i
 const DATETIME_RE = /(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}:\d{2})/
 
 /**
@@ -22,7 +26,8 @@ export function parseDemirbankEmail(text: string): ParsedEmail | null {
   const amountMatch = text.match(AMOUNT_RE)
   if (!amountMatch) return null
 
-  const amountStr = amountMatch[1].replace(',', '.')
+  // Убираем пробелы (разделители тысяч) и заменяем запятую на точку
+  let amountStr = amountMatch[1].replace(/\s+/g, '').replace(',', '.')
   const amount = parseFloat(amountStr)
   if (isNaN(amount)) return null
 
@@ -50,12 +55,14 @@ function parseGenericAmountDateTime(text: string): ParsedEmail | null {
   let amountMatch = text.match(AMOUNT_RE)
   if (!amountMatch) {
     // Fallback: ищем любое число перед (сом|KGS)
-    const fallbackMatch = text.match(/([0-9]+(?:[\.,][0-9]{1,2})?)\s*(KGS|сом|сомов)/i)
+    // Поддерживаем числа с пробелами: "1 000", "10 000", "100 000"
+    const fallbackMatch = text.match(/([0-9]{1,3}(?:\s+[0-9]{3})*(?:[\.,][0-9]{1,2})?|[0-9]+(?:[\.,][0-9]{1,2})?)\s*(KGS|сом|сомов)/i)
     if (!fallbackMatch) return null
     amountMatch = fallbackMatch
   }
 
-  const amountStr = amountMatch[1].replace(',', '.')
+  // Убираем пробелы (разделители тысяч) и заменяем запятую на точку
+  let amountStr = amountMatch[1].replace(/\s+/g, '').replace(',', '.')
   const amount = parseFloat(amountStr)
   if (isNaN(amount)) return null
 
