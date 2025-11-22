@@ -94,11 +94,12 @@ async function processEmail(
               console.log(`📨 Email preview: ${preview}...`)
             }
 
-            // ВАЖНО: Проверяем дату письма - если письмо старше 1 часа, сразу помечаем как прочитанное
+            // ВАЖНО: Проверяем дату письма - если письмо старше 7 дней, сразу помечаем как прочитанное
+            // (увеличено до 7 дней, чтобы обрабатывать письма, которые пришли недавно)
             const emailDate = parsed.date || new Date()
-            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
             
-            if (emailDate < oneHourAgo) {
+            if (emailDate < sevenDaysAgo) {
               console.log(`⚠️ Email UID ${uid} is too old (${emailDate.toISOString()}), marking as read without processing`)
               // Используем setFlags вместо addFlags для более надежной установки флага
               imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
@@ -366,7 +367,100 @@ async function matchAndProcessPayment(paymentId: number, amount: number): Promis
 }
 
 /**
- * Проверка новых писем
+ * Проверка всех непрочитанных писем (для первого запуска после перезапуска)
+ */
+async function checkAllUnreadEmails(settings: WatcherSettings): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const imap = new Imap({
+      user: settings.email,
+      password: settings.password,
+      host: settings.imapHost,
+      port: 993,
+      tls: true,
+      tlsOptions: { 
+        rejectUnauthorized: false,
+        servername: 'imap.timeweb.ru',
+      },
+      connTimeout: 30000,
+      authTimeout: 10000,
+    })
+
+    imap.once('ready', () => {
+      consecutiveNetworkErrors = 0
+      imap.openBox(settings.folder, false, (err: Error | null) => {
+        if (err) {
+          reject(err)
+          return
+        }
+
+        // Ищем ВСЕ непрочитанные письма (без фильтра по дате)
+        console.log('🔍 Checking all unread emails (first run after restart)...')
+        imap.search(['UNSEEN'], (err: Error | null, results?: number[]) => {
+          if (err) {
+            reject(err)
+            return
+          }
+
+          if (!results || results.length === 0) {
+            console.log('📭 No unread emails found')
+            consecutiveNetworkErrors = 0
+            imap.end()
+            resolve()
+            return
+          }
+
+          console.log(`📬 Found ${results.length} unread email(s) - processing all...`)
+
+          const processSequentially = async () => {
+            for (const uid of results!) {
+              try {
+                await processEmail(imap, uid, settings)
+              } catch (error: any) {
+                console.error(`❌ Error processing email UID ${uid}:`, error.message)
+              }
+            }
+          }
+
+          processSequentially()
+            .then(() => {
+              consecutiveNetworkErrors = 0
+              console.log(`✅ Finished processing ${results.length} unread email(s)`)
+              imap.end()
+              resolve()
+            })
+            .catch((error) => {
+              imap.end()
+              reject(error)
+            })
+        })
+      })
+    })
+
+    imap.once('error', (err: Error) => {
+      if ((err as any).code === 'ENOTFOUND' || (err as any).code === 'ETIMEDOUT' || (err as any).code === 'ECONNREFUSED') {
+        consecutiveNetworkErrors++
+        const now = Date.now()
+        if (consecutiveNetworkErrors >= MAX_CONSECUTIVE_ERRORS_BEFORE_LOG && 
+            (now - lastNetworkErrorLog) > NETWORK_ERROR_LOG_INTERVAL) {
+          console.warn(`⚠️ IMAP network error in checkAllUnreadEmails (${(err as any).code}): ${err.message || err}`)
+          lastNetworkErrorLog = now
+        }
+        resolve()
+        return
+      }
+      reject(err)
+    })
+
+    imap.once('end', () => {
+      resolve()
+    })
+
+    imap.connect()
+  })
+}
+
+/**
+ * Проверка новых писем (только за последние 15 минут)
  */
 async function checkEmails(settings: WatcherSettings): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -393,8 +487,7 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           return
         }
 
-        // Ищем непрочитанные письма за последние 15 минут (чтобы не обрабатывать старые письма)
-        // Это предотвращает обработку старых писем при перезапуске watcher
+        // Ищем непрочитанные письма за последние 15 минут (обычный режим)
         const fifteenMinutesAgo = new Date()
         fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15)
         const searchDate = [
@@ -402,7 +495,6 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           fifteenMinutesAgo.toISOString().split('T')[0].replace(/-/g, '-')
         ]
         
-        // Дополнительно фильтруем по времени - только письма за последние 15 минут
         // Используем более строгий фильтр: только UNSEEN письма за последние 15 минут
         imap.search(['UNSEEN', searchDate], (err: Error | null, results?: number[]) => {
           if (err) {
@@ -411,7 +503,7 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           }
 
           if (!results || results.length === 0) {
-            console.log('📭 No new emails')
+            console.log('📭 No new emails (last 15 minutes)')
             // Сбрасываем счетчик при успешной проверке
             consecutiveNetworkErrors = 0
             imap.end()
@@ -654,6 +746,9 @@ async function checkTimeouts(): Promise<void> {
   }
 }
 
+// Флаг для отслеживания первого запуска после перезапуска
+let isFirstRun = true
+
 /**
  * Запуск watcher в режиме реального времени (IDLE)
  */
@@ -691,6 +786,19 @@ export async function startWatcher(): Promise<void> {
       }
 
       console.log(`📧 Connecting to ${settings.imapHost} (${settings.email})...`)
+
+      // При первом запуске обрабатываем ВСЕ непрочитанные письма
+      if (isFirstRun) {
+        console.log('🔄 First run detected - processing all unread emails...')
+        try {
+          await checkAllUnreadEmails(settings)
+          console.log('✅ Finished processing all unread emails, switching to real-time mode...')
+        } catch (error: any) {
+          console.error('❌ Error processing unread emails on first run:', error.message)
+          // Продолжаем работу даже если обработка непрочитанных писем не удалась
+        }
+        isFirstRun = false
+      }
 
       // Запускаем IDLE режим (реальное время)
       try {
