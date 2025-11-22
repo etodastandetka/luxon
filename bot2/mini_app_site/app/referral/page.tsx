@@ -153,9 +153,9 @@ export default function ReferralPage() {
       fifthPlace: () => `5 место: ${referralSettings.fifth_place_prize.toLocaleString()} сом`,
       steps: () => [
         'Поделитесь ссылкой с друзьями',
-        `За каждое пополнение реферала вы получаете ${referralSettings.referral_percentage}%`,
-        'Выплаты происходят автоматически в конце месяца',
-        `Минимальная сумма для выплаты: ${referralSettings.min_payout} сом`
+        'Чем больше ваши рефералы (и их рефералы) пополняют, тем выше ваш рейтинг',
+        'Топ игроки по сумме пополнений рефералов получают призы',
+        'Призы распределяются по местам (1-5 место) в конце месяца'
       ],
       shareText: 'Присоединяйся к платформе пополнений и выводов!\nБыстро пополняй 1xBet, Melbet, Mostbet, 1Win, Winwin, 888starz и выводи средства без задержек\nРегистрируйся по моей ссылке',
       copied: 'Ссылка скопирована!',
@@ -182,9 +182,9 @@ export default function ReferralPage() {
       fifthPlace: () => `5th place: ${referralSettings.fifth_place_prize.toLocaleString()} som`,
       steps: () => [
         'Share the link with friends',
-        `You get ${referralSettings.referral_percentage}% for each referral deposit`,
-        'Payouts happen automatically at the end of the month',
-        `Minimum payout amount: ${referralSettings.min_payout} som`
+        'The more your referrals (and their referrals) deposit, the higher your ranking',
+        'Top players by total referral deposits receive prizes',
+        'Prizes are distributed by ranking (1st-5th place) at the end of the month'
       ],
       shareText: 'Join the deposit and withdrawal platform!\nQuickly top up 1xBet, Melbet, Mostbet, 1Win, Winwin, 888starz and withdraw funds without delays\nRegister using my link',
       copied: 'Link copied!',
