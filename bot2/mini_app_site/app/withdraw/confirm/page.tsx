@@ -48,13 +48,33 @@ export default function WithdrawConfirm() {
     try {
       // Получаем данные из localStorage
       const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
-      const amount = localStorage.getItem('withdraw_amount') || '0'
+      const amountStr = localStorage.getItem('withdraw_amount') || '0'
+      
+      console.log('[Withdraw Confirm] Данные из localStorage:', {
+        bookmaker,
+        amountStr,
+        userId,
+        phone,
+        bank,
+        siteCode
+      })
+      
+      // Проверяем, что сумма валидна
+      const amount = parseFloat(amountStr)
+      if (isNaN(amount) || amount <= 0) {
+        console.error('[Withdraw Confirm] ❌ Невалидная сумма:', amountStr)
+        alert(`Ошибка: невалидная сумма вывода (${amountStr}). Вернитесь на предыдущий шаг и проверьте код.`)
+        return
+      }
       
       // Проверяем, что все данные заполнены
-      if (!bookmaker || !amount || !userId || !phone || !bank || !siteCode) {
+      if (!bookmaker || !amountStr || amountStr === '0' || !userId || !phone || !bank || !siteCode) {
+        console.error('[Withdraw Confirm] ❌ Не все поля заполнены')
         alert('Не все поля заполнены. Проверьте данные.')
         return
       }
+      
+      console.log('[Withdraw Confirm] ✅ Все данные валидны, сумма:', amount)
 
       const base = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3001' 
@@ -75,7 +95,7 @@ export default function WithdrawConfirm() {
             bookmaker: bookmaker,
             playerId: userId,
             code: siteCode,
-            amount: parseFloat(amount),
+            amount: amount,
           }),
           timeout: 30000,
           retries: 2,
