@@ -159,7 +159,7 @@ export default function WithdrawStep5() {
 
       const data = await response.json()
       
-      console.log('[Withdraw Step5] API Response:', data)
+      console.log('[Withdraw Step5] API Response:', JSON.stringify(data, null, 2))
       
       // Проверяем успешный ответ
       if (data.success) {
@@ -172,24 +172,52 @@ export default function WithdrawStep5() {
           dataKeys: data.data ? Object.keys(data.data) : [],
           dataAmount: data.data?.amount,
           dataAlreadyExecuted: data.data?.alreadyExecuted,
-          message: data.message
+          message: data.message,
+          fullData: data
         })
         
         // Вариант 1: amount в data.data.amount (основной путь для всех казино)
         if (data.data && data.data.amount !== undefined && data.data.amount !== null) {
           amount = parseFloat(String(data.data.amount))
           alreadyExecuted = data.data.alreadyExecuted === true
-          console.log('[Withdraw Step5] Found amount in data.data.amount:', amount)
+          console.log('[Withdraw Step5] ✅ Found amount in data.data.amount:', amount)
         }
         // Вариант 2: amount напрямую в data.amount
         else if (data.amount !== undefined && data.amount !== null) {
           amount = parseFloat(String(data.amount))
-          console.log('[Withdraw Step5] Found amount in data.amount:', amount)
+          console.log('[Withdraw Step5] ✅ Found amount in data.amount:', amount)
         }
         // Вариант 3: amount в data.data напрямую (если это число)
         else if (data.data && typeof data.data === 'number') {
           amount = parseFloat(data.data.toString())
-          console.log('[Withdraw Step5] Found amount in data.data (number):', amount)
+          console.log('[Withdraw Step5] ✅ Found amount in data.data (number):', amount)
+        }
+        // Вариант 4: проверяем все вложенные объекты в data.data
+        else if (data.data && typeof data.data === 'object') {
+          // Ищем amount в любом вложенном поле
+          const searchForAmount = (obj: any, path = ''): number | null => {
+            if (!obj || typeof obj !== 'object') return null
+            for (const key in obj) {
+              const value = obj[key]
+              const currentPath = path ? `${path}.${key}` : key
+              if (key.toLowerCase() === 'amount' && (typeof value === 'number' || typeof value === 'string')) {
+                const parsed = parseFloat(String(value))
+                if (!isNaN(parsed) && parsed > 0) {
+                  console.log(`[Withdraw Step5] ✅ Found amount in ${currentPath}:`, parsed)
+                  return parsed
+                }
+              }
+              if (typeof value === 'object' && value !== null) {
+                const found = searchForAmount(value, currentPath)
+                if (found !== null) return found
+              }
+            }
+            return null
+          }
+          const foundAmount = searchForAmount(data.data)
+          if (foundAmount !== null) {
+            amount = foundAmount
+          }
         }
         
         // Проверяем message для определения, выполнен ли вывод
