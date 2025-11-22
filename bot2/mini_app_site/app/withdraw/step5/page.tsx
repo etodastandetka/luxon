@@ -233,8 +233,17 @@ export default function WithdrawStep5() {
         }
         
         // Валидация суммы
+        console.log('[Withdraw Step5] Amount validation:', {
+          amount,
+          isNull: amount === null,
+          isNaN: amount !== null ? isNaN(amount) : 'N/A',
+          isPositive: amount !== null ? amount > 0 : 'N/A',
+          type: typeof amount
+        })
+        
         if (amount !== null && !isNaN(amount) && amount > 0) {
           // ВАЖНО: Сначала очищаем ошибку, потом устанавливаем сумму
+          console.log('[Withdraw Step5] ✅ Amount is valid, clearing error and setting amount')
           setError(null)
           setWithdrawAmount(amount)
           localStorage.setItem('withdraw_amount', amount.toString())
@@ -245,19 +254,20 @@ export default function WithdrawStep5() {
           console.log('[Withdraw Step5] ✅ Error cleared, amount set to:', amount)
         } else {
           // Если success: true, но нет amount, проверяем message
+          console.error('[Withdraw Step5] ❌ Amount validation failed:', {
+            amount,
+            isNull: amount === null,
+            isNaN: amount !== null ? isNaN(amount) : 'N/A',
+            isPositive: amount !== null ? amount > 0 : 'N/A',
+            message,
+            fullData: JSON.stringify(data, null, 2)
+          })
+          
           if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
             // Операция успешна, но amount не найден - это критическая ошибка
-            console.error('[Withdraw Step5] ❌ Success message but no valid amount found in response:', {
-              data,
-              parsedAmount: amount,
-              isNaN: amount !== null ? isNaN(amount) : 'N/A',
-              isPositive: amount !== null ? amount > 0 : 'N/A',
-              dataStructure: JSON.stringify(data, null, 2)
-            })
             setWithdrawAmount(null)
             setError('Вывод выполнен, но не удалось получить сумму. Обратитесь в поддержку.')
           } else {
-            console.error('[Withdraw Step5] ❌ Success but no amount and no success message:', data)
             setWithdrawAmount(null)
             setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
           }
