@@ -493,17 +493,24 @@ export default function WithdrawStep5() {
               )}
               
               {/* КРИТИЧНО: Показываем успех ПЕРВЫМ, если сумма извлечена - это приоритетнее ошибки */}
-              {/* Условие: withdrawAmount !== null && withdrawAmount > 0 - это главное условие */}
               {withdrawAmount !== null && withdrawAmount > 0 && !checking && (
-                <div className="mt-2 p-3 bg-green-900/30 border border-green-500 rounded-lg">
-                  <p className="text-sm text-green-300 font-semibold">
-                    ✅ Вывод выполнен успешно
-                  </p>
-                  <p className="text-sm text-green-200 mt-1">
-                    Сумма: {withdrawAmount.toLocaleString()} сом
-                  </p>
-                  <p className="text-xs text-green-300/70 mt-1">
-                    Вы можете перейти к подтверждению заявки
+                <div className="mt-3 p-4 bg-green-900/30 border border-green-500 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">✅</span>
+                    <p className="text-sm text-green-300 font-semibold">
+                      Вывод выполнен успешно!
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-green-500/30">
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/70">Сумма вывода:</span>
+                      <span className="text-2xl text-white font-bold">
+                        {withdrawAmount.toLocaleString()} сом
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-green-200 mt-2">
+                    Код ордера проверен. Перейдите к подтверждению для создания заявки.
                   </p>
                 </div>
               )}
@@ -516,29 +523,6 @@ export default function WithdrawStep5() {
                   </p>
                   <p className="text-sm text-red-200 mt-1">
                     {error}
-                  </p>
-                </div>
-              )}
-              
-              
-              {withdrawAmount !== null && !error && !checking && (
-                <div className="mt-3 p-4 bg-green-900/30 border border-green-500 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">✅</span>
-                    <p className="text-sm text-green-300 font-semibold">
-                      Код проверен успешно!
-                    </p>
-                  </div>
-                  <div className="pt-2 border-t border-green-500/30">
-                    <div className="flex justify-between items-center">
-                      <span className="text-white/70">Сумма ордера:</span>
-                      <span className="text-2xl text-white font-bold">
-                        {withdrawAmount} сом
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-green-200 mt-2">
-                    Код ордера проверен. Перейдите к подтверждению для выполнения вывода.
                   </p>
                 </div>
               )}
