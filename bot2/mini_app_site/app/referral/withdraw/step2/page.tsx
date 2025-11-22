@@ -4,6 +4,7 @@ import FixedHeaderControls from '../../../../components/FixedHeaderControls'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
+import { safeFetch } from '../../../../utils/fetch'
 
 function ReferralWithdrawStep2Content() {
   const router = useRouter()
@@ -48,14 +49,34 @@ function ReferralWithdrawStep2Content() {
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
       
-      const response = await fetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`)
+      console.log('🔄 Загрузка доступного баланса:', { userId, apiUrl })
+      
+      const response = await safeFetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`, {
+        timeout: 15000,
+        retries: 1,
+        retryDelay: 1000
+      })
+      
+      if (!response.ok) {
+        console.error('❌ Ошибка загрузки баланса:', {
+          status: response.status,
+          statusText: response.statusText
+        })
+        return
+      }
+      
       const data = await response.json()
+      console.log('✅ Баланс загружен:', { available_balance: data.available_balance })
       
       if (data.success) {
         setAvailableBalance(data.available_balance || 0)
       }
-    } catch (error) {
-      console.error('Error loading available balance:', error)
+    } catch (error: any) {
+      console.error('❌ Ошибка загрузки доступного баланса:', {
+        error,
+        message: error?.message,
+        name: error?.name
+      })
     }
   }
 
@@ -109,26 +130,56 @@ function ReferralWithdrawStep2Content() {
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
 
-      const response = await fetch(`${apiUrl}/api/referral/withdraw/create`, {
+      console.log('🔄 Создание заявки на вывод:', {
+        userId,
+        bookmaker,
+        accountId: accountId.trim(),
+        amount: availableBalance,
+        apiUrl: `${apiUrl}/api/referral/withdraw/create`
+      })
+
+      const requestBody = {
+        user_id: userId,
+        bookmaker: bookmaker,
+        account_id: accountId.trim(),
+        amount: availableBalance, // Выводим весь баланс
+        telegram_data: {
+          username: tg?.initDataUnsafe?.user?.username || null,
+          first_name: tg?.initDataUnsafe?.user?.first_name || null,
+          last_name: tg?.initDataUnsafe?.user?.last_name || null,
+          phone_number: tg?.initDataUnsafe?.user?.phone_number || null,
+        }
+      }
+
+      const response = await safeFetch(`${apiUrl}/api/referral/withdraw/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          user_id: userId,
-          bookmaker: bookmaker,
-          account_id: accountId.trim(),
-          amount: availableBalance, // Выводим весь баланс
-          telegram_data: {
-            username: tg?.initDataUnsafe?.user?.username || null,
-            first_name: tg?.initDataUnsafe?.user?.first_name || null,
-            last_name: tg?.initDataUnsafe?.user?.last_name || null,
-            phone_number: tg?.initDataUnsafe?.user?.phone_number || null,
-          }
-        }),
+        body: JSON.stringify(requestBody),
+        timeout: 30000,
+        retries: 2,
+        retryDelay: 1000
       })
 
+      console.log('📥 Ответ от сервера:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Ошибка ответа сервера:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        })
+        throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`)
+      }
+
       const data = await response.json()
+      console.log('✅ Данные ответа:', data)
 
       if (data.success) {
         alert('Заявка на вывод создана успешно! Ожидайте подтверждения администратора.')
@@ -137,8 +188,23 @@ function ReferralWithdrawStep2Content() {
         alert(`Ошибка: ${data.error || 'Не удалось создать заявку'}`)
       }
     } catch (error: any) {
-      console.error('Error creating withdrawal request:', error)
-      alert(`Ошибка: ${error.message || 'Не удалось создать заявку'}`)
+      console.error('❌ Ошибка создания заявки на вывод:', {
+        error,
+        message: error?.message,
+        name: error?.name,
+        stack: error?.stack
+      })
+      
+      let errorMessage = 'Не удалось создать заявку'
+      if (error?.message) {
+        errorMessage = error.message
+      } else if (error?.name === 'AbortError') {
+        errorMessage = 'Превышено время ожидания. Проверьте интернет-соединение и попробуйте снова.'
+      } else if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+        errorMessage = 'Ошибка сети. Проверьте интернет-соединение и попробуйте снова.'
+      }
+      
+      alert(`Ошибка: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
