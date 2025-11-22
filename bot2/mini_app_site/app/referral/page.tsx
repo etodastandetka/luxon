@@ -153,7 +153,7 @@ export default function ReferralPage() {
       fifthPlace: () => `5 место: ${referralSettings.fifth_place_prize.toLocaleString()} сом`,
       steps: () => [
         'Поделитесь ссылкой с друзьями',
-        'Чем больше ваши рефералы (и их рефералы) пополняют, тем выше ваш рейтинг',
+        'Чем больше ваши рефералы пополняют, тем выше ваш рейтинг',
         'Топ игроки по сумме пополнений рефералов получают призы',
         'Призы распределяются по местам (1-5 место) в конце месяца'
       ],
@@ -182,7 +182,7 @@ export default function ReferralPage() {
       fifthPlace: () => `5th place: ${referralSettings.fifth_place_prize.toLocaleString()} som`,
       steps: () => [
         'Share the link with friends',
-        'The more your referrals (and their referrals) deposit, the higher your ranking',
+        'The more your referrals deposit, the higher your ranking',
         'Top players by total referral deposits receive prizes',
         'Prizes are distributed by ranking (1st-5th place) at the end of the month'
       ],

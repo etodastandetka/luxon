@@ -36,7 +36,7 @@ export default function SupportPage() {
         },
         {
           question: 'Как работает реферальная программа?',
-          answer: 'Поделитесь ссылкой с друзьями. Чем больше ваши рефералы (и их рефералы) пополняют, тем выше ваш рейтинг. Топ игроки по сумме пополнений рефералов получают призы в конце месяца.'
+          answer: 'Поделитесь ссылкой с друзьями. Чем больше ваши рефералы пополняют, тем выше ваш рейтинг. Топ игроки по сумме пополнений рефералов получают призы в конце месяца.'
         }
       ],
       backToMain: '🔙 На главную'
@@ -75,7 +75,7 @@ export default function SupportPage() {
         },
         {
           question: 'How does referral program work?',
-          answer: 'Share link with friends. The more your referrals (and their referrals) deposit, the higher your ranking. Top players by total referral deposits receive prizes at the end of month.'
+          answer: 'Share link with friends. The more your referrals deposit, the higher your ranking. Top players by total referral deposits receive prizes at the end of month.'
         }
       ],
       backToMain: '🔙 Back to main'
