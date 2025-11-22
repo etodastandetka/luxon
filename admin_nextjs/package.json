@@ -22,7 +22,8 @@
     "test:withdraw": "tsx scripts/test-1xbet-withdraw.ts",
     "add-1win-api-key": "tsx scripts/add-1win-api-key.ts",
     "check-1win-limit": "tsx scripts/check-1win-limit.ts",
-    "add-1xbet-config": "tsx scripts/add-1xbet-config.ts"
+    "add-1xbet-config": "tsx scripts/add-1xbet-config.ts",
+    "add-referral-balance": "tsx scripts/add-referral-balance.ts"
   },
   "dependencies": {
     "@koo0ki/send": "^1.1.1",
