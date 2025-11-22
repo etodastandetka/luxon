@@ -74,7 +74,7 @@ export default function WithdrawConfirm() {
         return
       }
       
-      console.log('[Withdraw Confirm] ✅ Все данные валидны, сумма:', amount)
+      console.log('[Withdraw Confirm] ✅ Все данные валидны, сумма:', amount, 'тип:', typeof amount)
 
       const base = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3001' 
@@ -95,7 +95,7 @@ export default function WithdrawConfirm() {
             bookmaker: bookmaker,
             playerId: userId,
             code: siteCode,
-            amount: amount,
+            amount: amount, // amount уже число
           }),
           timeout: 30000,
           retries: 2,
@@ -197,7 +197,7 @@ export default function WithdrawConfirm() {
         bookmaker: bookmaker,
         userId: telegramUserId,
         phone: phone,
-        amount: parseFloat(amount),
+        amount: amount, // amount уже число после parseFloat выше
         bank: bank,
         account_id: userId,
         playerId: userId,
@@ -209,6 +209,11 @@ export default function WithdrawConfirm() {
         telegram_last_name: telegramUser?.last_name,
         telegram_language_code: telegramUser?.language_code
       }
+      
+      console.log('[Withdraw Confirm] 📤 Создание заявки с данными:', {
+        ...requestBody,
+        qr_photo: qrPhoto ? `[base64, ${qrPhoto.length} chars]` : null
+      })
       
       const response = await safeFetch('/api/payment', {
         method: 'POST',
