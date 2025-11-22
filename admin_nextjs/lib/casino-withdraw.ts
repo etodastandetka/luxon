@@ -163,13 +163,41 @@ export async function checkWithdrawAmountCashdesk(
     console.log(`[Cashdesk Withdraw] Response data:`, JSON.stringify(data, null, 2))
 
     // API может возвращать success (маленькая) или Success (большая)
-    const isSuccess = data.success === true || data.Success === true
+    // Также проверяем наличие summa/Summa - если есть сумма, значит операция успешна
+    const hasSuccessFlag = data.success === true || data.Success === true
+    const hasAmount = (data.summa !== undefined && data.summa !== null) || (data.Summa !== undefined && data.Summa !== null)
+    
+    // Если есть сумма и HTTP статус OK, считаем операцию успешной
+    // Это важно, так как некоторые API могут не возвращать флаг success, но возвращать сумму
+    const isSuccess = hasSuccessFlag || (hasAmount && response.ok)
 
-    if (!response.ok || !isSuccess) {
-      console.error(`[Cashdesk Withdraw] Request failed: response.ok=${response.ok}, isSuccess=${isSuccess}`)
+    console.log(`[Cashdesk Withdraw] Success check:`, {
+      responseOk: response.ok,
+      responseStatus: response.status,
+      hasSuccessFlag,
+      hasAmount,
+      isSuccess,
+      summa: data.summa,
+      Summa: data.Summa,
+      success: data.success,
+      Success: data.Success
+    })
+
+    // Если HTTP статус не OK, это ошибка
+    if (!response.ok) {
+      console.error(`[Cashdesk Withdraw] HTTP error: status=${response.status}`)
       return {
         success: false,
-        message: data.Message || data.message || `Failed to process withdrawal: ${response.status}`,
+        message: data.Message || data.message || `HTTP error: ${response.status}`,
+      }
+    }
+
+    // Если нет суммы и нет флага успеха, это ошибка
+    if (!hasAmount && !hasSuccessFlag) {
+      console.error(`[Cashdesk Withdraw] No amount and no success flag`)
+      return {
+        success: false,
+        message: data.Message || data.message || 'Не удалось получить сумму вывода',
       }
     }
 
