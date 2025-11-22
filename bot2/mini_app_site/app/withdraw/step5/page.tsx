@@ -163,33 +163,44 @@ export default function WithdrawStep5() {
       
       // Проверяем успешный ответ
       if (data.success) {
-        // Для 888starz/Winwin вывод уже выполнен, и API возвращает amount и alreadyExecuted: true
-        // Для 1xbet возвращается только amount
+        // Пытаемся извлечь amount из разных мест ответа
+        let amount: number | null = null
+        let alreadyExecuted = false
+        
+        // Вариант 1: amount в data.data.amount
         if (data.data && data.data.amount) {
-          const amount = data.data.amount
-          const alreadyExecuted = data.data.alreadyExecuted === true
-          
+          amount = parseFloat(data.data.amount)
+          alreadyExecuted = data.data.alreadyExecuted === true
+        }
+        // Вариант 2: amount напрямую в data.amount
+        else if (data.amount) {
+          amount = parseFloat(data.amount)
+        }
+        // Вариант 3: amount в data.data напрямую (если это число)
+        else if (data.data && typeof data.data === 'number') {
+          amount = parseFloat(data.data.toString())
+        }
+        
+        // Проверяем message для определения, выполнен ли вывод
+        const message = (data.message || data.error || '').toLowerCase()
+        if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
+          alreadyExecuted = true
+        }
+        
+        if (amount && amount > 0 && !isNaN(amount)) {
           setWithdrawAmount(amount)
           localStorage.setItem('withdraw_amount', amount.toString())
           localStorage.setItem('withdraw_site_code', siteCode.trim())
           setError(null)
           
           console.log('[Withdraw Step5] Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
-          
-          // Если вывод уже выполнен (888starz/Winwin), показываем сообщение об успехе
-          if (alreadyExecuted) {
-            // Не показываем ошибку, так как операция успешна
-            // Просто сохраняем данные и разрешаем перейти к подтверждению
-          }
         } else {
           // Если success: true, но нет amount, проверяем message
-          const message = data.message || data.error || ''
-          if (message.includes('executed successfully') || message.includes('успешно') || message.includes('Withdrawal executed')) {
-            // Операция успешна, но структура ответа нестандартная
-            // Пытаемся извлечь amount из сообщения или используем значение по умолчанию
-            console.log('[Withdraw Step5] Success message but no amount, trying to extract or use default')
-            setError(null)
-            // Разрешаем продолжить, если есть сообщение об успехе
+          if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
+            // Операция успешна, но amount не найден - это критическая ошибка
+            console.error('[Withdraw Step5] Success message but no amount found in response:', data)
+            setWithdrawAmount(null)
+            setError('Вывод выполнен, но не удалось получить сумму. Обратитесь в поддержку.')
           } else {
             console.error('[Withdraw Step5] Success but no amount and no success message:', data)
             setWithdrawAmount(null)
@@ -390,12 +401,23 @@ export default function WithdrawStep5() {
                 </div>
               )}
               
-              {error && hasWithdrawals === true && (
+              {error && hasWithdrawals === true && !error.includes('выполнен') && !error.includes('executed') && (
                 <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
                   <p className="text-sm text-red-300 font-semibold">
                     ❌ Ошибка вывода
                   </p>
                   <p className="text-sm text-red-200 mt-1">
+                    {error}
+                  </p>
+                </div>
+              )}
+              
+              {error && (error.includes('выполнен') || error.includes('executed')) && (
+                <div className="mt-2 p-3 bg-yellow-900/30 border border-yellow-500 rounded-lg">
+                  <p className="text-sm text-yellow-300 font-semibold">
+                    ⚠️ Внимание
+                  </p>
+                  <p className="text-sm text-yellow-200 mt-1">
                     {error}
                   </p>
                 </div>
