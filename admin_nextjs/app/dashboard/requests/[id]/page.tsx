@@ -707,12 +707,17 @@ export default function RequestDetailPage() {
     const showMinus = isDeferred && processedBy === 'автопополнение'
     
     // Проверяем, обработана ли заявка (для скрытия блока "Переводы по QR")
+    // api_error и deposit_failed НЕ считаются обработанными - кнопки должны оставаться
     const isProcessed = request?.status === 'completed' || 
                         request?.status === 'approved' || 
                         request?.status === 'rejected' || 
                         request?.status === 'declined' ||
                         request?.status === 'auto_completed' || 
                         request?.status === 'autodeposit_success'
+    
+    // Для отображения кнопок: показываем их если заявка не обработана ИЛИ если это ошибка API
+    // (чтобы можно было пополнить баланс и потом подтвердить вручную)
+    const showActionButtons = !isProcessed || request?.status === 'api_error' || request?.status === 'deposit_failed'
     
     const userName = request?.username 
       ? `@${request.username}` 
@@ -1137,8 +1142,11 @@ export default function RequestDetailPage() {
                           request.status === 'auto_completed' || 
                           request.status === 'autodeposit_success'
         
-        // Показываем кнопки только для необработанных заявок со статусом pending или deferred
-        return isPendingOrDeferred && !isProcessed
+        // Показываем кнопки для:
+        // 1. Необработанных заявок со статусом pending или deferred
+        // 2. Заявок с ошибкой API (api_error, deposit_failed) - чтобы можно было пополнить баланс и подтвердить вручную
+        const isApiError = request.status === 'api_error' || request.status === 'deposit_failed'
+        return (isPendingOrDeferred && !isProcessed) || isApiError
       })() && (
         <div className="mx-4 mb-4 flex space-x-3">
           <button
