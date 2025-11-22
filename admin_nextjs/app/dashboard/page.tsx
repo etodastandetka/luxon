@@ -392,6 +392,9 @@ export default function DashboardPage() {
       case 'manual':
       case 'awaiting_manual':
         return 'Ручная'
+      case 'api_error':
+      case 'deposit_failed':
+        return 'Ошибка API'
       default:
         return status
     }
@@ -409,6 +412,9 @@ export default function DashboardPage() {
       case 'rejected':
       case 'declined':
         return 'bg-red-500 text-white border border-red-400'
+      case 'api_error':
+      case 'deposit_failed':
+        return 'bg-orange-500 text-white border border-orange-400'
       case 'deferred':
         return 'bg-orange-500 text-white border border-orange-400'
       case 'manual':
