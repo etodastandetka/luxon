@@ -982,10 +982,12 @@ export default function RequestDetailPage() {
         </div>
       )}
 
-      {/* Входящие платежи с поиском - показываем только для необработанных заявок */}
-      {request.requestType === 'deposit' && request.matchingPayments && request.matchingPayments.length > 0 && !isProcessed && (
+      {/* Входящие платежи с поиском - показываем всегда если есть пополнения */}
+      {request.requestType === 'deposit' && request.matchingPayments && request.matchingPayments.length > 0 && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
-          <h3 className="text-lg font-semibold text-white mb-3">Переводы по QR</h3>
+          <h3 className="text-lg font-semibold text-white mb-3">
+            {isProcessed ? 'Все пополнения на эту сумму' : 'Переводы по QR'}
+          </h3>
           
           {/* Поиск и фильтры */}
           <div className="mb-3">
@@ -1046,8 +1048,8 @@ export default function RequestDetailPage() {
               .map((payment: MatchingPayment) => {
               const isAttached = payment.requestId === request.id && payment.isProcessed
               const isAutoCompleted = request.status === 'autodeposit_success' || request.status === 'auto_completed'
-              // Платеж нередактируемый если он привязан или обработан для другой заявки
-              const isDisabled = isAutoCompleted || isAttached || (payment.isProcessed && payment.requestId !== null && payment.requestId !== request.id)
+              // Платеж нередактируемый если он привязан или обработан для другой заявки, или если заявка уже обработана
+              const isDisabled = isProcessed || isAutoCompleted || isAttached || (payment.isProcessed && payment.requestId !== null && payment.requestId !== request.id)
               const isSelected = selectedPaymentId === payment.id
               
               return (
@@ -1060,7 +1062,7 @@ export default function RequestDetailPage() {
                         ? 'border-green-500 bg-green-900/20'
                         : 'border-gray-700 hover:border-gray-600 cursor-pointer'
                   }`}
-                  onClick={() => !isDisabled && setSelectedPaymentId(isSelected ? null : payment.id)}
+                  onClick={() => !isDisabled && !isProcessed && setSelectedPaymentId(isSelected ? null : payment.id)}
                 >
                   <div className="flex items-center space-x-2">
                     <div className={`w-1 h-10 rounded-full ${isDisabled ? 'bg-gray-600' : 'bg-green-500'}`}></div>
