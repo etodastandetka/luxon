@@ -77,9 +77,29 @@ export async function POST(request: NextRequest) {
     const depositResult = await depositToCasino(bookmaker, accountId, parseFloat(amount), parseInt(requestId))
 
     if (!depositResult.success) {
+      const errorMessage = depositResult.message || 'Failed to deposit balance'
       console.error(`[Deposit Balance] Failed for ${bookmaker}, accountId: ${accountId}`, depositResult)
+      
+      // Сохраняем ошибку в БД для отображения в админке
+      if (requestId) {
+        try {
+          await prisma.request.update({
+            where: { id: parseInt(requestId) },
+            data: {
+              status: 'api_error',
+              statusDetail: errorMessage.length > 50 ? errorMessage.substring(0, 50) : errorMessage,
+              processedAt: new Date(),
+              updatedAt: new Date(),
+            } as any,
+          })
+          console.log(`⚠️ [Deposit Balance] Saved error to request ${requestId}: ${errorMessage}`)
+        } catch (dbError: any) {
+          console.error(`❌ [Deposit Balance] Failed to save error to DB:`, dbError.message)
+        }
+      }
+      
       return NextResponse.json(
-        createApiResponse(null, depositResult.message || 'Failed to deposit balance'),
+        createApiResponse(null, errorMessage),
         { status: 500 }
       )
     }

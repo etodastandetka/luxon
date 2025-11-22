@@ -371,6 +371,9 @@ export default function RequestDetailPage() {
     if (status === 'manual' || status === 'awaiting_manual') {
       return 'Ручная'
     }
+    if (status === 'api_error' || status === 'deposit_failed') {
+      return 'Ошибка API'
+    }
     return status
   }
 
@@ -385,6 +388,9 @@ export default function RequestDetailPage() {
         return 'bg-green-500 text-black'
       case 'rejected':
         return 'bg-red-500 text-white'
+      case 'api_error':
+      case 'deposit_failed':
+        return 'bg-orange-500 text-white'
       case 'deferred':
         return 'bg-orange-500 text-white'
       default:
@@ -859,6 +865,14 @@ export default function RequestDetailPage() {
 
         <p className="text-xs text-gray-400 mb-1.5">{formatDate(request.createdAt)}</p>
 
+        {/* Отображение ошибки депозита */}
+        {(request.status === 'api_error' || request.status === 'deposit_failed') && request.statusDetail && (
+          <div className="mb-2 p-2 bg-orange-900/30 border border-orange-500 rounded-lg">
+            <p className="text-xs text-orange-300 font-semibold">⚠️ Ошибка депозита:</p>
+            <p className="text-xs text-orange-200 mt-1">{request.statusDetail}</p>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-400">
             {isDeposit ? 'Пополнение' : 'Вывод'}
@@ -1253,6 +1267,21 @@ export default function RequestDetailPage() {
               <span className={`text-sm font-medium ${getStatusColor(request.status).includes('text-') ? getStatusColor(request.status) : 'text-white'}`}>
                 {getStatusState(request.status)}
               </span>
+            </div>
+          )}
+          
+          {/* Отображение деталей ошибки */}
+          {(request.status === 'api_error' || request.status === 'deposit_failed') && request.statusDetail && (
+            <div className="mt-3 p-3 bg-orange-900/30 border border-orange-500 rounded-lg">
+              <div className="flex items-start space-x-2">
+                <svg className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm text-orange-300 font-semibold mb-1">Ошибка при пополнении баланса:</p>
+                  <p className="text-sm text-orange-200">{request.statusDetail}</p>
+                </div>
+              </div>
             </div>
           )}
         </div>

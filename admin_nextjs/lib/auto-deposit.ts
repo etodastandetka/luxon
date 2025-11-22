@@ -99,8 +99,26 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     )
 
     if (!depositResult.success) {
-      console.error(`❌ [Auto-Deposit] Deposit failed: ${depositResult.message}`)
-      throw new Error(depositResult.message || 'Deposit failed')
+      const errorMessage = depositResult.message || 'Deposit failed'
+      console.error(`❌ [Auto-Deposit] Deposit failed: ${errorMessage}`)
+      
+      // Сохраняем ошибку в БД для отображения в админке
+      try {
+        await prisma.request.update({
+          where: { id: request.id },
+          data: {
+            status: 'api_error',
+            statusDetail: errorMessage.length > 50 ? errorMessage.substring(0, 50) : errorMessage,
+            processedAt: new Date(),
+            updatedAt: new Date(),
+          } as any,
+        })
+        console.log(`⚠️ [Auto-Deposit] Saved error to request ${request.id}: ${errorMessage}`)
+      } catch (dbError: any) {
+        console.error(`❌ [Auto-Deposit] Failed to save error to DB:`, dbError.message)
+      }
+      
+      throw new Error(errorMessage)
     }
     
     // После успешного пополнения - атомарно обновляем все в одной транзакции
