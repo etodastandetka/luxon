@@ -4,6 +4,7 @@ import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import { checkUserBlocked } from '../../../utils/telegram'
+import { safeFetch } from '../../../utils/fetch'
 
 export default function WithdrawStep5() {
   const [siteCode, setSiteCode] = useState('')
@@ -45,7 +46,24 @@ export default function WithdrawStep5() {
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
       
-      const response = await fetch(`${base}/api/withdraw-check-exists?bookmaker=${encodeURIComponent(bookmaker)}&playerId=${encodeURIComponent(userId)}`)
+      console.log('🔄 Проверка наличия выводов:', { bookmaker, userId })
+      
+      const response = await safeFetch(`${base}/api/withdraw-check-exists?bookmaker=${encodeURIComponent(bookmaker)}&playerId=${encodeURIComponent(userId)}`, {
+        timeout: 15000,
+        retries: 1,
+        retryDelay: 1000
+      })
+      
+      if (!response.ok) {
+        console.error('❌ Ошибка проверки наличия выводов:', {
+          status: response.status,
+          statusText: response.statusText
+        })
+        // При ошибке все равно разрешаем попробовать ввести код
+        setHasWithdrawals(true)
+        return
+      }
+      
       const data = await response.json()
       
       if (data.success && data.data) {
@@ -104,9 +122,11 @@ export default function WithdrawStep5() {
         ? 'http://localhost:3001' 
         : 'https://xendro.pro'
       
+      console.log('🔄 Проверка кода вывода:', { bookmaker, userId, codeLength: siteCode.trim().length })
+      
       // Только проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
       // Вывод будет выполнен на странице подтверждения
-      const response = await fetch(`${base}/api/withdraw-check`, {
+      const response = await safeFetch(`${base}/api/withdraw-check`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,7 +136,26 @@ export default function WithdrawStep5() {
           playerId: userId,
           code: siteCode.trim(),
         }),
+        timeout: 30000,
+        retries: 2,
+        retryDelay: 1000
       })
+
+      console.log('📥 Ответ от сервера:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Ошибка ответа сервера:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        })
+        throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`)
+      }
 
       const data = await response.json()
       
@@ -165,9 +204,24 @@ export default function WithdrawStep5() {
         setError(errorMessage)
       }
     } catch (error: any) {
-      console.error('Ошибка проверки кода:', error)
+      console.error('❌ Ошибка проверки кода:', {
+        error,
+        message: error?.message,
+        name: error?.name,
+        stack: error?.stack
+      })
       setWithdrawAmount(null)
-      setError('Ошибка проверки кода. Попробуйте еще раз.')
+      
+      let errorMessage = 'Ошибка проверки кода. Попробуйте еще раз.'
+      if (error?.message) {
+        errorMessage = error.message
+      } else if (error?.name === 'AbortError') {
+        errorMessage = 'Превышено время ожидания. Проверьте интернет-соединение и попробуйте снова.'
+      } else if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+        errorMessage = 'Нет подключения к интернету. Проверьте соединение и попробуйте снова.'
+      }
+      
+      setError(errorMessage)
     } finally {
       setChecking(false)
     }

@@ -4,6 +4,7 @@ import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import { checkUserBlocked } from '../../../utils/telegram'
+import { safeFetch } from '../../../utils/fetch'
 
 export default function WithdrawConfirm() {
     const [bank, setBank] = useState('')
@@ -65,7 +66,7 @@ export default function WithdrawConfirm() {
       if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
         console.log('🔄 Выполняем вывод для 1xbet перед созданием заявки...')
         
-        const withdrawResponse = await fetch(`${base}/api/withdraw-execute`, {
+        const withdrawResponse = await safeFetch(`${base}/api/withdraw-execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -76,7 +77,26 @@ export default function WithdrawConfirm() {
             code: siteCode,
             amount: parseFloat(amount),
           }),
+          timeout: 30000,
+          retries: 2,
+          retryDelay: 1000
         })
+
+        console.log('📥 Ответ от withdraw-execute:', {
+          status: withdrawResponse.status,
+          statusText: withdrawResponse.statusText,
+          ok: withdrawResponse.ok
+        })
+
+        if (!withdrawResponse.ok) {
+          const errorText = await withdrawResponse.text()
+          console.error('❌ Ошибка выполнения вывода:', {
+            status: withdrawResponse.status,
+            statusText: withdrawResponse.statusText,
+            errorText
+          })
+          throw new Error(`Ошибка выполнения вывода: ${withdrawResponse.status} ${withdrawResponse.statusText}`)
+        }
 
         const withdrawData = await withdrawResponse.json()
 
@@ -151,32 +171,55 @@ export default function WithdrawConfirm() {
 
       // Создаем заявку в админке
       console.log('📤 Создаем заявку в админке...')
-      const response = await fetch('/api/payment', {
+      
+      const requestBody = {
+        type: 'withdraw',
+        bookmaker: bookmaker,
+        userId: telegramUserId,
+        phone: phone,
+        amount: parseFloat(amount),
+        bank: bank,
+        account_id: userId,
+        playerId: userId,
+        qr_photo: qrPhoto,
+        site_code: siteCode,
+        telegram_user_id: telegramUserId,
+        telegram_username: telegramUser?.username,
+        telegram_first_name: telegramUser?.first_name,
+        telegram_last_name: telegramUser?.last_name,
+        telegram_language_code: telegramUser?.language_code
+      }
+      
+      const response = await safeFetch('/api/payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          type: 'withdraw',
-          bookmaker: bookmaker,
-          userId: telegramUserId,
-          phone: phone,
-          amount: parseFloat(amount),
-          bank: bank,
-          account_id: userId,
-          playerId: userId,
-          qr_photo: qrPhoto,
-          site_code: siteCode,
-          telegram_user_id: telegramUserId,
-          telegram_username: telegramUser?.username,
-          telegram_first_name: telegramUser?.first_name,
-          telegram_last_name: telegramUser?.last_name,
-          telegram_language_code: telegramUser?.language_code
-        })
+        body: JSON.stringify(requestBody),
+        timeout: 30000,
+        retries: 2,
+        retryDelay: 1000
       })
       
-      if (response.ok) {
-        const result = await response.json()
+      console.log('📥 Ответ от /api/payment:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Ошибка создания заявки:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        })
+        throw new Error(`Ошибка создания заявки: ${response.status} ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      
+      if (result.success !== false) {
         console.log('✅ Заявка на вывод создана успешно:', result)
         
         // Показываем результат
@@ -199,13 +242,27 @@ export default function WithdrawConfirm() {
           router.push('/')
         }, 2000)
       } else {
-        const errorData = await response.json()
-        console.error('❌ API Error:', errorData)
-        throw new Error(`Failed to create withdraw request: ${errorData.error || 'Unknown error'}`)
+        console.error('❌ API Error:', result)
+        throw new Error(`Failed to create withdraw request: ${result.error || 'Unknown error'}`)
       }
     } catch (error: any) {
-      console.error('❌ Error creating withdraw request:', error)
-      alert(`Ошибка при создании заявки: ${error.message || 'Попробуйте еще раз.'}`)
+      console.error('❌ Error creating withdraw request:', {
+        error,
+        message: error?.message,
+        name: error?.name,
+        stack: error?.stack
+      })
+      
+      let errorMessage = 'Ошибка при создании заявки. Попробуйте еще раз.'
+      if (error?.message) {
+        errorMessage = error.message
+      } else if (error?.name === 'AbortError') {
+        errorMessage = 'Превышено время ожидания. Проверьте интернет-соединение и попробуйте снова.'
+      } else if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+        errorMessage = 'Нет подключения к интернету. Проверьте соединение и попробуйте снова.'
+      }
+      
+      alert(`Ошибка: ${errorMessage}`)
     }
   }
 
