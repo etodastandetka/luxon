@@ -99,7 +99,8 @@ export default function ReferralPage() {
         setEarned(data.earned || 0)
         setAvailableBalance(data.available_balance || 0)
         setHasPendingWithdrawal(data.has_pending_withdrawal || false)
-        setReferralCount(data.referral_count || 0)
+        // Используем total_referrals (общее количество) вместо referral_count (только активные)
+        setReferralCount(data.total_referrals || data.referral_count || 0)
         setTopPlayers(data.top_players || [])
         setUserRank(data.user_rank || 0)
         
