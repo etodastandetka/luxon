@@ -209,9 +209,10 @@ export default function WithdrawStep5() {
           setWithdrawAmount(amount)
           localStorage.setItem('withdraw_amount', amount.toString())
           localStorage.setItem('withdraw_site_code', siteCode.trim())
-          setError(null)
+          setError(null) // Очищаем ошибку, если сумма успешно извлечена
           
           console.log('[Withdraw Step5] ✅ Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
+          console.log('[Withdraw Step5] ✅ Amount saved to localStorage:', amount.toString())
         } else {
           // Если success: true, но нет amount, проверяем message
           if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
@@ -220,7 +221,8 @@ export default function WithdrawStep5() {
               data,
               parsedAmount: amount,
               isNaN: amount !== null ? isNaN(amount) : 'N/A',
-              isPositive: amount !== null ? amount > 0 : 'N/A'
+              isPositive: amount !== null ? amount > 0 : 'N/A',
+              dataStructure: JSON.stringify(data, null, 2)
             })
             setWithdrawAmount(null)
             setError('Вывод выполнен, но не удалось получить сумму. Обратитесь в поддержку.')
@@ -424,13 +426,29 @@ export default function WithdrawStep5() {
                 </div>
               )}
               
-              {error && hasWithdrawals === true && withdrawAmount === null && (
+              {/* Показываем ошибку только если сумма не извлечена */}
+              {error && hasWithdrawals === true && withdrawAmount === null && !checking && (
                 <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
                   <p className="text-sm text-red-300 font-semibold">
                     ❌ Ошибка вывода
                   </p>
                   <p className="text-sm text-red-200 mt-1">
                     {error}
+                  </p>
+                </div>
+              )}
+              
+              {/* Показываем успех, если сумма извлечена, даже если есть сообщение об executed */}
+              {withdrawAmount !== null && withdrawAmount > 0 && !checking && (
+                <div className="mt-2 p-3 bg-green-900/30 border border-green-500 rounded-lg">
+                  <p className="text-sm text-green-300 font-semibold">
+                    ✅ Вывод выполнен успешно
+                  </p>
+                  <p className="text-sm text-green-200 mt-1">
+                    Сумма: {withdrawAmount.toLocaleString()} сом
+                  </p>
+                  <p className="text-xs text-green-300/70 mt-1">
+                    Вы можете перейти к подтверждению заявки
                   </p>
                 </div>
               )}
