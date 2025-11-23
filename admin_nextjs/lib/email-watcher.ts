@@ -122,7 +122,8 @@ async function processEmail(
             console.log(`   Trying to find amount pattern in text...`)
             // Попробуем показать, что именно ищем
             // Поддерживаем числа с пробелами: "1 000", "10 000", "100 000"
-            const amountPattern = /([0-9]{1,3}(?:\s+[0-9]{3})*(?:[\.,][0-9]{1,2})?|[0-9]+(?:[\.,][0-9]{1,2})?)\s*(KGS|сом|сомов)/i
+            // Поддерживаем запятые как разделители тысяч: "1,240.06"
+            const amountPattern = /([0-9]{1,3}(?:[,\s]+[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:[,\s]+[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:,[0-9]{1,2})?)\s*(KGS|сом|сомов)/i
             const amountMatches = text.match(amountPattern)
             if (amountMatches) {
               console.log(`   Found potential amount: ${amountMatches[0]}`)
