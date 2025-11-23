@@ -108,17 +108,47 @@ export default function WithdrawConfirm() {
           ok: withdrawResponse.ok
         })
 
+        // Читаем ответ один раз
+        let withdrawResponseText = ''
+        try {
+          withdrawResponseText = await withdrawResponse.text()
+        } catch (e) {
+          console.error('❌ Ошибка чтения ответа withdraw-execute:', e)
+          throw new Error(`Ошибка чтения ответа: ${withdrawResponse.status}`)
+        }
+
         if (!withdrawResponse.ok) {
-          const errorText = await withdrawResponse.text()
           console.error('❌ Ошибка выполнения вывода:', {
             status: withdrawResponse.status,
             statusText: withdrawResponse.statusText,
-            errorText
+            responseText: withdrawResponseText.substring(0, 500)
           })
-          throw new Error(`Ошибка выполнения вывода: ${withdrawResponse.status} ${withdrawResponse.statusText}`)
+          
+          // Пробуем распарсить ошибку
+          let errorData: any = null
+          try {
+            if (withdrawResponseText) {
+              errorData = JSON.parse(withdrawResponseText)
+            }
+          } catch (e) {
+            // Не JSON
+          }
+          
+          const errorMsg = errorData?.error || errorData?.message || `Ошибка выполнения вывода: ${withdrawResponse.status}`
+          throw new Error(errorMsg)
         }
 
-        const withdrawData = await withdrawResponse.json()
+        // Парсим успешный ответ
+        let withdrawData: any
+        try {
+          if (!withdrawResponseText) {
+            throw new Error('Пустой ответ от сервера')
+          }
+          withdrawData = JSON.parse(withdrawResponseText)
+        } catch (parseError: any) {
+          console.error('❌ Ошибка парсинга ответа withdraw-execute:', parseError)
+          throw new Error('Не удалось обработать ответ сервера при выполнении вывода.')
+        }
 
         if (!withdrawData.success) {
           console.error('❌ Ошибка выполнения вывода:', withdrawData)
@@ -212,10 +242,12 @@ export default function WithdrawConfirm() {
       
       console.log('[Withdraw Confirm] 📤 Создание заявки с данными:', {
         ...requestBody,
-        qr_photo: qrPhoto ? `[base64, ${qrPhoto.length} chars]` : null
+        qr_photo: qrPhoto ? `[base64, ${qrPhoto.length} chars]` : null,
+        apiUrl: `${base}/api/payment`
       })
       
-      const response = await safeFetch('/api/payment', {
+      console.log('[Withdraw Confirm] 🔄 Отправка запроса на создание заявки...')
+      const response = await safeFetch(`${base}/api/payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -232,17 +264,63 @@ export default function WithdrawConfirm() {
         ok: response.ok
       })
 
+      // Читаем ответ один раз - Response можно прочитать только один раз!
+      let responseText = ''
+      try {
+        responseText = await response.text()
+      } catch (e) {
+        console.error('❌ Ошибка чтения ответа:', e)
+        throw new Error(`Ошибка чтения ответа сервера: ${response.status} ${response.statusText}`)
+      }
+      
       if (!response.ok) {
-        const errorText = await response.text()
         console.error('❌ Ошибка создания заявки:', {
           status: response.status,
           statusText: response.statusText,
-          errorText
+          responseText: responseText.substring(0, 500) // Первые 500 символов для лога
         })
-        throw new Error(`Ошибка создания заявки: ${response.status} ${response.statusText}`)
+        
+        // Пробуем распарсить как JSON
+        let errorData: any = null
+        try {
+          if (responseText) {
+            errorData = JSON.parse(responseText)
+          }
+        } catch (e) {
+          // Не JSON, оставляем как текст
+        }
+        
+        // Извлекаем реальное сообщение об ошибке из ответа
+        let errorMessage = `Ошибка создания заявки (${response.status})`
+        if (errorData) {
+          if (errorData.error) {
+            errorMessage = errorData.error
+          } else if (errorData.message) {
+            errorMessage = errorData.message
+          } else if (errorData.data?.error) {
+            errorMessage = errorData.data.error
+          } else if (errorData.data?.message) {
+            errorMessage = errorData.data.message
+          }
+        } else if (responseText && responseText.length < 200 && !responseText.includes('<html')) {
+          // Если текст короткий и не HTML, используем его
+          errorMessage = responseText
+        }
+        
+        throw new Error(errorMessage)
       }
       
-      const result = await response.json()
+      // Парсим успешный ответ
+      let result: any
+      try {
+        if (!responseText) {
+          throw new Error('Пустой ответ от сервера')
+        }
+        result = JSON.parse(responseText)
+      } catch (parseError: any) {
+        console.error('❌ Ошибка парсинга ответа:', parseError, 'Response text:', responseText.substring(0, 200))
+        throw new Error('Не удалось обработать ответ сервера. Попробуйте еще раз.')
+      }
       
       if (result.success !== false) {
         console.log('✅ Заявка на вывод создана успешно:', result)
@@ -279,12 +357,41 @@ export default function WithdrawConfirm() {
       })
       
       let errorMessage = 'Ошибка при создании заявки. Попробуйте еще раз.'
-      if (error?.message) {
-        errorMessage = error.message
-      } else if (error?.name === 'AbortError') {
-        errorMessage = 'Превышено время ожидания. Проверьте интернет-соединение и попробуйте снова.'
-      } else if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+      
+      // Проверяем тип ошибки более точно
+      const errorMsg = String(error?.message || '')
+      const errorName = error?.name || ''
+      
+      // Приоритет 1: Если это ошибка сервера (HTTP статус), показываем сообщение сервера
+      if (error?.status || errorMsg.includes('HTTP') || errorMsg.includes('Status:') || errorMsg.includes('Ошибка создания заявки') || errorMsg.includes('Ошибка выполнения вывода')) {
+        // Используем сообщение об ошибке как есть (оно уже содержит реальное сообщение от сервера)
+        errorMessage = errorMsg || 'Ошибка сервера. Попробуйте еще раз.'
+      } 
+      // Приоритет 2: Таймаут
+      else if (errorName === 'AbortError' || errorMsg.includes('Таймаут') || errorMsg.includes('timeout')) {
+        errorMessage = 'Превышено время ожидания. Попробуйте еще раз.'
+      } 
+      // Приоритет 3: Только реальные сетевые ошибки (не ошибки парсинга, не HTTP ошибки)
+      else if (
+        errorName === 'TypeError' && 
+        errorMsg.includes('Failed to fetch') && 
+        !errorMsg.includes('HTTP') &&
+        !errorMsg.includes('Status:') &&
+        !errorMsg.includes('Ошибка')
+      ) {
         errorMessage = 'Нет подключения к интернету. Проверьте соединение и попробуйте снова.'
+      }
+      // Приоритет 4: Другие реальные сетевые ошибки
+      else if (
+        (errorMsg.includes('NetworkError') && !errorMsg.includes('HTTP') && !errorMsg.includes('Status:') && !errorMsg.includes('Ошибка')) ||
+        errorMsg.includes('ERR_INTERNET_DISCONNECTED') ||
+        errorMsg.includes('ERR_NETWORK_CHANGED')
+      ) {
+        errorMessage = 'Нет подключения к интернету. Проверьте соединение и попробуйте снова.'
+      }
+      // Приоритет 5: Используем сообщение об ошибке, если оно есть
+      else if (errorMsg && !errorMsg.includes('Нет подключения к интернету')) {
+        errorMessage = errorMsg
       }
       
       alert(`Ошибка: ${errorMessage}`)
@@ -382,7 +489,7 @@ export default function WithdrawConfirm() {
                 <span className="font-bold text-xl text-green-300">{withdrawAmount} сом</span>
               </div>
               <p className="text-xs text-green-200 mt-2">
-                Средства сняты с вашего счета в казино. Заявка будет обработана администратором.
+                Вывод выполнен. Ожидайте поступление денег.
               </p>
             </div>
           )}

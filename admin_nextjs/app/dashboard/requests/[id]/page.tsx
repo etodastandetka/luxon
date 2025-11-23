@@ -486,9 +486,12 @@ export default function RequestDetailPage() {
                   const fetchData = await fetchResponse.json()
                   if (fetchData.success) {
                     setRequest(fetchData.data)
-                    // Если заявка уже подтверждена автоматически (сумма совпала), выходим
+                    // Если заявка уже подтверждена автоматически (сумма совпала), перенаправляем на дашборд
                     if (fetchData.data.status === 'completed' || fetchData.data.status === 'approved') {
                       setSelectedPaymentId(null)
+                      setTimeout(() => {
+                        router.push('/dashboard')
+                      }, 500)
                       return
                     }
                   }
@@ -570,6 +573,11 @@ export default function RequestDetailPage() {
               localStorage.removeItem('request_updated')
               
               setSelectedPaymentId(null)
+              
+              // Перенаправляем на дашборд после успешного депозита
+              setTimeout(() => {
+                router.push('/dashboard')
+              }, 500)
               return
             } else {
               // Если в ответе нет данных заявки, перезагружаем вручную
@@ -590,6 +598,11 @@ export default function RequestDetailPage() {
               }, 500)
               
               setSelectedPaymentId(null)
+              
+              // Перенаправляем на дашборд после успешного депозита
+              setTimeout(() => {
+                router.push('/dashboard')
+              }, 500)
               return
             }
           } catch (depositError) {
@@ -645,6 +658,11 @@ export default function RequestDetailPage() {
           localStorage.removeItem('request_updated') // Триггерим storage event
           
           setSelectedPaymentId(null)
+          
+          // Перенаправляем на дашборд после успешного обновления статуса
+          setTimeout(() => {
+            router.push('/dashboard')
+          }, 500)
         } else {
           console.error('Failed to update request:', data.error)
         }

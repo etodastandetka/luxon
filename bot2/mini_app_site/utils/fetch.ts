@@ -148,7 +148,20 @@ export async function safeFetch(
           await new Promise(resolve => setTimeout(resolve, retryDelay))
           continue
         }
-        throw new Error('Нет подключения к интернету. Проверьте соединение и попробуйте снова.')
+        // Только если это действительно сетевая ошибка (не ошибка парсинга или другая)
+        // Проверяем, что это не ошибка, связанная с HTTP статусом или другими техническими деталями
+        const isRealNetworkIssue = 
+          !errorMessage.includes('HTTP') && 
+          !errorMessage.includes('Status:') &&
+          !errorMessage.includes('Ошибка') &&
+          !errorMessage.includes('Error') &&
+          (error.name === 'TypeError' || error.name === 'NetworkError')
+        
+        if (isRealNetworkIssue) {
+          throw new Error('Нет подключения к интернету. Проверьте соединение и попробуйте снова.')
+        }
+        // Если это ошибка с HTTP статусом или другая техническая ошибка, пробрасываем оригинальную ошибку
+        throw error
       }
       
       // Для других ошибок не повторяем
