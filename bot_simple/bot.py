@@ -29,6 +29,7 @@ async def check_channel_subscription(user_id: int, channel_id: str) -> bool:
     """Проверяет подписку пользователя на канал"""
     try:
         check_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
+        logger.info(f"🔍 Проверяю подписку пользователя {user_id} на канал {channel_id}")
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.post(
                 check_url,
@@ -39,13 +40,24 @@ async def check_channel_subscription(user_id: int, channel_id: str) -> bool:
             )
             if response.status_code == 200:
                 data = response.json()
+                logger.info(f"📋 Ответ от Telegram API: {data}")
                 if data.get('ok'):
                     member = data.get('result', {})
                     status = member.get('status', '')
-                    return status in ['member', 'administrator', 'creator']
-        return False
+                    logger.info(f"📊 Статус пользователя в канале: {status}")
+                    is_subscribed = status in ['member', 'administrator', 'creator']
+                    logger.info(f"{'✅' if is_subscribed else '❌'} Пользователь {'подписан' if is_subscribed else 'не подписан'}")
+                    return is_subscribed
+                else:
+                    error_description = data.get('description', 'Unknown error')
+                    logger.error(f"❌ Telegram API вернул ошибку: {error_description}")
+                    # Если бот не может проверить (например, не админ канала), считаем что не подписан
+                    return False
+            else:
+                logger.error(f"❌ HTTP ошибка при проверке подписки: {response.status_code}")
+                return False
     except Exception as e:
-        logger.error(f"❌ Ошибка при проверке подписки: {e}")
+        logger.error(f"❌ Ошибка при проверке подписки: {e}", exc_info=True)
         return False
 
 async def send_channel_subscription_message(update: Update, channel_username: str, channel_id: str) -> None:
@@ -90,29 +102,63 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info(f"📥 Получена команда /start от пользователя {user_id} (@{user.username})")
     
     # Проверяем настройки канала
+    logger.info(f"🔍 Проверяю настройки канала для пользователя {user_id}")
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{API_URL}/api/channel/settings")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            logger.info(f"📡 Запрос к API: {API_URL}/api/channel/settings")
+            response = await client.get(
+                f"{API_URL}/api/channel/settings",
+                headers={"Content-Type": "application/json"}
+            )
+            logger.info(f"📥 Ответ API: статус {response.status_code}")
+            
             if response.status_code == 200:
                 data = response.json()
+                logger.info(f"📋 Данные от API: {data}")
+                
                 if data.get('success'):
                     channel_settings = data.get('data', {})
-                    if channel_settings.get('enabled') and channel_settings.get('channel_id'):
-                        # Проверяем подписку
-                        is_subscribed = await check_channel_subscription(
-                            user_id, 
-                            channel_settings.get('channel_id')
-                        )
-                        if not is_subscribed:
-                            # Отправляем сообщение о подписке
-                            await send_channel_subscription_message(
-                                update,
-                                channel_settings.get('username', ''),
-                                channel_settings.get('channel_id')
+                    logger.info(f"⚙️ Настройки канала: enabled={channel_settings.get('enabled')}, channel_id={channel_settings.get('channel_id')}, username={channel_settings.get('username')}")
+                    
+                    if channel_settings.get('enabled'):
+                        logger.info("✅ Проверка подписки включена")
+                        channel_id = channel_settings.get('channel_id')
+                        channel_username = channel_settings.get('username', '')
+                        
+                        if channel_id:
+                            logger.info(f"🔍 Проверяю подписку на канал {channel_id}")
+                            # Проверяем подписку
+                            is_subscribed = await check_channel_subscription(
+                                user_id, 
+                                channel_id
                             )
-                            return  # Не показываем основное меню, пока не подпишется
+                            
+                            if not is_subscribed:
+                                logger.info(f"❌ Пользователь {user_id} не подписан на канал, отправляю сообщение о подписке")
+                                # Отправляем сообщение о подписке
+                                await send_channel_subscription_message(
+                                    update,
+                                    channel_username,
+                                    channel_id
+                                )
+                                return  # Не показываем основное меню, пока не подпишется
+                            else:
+                                logger.info(f"✅ Пользователь {user_id} подписан на канал, показываю основное меню")
+                        else:
+                            logger.warning("⚠️ channel_id не указан в настройках, пропускаю проверку подписки")
+                    else:
+                        logger.info("ℹ️ Проверка подписки отключена в настройках")
+                else:
+                    logger.warning(f"⚠️ API вернул success=false: {data.get('error')}")
+            else:
+                logger.error(f"❌ Ошибка API при получении настроек канала: {response.status_code}")
+                try:
+                    error_text = await response.text()
+                    logger.error(f"📄 Текст ошибки: {error_text[:200]}")
+                except:
+                    pass
     except Exception as e:
-        logger.error(f"❌ Ошибка при проверке настроек канала: {e}")
+        logger.error(f"❌ Ошибка при проверке настроек канала: {e}", exc_info=True)
         # Продолжаем выполнение, если ошибка
     
     # Обработка реферальной ссылки
