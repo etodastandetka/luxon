@@ -3,14 +3,16 @@ import { prisma } from '@/lib/prisma'
 import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 import { createApiResponse } from '@/lib/api-helpers'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * API для отправки отложенного уведомления о депозите
  * Вызывается через минуту после создания заявки, если автопополнение не сработало
  * GET /api/notifications/delayed-deposit?requestId=123
  */
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams
+    const searchParams = req.nextUrl.searchParams
     const requestId = searchParams.get('requestId')
 
     if (!requestId) {
