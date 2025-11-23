@@ -3,6 +3,49 @@ import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 
+/**
+ * Планирует отложенное уведомление о депозите через минуту
+ * Вызывается только если автопополнение не сработало
+ * ВАЖНО: Использует setTimeout, который работает в контексте сервера
+ * Если сервер перезагрузится, уведомление не отправится (но это нормально)
+ */
+function scheduleDelayedNotification(requestId: number) {
+  // Используем setTimeout для вызова endpoint через минуту
+  // ВАЖНО: Это работает только если сервер не перезагрузится
+  setTimeout(async () => {
+    try {
+      // Используем внутренний вызов API через абсолютный URL
+      // Определяем базовый URL в зависимости от окружения
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
+                     (process.env.NODE_ENV === 'production' 
+                       ? 'https://xendro.pro' 
+                       : 'http://localhost:3001')
+      
+      console.log(`⏰ [Delayed Notification] Sending notification for request ${requestId} after 1 minute delay`)
+      
+      const response = await fetch(`${baseUrl}/api/notifications/delayed-deposit?requestId=${requestId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && !data.data?.skipped) {
+          console.log(`✅ [Delayed Notification] Notification sent for request ${requestId}`)
+        } else {
+          console.log(`ℹ️ [Delayed Notification] Notification skipped for request ${requestId}:`, data.data?.reason)
+        }
+      } else {
+        console.error(`❌ [Delayed Notification] Failed to send notification for request ${requestId}:`, response.status)
+      }
+    } catch (error: any) {
+      console.error(`❌ [Delayed Notification] Error sending notification for request ${requestId}:`, error.message)
+    }
+  }, 60 * 1000) // 1 минута = 60 секунд
+}
+
 // API для создания заявок из внешних источников (мини-приложение, бот и т.д.)
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -102,6 +145,46 @@ export async function POST(request: NextRequest) {
         }
       )
       return errorResponse
+    }
+
+    // Валидация минимального депозита в зависимости от казино
+    if (type === 'deposit' && amount) {
+      const amountNum = parseFloat(amount)
+      if (!isNaN(amountNum)) {
+        const normalizedBookmaker = (bookmaker || '').toLowerCase()
+        let minDeposit = 35 // По умолчанию минимальный депозит 35 сом
+        
+        // Для 1win минимальный депозит 100 сом
+        if (normalizedBookmaker.includes('1win') || normalizedBookmaker === '1win') {
+          minDeposit = 100
+        }
+        
+        if (amountNum < minDeposit) {
+          const errorResponse = NextResponse.json(
+            createApiResponse(null, `Минимальная сумма депозита для ${bookmaker || 'этого казино'}: ${minDeposit} сом`),
+            { 
+              status: 400,
+              headers: {
+                'Access-Control-Allow-Origin': '*',
+              }
+            }
+          )
+          return errorResponse
+        }
+        
+        if (amountNum > 100000) {
+          const errorResponse = NextResponse.json(
+            createApiResponse(null, 'Максимальная сумма депозита: 100000 сом'),
+            { 
+              status: 400,
+              headers: {
+                'Access-Control-Allow-Origin': '*',
+              }
+            }
+          )
+          return errorResponse
+        }
+      }
     }
 
     // Для error_log просто логируем и возвращаем успех
@@ -274,15 +357,22 @@ export async function POST(request: NextRequest) {
           
           if (result && result.success) {
             console.log(`✅ [Auto-Deposit] INSTANT auto-deposit completed for request ${newRequest.id} with payment ${payment.id}`)
+            // Автопополнение сработало - уведомление НЕ отправляем
           } else {
             console.log(`ℹ️ [Auto-Deposit] Auto-deposit check completed for request ${newRequest.id}`)
+            // Автопополнение не сработало - отправим уведомление через минуту
+            scheduleDelayedNotification(newRequest.id)
           }
         } else {
           console.log(`ℹ️ [Auto-Deposit] No matching incoming payments yet for request ${newRequest.id} (amount: ${requestAmount})`)
+          // Автопополнение не сработало - отправим уведомление через минуту
+          scheduleDelayedNotification(newRequest.id)
         }
       } catch (error: any) {
         console.error(`❌ [Auto-Deposit] Error checking incoming payments for request ${newRequest.id}:`, error.message)
         // Не блокируем создание заявки если проверка не удалась
+        // Отправим уведомление через минуту на всякий случай
+        scheduleDelayedNotification(newRequest.id)
       }
     }
 
@@ -309,8 +399,9 @@ export async function POST(request: NextRequest) {
       // Это будет обработано когда dashboard откроется и обнаружит новую заявку
     }
     
-    // Если это пополнение и автопополнение успешно - отправляем уведомление
-    // (уведомление уже отправляется в auto-deposit.ts)
+    // Если это пополнение:
+    // - Если автопополнение сработало - уведомление НЕ отправляем (уже обработано)
+    // - Если автопополнение не сработало - уведомление будет отправлено через минуту через scheduleDelayedNotification
 
     const response = NextResponse.json(
       createApiResponse({

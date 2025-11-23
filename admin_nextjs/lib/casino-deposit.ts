@@ -25,20 +25,13 @@ interface MobCashConfig {
 }
 
 // Генерация confirm для 1xbet/Melbet
-// Генерация confirm для пополнения и вывода
-// Согласно документации CashdeskBotAPI: confirm = MD5(userId:hash)
-// Для Melbet и Winwin userId должен быть в lowercase
-export function generateConfirm(userId: string, hash: string, isMelbet: boolean = false, isWinwin: boolean = false): string {
-  const userIdForConfirm = (isMelbet || isWinwin) ? userId.toLowerCase() : userId
+export function generateConfirm(userId: string, hash: string, isMelbet: boolean = false): string {
+  const userIdForConfirm = isMelbet ? userId.toLowerCase() : userId
   const confirmString = `${userIdForConfirm}:${hash}`
   return crypto.createHash('md5').update(confirmString).digest('hex')
 }
 
-// Генерация подписи для пополнения 1xbet/888starz
-// Согласно документации CashdeskBotAPI пункт 3.1 и 3.5:
-// a. SHA256(hash={hash}&lng={lng}&UserId={UserId}) - в описании UserId с большой, в примере userid с маленькой
-// b. MD5(summa={summa}&cashierpass={cashierpass}&cashdeskid={cashdeskid})
-// c. SHA256(step1 + step2)
+// Генерация подписи для пополнения 1xbet/Winwin
 export function generateSignForDeposit1xbet(
   userId: string,
   amount: number,
@@ -46,8 +39,8 @@ export function generateSignForDeposit1xbet(
   cashierpass: string,
   cashdeskid: string | number
 ): string {
-  // a) SHA256(hash={hash}&lng=ru&userid={user_id})
-  // Согласно примеру в пункте 3.5 используется userid с маленькой буквы
+  // a) SHA256(hash={hash}&lng=ru&userid={user_id}) - согласно примеру в документации (пункт 3.5) используется userid с маленькой буквы
+  // В описании (пункт 3.1) указано UserId с большой, но в примере (пункт 3.5) используется userid с маленькой
   const step1String = `hash=${hash}&lng=ru&userid=${userId}`
   const step1Hash = crypto.createHash('sha256').update(step1String).digest('hex')
 
@@ -97,7 +90,6 @@ export async function depositCashdeskAPI(
 ): Promise<{ success: boolean; message: string; data?: any }> {
   const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI/'
   const normalizedBookmaker = bookmaker.toLowerCase()
-  const is1xbet = normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet' || normalizedBookmaker.includes('xbet')
   const isMelbet = normalizedBookmaker.includes('melbet')
   const isWinwin = normalizedBookmaker.includes('winwin')
   const is888starz = normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888')
@@ -122,17 +114,15 @@ export async function depositCashdeskAPI(
     console.log(`[Cashdesk Deposit] Bookmaker: ${bookmaker}, Casino User ID: ${userId}, Amount: ${amount}`)
     
     // Для Melbet и Winwin userId должен быть в нижнем регистре для API URL и confirm
-    // Для 1xbet и 888starz используем стандартную логику без lowercase для userId
+    // Для 888starz используем стандартную логику (как 1xbet), но без lowercase для userId
     // Преобразуем userId в строку перед toLowerCase, так как для чисел toLowerCase не работает
     const userIdStr = String(userId)
     const userIdForApi = (isMelbet || isWinwin) ? userIdStr.toLowerCase() : userIdStr
-    // Для confirm: generateConfirm сам обрабатывает lowercase для Melbet и Winwin
-    // Передаем оригинальный userIdStr и флаги, чтобы generateConfirm сам решил
-    const confirm = generateConfirm(userIdStr, hash, isMelbet, isWinwin)
-    // Для подписи: для Melbet и Winwin используем userId (оригинальный, но функция сама сделает lowercase)
-    // Для 1xbet и 888starz используем userIdForApi (как есть, без lowercase)
+    const confirm = generateConfirm(userIdForApi, hash, isMelbet)
+    // Для подписи: для Melbet используем userId (оригинальный, но функция сама сделает lowercase)
+    // Для Winwin в подписи используем userIdForApi (в нижнем регистре), так как в URL тоже используется lowercase
     // В строке подписи используется userid с маленькой буквы согласно примеру в документации (пункт 3.5)
-    const sign = (isMelbet || isWinwin)
+    const sign = isMelbet
       ? generateSignForDepositMelbet(userIdStr, amount, hash, cashierpass, cashdeskid)
       : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
     
@@ -141,8 +131,8 @@ export async function depositCashdeskAPI(
     console.log(`  - userId (original): ${userId} (type: ${typeof userId})`)
     console.log(`  - userIdStr (string): ${userIdStr}`)
     console.log(`  - userIdForApi (for URL and confirm): ${userIdForApi}`)
-    console.log(`  - userId used in signature: ${(isMelbet || isWinwin) ? userIdStr : userIdForApi}`)
-    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&userid=${(isMelbet || isWinwin) ? userIdStr.toLowerCase() : userIdForApi}`)
+    console.log(`  - userId used in signature: ${isMelbet ? userIdStr : userIdForApi}`)
+    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&userid=${isMelbet ? userIdStr.toLowerCase() : userIdForApi}`)
     console.log(`  - Step 2 string would be: summa=${amount}&cashierpass=${cashierpass}&cashdeskid=${cashdeskid}`)
     console.log(`  - Hash: ${hash.substring(0, 20)}...`)
     console.log(`  - Cashierpass: ${cashierpass.substring(0, 5)}...`)
@@ -165,7 +155,7 @@ export async function depositCashdeskAPI(
     console.log(`[Cashdesk Deposit] Confirm: ${confirm}`)
     console.log(`[Cashdesk Deposit] Authorization header: ${authHeader.substring(0, 20)}...`)
     console.log(`[Cashdesk Deposit] UserId for API: ${userIdForApi}, Original userId: ${userId}`)
-    console.log(`[Cashdesk Deposit] Bookmaker flags: is1xbet=${is1xbet}, isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`)
+    console.log(`[Cashdesk Deposit] Bookmaker flags: isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`)
 
     // Для Winwin и Melbet не требуется Basic Auth (как в Python скриптах)
     // Для 1xbet и 888starz используется Basic Auth
@@ -175,7 +165,7 @@ export async function depositCashdeskAPI(
     }
     
     // Для 1xbet и 888starz используем Basic Auth, для Winwin и Melbet - без него
-    if (is1xbet || is888starz) {
+    if (!isMelbet && !isWinwin) {
       headers['Authorization'] = authHeader
       console.log(`[Cashdesk Deposit] Using Basic Auth for ${bookmaker}`)
     } else {

@@ -12,20 +12,31 @@ export default function DepositStep3() {
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
   const [convertedAmount, setConvertedAmount] = useState<string>('')
   const [loadingRate, setLoadingRate] = useState(false)
+  const [bookmaker, setBookmaker] = useState<string>('')
   const { language } = useLanguage()
   const router = useRouter()
 
+  // Определяем минимальный депозит в зависимости от казино
+  const getMinDeposit = () => {
+    const normalizedBookmaker = bookmaker.toLowerCase()
+    if (normalizedBookmaker.includes('1win') || normalizedBookmaker === '1win') {
+      return 100 // Для 1win минимальный депозит 100 сом
+    }
+    return 35 // Для остальных казино минимальный депозит 35 сом
+  }
+
   useEffect(() => {
     // Проверяем, что пользователь прошел предыдущие шаги
-    const bookmaker = localStorage.getItem('deposit_bookmaker')
+    const savedBookmaker = localStorage.getItem('deposit_bookmaker')
     const userId = localStorage.getItem('deposit_user_id')
     const savedPaymentType = localStorage.getItem('deposit_payment_type') as 'bank' | 'crypto' || 'bank'
     
-    if (!bookmaker || !userId || !savedPaymentType) {
+    if (!savedBookmaker || !userId || !savedPaymentType) {
       router.push('/deposit/step0')
       return
     }
     
+    setBookmaker(savedBookmaker)
     setPaymentType(savedPaymentType)
     
     // Если выбрана крипта, сбрасываем кэш курса для получения актуального курса
@@ -100,8 +111,9 @@ export default function DepositStep3() {
       }
     } else {
       // Для банковских переводов: валидация в сомах
-      if (numAmount < 35 || numAmount > 100000) {
-        alert('Сумма должна быть от 35 до 100000 сом')
+      const minDeposit = getMinDeposit()
+      if (numAmount < minDeposit || numAmount > 100000) {
+        alert(`Сумма должна быть от ${minDeposit} до 100000 сом`)
         return
       }
       
@@ -130,13 +142,14 @@ export default function DepositStep3() {
   }
 
   const getTranslations = () => {
+    const minDeposit = getMinDeposit()
     const base = {
       ru: {
         title: 'Пополнение - Шаг 3',
         subtitle: 'Введите сумму',
         instruction: paymentType === 'crypto' ? 'Введите сумму в долларах (USD)' : 'Введите сумму пополнения',
         placeholder: paymentType === 'crypto' ? 'Введите сумму в долларах' : 'Введите сумму',
-        limits: paymentType === 'crypto' ? 'От $1 до $1000 USD' : 'От 35 до 100000 сом',
+        limits: paymentType === 'crypto' ? 'От $1 до $1000 USD' : `От ${minDeposit} до 100000 сом`,
         currency: paymentType === 'crypto' ? 'USD' : 'сом',
         convertedLabel: '≈ в сомах',
         next: 'Далее',
@@ -147,7 +160,7 @@ export default function DepositStep3() {
         subtitle: 'Enter amount',
         instruction: paymentType === 'crypto' ? 'Enter amount in US dollars (USD)' : 'Enter deposit amount',
         placeholder: paymentType === 'crypto' ? 'Enter amount in dollars' : 'Enter amount',
-        limits: paymentType === 'crypto' ? 'From $1 to $1000 USD' : 'From 35 to 100000 som',
+        limits: paymentType === 'crypto' ? 'From $1 to $1000 USD' : `From ${minDeposit} to 100000 som`,
         currency: paymentType === 'crypto' ? 'USD' : 'som',
         convertedLabel: '≈ in som',
         next: 'Next',
@@ -158,7 +171,7 @@ export default function DepositStep3() {
         subtitle: 'Сумманы киргизиңиз',
         instruction: paymentType === 'crypto' ? 'Доллар суммасын киргизиңиз (USD)' : 'Толтуруу суммасын киргизиңиз',
         placeholder: paymentType === 'crypto' ? 'Доллар суммасын киргизиңиз' : 'Сумма киргизиңиз',
-        limits: paymentType === 'crypto' ? '$1дөн $1000 USD чейин' : '35дөн 100000 сом чейин',
+        limits: paymentType === 'crypto' ? '$1дөн $1000 USD чейин' : `${minDeposit}дөн 100000 сом чейин`,
         currency: paymentType === 'crypto' ? 'USD' : 'сом',
         convertedLabel: '≈ сомдо',
         next: 'Кийинки',
@@ -169,7 +182,7 @@ export default function DepositStep3() {
         subtitle: 'Summani kiriting',
         instruction: paymentType === 'crypto' ? 'AQSh dollarida summani kiriting (USD)' : 'To\'ldirish summasini kiriting',
         placeholder: paymentType === 'crypto' ? 'Dollar summasini kiriting' : 'Summa kiriting',
-        limits: paymentType === 'crypto' ? '$1 dan $1000 USD gacha' : '35 dan 100000 som gacha',
+        limits: paymentType === 'crypto' ? '$1 dan $1000 USD gacha' : `${minDeposit} dan 100000 som gacha`,
         currency: paymentType === 'crypto' ? 'USD' : 'som',
         convertedLabel: '≈ somda',
         next: 'Keyingi',
@@ -209,7 +222,7 @@ export default function DepositStep3() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder={t.placeholder}
-                min={paymentType === 'crypto' ? '1' : '35'}
+                min={paymentType === 'crypto' ? '1' : getMinDeposit().toString()}
                 max={paymentType === 'crypto' ? '1000' : '100000'}
                 step="0.01"
                 style={{'MozAppearance': 'textfield'}}
