@@ -8,7 +8,7 @@ import logging
 import re
 import httpx
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
 
 # Настройка логирования
@@ -25,11 +25,95 @@ BOT_TOKEN = "8372920134:AAG9VbvRvu-7Ikug_fwMtc-5OzxmevKTfSw"
 WEBSITE_URL = "https://luxservice.online"
 API_URL = "https://xendro.pro"
 
+async def check_channel_subscription(user_id: int, channel_id: str) -> bool:
+    """Проверяет подписку пользователя на канал"""
+    try:
+        check_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                check_url,
+                json={
+                    "chat_id": channel_id,
+                    "user_id": user_id
+                }
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    member = data.get('result', {})
+                    status = member.get('status', '')
+                    return status in ['member', 'administrator', 'creator']
+        return False
+    except Exception as e:
+        logger.error(f"❌ Ошибка при проверке подписки: {e}")
+        return False
+
+async def send_channel_subscription_message(update: Update, channel_username: str, channel_id: str) -> None:
+    """Отправляет сообщение с кнопками для подписки на канал"""
+    user = update.effective_user
+    user_id = user.id
+    
+    # Формируем ссылку на канал
+    channel_url = f"https://t.me/{channel_username.lstrip('@')}"
+    
+    # Создаем кнопки
+    keyboard = [
+        [
+            InlineKeyboardButton("📢 Подписаться на канал", url=channel_url),
+            InlineKeyboardButton("✅ Проверить подписку", callback_data=f"check_sub_{channel_id}")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    message_text = f"""🔔 <b>Подписка на канал</b>
+
+Для продолжения работы с ботом необходимо подписаться на наш канал.
+
+📢 Канал: @{channel_username.lstrip('@')}
+
+После подписки нажмите кнопку "✅ Проверить подписку"."""
+    
+    try:
+        await update.message.reply_text(
+            message_text,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+        logger.info(f"✅ Сообщение о подписке отправлено пользователю {user_id}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при отправке сообщения о подписке: {e}")
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start"""
     user = update.effective_user
     user_id = user.id
     logger.info(f"📥 Получена команда /start от пользователя {user_id} (@{user.username})")
+    
+    # Проверяем настройки канала
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{API_URL}/api/channel/settings")
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    channel_settings = data.get('data', {})
+                    if channel_settings.get('enabled') and channel_settings.get('channel_id'):
+                        # Проверяем подписку
+                        is_subscribed = await check_channel_subscription(
+                            user_id, 
+                            channel_settings.get('channel_id')
+                        )
+                        if not is_subscribed:
+                            # Отправляем сообщение о подписке
+                            await send_channel_subscription_message(
+                                update,
+                                channel_settings.get('username', ''),
+                                channel_settings.get('channel_id')
+                            )
+                            return  # Не показываем основное меню, пока не подпишется
+    except Exception as e:
+        logger.error(f"❌ Ошибка при проверке настроек канала: {e}")
+        # Продолжаем выполнение, если ошибка
     
     # Обработка реферальной ссылки
     referral_code = None
@@ -304,6 +388,91 @@ async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         logger.error(f"Ошибка при получении реферальной статистики: {e}")
         await update.message.reply_text("❌ Произошла ошибка при получении данных")
 
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик callback от inline кнопок"""
+    query = update.callback_query
+    if not query:
+        return
+    
+    await query.answer()
+    
+    user = update.effective_user
+    user_id = user.id
+    callback_data = query.data
+    
+    logger.info(f"📥 Получен callback от пользователя {user_id}: {callback_data}")
+    
+    # Обработка проверки подписки
+    if callback_data and callback_data.startswith('check_sub_'):
+        channel_id = callback_data.replace('check_sub_', '')
+        
+        # Проверяем подписку
+        is_subscribed = await check_channel_subscription(user_id, channel_id)
+        
+        if is_subscribed:
+            # Пользователь подписан, отправляем основное меню
+            try:
+                # Получаем настройки канала для username
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(f"{API_URL}/api/channel/settings")
+                    channel_username = ''
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get('success'):
+                            channel_username = data.get('data', {}).get('username', '')
+                
+                # Создаем кнопки основного меню
+                keyboard = [
+                    [
+                        InlineKeyboardButton("💰 Пополнить", web_app=WebAppInfo(url=f"{WEBSITE_URL}/deposit/step0")),
+                        InlineKeyboardButton("💸 Вывести", web_app=WebAppInfo(url=f"{WEBSITE_URL}/withdraw/step0"))
+                    ],
+                    [
+                        InlineKeyboardButton("📊 История", web_app=WebAppInfo(url=f"{WEBSITE_URL}/history")),
+                        InlineKeyboardButton("👥 Рефералы", web_app=WebAppInfo(url=f"{WEBSITE_URL}/referral"))
+                    ],
+                    [
+                        InlineKeyboardButton("ℹ️ Инструкция", web_app=WebAppInfo(url=f"{WEBSITE_URL}/instruction")),
+                        InlineKeyboardButton("🆘 Поддержка", web_app=WebAppInfo(url=f"{WEBSITE_URL}/support"))
+                    ],
+                    [
+                        InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url=WEBSITE_URL))
+                    ]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                welcome_text = f"""✅ <b>Спасибо за подписку!</b>
+
+Привет, {user.first_name}!
+
+Пополнение | Вывод
+из букмекерских контор!
+
+📥 Пополнение — 0%
+📤 Вывод — 0%
+🕒 Работаем 24/7
+
+👨‍💻 Поддержка: @operator_luxon_bot
+💬 Чат для всех: @luxon_chat
+
+🔒 Финансовый контроль обеспечен личным отделом безопасности
+
+Выберите действие:"""
+                
+                await query.edit_message_text(
+                    welcome_text,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+                logger.info(f"✅ Основное меню отправлено пользователю {user_id} после проверки подписки")
+            except Exception as e:
+                logger.error(f"❌ Ошибка при отправке основного меню: {e}")
+                await query.edit_message_text("✅ Спасибо за подписку! Используйте команду /start для продолжения.")
+        else:
+            # Пользователь не подписан
+            await query.answer("❌ Вы еще не подписались на канал. Пожалуйста, подпишитесь и попробуйте снова.", show_alert=True)
+            logger.info(f"⚠️ Пользователь {user_id} не подписан на канал")
+
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик ошибок"""
     error = context.error
@@ -348,6 +517,9 @@ def main() -> None:
     
     # Добавляем обработчик команды /referral для просмотра реферальной статистики
     application.add_handler(CommandHandler("referral", referral_command))
+    
+    # Добавляем обработчик callback от inline кнопок
+    application.add_handler(CallbackQueryHandler(handle_callback))
     
     # Добавляем обработчик всех сообщений (для сохранения в чат)
     # Важно: должен быть добавлен последним, чтобы не перехватывать команды

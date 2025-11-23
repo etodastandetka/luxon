@@ -44,6 +44,9 @@ export async function GET(request: NextRequest) {
       winwin: true
     }
 
+    // Получаем настройки канала
+    const channelSettings = settingsMap.channel_subscription || {}
+    
     const settings = {
       pause: settingsMap.pause === 'true' || settingsMap.pause === true,
       maintenance_message: settingsMap.maintenance_message || 'Технические работы. Попробуйте позже.',
@@ -53,6 +56,9 @@ export async function GET(request: NextRequest) {
       enabled_withdrawal_banks: typeof withdrawalSettings === 'object' ? withdrawalSettings.banks : withdrawalSettings || [],
       require_receipt_photo: settingsMap.require_receipt_photo === 'true' || settingsMap.require_receipt_photo === true,
       casinos: casinoSettings,
+      channel_subscription_enabled: typeof channelSettings === 'object' ? channelSettings.enabled : channelSettings === 'true' || channelSettings === true || false,
+      channel_username: typeof channelSettings === 'object' ? channelSettings.username || '' : '',
+      channel_id: typeof channelSettings === 'object' ? channelSettings.channel_id || '' : '',
     }
 
     return NextResponse.json(createApiResponse(settings))
@@ -111,6 +117,15 @@ export async function POST(request: NextRequest) {
 
     if (body.casinos !== undefined) {
       await updateSetting('casinos', body.casinos, 'Настройки казино')
+    }
+
+    if (body.channel_subscription_enabled !== undefined || body.channel_username !== undefined || body.channel_id !== undefined) {
+      const channelSettings = {
+        enabled: body.channel_subscription_enabled !== undefined ? body.channel_subscription_enabled : false,
+        username: body.channel_username || '',
+        channel_id: body.channel_id || ''
+      }
+      await updateSetting('channel_subscription', channelSettings, 'Настройки подписки на канал')
     }
 
     return NextResponse.json(

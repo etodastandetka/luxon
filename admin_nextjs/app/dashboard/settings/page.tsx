@@ -17,6 +17,9 @@ interface Settings {
     mostbet: boolean
     winwin: boolean
   }
+  channel_subscription_enabled: boolean
+  channel_username: string
+  channel_id: string
 }
 
 const DEPOSIT_BANKS = [
@@ -298,6 +301,57 @@ export default function SettingsPage() {
               </label>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Настройки подписки на канал */}
+      <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
+        <h2 className="text-base font-bold text-white mb-4">Подписка на канал</h2>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white">Включить проверку подписки</p>
+              <p className="text-xs text-gray-400">Бот будет отправлять сообщение с кнопками для подписки на канал</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.channel_subscription_enabled || false}
+                onChange={(e) => updateSetting('channel_subscription_enabled', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Username канала (@channel)
+            </label>
+            <input
+              type="text"
+              value={settings.channel_username || ''}
+              onChange={(e) => updateSetting('channel_username', e.target.value)}
+              className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="@channel"
+            />
+            <p className="text-xs text-gray-400 mt-1">Введите username канала без @ (например: channel)</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              ID канала
+            </label>
+            <input
+              type="text"
+              value={settings.channel_id || ''}
+              onChange={(e) => updateSetting('channel_id', e.target.value)}
+              className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="-1001234567890"
+            />
+            <p className="text-xs text-gray-400 mt-1">Введите ID канала (например: -1001234567890). Можно получить через @userinfobot</p>
+          </div>
         </div>
       </div>
 
