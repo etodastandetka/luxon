@@ -55,8 +55,9 @@ export async function POST(request: NextRequest) {
         createApiResponse(
           {
             amount: parseFloat(amount),
-            message: 'Вывод уже выполнен на этапе проверки кода',
+            alreadyExecuted: true,
           },
+          undefined, // no error
           'Withdrawal already executed'
         ),
         {
