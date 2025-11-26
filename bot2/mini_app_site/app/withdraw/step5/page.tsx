@@ -37,14 +37,22 @@ export default function WithdrawStep5() {
   }, [router])
 
   // Проверка наличия выводов при загрузке страницы
+  const getApiBase = () => {
+    if (typeof window === 'undefined') {
+      return process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.NODE_ENV === 'production'
+          ? 'https://luxservice.online'
+          : 'http://localhost:3000')
+    }
+    return ''
+  }
+
   const checkWithdrawsExist = async (bookmaker: string, userId: string) => {
     setCheckingExists(true)
     setError(null)
     
     try {
-      const base = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const base = getApiBase()
       
       console.log('🔄 Проверка наличия выводов:', { bookmaker, userId })
       
@@ -118,9 +126,7 @@ export default function WithdrawStep5() {
     setError(null)
     
     try {
-      const base = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const base = getApiBase()
       
       console.log('🔄 Проверка кода вывода:', { bookmaker, userId, codeLength: siteCode.trim().length })
       

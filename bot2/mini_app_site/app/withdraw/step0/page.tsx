@@ -12,13 +12,21 @@ export default function WithdrawStep0() {
   const [loadingSettings, setLoadingSettings] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
 
+  const getApiBase = () => {
+    if (typeof window === 'undefined') {
+      return process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.NODE_ENV === 'production'
+          ? 'https://luxservice.online'
+          : 'http://localhost:3000')
+    }
+    return ''
+  }
+
   // Проверка настроек выводов и казино
   useEffect(() => {
     async function checkSettings() {
       try {
-        const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3001' 
-          : 'https://xendro.pro'
+        const base = getApiBase()
         const res = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const data = await res.json()
         if (data && data.withdrawals) {

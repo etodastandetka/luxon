@@ -11,13 +11,21 @@ export default function WithdrawStep1() {
   const { language } = useLanguage()
   const router = useRouter()
 
+  const getApiBase = () => {
+    if (typeof window === 'undefined') {
+      return process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.NODE_ENV === 'production'
+          ? 'https://luxservice.online'
+          : 'http://localhost:3000')
+    }
+    return ''
+  }
+
   // Загрузка настроек выводов
   useEffect(() => {
     async function loadWithdrawalSettings() {
       try {
-        const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3001' 
-          : 'https://xendro.pro'
+        const base = getApiBase()
         const res = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const data = await res.json()
         console.log('📋 Withdrawal settings from API:', data)
