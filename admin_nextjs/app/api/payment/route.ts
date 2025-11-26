@@ -16,10 +16,15 @@ function scheduleDelayedNotification(requestId: number) {
     try {
       // Используем внутренний вызов API через абсолютный URL
       // Определяем базовый URL в зависимости от окружения
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
-                     (process.env.NODE_ENV === 'production' 
-                       ? 'https://xendro.pro' 
-                       : 'http://localhost:3001')
+      const internalBaseUrl = process.env.INTERNAL_API_URL || process.env.ADMIN_INTERNAL_URL
+      let baseUrl = internalBaseUrl
+        || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:3001' : 'http://localhost:3001')
+      
+      // Если явно указан публичный URL и нет внутреннего - используем его как запасной вариант
+      const publicApiUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? 'https://xendro.pro' : '')
+      if (!baseUrl && publicApiUrl) {
+        baseUrl = publicApiUrl
+      }
       
       console.log(`⏰ [Delayed Notification] Sending notification for request ${requestId} after 1 minute delay`)
       

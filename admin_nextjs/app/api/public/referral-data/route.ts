@@ -24,6 +24,14 @@ export async function GET(request: NextRequest) {
         error: 'User ID is required'
       }, { status: 400 })
     }
+
+    // Telegram user_id должен состоять только из цифр
+    if (!/^\d+$/.test(userId)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid user ID format'
+      }, { status: 400 })
+    }
     
     const userIdBigInt = BigInt(userId)
     
@@ -41,12 +49,13 @@ export async function GET(request: NextRequest) {
     
     const referredUserIds = referrals.map(r => r.referred.userId)
     
-    // Получаем завершенные депозиты рефералов
+    // Получаем только успешные завершенные депозиты рефералов (исключаем pending, rejected и другие неуспешные статусы)
     const completedDeposits = await prisma.request.findMany({
       where: {
         userId: { in: referredUserIds },
         requestType: 'deposit',
-        status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] }
+        status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
+        amount: { gt: 0 } // Только заявки с положительной суммой
       }
     })
     
@@ -112,11 +121,12 @@ export async function GET(request: NextRequest) {
       referrerMap.get(referrerIdStr)!.referredUserIds.add(referredIdStr)
     }
     
-    // Получаем все завершенные депозиты
+    // Получаем только успешные завершенные депозиты (исключаем pending, rejected и другие неуспешные статусы)
     const allDeposits = await prisma.request.findMany({
       where: {
         requestType: 'deposit',
-        status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] }
+        status: { in: ['completed', 'approved', 'auto_completed', 'autodeposit_success'] },
+        amount: { gt: 0 } // Только заявки с положительной суммой
       }
     })
     
@@ -212,6 +222,26 @@ export async function GET(request: NextRequest) {
     
     const hasPendingWithdrawal = !!pendingWithdrawal
     
+    // Рассчитываем дату следующей выплаты (21 число каждого месяца)
+    const now = new Date()
+    const currentDay = now.getDate()
+    let nextPayoutDate: Date
+    
+    if (currentDay < 21) {
+      // Если сегодняшнее число меньше 21, следующая выплата будет 21 числа текущего месяца
+      nextPayoutDate = new Date(now.getFullYear(), now.getMonth(), 21)
+    } else {
+      // Если сегодняшнее число больше или равно 21, следующая выплата будет 21 числа следующего месяца
+      nextPayoutDate = new Date(now.getFullYear(), now.getMonth() + 1, 21)
+    }
+    
+    // Форматируем дату на русском языке
+    const monthNames = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ]
+    const nextPayoutDateFormatted = `${nextPayoutDate.getDate()} ${monthNames[nextPayoutDate.getMonth()]}`
+    
     const response = NextResponse.json({
       success: true,
       earned: earned,
@@ -237,7 +267,7 @@ export async function GET(request: NextRequest) {
         fourth_place_prize: prizeDistribution[3],
         fifth_place_prize: prizeDistribution[4],
         total_prize_pool: 20000,
-        next_payout_date: '1 ноября'
+        next_payout_date: nextPayoutDateFormatted
       }
     })
     response.headers.set('Access-Control-Allow-Origin', '*')

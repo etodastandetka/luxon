@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
-import { prisma } from '@/lib/prisma'
+
+const DEFAULT_TIMEOUT_MS = 5000
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = DEFAULT_TIMEOUT_MS) {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeout)
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    })
+    return response
+  } finally {
+    clearTimeout(id)
+  }
+}
 
 // Получение фото профиля пользователя из Telegram
 export async function GET(
@@ -33,7 +48,16 @@ export async function GET(
 
     // Получаем фото профиля пользователя через Telegram Bot API
     const profilePhotosUrl = `https://api.telegram.org/bot${botToken}/getUserProfilePhotos`
-    const profileResponse = await fetch(`${profilePhotosUrl}?user_id=${userId}&limit=1`)
+    let profileResponse: Response
+    try {
+      profileResponse = await fetchWithTimeout(`${profilePhotosUrl}?user_id=${userId}&limit=1`)
+    } catch (error: any) {
+      console.warn('⚠️ Profile photo fetch timeout (getUserProfilePhotos):', error?.message || error)
+      return NextResponse.json(
+        createApiResponse({ photoUrl: null }, 'Profile photo not available'),
+        { status: 200 }
+      )
+    }
     
     if (!profileResponse.ok) {
       return NextResponse.json(
@@ -56,7 +80,16 @@ export async function GET(
 
     // Получаем путь к файлу
     const getFileUrl = `https://api.telegram.org/bot${botToken}/getFile`
-    const fileResponse = await fetch(`${getFileUrl}?file_id=${fileId}`)
+    let fileResponse: Response
+    try {
+      fileResponse = await fetchWithTimeout(`${getFileUrl}?file_id=${fileId}`)
+    } catch (error: any) {
+      console.warn('⚠️ Profile photo fetch timeout (getFile):', error?.message || error)
+      return NextResponse.json(
+        createApiResponse({ photoUrl: null }, 'Profile photo not available'),
+        { status: 200 }
+      )
+    }
     
     if (!fileResponse.ok) {
       return NextResponse.json(

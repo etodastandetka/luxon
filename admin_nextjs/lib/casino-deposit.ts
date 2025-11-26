@@ -172,48 +172,81 @@ export async function depositCashdeskAPI(
       console.log(`[Cashdesk Deposit] NOT using Basic Auth for ${bookmaker} (Winwin/Melbet)`)
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody),
-    })
+    const maxAttempts = 3
 
-    const responseText = await response.text()
-    let data: any
-    try {
-      data = JSON.parse(responseText)
-    } catch (e) {
-      console.error(`[Cashdesk Deposit] Failed to parse response: ${responseText}`)
-      return {
-        success: false,
-        message: `Invalid response from ${bookmaker} API: ${responseText.substring(0, 100)}`,
-        data: { rawResponse: responseText, status: response.status },
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      let response: Response
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestBody),
+        })
+      } catch (error: any) {
+        if (attempt < maxAttempts) {
+          console.warn(`[Cashdesk Deposit] Network error on attempt ${attempt}: ${error?.message || error}. Retrying...`)
+          await new Promise((resolve) => setTimeout(resolve, attempt * 1000))
+          continue
+        }
+        throw error
+      }
+
+      const responseText = await response.text()
+      let data: any
+      try {
+        data = JSON.parse(responseText)
+      } catch (e) {
+        console.error(`[Cashdesk Deposit] Failed to parse response: ${responseText}`)
+        return {
+          success: false,
+          message: `Invalid response from ${bookmaker} API: ${responseText.substring(0, 100)}`,
+          data: { rawResponse: responseText, status: response.status },
+        }
+      }
+
+      console.log(`[Cashdesk Deposit] Response status: ${response.status}, Response ok: ${response.ok}, Data:`, data)
+
+      // API может возвращать success (маленькая) или Success (большая)
+      const isSuccess = data.success === true || data.Success === true
+      const messageText = data.Message || data.message || data.error || ''
+      const errorCode = data.errorCode || data.ErrorCode || data.MessageId
+      const isRateLimited =
+        response.status === 429 ||
+        errorCode === 'CASH06' ||
+        /too many requests/i.test(messageText || '')
+
+      if (isRateLimited && attempt < maxAttempts) {
+        console.warn(`[Cashdesk Deposit] Rate limited (CASH06 / Too many requests). Attempt ${attempt} of ${maxAttempts}. Retrying...`)
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1500))
+        continue
+      }
+      
+      console.log(`[Cashdesk Deposit] isSuccess: ${isSuccess}, data.success: ${data.success}, data.Success: ${data.Success}`)
+      
+      if (isSuccess) {
+        console.log(`[Cashdesk Deposit] Operation successful, returning success`)
+        return {
+          success: true,
+          message: messageText || 'Balance deposited successfully',
+          data,
+        }
+      }
+
+      // Если неуспешно и это была последняя попытка или ошибка не из-за лимита — возвращаем ошибку
+      if (!isRateLimited || attempt === maxAttempts) {
+        console.log(`[Cashdesk Deposit] Operation failed, isSuccess: ${isSuccess}, response.ok: ${response.ok}`)
+        return {
+          success: false,
+          message: messageText || `Failed to deposit balance (Status: ${response.status})`,
+          data,
+        }
       }
     }
 
-    console.log(`[Cashdesk Deposit] Response status: ${response.status}, Response ok: ${response.ok}, Data:`, data)
-
-    // API может возвращать success (маленькая) или Success (большая)
-    const isSuccess = data.success === true || data.Success === true
-    
-    console.log(`[Cashdesk Deposit] isSuccess: ${isSuccess}, data.success: ${data.success}, data.Success: ${data.Success}`)
-    
-    // Если API вернул Success: true, считаем операцию успешной, даже если response.ok = false
-    // (некоторые API могут возвращать 200 с Success: true, но response.ok может быть false из-за других причин)
-    if (isSuccess) {
-      console.log(`[Cashdesk Deposit] Operation successful, returning success`)
-      return {
-        success: true,
-        message: data.Message || data.message || 'Balance deposited successfully',
-        data,
-      }
-    }
-
-    console.log(`[Cashdesk Deposit] Operation failed, isSuccess: ${isSuccess}, response.ok: ${response.ok}`)
+    // Не должно сюда дойти, но на случай непредвиденного — ошибка
     return {
       success: false,
-      message: data.Message || data.message || data.error || `Failed to deposit balance (Status: ${response.status})`,
-      data,
+      message: 'Failed to deposit balance after retries',
     }
   } catch (error: any) {
     console.error(`[Cashdesk Deposit] Error for ${bookmaker}, userId: ${userId}:`, error)
