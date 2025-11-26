@@ -29,7 +29,7 @@ export default function DepositStep4() {
   const [playerId, setPlayerId] = useState('')
   const [amount, setAmount] = useState(0)
   const [depositsEnabled, setDepositsEnabled] = useState(true)
-  const [requireReceiptPhoto, setRequireReceiptPhoto] = useState(false)
+  const [requireReceiptPhoto, setRequireReceiptPhoto] = useState(true) // Фото чека всегда обязательно
   const [receiptPhoto, setReceiptPhoto] = useState<File | null>(null)
   const [receiptPhotoPreview, setReceiptPhotoPreview] = useState<string | null>(null)
   const [receiptPhotoBase64, setReceiptPhotoBase64] = useState<string | null>(null)
@@ -1568,14 +1568,16 @@ export default function DepositStep4() {
       // Также загружаем актуальные настройки из админки для enabled_banks
       try {
         const base = getApiBase()
+        console.log('📋 Загрузка настроек платежей с:', `${base}/api/public/payment-settings`)
         const settingsRes = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const settingsData = await settingsRes.json()
+        console.log('📋 Настройки платежей загружены:', settingsData)
         if (settingsData && settingsData.deposits) {
           setDepositsEnabled(settingsData.deposits.enabled !== false)
-          // Проверяем настройку require_receipt_photo
-          if (settingsData.require_receipt_photo !== undefined) {
-            setRequireReceiptPhoto(settingsData.require_receipt_photo === true)
-          }
+          // Настройка require_receipt_photo из админки (по умолчанию true)
+          const requirePhoto = settingsData.require_receipt_photo !== false
+          console.log('📸 Требуется фото чека:', requirePhoto)
+          setRequireReceiptPhoto(requirePhoto)
           // Обновляем enabled_banks в qrData (маппим коды банков из админки в коды компонента)
           if (settingsData.deposits.banks) {
             const bankCodeMapping: Record<string, string> = {

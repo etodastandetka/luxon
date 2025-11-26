@@ -29,6 +29,7 @@ export const useBotSettings = () => {
         setError(null)
         
         const apiUrl = getApiBase()
+        console.log('📋 [SettingsLoader] Загрузка настроек с:', `${apiUrl}/api/public/payment-settings`)
         
         const response = await fetch(`${apiUrl}/api/public/payment-settings`)
         
@@ -37,9 +38,13 @@ export const useBotSettings = () => {
         }
         
         const data = await response.json()
+        console.log('📋 [SettingsLoader] Настройки загружены:', data)
         
         if (data.success && data.settings) {
           setSettings(data.settings)
+        } else if (data && !data.success && !data.error) {
+          // Если API возвращает настройки напрямую (без обёртки success)
+          setSettings(data)
         } else {
           throw new Error(data.error || 'Failed to load settings')
         }
