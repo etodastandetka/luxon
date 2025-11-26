@@ -2,19 +2,16 @@
 
 /**
  * Получить базовый URL для API
- * На клиенте - пустая строка (запросы идут на тот же домен через прокси)
- * На сервере - локальный адрес админки
+ * Всегда возвращает URL админки (xendro.pro в продакшене)
  */
 export function getApiBase(): string {
-  const isServer = typeof window === 'undefined'
   const isDevelopment = process.env.NODE_ENV === 'development'
   
-  if (isServer) {
-    // SSR: используем локальный адрес админки
-    return isDevelopment ? 'http://localhost:3001' : 'http://127.0.0.1:3001'
+  if (isDevelopment) {
+    return 'http://localhost:3001'
   }
-  // Клиент: пустая строка = запросы на тот же домен (luxservice.online)
-  return ''
+  // Продакшен: всегда используем админку
+  return 'https://xendro.pro'
 }
 
 interface FetchOptions extends RequestInit {
