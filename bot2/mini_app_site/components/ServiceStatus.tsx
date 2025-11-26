@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { getApiBase } from '../utils/fetch'
 
 interface ServiceStatusProps {
   service: 'deposits' | 'withdrawals' | 'casinos'
@@ -15,9 +16,7 @@ export default function ServiceStatus({ service, children }: ServiceStatusProps)
   useEffect(() => {
     const checkServiceStatus = async () => {
       try {
-        const apiUrl = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3001' 
-          : 'https://xendro.pro'
+        const apiUrl = getApiBase()
         const response = await fetch(`${apiUrl}/api/public/payment-settings`)
         if (response.ok) {
           const data = await response.json()

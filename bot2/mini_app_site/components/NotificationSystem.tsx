@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { getTelegramWebApp, getTelegramUserId } from '../utils/telegram'
 import LanguageSelector from './LanguageSelector'
+import { getApiBase } from '../utils/fetch'
 
 interface Notification {
   id: string
@@ -31,9 +32,7 @@ export default function NotificationSystem() {
       const userId = getTelegramUserId()
       if (!userId) return
 
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const apiUrl = getApiBase()
       
       const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}&limit=5`)
       const data = await response.json()

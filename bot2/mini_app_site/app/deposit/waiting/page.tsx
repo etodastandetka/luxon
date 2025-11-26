@@ -4,6 +4,7 @@ import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import PageTransition from '../../../components/PageTransition'
+import { getApiBase } from '../../../utils/fetch'
 
 export default function DepositWaitingPage() {
   const router = useRouter()
@@ -143,9 +144,7 @@ export default function DepositWaitingPage() {
     if (!requestId) return
 
     try {
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const apiUrl = getApiBase()
       
       const response = await fetch(`${apiUrl}/api/requests/${requestId}`)
       

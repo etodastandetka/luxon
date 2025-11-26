@@ -1,16 +1,26 @@
 /**
  * API Configuration
  * Определяет URL для API в зависимости от окружения
- * Теперь использует админ-панель вместо Django
+ * 
+ * На клиенте используем относительные URL (запросы идут через Next.js прокси)
+ * На сервере используем локальный адрес админки
  */
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 const isServer = typeof window === 'undefined'
 
-// URL для админ-панели API
-const ADMIN_API_BASE_URL = isDevelopment 
-  ? 'http://localhost:3001' 
-  : 'https://xendro.pro'
+// На клиенте - пустая строка (запросы идут на тот же домен через прокси)
+// На сервере - локальный адрес админки
+const getApiBase = () => {
+  if (isServer) {
+    // SSR: используем локальный адрес админки
+    return isDevelopment ? 'http://localhost:3001' : 'http://127.0.0.1:3001'
+  }
+  // Клиент: пустая строка = запросы на тот же домен (luxservice.online)
+  return ''
+}
+
+const ADMIN_API_BASE_URL = getApiBase()
 
 export const API_URLS = {
   BASE: ADMIN_API_BASE_URL,

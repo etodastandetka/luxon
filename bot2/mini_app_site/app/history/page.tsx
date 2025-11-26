@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
 import { getTelegramUserId } from '../../utils/telegram'
+import { getApiBase } from '../../utils/fetch'
 
 interface Transaction {
   id: string
@@ -138,9 +139,7 @@ export default function HistoryPage(){
       }
 
       // Запрашиваем историю транзакций пользователя с админ-панели API
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const apiUrl = getApiBase()
       
       // Формируем параметры запроса в зависимости от фильтра
       let url = `${apiUrl}/api/transaction-history?user_id=${finalUserId}`

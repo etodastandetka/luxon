@@ -5,6 +5,7 @@ import TelegramInit from '../components/TelegramInit'
 import { LanguageProvider } from '../components/LanguageContext'
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { getApiBase } from '../utils/fetch'
 
 function BlockedChecker({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -39,9 +40,7 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
     if (userId) {
       const checkUserStatus = async () => {
         try {
-          const apiUrl = process.env.NODE_ENV === 'development' 
-            ? 'http://localhost:3001' 
-            : 'https://xendro.pro'
+          const apiUrl = getApiBase()
           const response = await fetch(`${apiUrl}/api/public/check-user-status?user_id=${userId}`)
           const data = await response.json()
           

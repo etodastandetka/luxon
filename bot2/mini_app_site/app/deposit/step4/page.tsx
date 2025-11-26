@@ -8,7 +8,7 @@ import { useLanguage } from '../../../components/LanguageContext'
 import { getTelegramUser, syncWithBot, notifyUser, checkUserBlocked } from '../../../utils/telegram'
 import { useAlert } from '../../../components/useAlert'
 import { formatKgs, formatUsdt, formatUsd } from '../../../utils/crypto-pay'
-import { safeFetch } from '../../../utils/fetch'
+import { safeFetch, getApiBase } from '../../../utils/fetch'
 import { compressImageIfNeeded } from '../../../utils/image-compress'
 
 export default function DepositStep4() {
@@ -143,9 +143,7 @@ export default function DepositStep4() {
     
     setCryptoLoading(true)
     try {
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const apiUrl = getApiBase()
       
       // Для крипты берем сумму в долларах из localStorage (пользователь ввел в USD)
       const savedAmountUsd = localStorage.getItem('deposit_amount_usd')
@@ -393,9 +391,7 @@ export default function DepositStep4() {
       // Проверяем статус заявки через API
       const transactionId = localStorage.getItem('deposit_transaction_id')
       if (transactionId) {
-        const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3001' 
-          : 'https://xendro.pro'
+        const base = getApiBase()
         // Используем новый API endpoint для получения полной информации о заявке
         const response = await fetch(`${base}/api/requests/${transactionId}`)
         if (response.ok) {
@@ -1224,9 +1220,7 @@ export default function DepositStep4() {
   // Функция для получения активного реквизита из админки
   const getActiveRequisite = async (): Promise<{ value: string; bank: string | null; name: string | null } | null> => {
     try {
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const apiUrl = getApiBase()
       // Используем публичный API админ-панели
       const response = await fetch(`${apiUrl}/api/public/requisites/list/`)
       if (response.ok) {
@@ -1573,9 +1567,7 @@ export default function DepositStep4() {
       
       // Также загружаем актуальные настройки из админки для enabled_banks
       try {
-        const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3001' 
-          : 'https://xendro.pro'
+        const base = getApiBase()
         const settingsRes = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const settingsData = await settingsRes.json()
         if (settingsData && settingsData.deposits) {

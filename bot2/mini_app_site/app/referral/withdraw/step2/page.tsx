@@ -4,7 +4,7 @@ import FixedHeaderControls from '../../../../components/FixedHeaderControls'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
-import { safeFetch } from '../../../../utils/fetch'
+import { safeFetch, getApiBase } from '../../../../utils/fetch'
 
 function ReferralWithdrawStep2Content() {
   const router = useRouter()
@@ -45,9 +45,7 @@ function ReferralWithdrawStep2Content() {
         return
       }
 
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const apiUrl = getApiBase()
       
       console.log('🔄 Загрузка доступного баланса:', { userId, apiUrl })
       
@@ -126,9 +124,7 @@ function ReferralWithdrawStep2Content() {
         return
       }
 
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const apiUrl = getApiBase()
 
       console.log('🔄 Создание заявки на вывод:', {
         userId,

@@ -1,5 +1,22 @@
 // Утилита для безопасного fetch с таймаутом и обработкой ошибок для мобильных браузеров
 
+/**
+ * Получить базовый URL для API
+ * На клиенте - пустая строка (запросы идут на тот же домен через прокси)
+ * На сервере - локальный адрес админки
+ */
+export function getApiBase(): string {
+  const isServer = typeof window === 'undefined'
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  
+  if (isServer) {
+    // SSR: используем локальный адрес админки
+    return isDevelopment ? 'http://localhost:3001' : 'http://127.0.0.1:3001'
+  }
+  // Клиент: пустая строка = запросы на тот же домен (luxservice.online)
+  return ''
+}
+
 interface FetchOptions extends RequestInit {
   timeout?: number // Таймаут в миллисекундах
   retries?: number // Количество попыток при ошибке

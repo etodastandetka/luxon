@@ -1,4 +1,6 @@
 // Утилиты для работы с Telegram WebApp
+import { getApiBase } from './fetch'
+
 export interface TelegramUser {
   id: number
   first_name: string
@@ -331,9 +333,7 @@ export const checkUserBlocked = async (userId: string | number | null): Promise<
   }
 
   try {
-    const apiUrl = process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:3001' 
-      : 'https://xendro.pro'
+    const apiUrl = getApiBase()
     
     const response = await fetch(`${apiUrl}/api/public/check-user-status?user_id=${userId}`)
     const data = await response.json()

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
+import { getApiBase } from '../../utils/fetch'
 
 export default function ReferralPage() {
   const [referralLink, setReferralLink] = useState('')
@@ -88,10 +89,8 @@ export default function ReferralPage() {
       const link = `https://t.me/lux_on_bot?start=ref${userId}`
       setReferralLink(link)
 
-      // Загружаем данные рефералов с Django API
-      const apiUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      // Загружаем данные рефералов с API
+      const apiUrl = getApiBase()
       const response = await fetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`)
       const data = await response.json()
       

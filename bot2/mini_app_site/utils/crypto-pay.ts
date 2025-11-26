@@ -2,6 +2,8 @@
  * Crypto Pay utilities with KGS (Kyrgyzstani Som) conversion
  */
 
+import { getApiBase } from './fetch'
+
 // Кэш курса валют (обновляется раз в минуту)
 let exchangeRateCache: {
     usdtToUsd: number | null;
@@ -48,9 +50,7 @@ export async function getExchangeRate(): Promise<{
     }
 
     try {
-        const apiUrl = process.env.NODE_ENV === 'development' 
-            ? 'http://localhost:3001' 
-            : 'https://xendro.pro';
+        const apiUrl = getApiBase();
         
         console.log('📡 Fetching exchange rate from:', `${apiUrl}/api/crypto-pay/exchange-rate`);
         const response = await fetch(`${apiUrl}/api/crypto-pay/exchange-rate`, {

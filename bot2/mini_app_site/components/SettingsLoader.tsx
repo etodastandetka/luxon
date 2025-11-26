@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { getApiBase } from '../utils/fetch'
 
 interface BotSettings {
   bot_name: string
@@ -27,9 +28,7 @@ export const useBotSettings = () => {
         setLoading(true)
         setError(null)
         
-        const apiUrl = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3001' 
-          : 'https://xendro.pro'
+        const apiUrl = getApiBase()
         
         const response = await fetch(`${apiUrl}/api/public/payment-settings`)
         

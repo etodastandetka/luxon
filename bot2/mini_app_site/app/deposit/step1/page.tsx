@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import BookmakerGrid from '../../../components/BookmakerGrid'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
+import { getApiBase } from '../../../utils/fetch'
 
 export default function DepositStep1() {
   const [bookmaker, setBookmaker] = useState('')
@@ -28,9 +29,7 @@ export default function DepositStep1() {
     
     async function checkSettings() {
       try {
-        const base = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3001' 
-          : 'https://xendro.pro'
+        const base = getApiBase()
         const res = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const data = await res.json()
         if (data && data.deposits) {

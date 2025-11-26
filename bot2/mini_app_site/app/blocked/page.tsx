@@ -2,6 +2,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
+import { getApiBase } from '../../utils/fetch'
 
 export default function BlockedPage() {
   const router = useRouter()
@@ -30,9 +31,7 @@ export default function BlockedPage() {
     if (userId) {
       const checkInterval = setInterval(async () => {
         try {
-          const apiUrl = process.env.NODE_ENV === 'development' 
-            ? 'http://localhost:3001' 
-            : 'https://xendro.pro'
+          const apiUrl = getApiBase()
           const response = await fetch(`${apiUrl}/api/public/check-user-status?user_id=${userId}`)
           const data = await response.json()
           

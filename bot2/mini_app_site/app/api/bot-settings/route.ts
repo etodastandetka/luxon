@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const ADMIN_API_URL = process.env.ADMIN_API_URL || (process.env.NODE_ENV === 'production' ? 'https://xendro.pro' : 'http://localhost:3001')
+// В продакшене всегда используем локальный адрес админки (они на одном сервере)
+const ADMIN_API_URL = process.env.ADMIN_API_URL || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:3001' : 'http://localhost:3001')
 
 export async function GET(request: NextRequest) {
   try {
