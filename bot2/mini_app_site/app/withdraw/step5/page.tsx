@@ -4,7 +4,7 @@ import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import { checkUserBlocked } from '../../../utils/telegram'
-import { safeFetch } from '../../../utils/fetch'
+import { safeFetch, getApiBase } from '../../../utils/fetch'
 
 export default function WithdrawStep5() {
   const [siteCode, setSiteCode] = useState('')
@@ -35,17 +35,6 @@ export default function WithdrawStep5() {
     // Проверяем наличие выводов для этого ID
     checkWithdrawsExist(savedBookmaker, userId)
   }, [router])
-
-  // Проверка наличия выводов при загрузке страницы
-  const getApiBase = () => {
-    if (typeof window === 'undefined') {
-      return process.env.NEXT_PUBLIC_SITE_URL ||
-        (process.env.NODE_ENV === 'production'
-          ? 'https://luxservice.online'
-          : 'http://localhost:3000')
-    }
-    return ''
-  }
 
   const checkWithdrawsExist = async (bookmaker: string, userId: string) => {
     setCheckingExists(true)

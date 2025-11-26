@@ -4,6 +4,7 @@ import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import BookmakerGrid from '../../../components/BookmakerGrid'
 import PageTransition from '../../../components/PageTransition'
+import { getApiBase } from '../../../utils/fetch'
 
 export default function WithdrawStep0() {
   const router = useRouter()
@@ -11,16 +12,6 @@ export default function WithdrawStep0() {
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
   const [loadingSettings, setLoadingSettings] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
-
-  const getApiBase = () => {
-    if (typeof window === 'undefined') {
-      return process.env.NEXT_PUBLIC_SITE_URL ||
-        (process.env.NODE_ENV === 'production'
-          ? 'https://luxservice.online'
-          : 'http://localhost:3000')
-    }
-    return ''
-  }
 
   // Проверка настроек выводов и казино
   useEffect(() => {

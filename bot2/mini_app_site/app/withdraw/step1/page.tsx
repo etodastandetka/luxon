@@ -4,22 +4,13 @@ import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import BankButtons from '../../../components/BankButtons'
 import { useLanguage } from '../../../components/LanguageContext'
+import { getApiBase } from '../../../utils/fetch'
 
 export default function WithdrawStep1() {
   const [bank, setBank] = useState('')
   const [enabledBanks, setEnabledBanks] = useState<string[]>([])
   const { language } = useLanguage()
   const router = useRouter()
-
-  const getApiBase = () => {
-    if (typeof window === 'undefined') {
-      return process.env.NEXT_PUBLIC_SITE_URL ||
-        (process.env.NODE_ENV === 'production'
-          ? 'https://luxservice.online'
-          : 'http://localhost:3000')
-    }
-    return ''
-  }
 
   // Загрузка настроек выводов
   useEffect(() => {
