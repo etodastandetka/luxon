@@ -331,6 +331,30 @@ export default function RequestDetailPage() {
     return request?.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
   }, [selectedPaymentId, request?.amount, request?.matchingPayments])
 
+  // Отфильтрованные платежи для блока "Переводы по QR"
+  const filteredPayments = useMemo(() => {
+    if (!request?.matchingPayments) return []
+
+    return request.matchingPayments.filter((payment: MatchingPayment) => {
+      if (searchAmount) {
+        const searchValue = parseFloat(searchAmount.replace(',', '.'))
+        const paymentAmount = parseFloat(payment.amount)
+        if (!isNaN(searchValue)) {
+          if (exactAmount) {
+            if (Math.abs(paymentAmount - searchValue) > 0.01) return false
+          } else {
+            if (paymentAmount < searchValue * 0.9 || paymentAmount > searchValue * 1.1) return false
+          }
+        }
+      }
+      if (processedOnly && !payment.isProcessed) return false
+      return true
+    })
+  }, [request?.matchingPayments, searchAmount, exactAmount, processedOnly])
+
+  // Показываем не больше 3 платежей
+  const limitedPayments = useMemo(() => filteredPayments.slice(0, 3), [filteredPayments])
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     // Скопировано в буфер обмена
@@ -1065,82 +1089,74 @@ export default function RequestDetailPage() {
                 </div>
               </div>
               
-              {/* Список платежей с ограничением до 4 элементов и скроллом */}
-              <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
-                {request.matchingPayments
-                  .filter((payment: MatchingPayment) => {
-                    // Фильтрация по сумме
-                    if (searchAmount) {
-                      const searchValue = parseFloat(searchAmount.replace(',', '.'))
-                      const paymentAmount = parseFloat(payment.amount)
-                      if (exactAmount) {
-                        if (Math.abs(paymentAmount - searchValue) > 0.01) return false
-                      } else {
-                        if (paymentAmount < searchValue * 0.9 || paymentAmount > searchValue * 1.1) return false
-                      }
-                    }
-                    // Фильтрация по обработанным
-                    if (processedOnly && !payment.isProcessed) return false
-                    return true
-                  })
-                  .slice(0, 3)
-                  .map((payment: MatchingPayment) => {
-              const isAttached = payment.requestId === request.id && payment.isProcessed
-              const isAutoCompleted = request.status === 'autodeposit_success' || request.status === 'auto_completed'
-              // Платеж нередактируемый если он привязан или обработан для другой заявки
-              const isDisabled = isAutoCompleted || isAttached || (payment.isProcessed && payment.requestId !== null && payment.requestId !== request.id)
-              const isSelected = selectedPaymentId === payment.id
-              
-              return (
-                <div
-                  key={payment.id}
-                  className={`bg-gray-900 rounded-lg p-2.5 border transition-colors ${
-                    isDisabled 
-                      ? 'border-gray-700 opacity-50 cursor-not-allowed' 
-                      : isSelected
-                        ? 'border-green-500 bg-green-900/20'
-                        : 'border-gray-700 hover:border-gray-600 cursor-pointer'
-                  }`}
-                  onClick={() => !isDisabled && setSelectedPaymentId(isSelected ? null : payment.id)}
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-1 h-10 rounded-full ${isDisabled ? 'bg-gray-600' : 'bg-green-500'}`}></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm font-medium text-white truncate">Перевод по QR</p>
-                        {(isAttached || (payment.isProcessed && payment.requestId === request.id)) && (
-                          <span className="px-2 py-0.5 bg-gray-600 text-gray-300 rounded text-xs font-medium flex-shrink-0">
-                            Обработан
-                          </span>
-                        )}
-                        {payment.isProcessed && payment.requestId !== request.id && payment.requestId !== null && (
-                          <span className="px-2 py-0.5 bg-gray-600 text-gray-300 rounded text-xs font-medium flex-shrink-0">
-                            Обработан
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 mt-0.5">
-                        <p className="text-xs text-gray-400">{formatDate(payment.paymentDate)}</p>
-                        {payment.bank && (
-                          <span className="text-xs text-gray-500">• {payment.bank}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      <p className={`text-base font-bold ${isDisabled ? 'text-gray-500' : 'text-green-500'}`}>
-                        +{parseFloat(payment.amount).toFixed(2).replace('.', ',')}
-                      </p>
-                      {isSelected && !isDisabled && (
-                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
+              {filteredPayments.length === 0 ? (
+                <p className="text-sm text-gray-400">Совпадений не найдено</p>
+              ) : (
+                <>
+                  <div className="space-y-1.5 pr-1">
+                    {limitedPayments.map((payment: MatchingPayment) => {
+                      const isAttached = payment.requestId === request.id && payment.isProcessed
+                      const isAutoCompleted = request.status === 'autodeposit_success' || request.status === 'auto_completed'
+                      const isDisabled = isAutoCompleted || isAttached || (payment.isProcessed && payment.requestId !== null && payment.requestId !== request.id)
+                      const isSelected = selectedPaymentId === payment.id
+                      
+                      return (
+                        <div
+                          key={payment.id}
+                          className={`bg-gray-900 rounded-lg p-2.5 border transition-colors ${
+                            isDisabled 
+                              ? 'border-gray-700 opacity-50 cursor-not-allowed' 
+                              : isSelected
+                                ? 'border-green-500 bg-green-900/20'
+                                : 'border-gray-700 hover:border-gray-600 cursor-pointer'
+                          }`}
+                          onClick={() => !isDisabled && setSelectedPaymentId(isSelected ? null : payment.id)}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-1 h-10 rounded-full ${isDisabled ? 'bg-gray-600' : 'bg-green-500'}`}></div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <p className="text-sm font-medium text-white truncate">Перевод по QR</p>
+                                {(isAttached || (payment.isProcessed && payment.requestId === request.id)) && (
+                                  <span className="px-2 py-0.5 bg-gray-600 text-gray-300 rounded text-xs font-medium flex-shrink-0">
+                                    Обработан
+                                  </span>
+                                )}
+                                {payment.isProcessed && payment.requestId !== request.id && payment.requestId !== null && (
+                                  <span className="px-2 py-0.5 bg-gray-600 text-gray-300 rounded text-xs font-medium flex-shrink-0">
+                                    Обработан
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2 mt-0.5">
+                                <p className="text-xs text-gray-400">{formatDate(payment.paymentDate)}</p>
+                                {payment.bank && (
+                                  <span className="text-xs text-gray-500">• {payment.bank}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 flex-shrink-0">
+                              <p className={`text-base font-bold ${isDisabled ? 'text-gray-500' : 'text-green-500'}`}>
+                                +{parseFloat(payment.amount).toFixed(2).replace('.', ',')}
+                              </p>
+                              {isSelected && !isDisabled && (
+                                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
-              )
-            })}
-              </div>
+                  {filteredPayments.length > 3 && (
+                    <p className="text-[11px] text-gray-500 mt-2">
+                      Показаны первые 3 из {filteredPayments.length} совпадений
+                    </p>
+                  )}
+                </>
+              )}
             </>
           ) : (
             <div className="text-center py-6">
