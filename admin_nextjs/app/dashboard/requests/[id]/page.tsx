@@ -1083,6 +1083,7 @@ export default function RequestDetailPage() {
                     if (processedOnly && !payment.isProcessed) return false
                     return true
                   })
+                  .slice(0, 3)
                   .map((payment: MatchingPayment) => {
               const isAttached = payment.requestId === request.id && payment.isProcessed
               const isAutoCompleted = request.status === 'autodeposit_success' || request.status === 'auto_completed'
@@ -1263,7 +1264,7 @@ export default function RequestDetailPage() {
               <span className="text-sm font-medium text-red-400 whitespace-pre-wrap">{request.userNote}</span>
             </div>
           )}
-          {request.bank && (
+          {request.bank && request.paymentMethod !== 'crypto' && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Банк:</span>
               <span className="text-sm font-medium text-white">{request.bank}</span>
