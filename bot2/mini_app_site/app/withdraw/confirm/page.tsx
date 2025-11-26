@@ -76,9 +76,11 @@ export default function WithdrawConfirm() {
       
       console.log('[Withdraw Confirm] ✅ Все данные валидны, сумма:', amount, 'тип:', typeof amount)
 
-      const base = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3001' 
-        : 'https://xendro.pro'
+      const base =
+        typeof window === 'undefined'
+          ? process.env.NEXT_PUBLIC_SITE_URL ||
+            (process.env.NODE_ENV === 'production' ? 'https://luxservice.online' : 'http://localhost:3000')
+          : ''
 
       // Для 1xbet сначала выполняем вывод (mobile.withdrawal)
       // Для 888starz вывод уже выполнен на step5 (Payout сразу выполняет вывод)
