@@ -20,15 +20,18 @@ export async function GET(request: NextRequest) {
       filters.createdAt = { ...filters.createdAt, lte: new Date(endDate) }
     }
 
-    // Статистика пополнений и выводов параллельно (только успешные заявки, исключаем отклоненные)
-    // Используем только успешные статусы, что автоматически исключает rejected, declined, cancelled
-    const successStatuses = ['completed', 'approved', 'auto_completed', 'autodeposit_success']
+    // Статистика пополнений и выводов параллельно
+    // ВАЖНО: Считаем только РЕАЛЬНО обработанные заявки через API казино
+    // - autodeposit_success: автоматически зачислено через API
+    // - auto_completed: автоматически завершено
+    // НЕ считаем completed/approved, так как они могут быть поставлены вручную без реального зачисления
+    const realSuccessStatuses = ['autodeposit_success', 'auto_completed']
     
     const [depositStats, withdrawalStats] = await Promise.all([
       prisma.request.aggregate({
         where: {
           requestType: 'deposit',
-          status: { in: successStatuses },
+          status: { in: realSuccessStatuses },
           ...filters,
         },
         _count: { id: true },
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
       prisma.request.aggregate({
         where: {
           requestType: 'withdraw',
-          status: { in: successStatuses },
+          status: { in: realSuccessStatuses },
           ...filters,
         },
         _count: { id: true },
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
     let chartEndDate = endDate ? new Date(endDate) : new Date()
 
     // Группировка по датам для графика используя SQL (оптимизировано)
-    // Используем только успешные статусы, что автоматически исключает отклоненные
+    // Считаем только РЕАЛЬНО обработанные через API казино
     const [depositsByDate, withdrawalsByDate] = await Promise.all([
       prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
         SELECT 
@@ -66,7 +69,7 @@ export async function GET(request: NextRequest) {
           COUNT(*)::bigint as count
         FROM requests
         WHERE request_type = 'deposit'
-          AND status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
+          AND status IN ('autodeposit_success', 'auto_completed')
           AND created_at >= ${chartStartDate}::timestamp
           AND created_at <= ${chartEndDate}::timestamp
         GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
@@ -79,7 +82,7 @@ export async function GET(request: NextRequest) {
           COUNT(*)::bigint as count
         FROM requests
         WHERE request_type = 'withdraw'
-          AND status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
+          AND status IN ('autodeposit_success', 'auto_completed')
           AND created_at >= ${chartStartDate}::timestamp
           AND created_at <= ${chartEndDate}::timestamp
         GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
