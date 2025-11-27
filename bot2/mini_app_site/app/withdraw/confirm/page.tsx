@@ -14,6 +14,7 @@ export default function WithdrawConfirm() {
   const [siteCode, setSiteCode] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState<number | null>(null)
   const [bookmaker, setBookmaker] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -45,6 +46,14 @@ export default function WithdrawConfirm() {
 
 
   const handleConfirm = async () => {
+    // Защита от повторных кликов
+    if (isSubmitting) {
+      console.log('[Withdraw Confirm] ⚠️ Запрос уже отправляется, игнорируем повторный клик')
+      return
+    }
+
+    setIsSubmitting(true)
+    
     try {
       // Получаем данные из localStorage
       const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
@@ -397,6 +406,9 @@ export default function WithdrawConfirm() {
       }
       
       alert(`Ошибка: ${errorMessage}`)
+    } finally {
+      // Сбрасываем флаг отправки в любом случае
+      setIsSubmitting(false)
     }
   }
 
@@ -534,8 +546,9 @@ export default function WithdrawConfirm() {
           <button 
             className="btn btn-primary flex-1"
             onClick={handleConfirm}
+            disabled={isSubmitting}
           >
-            {t.confirm}
+            {isSubmitting ? '⏳ Отправка...' : t.confirm}
           </button>
         </div>
       </div>

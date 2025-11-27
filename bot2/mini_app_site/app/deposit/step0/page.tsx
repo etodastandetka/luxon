@@ -198,7 +198,7 @@ export default function DepositStep0() {
         <VideoModal
           isOpen={isVideoModalOpen}
           onClose={() => setIsVideoModalOpen(false)}
-          videoSrc="/videos/IMG_5222.MOV"
+          videoSrc="https://drive.google.com/uc?export=download&id=1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4"
           title={t.howToDeposit}
         />
       </main>
