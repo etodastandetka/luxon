@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Явно указываем, что это динамический route
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -16,15 +19,22 @@ export async function GET(request: NextRequest) {
     const driveUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`
     
     // Проксируем запрос к Google Drive с правильными заголовками
+    const headers: Record<string, string> = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': 'video/mp4,video/*;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Referer': 'https://drive.google.com/',
+    }
+    
+    // Добавляем Range заголовок только если он есть в запросе
+    const rangeHeader = request.headers.get('range')
+    if (rangeHeader) {
+      headers['Range'] = rangeHeader
+    }
+    
     const response = await fetch(driveUrl, {
       method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'video/mp4,video/*;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://drive.google.com/',
-        'Range': request.headers.get('range') || undefined,
-      },
+      headers,
       // Разрешаем редиректы
       redirect: 'follow',
     })
