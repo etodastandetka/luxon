@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from './LanguageContext'
 
 interface VideoModalProps {
@@ -11,6 +11,7 @@ interface VideoModalProps {
 
 export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [videoError, setVideoError] = useState(false)
   const { language } = useLanguage()
 
   const translations = {
@@ -39,15 +40,16 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
   const t = translations[language as keyof typeof translations] || translations.ru
 
   useEffect(() => {
-    if (isOpen && videoRef.current) {
+    if (isOpen && videoRef.current && !videoError) {
       videoRef.current.play().catch(err => {
         console.error('Error playing video:', err)
       })
     } else if (!isOpen && videoRef.current) {
       videoRef.current.pause()
       videoRef.current.currentTime = 0
+      setVideoError(false) // Сбрасываем ошибку при закрытии
     }
-  }, [isOpen])
+  }, [isOpen, videoError])
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -111,9 +113,24 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
               // Извлекаем ID файла из ссылки Google Drive
               const match = videoSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)
               const fileId = match ? match[1] : null
-              // Используем прямую ссылку для просмотра видео без необходимости в куки
-              // Формат uc?export=view работает для прямого воспроизведения видео файлов
-              const directVideoUrl = fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : videoSrc
+              
+              // Если была ошибка загрузки, используем iframe как fallback
+              if (videoError && fileId) {
+                const iframeUrl = `https://drive.google.com/file/d/${fileId}/preview`
+                return (
+                  <iframe
+                    src={iframeUrl}
+                    className="w-full h-full max-h-[calc(90vh-120px)] rounded-lg"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                    style={{ border: 'none' }}
+                  />
+                )
+              }
+              
+              // Используем прямую ссылку для скачивания видео файла
+              // Формат uc?export=download с confirm=t обходит страницу подтверждения
+              const directVideoUrl = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t` : videoSrc
               
               return (
                 <video
@@ -123,6 +140,11 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
                   className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
                   playsInline
                   preload="metadata"
+                  crossOrigin="anonymous"
+                  onError={() => {
+                    console.error('Video load error, falling back to iframe')
+                    setVideoError(true)
+                  }}
                 >
                   Ваш браузер не поддерживает воспроизведение видео.
                 </video>
