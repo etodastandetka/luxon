@@ -111,15 +111,21 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
               // Извлекаем ID файла из ссылки Google Drive
               const match = videoSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)
               const fileId = match ? match[1] : null
-              const previewUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : videoSrc.replace('/view?usp=drive_link', '/preview')
+              // Используем прямую ссылку для просмотра видео без необходимости в куки
+              // Формат uc?export=view работает для прямого воспроизведения видео файлов
+              const directVideoUrl = fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : videoSrc
               
               return (
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-full max-h-[calc(90vh-120px)] rounded-lg"
-                  allow="autoplay; encrypted-media"
-                  allowFullScreen
-                />
+                <video
+                  ref={videoRef}
+                  src={directVideoUrl}
+                  controls
+                  className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
+                  playsInline
+                  preload="metadata"
+                >
+                  Ваш браузер не поддерживает воспроизведение видео.
+                </video>
               )
             })()
           ) : (
