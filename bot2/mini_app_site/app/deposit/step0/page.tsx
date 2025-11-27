@@ -3,10 +3,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import PageTransition from '../../../components/PageTransition'
+import VideoModal from '../../../components/VideoModal'
 import { useLanguage } from '../../../components/LanguageContext'
 
 export default function DepositStep0() {
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const router = useRouter()
   const { language } = useLanguage()
 
@@ -22,7 +24,9 @@ export default function DepositStep0() {
       crypto: 'Криптовалюта',
       cryptoDesc: 'Оплата через Crypto Bot',
       next: 'Далее',
-      back: 'Назад'
+      back: 'Назад',
+      howToDeposit: 'Как пополнить',
+      watchVideo: '📹 Посмотреть видео-инструкцию'
     },
     en: {
       title: 'Deposit',
@@ -32,7 +36,9 @@ export default function DepositStep0() {
       crypto: 'Cryptocurrency',
       cryptoDesc: 'Pay via Crypto Bot',
       next: 'Next',
-      back: 'Back'
+      back: 'Back',
+      howToDeposit: 'How to deposit',
+      watchVideo: '📹 Watch video tutorial'
     },
     ky: {
       title: 'Капкалды кошуу',
@@ -42,7 +48,9 @@ export default function DepositStep0() {
       crypto: 'Криптовалюта',
       cryptoDesc: 'Crypto Bot аркылуу төлөө',
       next: 'Кийинки',
-      back: 'Артка'
+      back: 'Артка',
+      howToDeposit: 'Капкалды кантип кошуу керек',
+      watchVideo: '📹 Видео көрсөтмөнү көрүү'
     },
     uz: {
       title: 'Hisobni to\'ldirish',
@@ -52,7 +60,9 @@ export default function DepositStep0() {
       crypto: 'Kriptovalyuta',
       cryptoDesc: 'Crypto Bot orqali to\'lash',
       next: 'Keyingi',
-      back: 'Orqaga'
+      back: 'Orqaga',
+      howToDeposit: 'Qanday to\'ldirish kerak',
+      watchVideo: '📹 Video ko\'rsatmani ko\'rish'
     }
   }
 
@@ -153,6 +163,20 @@ export default function DepositStep0() {
             </button>
           </div>
           
+          {/* Кнопка "Как пополнить" */}
+          <button
+            onClick={() => setIsVideoModalOpen(true)}
+            className="w-full btn btn-ghost p-4 border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="font-semibold">{t.watchVideo}</span>
+            </div>
+          </button>
+
           <div className="flex gap-2 slide-in-right delay-200">
             <button 
               className="btn btn-ghost flex-1"
@@ -169,6 +193,14 @@ export default function DepositStep0() {
             </button>
           </div>
         </div>
+
+        {/* Модальное окно с видео */}
+        <VideoModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          videoSrc="/videos/IMG_5222.MOV"
+          title={t.howToDeposit}
+        />
       </main>
     </PageTransition>
   )

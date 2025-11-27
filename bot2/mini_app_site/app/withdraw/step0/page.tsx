@@ -1,17 +1,58 @@
 "use client"
 import { useState, useEffect } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
+import VideoModal from '../../../components/VideoModal'
 import { useRouter } from 'next/navigation'
 import BookmakerGrid from '../../../components/BookmakerGrid'
 import PageTransition from '../../../components/PageTransition'
+import { useLanguage } from '../../../components/LanguageContext'
 import { getApiBase } from '../../../utils/fetch'
 
 export default function WithdrawStep0() {
   const router = useRouter()
+  const { language } = useLanguage()
   const [bookmaker, setBookmaker] = useState<string>('')
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
   const [loadingSettings, setLoadingSettings] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
+
+  const translations = {
+    ru: {
+      title: 'Вывод средств',
+      howToWithdraw: 'Как вывести',
+      watchVideo: '📹 Посмотреть видео-инструкцию',
+      back: 'Назад',
+      next: 'Далее',
+      selectBookmaker: 'Выберите букмекера'
+    },
+    en: {
+      title: 'Withdraw',
+      howToWithdraw: 'How to withdraw',
+      watchVideo: '📹 Watch video tutorial',
+      back: 'Back',
+      next: 'Next',
+      selectBookmaker: 'Select bookmaker'
+    },
+    ky: {
+      title: 'Акчаны чыгаруу',
+      howToWithdraw: 'Кантип чыгаруу керек',
+      watchVideo: '📹 Видео көрсөтмөнү көрүү',
+      back: 'Артка',
+      next: 'Кийинки',
+      selectBookmaker: 'Букмекерди тандаңыз'
+    },
+    uz: {
+      title: 'Pulni yechib olish',
+      howToWithdraw: 'Qanday yechib olish kerak',
+      watchVideo: '📹 Video ko\'rsatmani ko\'rish',
+      back: 'Orqaga',
+      next: 'Keyingi',
+      selectBookmaker: 'Bukmekerni tanlang'
+    }
+  }
+
+  const t = translations[language as keyof typeof translations] || translations.ru
 
   // Проверка настроек выводов и казино
   useEffect(() => {
@@ -129,7 +170,7 @@ export default function WithdrawStep0() {
         <h1 className="text-xl font-bold fade-in">Вывод средств</h1>
         
         <section className="card space-y-3 slide-in-left delay-100">
-          <div className="label">Выберите букмекера</div>
+          <div className="label">{t.selectBookmaker}</div>
           <BookmakerGrid 
             value={bookmaker} 
             onChange={handleBookmakerChange}
@@ -137,21 +178,43 @@ export default function WithdrawStep0() {
           />
         </section>
 
+        {/* Кнопка "Как вывести" */}
+        <button
+          onClick={() => setIsVideoModalOpen(true)}
+          className="w-full card btn btn-ghost p-4 border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors"
+        >
+          <div className="flex items-center justify-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-semibold">{t.watchVideo}</span>
+          </div>
+        </button>
+
         <div className="flex gap-3">
           <button 
             className="btn btn-ghost flex-1 slide-in-left delay-200" 
             onClick={handleBack}
           >
-            Назад
+            {t.back}
           </button>
           <button 
             className="btn btn-primary flex-1 slide-in-right delay-200" 
             onClick={handleNext}
             disabled={!bookmaker}
           >
-            Далее
+            {t.next}
           </button>
         </div>
+
+        {/* Модальное окно с видео */}
+        <VideoModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          videoSrc="/videos/IMG_5220.MOV"
+          title={t.howToWithdraw}
+        />
       </main>
     </PageTransition>
   )
