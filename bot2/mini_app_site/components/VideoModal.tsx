@@ -128,14 +128,14 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
                 )
               }
               
-              // Используем прямую ссылку для скачивания видео файла
-              // Формат uc?export=download с confirm=t обходит страницу подтверждения
-              const directVideoUrl = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t` : videoSrc
+              // Используем наш API endpoint для проксирования видео с правильными заголовками
+              // Это обходит проблему с куками Google Drive
+              const proxyVideoUrl = fileId ? `/api/video-proxy?id=${fileId}` : videoSrc
               
               return (
                 <video
                   ref={videoRef}
-                  src={directVideoUrl}
+                  src={proxyVideoUrl}
                   controls
                   className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
                   playsInline
