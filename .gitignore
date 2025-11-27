@@ -104,3 +104,11 @@ test_*.py
 *_test.py
 tests/
 test/
+
+# Video files
+*.MOV
+*.mov
+*.mp4
+*.MP4
+IMG_*.MOV
+IMG_*.mov
