@@ -200,7 +200,7 @@ export default function HomePage() {
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => {
-            setSelectedVideo('https://drive.google.com/uc?export=download&id=1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4')
+            setSelectedVideo('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view?usp=drive_link')
             setIsVideoModalOpen(true)
           }}
           className="card btn btn-ghost text-center p-4"
@@ -215,7 +215,7 @@ export default function HomePage() {
         </button>
         <button
           onClick={() => {
-            setSelectedVideo('https://drive.google.com/uc?export=download&id=1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH')
+            setSelectedVideo('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view?usp=drive_link')
             setIsVideoModalOpen(true)
           }}
           className="card btn btn-ghost text-center p-4"

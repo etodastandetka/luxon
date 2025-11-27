@@ -106,16 +106,34 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
 
         {/* Видео плеер */}
         <div className="flex-1 flex items-center justify-center p-4 bg-black">
-          <video
-            ref={videoRef}
-            src={videoSrc}
-            controls
-            className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
-            playsInline
-            preload="metadata"
-          >
-            Ваш браузер не поддерживает воспроизведение видео.
-          </video>
+          {videoSrc.includes('drive.google.com') ? (
+            (() => {
+              // Извлекаем ID файла из ссылки Google Drive
+              const match = videoSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)
+              const fileId = match ? match[1] : null
+              const previewUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : videoSrc.replace('/view?usp=drive_link', '/preview')
+              
+              return (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full max-h-[calc(90vh-120px)] rounded-lg"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                />
+              )
+            })()
+          ) : (
+            <video
+              ref={videoRef}
+              src={videoSrc}
+              controls
+              className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
+              playsInline
+              preload="metadata"
+            >
+              Ваш браузер не поддерживает воспроизведение видео.
+            </video>
+          )}
         </div>
 
         {/* Кнопка закрытия внизу */}

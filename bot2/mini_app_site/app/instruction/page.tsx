@@ -2,9 +2,13 @@
 import { useState, useEffect } from 'react'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
+import VideoModal from '../../components/VideoModal'
 
 export default function InstructionPage() {
   const { language } = useLanguage()
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
+  const [selectedVideo, setSelectedVideo] = useState('')
+  const [videoTitle, setVideoTitle] = useState('')
 
   const translations = {
     ru: {
@@ -40,7 +44,9 @@ export default function InstructionPage() {
       supportTitle: '🎧 Поддержка',
       supportText: 'Если у вас возникли вопросы или проблемы, обратитесь в поддержку:',
       supportContact: '@operator_luxon_bot',
-      backToMain: '🔙 На главную'
+      backToMain: '🔙 На главную',
+      watchDepositVideo: '📹 Посмотреть видео-инструкцию по пополнению',
+      watchWithdrawVideo: '📹 Посмотреть видео-инструкцию по выводу'
     },
     en: {
       title: '🧾 Instruction',
@@ -75,7 +81,9 @@ export default function InstructionPage() {
       supportTitle: '🎧 Support',
       supportText: 'If you have questions or problems, contact support:',
       supportContact: '@operator_luxon_bot',
-      backToMain: '🔙 Back to main'
+      backToMain: '🔙 Back to main',
+      watchDepositVideo: '📹 Watch deposit video tutorial',
+      watchWithdrawVideo: '📹 Watch withdraw video tutorial'
     }
   }
 
@@ -94,7 +102,23 @@ export default function InstructionPage() {
 
       {/* Пополнение */}
       <section className="card space-y-4">
-        <h2 className="text-lg font-semibold text-white">{t.depositTitle}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">{t.depositTitle}</h2>
+          <button
+            onClick={() => {
+              setSelectedVideo('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view?usp=drive_link')
+              setVideoTitle(t.depositTitle)
+              setIsVideoModalOpen(true)
+            }}
+            className="btn btn-ghost btn-sm text-xs"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {t.watchDepositVideo}
+          </button>
+        </div>
         <div className="space-y-3">
           {t.depositSteps.map((step, index) => (
             <div key={index} className="flex items-start space-x-3">
@@ -109,7 +133,23 @@ export default function InstructionPage() {
 
       {/* Вывод */}
       <section className="card space-y-4">
-        <h2 className="text-lg font-semibold text-white">{t.withdrawTitle}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">{t.withdrawTitle}</h2>
+          <button
+            onClick={() => {
+              setSelectedVideo('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view?usp=drive_link')
+              setVideoTitle(t.withdrawTitle)
+              setIsVideoModalOpen(true)
+            }}
+            className="btn btn-ghost btn-sm text-xs"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {t.watchWithdrawVideo}
+          </button>
+        </div>
         <div className="space-y-3">
           {t.withdrawSteps.map((step, index) => (
             <div key={index} className="flex items-start space-x-3">
@@ -156,6 +196,14 @@ export default function InstructionPage() {
           {t.backToMain}
         </a>
       </div>
+
+      {/* Модальное окно с видео */}
+      <VideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        videoSrc={selectedVideo}
+        title={videoTitle}
+      />
     </main>
   )
 }
