@@ -108,7 +108,42 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
 
         {/* Видео плеер */}
         <div className="flex-1 flex items-center justify-center p-4 bg-black">
-                                                                  {videoSrc.includes('drive.google.com') || videoSrc.includes('docs.google.com') ? (
+          {videoSrc.includes('streamable.com') ? (
+            (() => {
+              // Извлекаем ID видео из ссылки Streamable
+              // Поддерживаем: /e/VIDEO_ID, streamable.com/e/VIDEO_ID
+              const match = videoSrc.match(/\/e\/([a-zA-Z0-9_-]+)/)
+              const videoId = match ? match[1] : null
+              
+              if (!videoId) {
+                return (
+                  <div className="text-white text-center">
+                    Неверная ссылка на Streamable
+                  </div>
+                )
+              }
+              
+              // Определяем параметры в зависимости от типа видео
+              // Для вывода используем muted, для пополнения - без muted
+              const isWithdraw = title?.toLowerCase().includes('вывести') || title?.toLowerCase().includes('withdraw')
+              const streamableUrl = isWithdraw 
+                ? `https://streamable.com/e/${videoId}?autoplay=1&muted=1`
+                : `https://streamable.com/e/${videoId}?autoplay=1`
+              
+              return (
+                <div className="relative w-full h-full max-h-[calc(90vh-120px)]" style={{ paddingBottom: '56.25%' }}>
+                  <iframe
+                    src={streamableUrl}
+                    className="absolute top-0 left-0 w-full h-full rounded-lg"
+                    allow="fullscreen;autoplay"
+                    allowFullScreen
+                    style={{ border: 'none' }}
+                    title={title || t.howToDeposit}
+                  />
+                </div>
+              )
+            })()
+          ) : videoSrc.includes('drive.google.com') || videoSrc.includes('docs.google.com') ? (
             (() => {
               // Извлекаем ID файла из разных форматов ссылок Google Drive
               // Поддерживаем: /d/FILE_ID, /videos/d/FILE_ID, /file/d/FILE_ID
