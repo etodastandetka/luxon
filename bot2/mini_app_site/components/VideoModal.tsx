@@ -114,40 +114,27 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
               const match = videoSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)
               const fileId = match ? match[1] : null
               
-              // Если была ошибка загрузки, используем iframe как fallback
-              if (videoError && fileId) {
-                const iframeUrl = `https://drive.google.com/file/d/${fileId}/preview`
+              if (!fileId) {
                 return (
-                  <iframe
-                    src={iframeUrl}
-                    className="w-full h-full max-h-[calc(90vh-120px)] rounded-lg"
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                    style={{ border: 'none' }}
-                  />
+                  <div className="text-white text-center">
+                    Неверная ссылка на Google Drive
+                  </div>
                 )
               }
               
-              // Используем наш API endpoint для проксирования видео с правильными заголовками
-              // Это обходит проблему с куками Google Drive
-              const proxyVideoUrl = fileId ? `/api/video-proxy?id=${fileId}` : videoSrc
+              // Используем iframe с preview режимом для публичных файлов Google Drive
+              // Это работает без авторизации для файлов с доступом "Все, у кого есть ссылка"
+              const iframeUrl = `https://drive.google.com/file/d/${fileId}/preview`
               
               return (
-                <video
-                  ref={videoRef}
-                  src={proxyVideoUrl}
-                  controls
-                  className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
-                  playsInline
-                  preload="metadata"
-                  crossOrigin="anonymous"
-                  onError={() => {
-                    console.error('Video load error, falling back to iframe')
-                    setVideoError(true)
-                  }}
-                >
-                  Ваш браузер не поддерживает воспроизведение видео.
-                </video>
+                <iframe
+                  src={iframeUrl}
+                  className="w-full h-full max-h-[calc(90vh-120px)] rounded-lg"
+                  allow="autoplay; encrypted-media; fullscreen"
+                  allowFullScreen
+                  style={{ border: 'none' }}
+                  title={title || t.howToDeposit}
+                />
               )
             })()
           ) : (
