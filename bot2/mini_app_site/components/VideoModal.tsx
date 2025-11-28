@@ -108,10 +108,14 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
 
         {/* Видео плеер */}
         <div className="flex-1 flex items-center justify-center p-4 bg-black">
-          {videoSrc.includes('drive.google.com') ? (
+                                                                  {videoSrc.includes('drive.google.com') || videoSrc.includes('docs.google.com') ? (
             (() => {
-              // Извлекаем ID файла из ссылки Google Drive
-              const match = videoSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)
+              // Извлекаем ID файла из разных форматов ссылок Google Drive
+              // Поддерживаем: /d/FILE_ID, /videos/d/FILE_ID, /file/d/FILE_ID
+              let match = videoSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)
+              if (!match) {
+                match = videoSrc.match(/\/videos\/d\/([a-zA-Z0-9_-]+)/)
+              }
               const fileId = match ? match[1] : null
               
               if (!fileId) {
@@ -122,19 +126,26 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
                 )
               }
               
-              // Используем iframe с preview режимом для публичных файлов Google Drive
-              // Это работает без авторизации для файлов с доступом "Все, у кого есть ссылка"
-              const iframeUrl = `https://drive.google.com/file/d/${fileId}/preview`
+              // Используем наш прокси для получения прямого потока видео
+              // Это обходит проблему с авторизацией
+              const proxyVideoUrl = `/api/video-proxy?id=${fileId}`
               
               return (
-                <iframe
-                  src={iframeUrl}
-                  className="w-full h-full max-h-[calc(90vh-120px)] rounded-lg"
-                  allow="autoplay; encrypted-media; fullscreen"
-                  allowFullScreen
-                  style={{ border: 'none' }}
-                  title={title || t.howToDeposit}
-                />
+                <video
+                  ref={videoRef}
+                  src={proxyVideoUrl}
+                  controls
+                  className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
+                  playsInline
+                  preload="metadata"
+                  crossOrigin="anonymous"
+                  onError={() => {
+                    console.error('Video load error, trying iframe fallback')
+                    setVideoError(true)
+                  }}
+                >
+                  Ваш браузер не поддерживает воспроизведение видео.
+                </video>
               )
             })()
           ) : (
