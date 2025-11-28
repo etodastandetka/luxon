@@ -1,4 +1,6 @@
 "use client"
+import { useCallback, useMemo } from 'react'
+import { throttle } from '../utils/debounce'
 
 type Bank = { code: string; name: string; emoji?: string; image?: string }
 const BANKS: Bank[] = [
@@ -24,7 +26,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
   const isWithdrawal = (!paymentUrl || paymentUrl === '') && 
                        (!allBankUrls || Object.keys(allBankUrls).length === 0)
   
-  const handleBankClick = (bankCode: string) => {
+  const handleBankClick = useCallback((bankCode: string) => {
     // Сначала выбираем банк
     onPick(bankCode)
     
@@ -109,7 +111,13 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
         console.log('🏦 Bank selected (withdrawal, no URL needed):', bankCode)
       }
     }
-  }
+  }, [onPick, isWithdrawal, paymentUrl, allBankUrls])
+
+  // Throttle обработчик клика для предотвращения множественных кликов
+  const throttledHandleBankClick = useMemo(
+    () => throttle(handleBankClick, 500),
+    [handleBankClick]
+  )
 
   // Фильтруем банки согласно настройкам
   // Маппинг: код банка в компоненте -> код банка в настройках админки
@@ -139,7 +147,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
   // Фильтруем банки согласно настройкам
   // Если enabledBanks не передан (undefined), показываем все банки
   // Если enabledBanks передан (даже пустой массив), фильтруем строго
-  const filteredBanks = BANKS.filter(bank => {
+  const filteredBanks = useMemo(() => BANKS.filter(bank => {
     // Если enabledBanks не передан вообще - показываем все
     if (enabledBanks === undefined) {
       return true
@@ -153,7 +161,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     return enabledBanks.includes(adminCode) || 
            enabledBanks.includes(componentCode) || 
            enabledBanks.includes(bank.code)
-  })
+  }), [enabledBanks])
   
   console.log('🏦 BankButtons - enabledBanks:', enabledBanks)
   console.log('🏦 BankButtons - filteredBanks:', filteredBanks.map(b => b.code))
@@ -168,7 +176,7 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
               ? 'btn-primary' 
               : 'btn-ghost'
           } ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:btn-primary'}`}
-          onClick={() => !disabled && handleBankClick(b.code)}
+          onClick={() => !disabled && throttledHandleBankClick(b.code)}
           disabled={disabled}
         >
           {b.image ? (

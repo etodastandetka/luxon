@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 export function useLocalStorage<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
@@ -12,11 +12,34 @@ export function useLocalStorage<T>(key: string, initial: T) {
     }
   })
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isFirstRender = useRef(true)
+
   useEffect(() => {
-    try {
-      window.localStorage.setItem(key, JSON.stringify(value))
-    } catch {
-      // ignore
+    // Пропускаем первую запись при монтировании
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+
+    // Очищаем предыдущий таймер
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+
+    // Debounce запись в localStorage на 300ms
+    timeoutRef.current = setTimeout(() => {
+      try {
+        window.localStorage.setItem(key, JSON.stringify(value))
+      } catch {
+        // ignore
+      }
+    }, 300)
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
     }
   }, [key, value])
 

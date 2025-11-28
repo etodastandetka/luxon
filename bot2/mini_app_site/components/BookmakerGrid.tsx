@@ -1,6 +1,7 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
+import { throttle } from '../utils/debounce'
 
 type Item = { key: string; name: string; logo?: string; emoji?: string }
 
@@ -64,16 +65,23 @@ export default function BookmakerGrid({
       // Очищаем сохраненный тип бота, чтобы не показывать только 1xbet
       localStorage.removeItem('bot_type')
     }
-  }, [value, onChange])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Убираем value и onChange из зависимостей чтобы избежать бесконечных циклов
 
-  const handleClick = (key: string) => {
+  const handleClick = useCallback((key: string) => {
     // Проверяем, отключено ли казино
     if (disabledCasinos && disabledCasinos.includes(key)) {
       setShowModal(key)
       return
     }
     onChange(key)
-  }
+  }, [disabledCasinos, onChange])
+
+  // Throttle обработчик клика
+  const throttledHandleClick = useMemo(
+    () => throttle(handleClick, 300),
+    [handleClick]
+  )
 
   const getCasinoName = (key: string) => {
     const casino = bookmakers.find(b => b.key === key) || ALL_BOOKMAKERS.find(b => b.key === key)
@@ -93,7 +101,7 @@ export default function BookmakerGrid({
           return (
             <button 
               key={b.key}
-              onClick={() => handleClick(b.key)}
+              onClick={() => throttledHandleClick(b.key)}
               className={`relative overflow-hidden rounded-xl transition-all duration-200 ${cardHeight} ${
                 value === b.key 
                   ? 'ring-2 ring-green-400' 
