@@ -398,8 +398,8 @@ export default function SettingsPage() {
           <h3 className="text-sm font-semibold text-white mb-2">📹 Как загрузить видео и получить ссылку:</h3>
           <ol className="text-xs text-gray-300 space-y-1 list-decimal list-inside">
             <li>Загрузите видео на <strong className="text-white">Google Drive</strong> (drive.google.com)</li>
-            <li>Нажмите правой кнопкой на файл → <strong className="text-white">"Поделиться"</strong></li>
-            <li>Измените доступ на <strong className="text-white">"Все, у кого есть ссылка"</strong></li>
+            <li>Нажмите правой кнопкой на файл → <strong className="text-white">&quot;Поделиться&quot;</strong></li>
+            <li>Измените доступ на <strong className="text-white">&quot;Все, у кого есть ссылка&quot;</strong></li>
             <li>Скопируйте ссылку (формат: <code className="text-blue-400">https://drive.google.com/file/d/FILE_ID/view</code>)</li>
             <li>Вставьте ссылку в поле ниже</li>
           </ol>

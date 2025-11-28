@@ -16,6 +16,7 @@ export default function WithdrawStep0() {
   const [loadingSettings, setLoadingSettings] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
+  const [withdrawVideoUrl, setWithdrawVideoUrl] = useState<string>('')
 
   const translations = {
     ru: {
@@ -82,6 +83,28 @@ export default function WithdrawStep0() {
       }
     }
     checkSettings()
+  }, [])
+
+  // Загружаем видео URL из API
+  useEffect(() => {
+    const fetchVideoUrl = async () => {
+      try {
+        const base = getApiBase()
+        const response = await fetch(`${base}/api/public/video-instructions`, { cache: 'no-store' })
+        const data = await response.json()
+        
+        if (data.success && data.data?.withdraw_video_url) {
+          setWithdrawVideoUrl(data.data.withdraw_video_url)
+        } else {
+          setWithdrawVideoUrl('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
+        }
+      } catch (error) {
+        console.error('Failed to fetch video URL:', error)
+        setWithdrawVideoUrl('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
+      }
+    }
+    
+    fetchVideoUrl()
   }, [])
 
   useEffect(() => {
