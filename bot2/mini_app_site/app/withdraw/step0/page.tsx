@@ -212,7 +212,7 @@ export default function WithdrawStep0() {
         <VideoModal
           isOpen={isVideoModalOpen}
           onClose={() => setIsVideoModalOpen(false)}
-          videoSrc="https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view?usp=drive_link"
+          videoSrc={withdrawVideoUrl || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'}
           title={t.howToWithdraw}
         />
       </main>

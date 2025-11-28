@@ -9,6 +9,30 @@ export default function InstructionPage() {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState('')
   const [videoTitle, setVideoTitle] = useState('')
+  const [depositVideoUrl, setDepositVideoUrl] = useState<string>('')
+  const [withdrawVideoUrl, setWithdrawVideoUrl] = useState<string>('')
+
+  // Загружаем видео URL из API
+  useEffect(() => {
+    const fetchVideoUrls = async () => {
+      try {
+        const response = await fetch('/api/video-instructions', { cache: 'no-store' })
+        const data = await response.json()
+        
+        if (data.success && data.data) {
+          setDepositVideoUrl(data.data.deposit_video_url || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
+          setWithdrawVideoUrl(data.data.withdraw_video_url || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
+        }
+      } catch (error) {
+        console.error('Failed to fetch video instructions:', error)
+        // Используем значения по умолчанию при ошибке
+        setDepositVideoUrl('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
+        setWithdrawVideoUrl('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
+      }
+    }
+    
+    fetchVideoUrls()
+  }, [])
 
   const translations = {
     ru: {
@@ -106,7 +130,7 @@ export default function InstructionPage() {
           <h2 className="text-lg font-semibold text-white">{t.depositTitle}</h2>
           <button
             onClick={() => {
-              setSelectedVideo('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view?usp=drive_link')
+              setSelectedVideo(depositVideoUrl || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
               setVideoTitle(t.depositTitle)
               setIsVideoModalOpen(true)
             }}
@@ -137,7 +161,7 @@ export default function InstructionPage() {
           <h2 className="text-lg font-semibold text-white">{t.withdrawTitle}</h2>
           <button
             onClick={() => {
-              setSelectedVideo('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view?usp=drive_link')
+              setSelectedVideo(withdrawVideoUrl || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
               setVideoTitle(t.withdrawTitle)
               setIsVideoModalOpen(true)
             }}

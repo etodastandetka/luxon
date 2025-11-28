@@ -9,6 +9,28 @@ import { useLanguage } from '../../../components/LanguageContext'
 export default function DepositStep0() {
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
+  const [depositVideoUrl, setDepositVideoUrl] = useState<string>('')
+
+  // Загружаем видео URL из API
+  useEffect(() => {
+    const fetchVideoUrl = async () => {
+      try {
+        const response = await fetch('/api/video-instructions', { cache: 'no-store' })
+        const data = await response.json()
+        
+        if (data.success && data.data?.deposit_video_url) {
+          setDepositVideoUrl(data.data.deposit_video_url)
+        } else {
+          setDepositVideoUrl('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
+        }
+      } catch (error) {
+        console.error('Failed to fetch video URL:', error)
+        setDepositVideoUrl('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
+      }
+    }
+    
+    fetchVideoUrl()
+  }, [])
   const router = useRouter()
   const { language } = useLanguage()
 
@@ -198,7 +220,7 @@ export default function DepositStep0() {
         <VideoModal
           isOpen={isVideoModalOpen}
           onClose={() => setIsVideoModalOpen(false)}
-          videoSrc="https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view?usp=drive_link"
+          videoSrc={depositVideoUrl || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view'}
           title={t.howToDeposit}
         />
       </main>

@@ -17,5 +17,11 @@
         android:label="Логи"
         tools:layout="@layout/fragment_logs" />
 
+    <fragment
+        android:id="@+id/navigation_apps"
+        android:name="com.req.notificationreader.ui.apps.AppsManagementFragment"
+        android:label="Управление приложениями"
+        tools:layout="@layout/fragment_apps" />
+
 </navigation>
 

@@ -5,12 +5,14 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.req.notificationreader.model.AppLog
+import com.req.notificationreader.model.NotificationHistory
 import com.req.notificationreader.model.PaymentNotification
 
-@Database(entities = [PaymentNotification::class, AppLog::class], version = 2, exportSchema = false)
+@Database(entities = [PaymentNotification::class, AppLog::class, NotificationHistory::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun paymentDao(): PaymentDao
     abstract fun logDao(): LogDao
+    abstract fun notificationHistoryDao(): NotificationHistoryDao
     
     companion object {
         @Volatile

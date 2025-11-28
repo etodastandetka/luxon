@@ -20,6 +20,8 @@ interface Settings {
   channel_subscription_enabled: boolean
   channel_username: string
   channel_id: string
+  deposit_video_url: string
+  withdraw_video_url: string
 }
 
 const DEPOSIT_BANKS = [
@@ -89,8 +91,40 @@ export default function SettingsPage() {
     }
   }
 
+  // Преобразует различные форматы ссылок Google Drive в стандартный формат
+  const normalizeGoogleDriveUrl = (url: string): string => {
+    if (!url) return url
+    
+    // Если уже правильный формат
+    if (url.includes('/file/d/') && url.includes('/view')) {
+      return url.split('?')[0] // Убираем параметры типа ?usp=drive_link
+    }
+    
+    // Формат: https://drive.google.com/open?id=FILE_ID
+    const openMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+    if (openMatch && openMatch[1]) {
+      return `https://drive.google.com/file/d/${openMatch[1]}/view`
+    }
+    
+    // Формат: https://drive.google.com/file/d/FILE_ID (без /view)
+    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+    if (fileMatch && fileMatch[1] && !url.includes('/view')) {
+      return `https://drive.google.com/file/d/${fileMatch[1]}/view`
+    }
+    
+    return url
+  }
+
   const updateSetting = (key: keyof Settings, value: any) => {
     if (!settings) return
+    
+    // Автоматически преобразуем ссылки Google Drive
+    if (key === 'deposit_video_url' || key === 'withdraw_video_url') {
+      if (value && value.includes('drive.google.com')) {
+        value = normalizeGoogleDriveUrl(value)
+      }
+    }
+    
     setSettings({ ...settings, [key]: value })
   }
 
@@ -351,6 +385,80 @@ export default function SettingsPage() {
               placeholder="-1001234567890"
             />
             <p className="text-xs text-gray-400 mt-1">Введите ID канала (например: -1001234567890). Можно получить через @userinfobot</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Видео инструкции */}
+      <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
+        <h2 className="text-base font-bold text-white mb-4">Видео инструкции</h2>
+        
+        {/* Инструкция по загрузке */}
+        <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-3 mb-4">
+          <h3 className="text-sm font-semibold text-white mb-2">📹 Как загрузить видео и получить ссылку:</h3>
+          <ol className="text-xs text-gray-300 space-y-1 list-decimal list-inside">
+            <li>Загрузите видео на <strong className="text-white">Google Drive</strong> (drive.google.com)</li>
+            <li>Нажмите правой кнопкой на файл → <strong className="text-white">"Поделиться"</strong></li>
+            <li>Измените доступ на <strong className="text-white">"Все, у кого есть ссылка"</strong></li>
+            <li>Скопируйте ссылку (формат: <code className="text-blue-400">https://drive.google.com/file/d/FILE_ID/view</code>)</li>
+            <li>Вставьте ссылку в поле ниже</li>
+          </ol>
+          <p className="text-xs text-yellow-400 mt-2">
+            ⚠️ Видео должно быть в формате MP4. Максимальный размер: до 100 МБ (рекомендуется до 50 МБ)
+          </p>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              🔗 Ссылка на видео инструкции по пополнению
+            </label>
+            <input
+              type="url"
+              value={settings.deposit_video_url || ''}
+              onChange={(e) => updateSetting('deposit_video_url', e.target.value)}
+              className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="https://drive.google.com/file/d/1ABC.../view"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Поддерживаются форматы: <code className="text-blue-400">/file/d/ID/view</code> или <code className="text-blue-400">/open?id=ID</code>
+            </p>
+            {settings.deposit_video_url && (
+              <a 
+                href={settings.deposit_video_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block"
+              >
+                🔗 Проверить ссылку
+              </a>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              🔗 Ссылка на видео инструкции по выводу
+            </label>
+            <input
+              type="url"
+              value={settings.withdraw_video_url || ''}
+              onChange={(e) => updateSetting('withdraw_video_url', e.target.value)}
+              className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="https://drive.google.com/file/d/1XYZ.../view"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Поддерживаются форматы: <code className="text-blue-400">/file/d/ID/view</code> или <code className="text-blue-400">/open?id=ID</code>
+            </p>
+            {settings.withdraw_video_url && (
+              <a 
+                href={settings.withdraw_video_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block"
+              >
+                🔗 Проверить ссылку
+              </a>
+            )}
           </div>
         </div>
       </div>

@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
       channel_subscription_enabled: typeof channelSettings === 'object' ? channelSettings.enabled : channelSettings === 'true' || channelSettings === true || false,
       channel_username: typeof channelSettings === 'object' ? channelSettings.username || '' : '',
       channel_id: typeof channelSettings === 'object' ? channelSettings.channel_id || '' : '',
+      deposit_video_url: settingsMap.deposit_video_url || '',
+      withdraw_video_url: settingsMap.withdraw_video_url || '',
     }
 
     return NextResponse.json(createApiResponse(settings))
@@ -126,6 +128,14 @@ export async function POST(request: NextRequest) {
         channel_id: body.channel_id || ''
       }
       await updateSetting('channel_subscription', channelSettings, 'Настройки подписки на канал')
+    }
+
+    if (body.deposit_video_url !== undefined) {
+      await updateSetting('deposit_video_url', body.deposit_video_url, 'URL видео инструкции по пополнению')
+    }
+
+    if (body.withdraw_video_url !== undefined) {
+      await updateSetting('withdraw_video_url', body.withdraw_video_url, 'URL видео инструкции по выводу')
     }
 
     return NextResponse.json(

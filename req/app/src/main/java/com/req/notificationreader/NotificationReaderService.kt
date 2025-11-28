@@ -14,7 +14,9 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.req.notificationreader.api.PostgresApiClient
 import com.req.notificationreader.database.AppDatabase
+import com.req.notificationreader.model.NotificationHistory
 import com.req.notificationreader.parser.ParserManager
+import com.req.notificationreader.util.AppInfoHelper
 import com.req.notificationreader.util.AppLogger
 import com.req.notificationreader.util.DatabaseConfig
 import com.req.notificationreader.util.SharedPreferencesHelper
@@ -95,82 +97,100 @@ class NotificationReaderService : NotificationListenerService() {
     }
     
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                "LUXON Отслеживание",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Сервис отслеживания уведомлений о пополнениях"
-                setShowBadge(false)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    "LUXON Отслеживание",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Сервис отслеживания уведомлений о пополнениях"
+                    setShowBadge(false)
+                }
+                val notificationManager = getSystemService(NotificationManager::class.java)
+                notificationManager?.createNotificationChannel(channel)
             }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания канала уведомлений", e)
         }
     }
     
     private fun startForegroundService() {
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        
-        val isEnabled = prefsHelper.isServiceEnabled()
-        val statusText = if (isEnabled) "Включено" else "Отключено"
-        
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("LUXON")
-            .setContentText("Отслеживание: $statusText")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
-        
-        startForeground(NOTIFICATION_ID, notification)
+        try {
+            val notificationIntent = Intent(this, MainActivity::class.java)
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                notificationIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            
+            val isEnabled = if (::prefsHelper.isInitialized) {
+                prefsHelper.isServiceEnabled()
+            } else {
+                true // По умолчанию включено
+            }
+            val statusText = if (isEnabled) "Включено" else "Отключено"
+            
+            val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setContentTitle("LUXON")
+                .setContentText("Отслеживание: $statusText")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .build()
+            
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка запуска foreground service", e)
+        }
     }
     
     private fun updateForegroundNotification() {
-        val notificationManager = getSystemService(NotificationManager::class.java) as NotificationManager
-        val isEnabled = prefsHelper.isServiceEnabled()
-        val statusText = if (isEnabled) "Включено" else "Отключено"
-        
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("LUXON")
-            .setContentText("Отслеживание: $statusText")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
-        
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        try {
+            if (!::prefsHelper.isInitialized) {
+                return // Не обновляем, если prefsHelper не инициализирован
+            }
+            
+            val notificationManager = getSystemService(NotificationManager::class.java) as? NotificationManager
+            if (notificationManager == null) {
+                Log.w(TAG, "NotificationManager недоступен")
+                return
+            }
+            
+            val isEnabled = prefsHelper.isServiceEnabled()
+            val statusText = if (isEnabled) "Включено" else "Отключено"
+            
+            val notificationIntent = Intent(this, MainActivity::class.java)
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                notificationIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            
+            val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setContentTitle("LUXON")
+                .setContentText("Отслеживание: $statusText")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .build()
+            
+            notificationManager.notify(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка обновления уведомления", e)
+        }
     }
     
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
         
         if (sbn == null) return
-        
-        // Проверяем, включен ли сервис
-        val isServiceEnabled = prefsHelper.isServiceEnabled()
-        if (!isServiceEnabled) {
-            Log.d(TAG, "Сервис отключен, уведомление игнорируется")
-            return
-        }
         
         val packageName = sbn.packageName ?: return
         val notification = sbn.notification ?: return
@@ -181,13 +201,87 @@ class NotificationReaderService : NotificationListenerService() {
         
         // Проверяем большой текст (для длинных уведомлений)
         val bigText = notification.extras?.getCharSequence("android.bigText")?.toString()
-        val fullText = bigText ?: text
+        val fullText = bigText ?: text ?: ""
         
         Log.d(TAG, "Получено уведомление от: $packageName")
         Log.d(TAG, "Заголовок: $title")
         Log.d(TAG, "Текст: $fullText")
         
-        AppLogger.notification("Получено уведомление от: $packageName", "Заголовок: $title\nТекст: $fullText")
+        // Сохраняем ВСЕ уведомления в историю (даже если приложение отключено)
+        // Это позволяет видеть все уведомления и управлять приложениями
+        serviceScope.launch {
+            try {
+                if (::database.isInitialized) {
+                    val appName = AppInfoHelper.getAppName(applicationContext, packageName)
+                    val notificationHistory = NotificationHistory(
+                        packageName = packageName,
+                        appName = appName,
+                        title = title,
+                        text = fullText,
+                        timestamp = System.currentTimeMillis(),
+                        isProcessed = false
+                    )
+                    database.notificationHistoryDao().insertNotification(notificationHistory)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при сохранении истории уведомления", e)
+            }
+        }
+        
+        // Проверяем, включен ли сервис (с проверкой инициализации)
+        if (!::prefsHelper.isInitialized) {
+            Log.w(TAG, "prefsHelper не инициализирован, уведомление будет обработано")
+        } else {
+            val isServiceEnabled = prefsHelper.isServiceEnabled()
+            if (!isServiceEnabled) {
+                Log.d(TAG, "Сервис отключен, уведомление игнорируется")
+                try {
+                    AppLogger.notification("Сервис отключен, уведомление от $packageName не обрабатывается", 
+                        "Заголовок: $title\nТекст: $fullText")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка логирования", e)
+                }
+                return
+            }
+        }
+        
+        // Проверяем, не отключено ли это приложение
+        val isAppDisabled = if (::prefsHelper.isInitialized) {
+            prefsHelper.isAppDisabled(packageName)
+        } else {
+            false // По умолчанию не отключено, если prefsHelper не готов
+        }
+        if (isAppDisabled) {
+            Log.d(TAG, "Приложение $packageName отключено, уведомление игнорируется")
+            try {
+                AppLogger.notification("Приложение отключено, уведомление от $packageName не обрабатывается", 
+                    "Заголовок: $title\nТекст: $fullText")
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка логирования", e)
+            }
+            
+            // Обновляем историю, что это уведомление было проигнорировано
+            serviceScope.launch {
+                try {
+                    if (::database.isInitialized) {
+                        val latest = database.notificationHistoryDao().getLatestNotificationByPackage(packageName)
+                        if (latest != null) {
+                            // Можно обновить запись, но для простоты просто оставляем как есть
+                            // isProcessed останется false, что означает, что оно не было обработано
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка при обновлении истории", e)
+                }
+            }
+            return
+        }
+        
+        try {
+            AppLogger.notification("Получено уведомление от: $packageName", "Заголовок: $title\nТекст: $fullText")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка логирования", e)
+        }
         
         // Парсим уведомление в фоновом потоке
         // Используем SupervisorJob чтобы ошибка в одной корутине не убила остальные
@@ -199,11 +293,27 @@ class NotificationReaderService : NotificationListenerService() {
                     text = fullText
                 )
                 
+                // Обновляем историю, что это уведомление было обработано
+                if (::database.isInitialized) {
+                    try {
+                        val latest = database.notificationHistoryDao().getLatestNotificationByPackage(packageName)
+                        if (latest != null) {
+                            // Обновляем флаг обработки в истории
+                            val updatedHistory = latest.copy(isProcessed = payment != null)
+                            database.notificationHistoryDao().insertNotification(updatedHistory)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Ошибка при обновлении флага обработки в истории", e)
+                    }
+                }
+                
                 if (payment != null) {
                     // Дополнительная проверка на случай, если состояние изменилось во время обработки
-                    if (!prefsHelper.isServiceEnabled()) {
-                        Log.d(TAG, "Сервис был отключен во время обработки, платеж не сохраняется")
-                        return@launch
+                    if (::prefsHelper.isInitialized) {
+                        if (!prefsHelper.isServiceEnabled() || prefsHelper.isAppDisabled(packageName)) {
+                            Log.d(TAG, "Сервис или приложение было отключено во время обработки, платеж не сохраняется")
+                            return@launch
+                        }
                     }
                     
                     // Сохраняем в локальную базу данных (Room)
@@ -231,8 +341,10 @@ class NotificationReaderService : NotificationListenerService() {
                             e.stackTraceToString(), TAG)
                     }
                     
-                    // Отправка в админку Next.js (только если сервис включен)
-                    if (prefsHelper.isServiceEnabled()) {
+                    // Отправка в админку Next.js (только если сервис включен и приложение не отключено)
+                    if (::prefsHelper.isInitialized && 
+                        prefsHelper.isServiceEnabled() && 
+                        !prefsHelper.isAppDisabled(packageName)) {
                         try {
                             val adminApiUrl = prefsHelper.getAdminApiUrl()
                             AppLogger.info("admin", "Попытка отправки в админку ($adminApiUrl): ${payment.bankName} - ${payment.amount} ${payment.currency}")
@@ -255,7 +367,7 @@ class NotificationReaderService : NotificationListenerService() {
                                 e.stackTraceToString(), TAG)
                         }
                     } else {
-                        Log.d(TAG, "Сервис отключен, отправка в админку пропущена")
+                        Log.d(TAG, "Сервис отключен или приложение в черном списке, отправка в админку пропущена")
                     }
                 }
             } catch (e: Throwable) {

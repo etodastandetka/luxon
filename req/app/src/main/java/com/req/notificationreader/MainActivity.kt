@@ -36,7 +36,7 @@ class MainActivity : AppCompatActivity() {
         
         // Конфигурация AppBar
         val appBarConfiguration = AppBarConfiguration(
-            setOf(R.id.navigation_tracker, R.id.navigation_logs)
+            setOf(R.id.navigation_tracker, R.id.navigation_logs, R.id.navigation_apps)
         )
             
             setupActionBarWithNavController(navController, appBarConfiguration)
@@ -66,6 +66,12 @@ class MainActivity : AppCompatActivity() {
             R.id.menu_logs -> {
                 val navHostFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment) as? NavHostFragment
                 navHostFragment?.navController?.navigate(R.id.navigation_logs)
+                true
+            }
+            R.id.menu_apps -> {
+                val navHostFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment) as? NavHostFragment
+                navHostFragment?.navController?.navigate(R.id.navigation_apps)
+                AppLogger.info("app", "Открыта страница управления приложениями")
                 true
             }
             R.id.menu_settings -> {
