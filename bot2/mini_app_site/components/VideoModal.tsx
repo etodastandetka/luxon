@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 import { useLanguage } from './LanguageContext'
 
 interface VideoModalProps {
@@ -10,8 +10,6 @@ interface VideoModalProps {
 }
 
 export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoModalProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [videoError, setVideoError] = useState(false)
   const { language } = useLanguage()
 
   const translations = {
@@ -38,18 +36,6 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
   }
 
   const t = translations[language as keyof typeof translations] || translations.ru
-
-  useEffect(() => {
-    if (isOpen && videoRef.current && !videoError) {
-      videoRef.current.play().catch(err => {
-        console.error('Error playing video:', err)
-      })
-    } else if (!isOpen && videoRef.current) {
-      videoRef.current.pause()
-      videoRef.current.currentTime = 0
-      setVideoError(false) // Сбрасываем ошибку при закрытии
-    }
-  }, [isOpen, videoError])
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -108,93 +94,45 @@ export default function VideoModal({ isOpen, onClose, videoSrc, title }: VideoMo
 
         {/* Видео плеер */}
         <div className="flex-1 flex items-center justify-center p-4 bg-black">
-          {videoSrc.includes('streamable.com') ? (
-            (() => {
-              // Извлекаем ID видео из ссылки Streamable
-              // Поддерживаем: /e/VIDEO_ID, streamable.com/e/VIDEO_ID
+          {(() => {
+            let iframeUrl = videoSrc
+            
+            // Обработка Streamable
+            if (videoSrc.includes('streamable.com')) {
               const match = videoSrc.match(/\/e\/([a-zA-Z0-9_-]+)/)
               const videoId = match ? match[1] : null
-              
-              if (!videoId) {
-                return (
-                  <div className="text-white text-center">
-                    Неверная ссылка на Streamable
-                  </div>
-                )
+              if (videoId) {
+                const isWithdraw = title?.toLowerCase().includes('вывести') || title?.toLowerCase().includes('withdraw')
+                iframeUrl = isWithdraw 
+                  ? `https://streamable.com/e/${videoId}?autoplay=1&muted=1`
+                  : `https://streamable.com/e/${videoId}?autoplay=1`
               }
-              
-              // Определяем параметры в зависимости от типа видео
-              // Для вывода используем muted, для пополнения - без muted
-              const isWithdraw = title?.toLowerCase().includes('вывести') || title?.toLowerCase().includes('withdraw')
-              const streamableUrl = isWithdraw 
-                ? `https://streamable.com/e/${videoId}?autoplay=1&muted=1`
-                : `https://streamable.com/e/${videoId}?autoplay=1`
-              
-              return (
-                <div className="relative w-full h-full max-h-[calc(90vh-120px)]" style={{ paddingBottom: '56.25%' }}>
-                  <iframe
-                    src={streamableUrl}
-                    className="absolute top-0 left-0 w-full h-full rounded-lg"
-                    allow="fullscreen;autoplay"
-                    allowFullScreen
-                    style={{ border: 'none' }}
-                    title={title || t.howToDeposit}
-                  />
-                </div>
-              )
-            })()
-          ) : videoSrc.includes('drive.google.com') || videoSrc.includes('docs.google.com') ? (
-            (() => {
-              // Извлекаем ID файла из разных форматов ссылок Google Drive
-              // Поддерживаем: /d/FILE_ID, /videos/d/FILE_ID, /file/d/FILE_ID
+            }
+            // Обработка Google Drive
+            else if (videoSrc.includes('drive.google.com') || videoSrc.includes('docs.google.com')) {
               let match = videoSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)
               if (!match) {
                 match = videoSrc.match(/\/videos\/d\/([a-zA-Z0-9_-]+)/)
               }
               const fileId = match ? match[1] : null
-              
-              if (!fileId) {
-                return (
-                  <div className="text-white text-center">
-                    Неверная ссылка на Google Drive
-                  </div>
-                )
+              if (fileId) {
+                iframeUrl = `https://drive.google.com/file/d/${fileId}/preview`
               }
-              
-              // Используем наш прокси для получения прямого потока видео
-              // Это обходит проблему с авторизацией
-              const proxyVideoUrl = `/api/video-proxy?id=${fileId}`
-              
-              return (
-                <video
-                  ref={videoRef}
-                  src={proxyVideoUrl}
-                  controls
-                  className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
-                  playsInline
-                  preload="metadata"
-                  crossOrigin="anonymous"
-                  onError={() => {
-                    console.error('Video load error, trying iframe fallback')
-                    setVideoError(true)
-                  }}
-                >
-                  Ваш браузер не поддерживает воспроизведение видео.
-                </video>
-              )
-            })()
-          ) : (
-            <video
-              ref={videoRef}
-              src={videoSrc}
-              controls
-              className="w-full h-full max-h-[calc(90vh-120px)] object-contain rounded-lg"
-              playsInline
-              preload="metadata"
-            >
-              Ваш браузер не поддерживает воспроизведение видео.
-            </video>
-          )}
+            }
+            
+            return (
+              <div className="relative w-full h-full max-h-[calc(90vh-120px)]" style={{ paddingBottom: '56.25%' }}>
+                <iframe
+                  src={iframeUrl}
+                  className="absolute top-0 left-0 w-full h-full rounded-lg"
+                  allow="fullscreen;autoplay;encrypted-media"
+                  allowFullScreen
+                  style={{ border: 'none' }}
+                  title={title || t.howToDeposit}
+                />
+              </div>
+            )
+          })()}
         </div>
 
         {/* Кнопка закрытия внизу */}
