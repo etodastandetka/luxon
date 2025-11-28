@@ -1,22 +1,22 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo } from 'react'
 
 interface PageTransitionProps {
   children: React.ReactNode
   direction?: 'forward' | 'backward'
 }
 
-export default function PageTransition({ children, direction = 'forward' }: PageTransitionProps) {
+function PageTransition({ children, direction = 'forward' }: PageTransitionProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [isExiting, setIsExiting] = useState(false)
 
   useEffect(() => {
-    // Небольшая задержка для плавного перехода
-    const timer = setTimeout(() => {
+    // Используем requestAnimationFrame для более плавного перехода
+    const rafId = requestAnimationFrame(() => {
       setIsVisible(true)
-    }, 50)
+    })
 
-    return () => clearTimeout(timer)
+    return () => cancelAnimationFrame(rafId)
   }, [])
 
   // Функция для выхода (исчезновения)
@@ -39,37 +39,29 @@ export default function PageTransition({ children, direction = 'forward' }: Page
     }
   }, [])
 
-  const getAnimationClass = () => {
-    if (isExiting) {
-      return direction === 'forward' 
-        ? 'opacity-0 -translate-x-full' 
-        : 'opacity-0 translate-x-full'
-    }
-    if (!isVisible) {
-      return direction === 'forward' 
-        ? 'opacity-0 translate-x-full' 
-        : 'opacity-0 -translate-x-full'
-    }
-    return 'opacity-100 translate-x-0'
-  }
+  // Используем CSS transforms для лучшей производительности
+  const transform = isVisible && !isExiting
+    ? 'translateX(0)' 
+    : isExiting
+      ? direction === 'forward' 
+        ? 'translateX(-30%)'
+        : 'translateX(30%)'
+      : direction === 'forward' 
+        ? 'translateX(30%)'
+        : 'translateX(-30%)'
 
   return (
     <div 
-      className="transition-all duration-500 ease-in-out"
+      className="transition-transform duration-300 ease-out"
       style={{
         opacity: isVisible && !isExiting ? 1 : 0,
-        transform: isVisible && !isExiting
-          ? 'translateX(0)' 
-          : isExiting
-            ? direction === 'forward' 
-              ? 'translateX(-30%)'  // При выходе из forward - влево
-              : 'translateX(30%)'   // При выходе из backward - вправо
-            : direction === 'forward' 
-              ? 'translateX(30%)'   // При входе forward - справа
-              : 'translateX(-30%)'  // При входе backward - слева
+        transform,
+        willChange: 'transform, opacity'
       }}
     >
       {children}
     </div>
   )
 }
+
+export default memo(PageTransition)

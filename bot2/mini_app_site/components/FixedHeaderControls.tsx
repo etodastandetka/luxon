@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo } from 'react'
 import { createPortal } from 'react-dom'
 import NotificationSystem from './NotificationSystem'
 
@@ -7,7 +7,7 @@ import NotificationSystem from './NotificationSystem'
  * Компонент для фиксированных элементов в хедере (языковой селектор и уведомления)
  * Рендерится через Portal напрямую в document.body для гарантированного фиксированного позиционирования
  */
-export default function FixedHeaderControls() {
+function FixedHeaderControls() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -24,4 +24,6 @@ export default function FixedHeaderControls() {
     document.body
   )
 }
+
+export default memo(FixedHeaderControls)
 

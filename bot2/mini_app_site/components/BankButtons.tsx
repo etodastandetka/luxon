@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, memo } from 'react'
 import { throttle } from '../utils/debounce'
 
 type Bank = { code: string; name: string; emoji?: string; image?: string }
@@ -13,7 +13,7 @@ const BANKS: Bank[] = [
   { code: 'mbank', name: 'MBank', emoji: '📱', image: '/images/mbank.png' },
 ]
 
-export default function BankButtons({ onPick, selected, disabled, paymentUrl, allBankUrls, enabledBanks }: { 
+function BankButtons({ onPick, selected, disabled, paymentUrl, allBankUrls, enabledBanks }: { 
   onPick: (code: string) => void; 
   selected?: string; 
   disabled?: boolean;
@@ -194,3 +194,5 @@ export default function BankButtons({ onPick, selected, disabled, paymentUrl, al
     </div>
   )
 }
+
+export default memo(BankButtons)

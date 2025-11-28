@@ -120,10 +120,10 @@ export default function NotificationSystem() {
     // Загружаем последние операции
     loadRecentTransactions()
 
-    // Обновляем каждые 30 секунд
+    // Обновляем каждые 60 секунд (увеличено для лучшей производительности)
     const interval = setInterval(() => {
       loadRecentTransactions()
-    }, 30000)
+    }, 60000)
 
     // Слушаем события от Telegram WebApp
     const tg = getTelegramWebApp()

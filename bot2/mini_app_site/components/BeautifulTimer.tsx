@@ -1,26 +1,17 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 
 interface BeautifulTimerProps {
   timeLeft: number
   totalTime: number
 }
 
-export default function BeautifulTimer({ timeLeft, totalTime }: BeautifulTimerProps) {
-  const [seconds, setSeconds] = useState(timeLeft % 60)
-  const [minutes, setMinutes] = useState(Math.floor(timeLeft / 60))
-  const [isClient, setIsClient] = useState(false)
-
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
-  useEffect(() => {
-    if (isClient) {
-      setSeconds(timeLeft % 60)
-      setMinutes(Math.floor(timeLeft / 60))
-    }
-  }, [timeLeft, isClient])
+function BeautifulTimer({ timeLeft, totalTime }: BeautifulTimerProps) {
+  // Используем useMemo для вычисления минут и секунд
+  const { minutes, seconds } = useMemo(() => ({
+    minutes: Math.floor(timeLeft / 60),
+    seconds: timeLeft % 60
+  }), [timeLeft])
 
   return (
     <div className="App">
@@ -180,4 +171,5 @@ function Timer({ type, time }: { type: string, time: number }) {
   return <div className={type}>{displayTime}</div>
 }
 
+export default memo(BeautifulTimer)
 

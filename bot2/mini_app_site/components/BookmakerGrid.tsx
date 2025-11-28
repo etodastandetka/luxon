@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import Image from 'next/image'
 import { throttle } from '../utils/debounce'
 
@@ -14,7 +14,7 @@ const ALL_BOOKMAKERS: Item[] = [
   { key: '888starz', name: '888STARZ', emoji: '⭐', logo: '/images/888starz.jpg' },
 ]
 
-export default function BookmakerGrid({ 
+function BookmakerGrid({ 
   value, 
   onChange,
   disabledCasinos 
@@ -162,3 +162,5 @@ export default function BookmakerGrid({
     </>
   )
 }
+
+export default memo(BookmakerGrid)

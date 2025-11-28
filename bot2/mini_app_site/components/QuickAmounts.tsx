@@ -1,10 +1,12 @@
 "use client"
+import { memo, useCallback } from 'react'
+import { throttle } from '../utils/debounce'
 
 const QUICK_AMOUNTS_KGS = [100, 500, 1000, 2000, 5000, 10000]
 // Для крипты используем суммы в долларах (примерно эквивалентные сомам)
 const QUICK_AMOUNTS_USD = [1, 5, 10, 20, 50, 100]
 
-export default function QuickAmounts({ 
+function QuickAmounts({ 
   onPick, 
   selected, 
   currency = 'kgs' 
@@ -17,6 +19,15 @@ export default function QuickAmounts({
   const currencySymbol = currency === 'usd' ? '$' : ''
   const currencyText = currency === 'usd' ? 'долл.' : 'сом'
 
+  const handlePick = useCallback((amount: number) => {
+    onPick(amount.toString())
+  }, [onPick])
+
+  const throttledHandlePick = useCallback(
+    throttle(handlePick, 200),
+    [handlePick]
+  )
+
   return (
     <div className="space-y-2">
       <label className="label text-sm">Быстрый выбор</label>
@@ -26,12 +37,13 @@ export default function QuickAmounts({
           return (
             <button 
               key={amount} 
-              className={`btn transition-all duration-200 text-sm ${
+              className={`btn transition-transform duration-150 text-sm ${
                 isSelected
                   ? 'btn-primary' 
                   : 'btn-ghost hover:btn-primary'
               }`}
-              onClick={() => onPick(amount.toString())}
+              onClick={() => throttledHandlePick(amount)}
+              style={{ willChange: 'transform' }}
             >
               {currencySymbol}{amount.toLocaleString()} {currencyText}
             </button>
@@ -41,3 +53,5 @@ export default function QuickAmounts({
     </div>
   )
 }
+
+export default memo(QuickAmounts)
