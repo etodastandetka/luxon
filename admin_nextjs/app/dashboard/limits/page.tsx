@@ -624,7 +624,7 @@ export default function LimitsPage() {
       {/* Общая статистика */}
       <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
         <div className="text-base font-bold text-white mb-3">Общая статистика</div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-2 gap-3">
           <div className="bg-gray-900 bg-opacity-50 rounded-xl p-3 border border-gray-700">
             <div className="text-xs text-gray-400 mb-1">Всего пополнений</div>
             <div className="text-green-500 font-bold text-lg">
@@ -644,18 +644,6 @@ export default function LimitsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-gradient-to-r from-green-500/20 to-green-600/20 rounded-xl p-3 border border-green-500/30">
-          <div className="text-xs text-gray-400 mb-1">Сумма пополнений</div>
-          <div className="text-green-500 font-bold text-xl">
-            {stats.totalDepositsSum.toFixed(2)} с
-          </div>
-        </div>
-        <div className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 rounded-xl p-3 border border-yellow-500/30 mt-2">
-          <div className="text-xs text-gray-400 mb-1">Сумма выводов</div>
-          <div className="text-yellow-500 font-bold text-xl">
-            {stats.totalWithdrawalsSum.toFixed(2)} с
-          </div>
-        </div>
       </div>
 
       {/* Приблизительный доход */}
@@ -664,7 +652,11 @@ export default function LimitsPage() {
         <div className="text-green-500 font-bold text-2xl mb-1">
           {stats.approximateIncome.toFixed(2)} с
         </div>
-        <div className="text-xs text-gray-400">8% от пополнений + 2% от выводов</div>
+        <div className="text-xs text-gray-400">
+          {startDate && endDate 
+            ? `8% от пополнений + 2% от выводов (за период ${startDate} — ${endDate})`
+            : '8% от пополнений + 2% от выводов (за сегодня)'}
+        </div>
       </div>
 
       {/* График */}

@@ -31,7 +31,7 @@ export default function WithdrawStep2() {
       
       setQrPhoto(file)
       const reader = new (window as any).FileReader()
-      reader.onload = (e) => {
+      reader.onload = (e: ProgressEvent<FileReader>) => {
         const base64 = e.target?.result as string
         setPhotoPreview(base64)
         // Сохраняем base64 в localStorage сразу после загрузки
@@ -65,7 +65,7 @@ export default function WithdrawStep2() {
       
       // Если base64 еще не сохранен, читаем файл еще раз
       const reader = new (window as any).FileReader()
-      reader.onload = (e) => {
+      reader.onload = (e: ProgressEvent<FileReader>) => {
         const base64 = e.target?.result as string
         if (base64) {
           localStorage.setItem('withdraw_qr_photo', base64)

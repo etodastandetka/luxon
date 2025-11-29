@@ -12,27 +12,57 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('start')
     const endDate = searchParams.get('end')
 
-    const filters: any = {}
-    if (startDate) {
-      filters.createdAt = { ...filters.createdAt, gte: new Date(startDate) }
-    }
-    if (endDate) {
-      filters.createdAt = { ...filters.createdAt, lte: new Date(endDate) }
+    // По умолчанию показываем статистику за сегодня
+    // Если выбран период - показываем за период
+    let filters: any = {}
+    let dateFilterForStats: any = {}
+    
+    if (startDate && endDate) {
+      // Период выбран - используем его
+      filters.createdAt = { 
+        gte: new Date(startDate),
+        lte: new Date(endDate)
+      }
+      dateFilterForStats = {
+        createdAt: {
+          gte: new Date(startDate),
+          lte: new Date(endDate)
+        }
+      }
+    } else {
+      // Период не выбран - показываем за сегодня
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      
+      filters.createdAt = {
+        gte: today,
+        lt: tomorrow
+      }
+      dateFilterForStats = {
+        createdAt: {
+          gte: today,
+          lt: tomorrow
+        }
+      }
     }
 
     // Статистика пополнений и выводов параллельно
-    // ВАЖНО: Считаем только РЕАЛЬНО обработанные заявки через API казино
+    // Для пополнений: считаем только РЕАЛЬНО обработанные через API казино
     // - autodeposit_success: автоматически зачислено через API
     // - auto_completed: автоматически завершено
-    // НЕ считаем completed/approved, так как они могут быть поставлены вручную без реального зачисления
-    const realSuccessStatuses = ['autodeposit_success', 'auto_completed']
+    // Для выводов: считаем все успешные (completed, approved, autodeposit_success, auto_completed)
+    // так как выводы часто подтверждаются вручную админом
+    const depositSuccessStatuses = ['autodeposit_success', 'auto_completed']
+    const withdrawalSuccessStatuses = ['completed', 'approved', 'autodeposit_success', 'auto_completed']
     
     const [depositStats, withdrawalStats] = await Promise.all([
       prisma.request.aggregate({
         where: {
           requestType: 'deposit',
-          status: { in: realSuccessStatuses },
-          ...filters,
+          status: { in: depositSuccessStatuses },
+          ...dateFilterForStats,
         },
         _count: { id: true },
         _sum: { amount: true },
@@ -40,8 +70,8 @@ export async function GET(request: NextRequest) {
       prisma.request.aggregate({
         where: {
           requestType: 'withdraw',
-          status: { in: realSuccessStatuses },
-          ...filters,
+          status: { in: withdrawalSuccessStatuses },
+          ...dateFilterForStats,
         },
         _count: { id: true },
         _sum: { amount: true },
@@ -56,12 +86,13 @@ export async function GET(request: NextRequest) {
     // Приблизительный доход: 8% от пополнений + 2% от выводов
     const approximateIncome = totalDepositsSum * 0.08 + totalWithdrawalsSum * 0.02
 
-    // Данные для графика (последние 30 дней если период не указан)
+    // Данные для графика (последние 30 дней если период не указан, иначе за период)
     let chartStartDate = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     let chartEndDate = endDate ? new Date(endDate) : new Date()
-
+    
     // Группировка по датам для графика используя SQL (оптимизировано)
-    // Считаем только РЕАЛЬНО обработанные через API казино
+    // Для пополнений: считаем только РЕАЛЬНО обработанные через API казино
+    // Для выводов: считаем все успешные статусы
     const [depositsByDate, withdrawalsByDate] = await Promise.all([
       prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
         SELECT 
@@ -82,7 +113,7 @@ export async function GET(request: NextRequest) {
           COUNT(*)::bigint as count
         FROM requests
         WHERE request_type = 'withdraw'
-          AND status IN ('autodeposit_success', 'auto_completed')
+          AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
           AND created_at >= ${chartStartDate}::timestamp
           AND created_at <= ${chartEndDate}::timestamp
         GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
@@ -217,50 +248,137 @@ export async function GET(request: NextRequest) {
         ]
       }
       
-      // Используем Prisma с OR для поиска по нескольким вариантам
-      const depositWhere: any = {
-        requestType: 'deposit',
-        status: { in: realSuccessStatuses },
-        OR: searchPatterns.map(pattern => ({
-          bookmaker: { equals: pattern, mode: 'insensitive' }
-        })),
-        ...filters,
+      // Используем SQL для более надежного поиска по платформам
+      // Это позволяет находить платформы независимо от регистра и вариантов написания
+      // Например, "Melbet", "melbet", "MELBET" все будут найдены
+      
+      // Строим условия для дат
+      let depositDateCondition = ''
+      let withdrawalDateCondition = ''
+      const depositDateParams: any[] = []
+      const withdrawalDateParams: any[] = []
+      
+      if (dateFilterForStats.createdAt?.gte) {
+        depositDateCondition += ` AND created_at >= $${depositDateParams.length + 2}::timestamp`
+        depositDateParams.push(dateFilterForStats.createdAt.gte)
+        withdrawalDateCondition += ` AND created_at >= $${withdrawalDateParams.length + 2}::timestamp`
+        withdrawalDateParams.push(dateFilterForStats.createdAt.gte)
+      }
+      if (dateFilterForStats.createdAt?.lt) {
+        depositDateCondition += ` AND created_at < $${depositDateParams.length + 2}::timestamp`
+        depositDateParams.push(dateFilterForStats.createdAt.lt)
+        withdrawalDateCondition += ` AND created_at < $${withdrawalDateParams.length + 2}::timestamp`
+        withdrawalDateParams.push(dateFilterForStats.createdAt.lt)
+      } else if (dateFilterForStats.createdAt?.lte) {
+        depositDateCondition += ` AND created_at <= $${depositDateParams.length + 2}::timestamp`
+        depositDateParams.push(dateFilterForStats.createdAt.lte)
+        withdrawalDateCondition += ` AND created_at <= $${withdrawalDateParams.length + 2}::timestamp`
+        withdrawalDateParams.push(dateFilterForStats.createdAt.lte)
       }
       
-      const withdrawalWhere: any = {
-        requestType: 'withdraw',
-        status: { in: realSuccessStatuses },
-        OR: searchPatterns.map(pattern => ({
-          bookmaker: { equals: pattern, mode: 'insensitive' }
-        })),
-        ...filters,
-      }
-      
-      // Получаем статистику пополнений и выводов для этой платформы
-      const [depositStats, withdrawalStats] = await Promise.all([
-        prisma.request.aggregate({
-          where: depositWhere,
-          _count: { id: true },
-          _sum: { amount: true },
-        }),
-        prisma.request.aggregate({
-          where: withdrawalWhere,
-          _count: { id: true },
-          _sum: { amount: true },
-        }),
+      // Используем SQL для более точного поиска
+      const [depositStatsRaw, withdrawalStatsRaw] = await Promise.all([
+        prisma.$queryRawUnsafe<Array<{ count: bigint; sum: string | null }>>(
+          `SELECT 
+            COUNT(*)::bigint as count,
+            COALESCE(SUM(amount), 0)::text as sum
+          FROM requests
+          WHERE request_type = 'deposit'
+            AND status IN ('autodeposit_success', 'auto_completed')
+            AND LOWER(bookmaker) LIKE LOWER($1)
+            ${depositDateCondition}`,
+          `%${platformKey}%`,
+          ...depositDateParams
+        ),
+        prisma.$queryRawUnsafe<Array<{ count: bigint; sum: string | null }>>(
+          `SELECT 
+            COUNT(*)::bigint as count,
+            COALESCE(SUM(amount), 0)::text as sum
+          FROM requests
+          WHERE request_type = 'withdraw'
+            AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
+            AND LOWER(bookmaker) LIKE LOWER($1)
+            ${withdrawalDateCondition}`,
+          `%${platformKey}%`,
+          ...withdrawalDateParams
+        ),
       ])
+      
+      // Преобразуем результаты SQL
+      const depositsSum = parseFloat(depositStatsRaw[0]?.sum || '0')
+      const withdrawalsSum = parseFloat(withdrawalStatsRaw[0]?.sum || '0')
+      const depositsCount = Number(depositStatsRaw[0]?.count || 0)
+      const withdrawalsCount = Number(withdrawalStatsRaw[0]?.count || 0)
+      
+      console.log(`📊 Platform ${platform.name} (${platformKey}): deposits=${depositsSum} (${depositsCount}), withdrawals=${withdrawalsSum} (${withdrawalsCount})`)
+      
+      const depositStats = {
+        _count: { id: depositsCount },
+        _sum: { amount: depositsSum }
+      }
+      
+      const withdrawalStats = {
+        _count: { id: withdrawalsCount },
+        _sum: { amount: withdrawalsSum }
+      }
       
       return {
         key: platform.key,
         name: platform.name,
-        depositsSum: parseFloat(depositStats._sum.amount?.toString() || '0'),
-        depositsCount: depositStats._count.id || 0,
-        withdrawalsSum: parseFloat(withdrawalStats._sum.amount?.toString() || '0'),
-        withdrawalsCount: withdrawalStats._count.id || 0,
+        depositsSum: depositsSum,
+        depositsCount: depositsCount,
+        withdrawalsSum: withdrawalsSum,
+        withdrawalsCount: withdrawalsCount,
       }
     })
     
     const platformStats = await Promise.all(platformStatsPromises)
+    
+    // Дополнительная проверка: ищем выводы без фильтра по платформе для отладки
+    const allWithdrawalsCheck = await prisma.request.findMany({
+      where: {
+        requestType: 'withdraw',
+        status: { in: withdrawalSuccessStatuses },
+        ...dateFilterForStats,
+      },
+      select: {
+        id: true,
+        bookmaker: true,
+        status: true,
+        amount: true,
+        createdAt: true,
+      },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+    })
+    
+    console.log(`🔍 Debug: Found ${allWithdrawalsCheck.length} withdrawals with statuses:`, 
+      allWithdrawalsCheck.map(w => ({ 
+        id: w.id,
+        bookmaker: w.bookmaker, 
+        status: w.status, 
+        amount: w.amount?.toString(),
+        date: w.createdAt.toISOString().split('T')[0]
+      }))
+    )
+    
+    // Проверяем общий подсчет выводов
+    const totalWithdrawalsCheck = await prisma.request.aggregate({
+      where: {
+        requestType: 'withdraw',
+        status: { in: withdrawalSuccessStatuses },
+        ...dateFilterForStats,
+      },
+      _count: { id: true },
+      _sum: { amount: true },
+    })
+    
+    console.log(`🔍 Debug: Total withdrawals aggregate:`, {
+      count: totalWithdrawalsCheck._count.id,
+      sum: totalWithdrawalsCheck._sum.amount?.toString(),
+      calculatedCount: totalWithdrawalsCount,
+      calculatedSum: totalWithdrawalsSum,
+    })
 
     return NextResponse.json(
       createApiResponse({
