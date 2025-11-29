@@ -19,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Токен бота
-BOT_TOKEN = "8372920134:AAG9VbvRvu-7Ikug_fwMtc-5OzxmevKTfSw"
+BOT_TOKEN = "7927891546:AAHyroAGoOIV6qKFAnZur13i8gvw2hMnJ-4"
 
 # URL сайта
 WEBSITE_URL = "https://luxservice.online"
@@ -546,7 +546,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """Главная функция"""
     # Проверяем, что используется правильный токен
-    expected_token_start = "8372920134"  # Начало токена основного бота
+    expected_token_start = "7927891546"  # Начало токена основного бота
     if not BOT_TOKEN.startswith(expected_token_start):
         logger.error(f"❌ ОШИБКА: Используется неправильный токен! Ожидается токен начинающийся с {expected_token_start}, получен: {BOT_TOKEN[:10]}...")
         print(f"❌ КРИТИЧЕСКАЯ ОШИБКА: Неправильный токен бота!")

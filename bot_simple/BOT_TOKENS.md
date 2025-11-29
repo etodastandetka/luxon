@@ -2,9 +2,9 @@
 
 ## Основной бот (luxon-bot / bot_simple)
 - **Файл**: `bot_simple/bot.py`
-- **Токен**: `8372920134:AAG9VbvRvu-7Ikug_fwMtc-5OzxmevKTfSw`
+- **Токен**: `7927891546:AAHyroAGoOIV6qKFAnZur13i8gvw2hMnJ-4`
 - **PM2 процесс**: `bot_simple` или `luxon-bot`
-- **Проверка**: Токен должен начинаться с `8372920134`
+- **Проверка**: Токен должен начинаться с `7927891546`
 
 ## Бот 1xbet
 - **Файл**: `bot_1xbet/bot.py`
