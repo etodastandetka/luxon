@@ -222,6 +222,14 @@ export async function PATCH(
       )
     }
 
+    // ЗАЩИТА: Выводы могут быть отклонены ТОЛЬКО администратором через админку
+    // Запрещаем автоматическую отмену выводов
+    if (body.status === 'rejected' && requestBeforeUpdate.requestType === 'withdraw') {
+      // Проверяем, что это запрос от авторизованного администратора (requireAuth уже проверил)
+      // Дополнительная проверка: отклонение выводов разрешено только через админку
+      console.log(`[Request ${id}] Withdrawal rejection by admin: ${authUser.username}`)
+    }
+
     if (body.status && ['completed', 'rejected', 'approved'].includes(body.status)) {
       updateData.processedAt = new Date()
       // Сохраняем логин админа, который закрыл заявку

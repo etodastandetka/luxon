@@ -67,11 +67,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
       </head>
-      <body style={{ position: 'relative' }}>
+      <body style={{ position: 'relative', margin: 0, padding: 0, minHeight: '100vh' }}>
         <LanguageProvider>
           <TelegramInit />
           <BlockedChecker>
-            <div className="container py-4">
+            <div className="container" style={{ paddingTop: '1rem', paddingBottom: '1rem', minHeight: '100vh' }}>
               {children}
             </div>
           </BlockedChecker>

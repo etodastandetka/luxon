@@ -19,29 +19,8 @@ export default function WithdrawConfirm() {
   const router = useRouter()
 
   useEffect(() => {
-    // Загружаем данные из localStorage
-    const savedBookmaker = localStorage.getItem('withdraw_bookmaker') || ''
-    const savedBank = localStorage.getItem('withdraw_bank') || ''
-    const savedQrPhoto = localStorage.getItem('withdraw_qr_photo') || ''
-    const savedPhone = localStorage.getItem('withdraw_phone') || ''
-    const savedUserId = localStorage.getItem('withdraw_user_id') || ''
-    const savedSiteCode = localStorage.getItem('withdraw_site_code') || ''
-    const savedAmount = localStorage.getItem('withdraw_amount')
-    
-    setBookmaker(savedBookmaker)
-    setBank(savedBank)
-    setQrPhoto(savedQrPhoto)
-    setPhone(savedPhone)
-    setUserId(savedUserId)
-    setSiteCode(savedSiteCode)
-    if (savedAmount) {
-      setWithdrawAmount(parseFloat(savedAmount))
-    }
-    
-    // Проверяем, что все данные есть
-    if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone || !savedUserId || !savedSiteCode || !savedAmount) {
-      router.push('/withdraw/step0')
-    }
+    // Перенаправляем на step5, так как страница подтверждения больше не используется
+    router.push('/withdraw/step5')
   }, [router])
 
 

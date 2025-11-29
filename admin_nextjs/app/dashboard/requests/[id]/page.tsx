@@ -1197,7 +1197,16 @@ export default function RequestDetailPage() {
             <span>Подтвердить</span>
           </button>
           <button
-            onClick={() => updateRequestStatus('rejected')}
+            onClick={() => {
+              // Для выводов показываем дополнительное предупреждение
+              if (request.requestType === 'withdraw') {
+                if (!confirm(`⚠️ ВНИМАНИЕ!\n\nВы уверены, что хотите ОТКЛОНИТЬ вывод на ${request.amount ? parseFloat(request.amount.toString()).toFixed(2).replace('.', ',') : '0,00'} сом?\n\nЭто действие может быть выполнено только администратором и не может быть отменено автоматически.`)) {
+                  return
+                }
+              }
+              setPendingStatus('rejected')
+              setShowConfirmModal(true)
+            }}
             className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1212,17 +1221,46 @@ export default function RequestDetailPage() {
       {showConfirmModal && request && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowConfirmModal(false)}>
           <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-700" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold text-white mb-4">Подтвердить операцию</h3>
+            <h3 className="text-xl font-bold text-white mb-4">
+              {pendingStatus === 'rejected' ? '⚠️ Отклонить заявку' : 'Подтвердить операцию'}
+            </h3>
             <p className="text-gray-300 mb-6">
-              Вы уверены, что хотите{' '}
-              <span className="text-green-400 font-semibold">
-                {request.requestType === 'deposit' ? 'принять' : 'принять'}
-              </span>{' '}
-              заявку на {request.requestType === 'deposit' ? 'пополнение' : 'вывод'}{' '}
-              <span className="font-semibold text-white">
-                {request.amount ? parseFloat(request.amount.toString()).toFixed(2).replace('.', ',') : '0,00'} сом
-              </span>{' '}
-              для {userName}?
+              {pendingStatus === 'rejected' && request.requestType === 'withdraw' ? (
+                <>
+                  <span className="text-red-400 font-semibold block mb-2">⚠️ ВНИМАНИЕ: Отклонение вывода</span>
+                  Вы уверены, что хотите <span className="text-red-400 font-semibold">отклонить</span> заявку на{' '}
+                  <span className="font-semibold text-white">вывод</span>{' '}
+                  <span className="font-semibold text-white">
+                    {request.amount ? parseFloat(request.amount.toString()).toFixed(2).replace('.', ',') : '0,00'} сом
+                  </span>{' '}
+                  для {userName}?
+                  <br /><br />
+                  <span className="text-yellow-400 text-sm">
+                    ⚠️ Это действие может быть выполнено только администратором и не может быть отменено автоматически.
+                  </span>
+                </>
+              ) : pendingStatus === 'rejected' ? (
+                <>
+                  Вы уверены, что хотите <span className="text-red-400 font-semibold">отклонить</span> заявку на{' '}
+                  {request.requestType === 'deposit' ? 'пополнение' : 'вывод'}{' '}
+                  <span className="font-semibold text-white">
+                    {request.amount ? parseFloat(request.amount.toString()).toFixed(2).replace('.', ',') : '0,00'} сом
+                  </span>{' '}
+                  для {userName}?
+                </>
+              ) : (
+                <>
+                  Вы уверены, что хотите{' '}
+                  <span className="text-green-400 font-semibold">
+                    {request.requestType === 'deposit' ? 'принять' : 'принять'}
+                  </span>{' '}
+                  заявку на {request.requestType === 'deposit' ? 'пополнение' : 'вывод'}{' '}
+                  <span className="font-semibold text-white">
+                    {request.amount ? parseFloat(request.amount.toString()).toFixed(2).replace('.', ',') : '0,00'} сом
+                  </span>{' '}
+                  для {userName}?
+                </>
+              )}
             </p>
             <div className="flex flex-col space-y-3">
               <button
@@ -1233,9 +1271,13 @@ export default function RequestDetailPage() {
                     setPendingStatus(null)
                   }
                 }}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
+                className={`w-full font-semibold py-3 px-4 rounded-xl transition-colors ${
+                  pendingStatus === 'rejected' 
+                    ? 'bg-red-500 hover:bg-red-600 text-white' 
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                }`}
               >
-                Да, принять
+                {pendingStatus === 'rejected' ? 'Да, отклонить' : 'Да, принять'}
               </button>
               <button
                 onClick={() => {

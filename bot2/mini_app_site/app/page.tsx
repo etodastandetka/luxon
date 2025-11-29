@@ -168,7 +168,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6" style={{ paddingTop: '0.5rem', paddingBottom: '2rem' }}>
       <FixedHeaderControls />
       {/* Анимированный заголовок */}
       <AnimatedHeader />

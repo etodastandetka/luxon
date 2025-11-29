@@ -469,6 +469,33 @@ export async function PUT(request: NextRequest) {
       return response
     }
 
+    // ЗАЩИТА: Проверяем, что это не попытка автоматически отменить вывод
+    const existingRequest = await prisma.request.findUnique({
+      where: { id: parseInt(id) },
+      select: { requestType: true, status: true }
+    })
+
+    if (!existingRequest) {
+      const response = NextResponse.json(
+        createApiResponse(null, 'Request not found'),
+        { status: 404 }
+      )
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
+    }
+
+    // ЗАЩИТА: Выводы НЕ МОГУТ быть отклонены через этот endpoint
+    // Отклонение выводов возможно ТОЛЬКО через админку администратором
+    if (status === 'rejected' && existingRequest.requestType === 'withdraw') {
+      console.log(`[Payment API] ❌ Attempt to reject withdrawal ${id} via PUT /api/payment - BLOCKED`)
+      const response = NextResponse.json(
+        createApiResponse(null, 'Withdrawals cannot be rejected automatically. Only admin can reject via admin panel.'),
+        { status: 403 }
+      )
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
+    }
+
     const updateData: any = {
       status,
     }

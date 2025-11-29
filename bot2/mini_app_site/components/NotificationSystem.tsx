@@ -196,13 +196,20 @@ export default function NotificationSystem() {
     <>
       {/* Контейнер для языкового селектора и уведомлений */}
       <div 
-        className="fixed-header-controls flex items-center gap-2 pointer-events-none"
+        className="fixed-header-controls"
         style={{ 
-          willChange: 'transform'
+          position: 'fixed',
+          top: '1rem',
+          right: '1rem',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          pointerEvents: 'none'
         }}
       >
         {/* Языковой селектор */}
-        <div style={{ zIndex: 99999, pointerEvents: 'auto' }}>
+        <div style={{ pointerEvents: 'auto' }}>
           <LanguageSelector 
             onOpenChange={(isOpen) => {
               setLanguageSelectorOpen(isOpen)
@@ -227,7 +234,7 @@ export default function NotificationSystem() {
             }
           }}
           className="bg-black/20 backdrop-blur border border-white/20 rounded-full hover:bg-black/30 transition-all relative flex-shrink-0 pointer-events-auto"
-          style={{ zIndex: 99999, width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}
+          style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}
         >
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -245,14 +252,23 @@ export default function NotificationSystem() {
         <>
           {/* Overlay для закрытия при клике вне */}
           <div 
-            className="fixed inset-0" 
-            style={{ zIndex: 99998 }}
+            style={{ 
+              position: 'fixed',
+              inset: 0,
+              zIndex: 99998,
+              backgroundColor: 'transparent'
+            }}
             onClick={() => setIsVisible(false)}
           />
           <div 
-            className="fixed-notification-list bg-black/20 backdrop-blur border border-white/20 rounded-xl p-2.5 w-68 max-h-72 overflow-y-auto shadow-2xl"
+            className="bg-black/20 backdrop-blur border border-white/20 rounded-xl p-2.5 max-h-72 overflow-y-auto shadow-2xl"
             style={{ 
+              position: 'fixed',
+              top: '3.5rem',
+              right: '1rem',
               width: '280px',
+              maxWidth: 'calc(100vw - 2rem)',
+              zIndex: 99999,
               willChange: 'transform'
             }}
             onClick={(e) => e.stopPropagation()}
