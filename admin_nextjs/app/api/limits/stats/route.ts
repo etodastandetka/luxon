@@ -186,9 +186,86 @@ export async function GET(request: NextRequest) {
     
     console.log(`✅ Platform limits received:`, platformLimits.map(p => `${p.name}=${p.limit}`).join(', '))
 
+    // Получаем статистику по каждой платформе отдельно
+    const platformStatsPromises = platformLimits.map(async (platform) => {
+      const platformKey = platform.key.toLowerCase()
+      const platformName = platform.name.toLowerCase()
+      
+      // Нормализуем название платформы для поиска в БД
+      // В БД могут быть разные варианты написания: "1xbet", "1XBet", "1xBet" и т.д.
+      // Используем case-insensitive поиск через SQL для большей гибкости
+      let searchPatterns: string[] = []
+      if (platformKey === '1xbet' || platformKey.includes('xbet')) {
+        searchPatterns = ['1xbet', '1XBet', '1xBet', '1XBET', 'xbet', 'XBet']
+      } else if (platformKey === '1win' || platformKey.includes('1win')) {
+        searchPatterns = ['1win', '1Win', '1WIN', 'onewin', 'OneWin']
+      } else if (platformKey === 'melbet' || platformName.includes('melbet')) {
+        searchPatterns = ['melbet', 'Melbet', 'MELBET']
+      } else if (platformKey === 'mostbet' || platformName.includes('mostbet')) {
+        searchPatterns = ['mostbet', 'Mostbet', 'MOSTBET']
+      } else if (platformKey === 'winwin' || platformName.includes('winwin')) {
+        searchPatterns = ['winwin', 'WinWin', 'WINWIN', 'win win']
+      } else if (platformKey === '888starz' || platformName.includes('888')) {
+        searchPatterns = ['888starz', '888Starz', '888STARZ', '888 starz']
+      } else {
+        // Для остальных используем варианты написания
+        searchPatterns = [
+          platformKey,
+          platformKey.charAt(0).toUpperCase() + platformKey.slice(1),
+          platformKey.toUpperCase(),
+          platform.name,
+        ]
+      }
+      
+      // Используем Prisma с OR для поиска по нескольким вариантам
+      const depositWhere: any = {
+        requestType: 'deposit',
+        status: { in: realSuccessStatuses },
+        OR: searchPatterns.map(pattern => ({
+          bookmaker: { equals: pattern, mode: 'insensitive' }
+        })),
+        ...filters,
+      }
+      
+      const withdrawalWhere: any = {
+        requestType: 'withdraw',
+        status: { in: realSuccessStatuses },
+        OR: searchPatterns.map(pattern => ({
+          bookmaker: { equals: pattern, mode: 'insensitive' }
+        })),
+        ...filters,
+      }
+      
+      // Получаем статистику пополнений и выводов для этой платформы
+      const [depositStats, withdrawalStats] = await Promise.all([
+        prisma.request.aggregate({
+          where: depositWhere,
+          _count: { id: true },
+          _sum: { amount: true },
+        }),
+        prisma.request.aggregate({
+          where: withdrawalWhere,
+          _count: { id: true },
+          _sum: { amount: true },
+        }),
+      ])
+      
+      return {
+        key: platform.key,
+        name: platform.name,
+        depositsSum: parseFloat(depositStats._sum.amount?.toString() || '0'),
+        depositsCount: depositStats._count.id || 0,
+        withdrawalsSum: parseFloat(withdrawalStats._sum.amount?.toString() || '0'),
+        withdrawalsCount: withdrawalStats._count.id || 0,
+      }
+    })
+    
+    const platformStats = await Promise.all(platformStatsPromises)
+
     return NextResponse.json(
       createApiResponse({
         platformLimits,
+        platformStats,
         totalDepositsCount,
         totalDepositsSum,
         totalWithdrawalsCount,

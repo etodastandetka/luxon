@@ -19,6 +19,7 @@ export default function WithdrawStep5() {
   const [userId, setUserId] = useState('')
   const [qrPhoto, setQrPhoto] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [autoSubmitAttempted, setAutoSubmitAttempted] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -102,6 +103,8 @@ export default function WithdrawStep5() {
     
     // Выполняем вывод только если код полный (минимум 4 символа для большинства кодов)
     if (siteCode.trim().length >= 4 && bookmaker && userId) {
+      // Сбрасываем флаг автоматической отправки при изменении кода
+      setAutoSubmitAttempted(false)
       // Задержка для debounce - ждем пока пользователь закончит ввод
       const timer = setTimeout(() => {
         processWithdraw(bookmaker, userId)
@@ -111,6 +114,7 @@ export default function WithdrawStep5() {
     } else {
       setWithdrawAmount(null)
       setError(null)
+      setAutoSubmitAttempted(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteCode])
@@ -280,6 +284,37 @@ export default function WithdrawStep5() {
               localStorage.setItem('withdraw_amount', amountStr)
             }
           }, 50)
+
+          // АВТОМАТИЧЕСКАЯ ОТПРАВКА ЗАЯВКИ после успешной проверки кода
+          // Ждем немного, чтобы состояние обновилось, затем автоматически отправляем заявку
+          if (!autoSubmitAttempted) {
+            setAutoSubmitAttempted(true)
+            console.log('[Withdraw Step5] 🚀 Автоматическая отправка заявки через 1 секунду...')
+            setTimeout(async () => {
+              // Проверяем, что все данные есть
+              const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
+              const savedBank = localStorage.getItem('withdraw_bank')
+              const savedQrPhoto = localStorage.getItem('withdraw_qr_photo')
+              const savedPhone = localStorage.getItem('withdraw_phone')
+              const savedUserId = localStorage.getItem('withdraw_user_id')
+              
+              if (savedBookmaker && savedBank && savedQrPhoto && savedPhone && savedUserId && amount > 0) {
+                console.log('[Withdraw Step5] 🚀 Все данные готовы, автоматически отправляем заявку...')
+                // Вызываем handleSubmit автоматически
+                await handleSubmitAuto(amount)
+              } else {
+                console.log('[Withdraw Step5] ⚠️ Не все данные готовы для автоматической отправки:', {
+                  bookmaker: !!savedBookmaker,
+                  bank: !!savedBank,
+                  qrPhoto: !!savedQrPhoto,
+                  phone: !!savedPhone,
+                  userId: !!savedUserId,
+                  amount: amount > 0
+                })
+                setAutoSubmitAttempted(false) // Разрешаем попробовать еще раз
+              }
+            }, 1000) // Задержка 1 секунда для обновления состояния
+          }
         } else {
           // Если success: true, но нет amount, проверяем message
           console.error('[Withdraw Step5] ❌ Amount validation failed:', {
@@ -330,6 +365,286 @@ export default function WithdrawStep5() {
       setError(errorMessage)
     } finally {
       setChecking(false)
+    }
+  }
+
+  // Автоматическая отправка заявки после успешной проверки кода
+  const handleSubmitAuto = async (amount: number) => {
+    // Защита от повторных отправок
+    if (isSubmitting) {
+      console.log('[Withdraw Step5] ⚠️ Запрос уже отправляется, игнорируем автоматическую отправку')
+      return
+    }
+
+    console.log('[Withdraw Step5] 🚀 Автоматическая отправка заявки...')
+    setIsSubmitting(true)
+    
+    try {
+      const base = getApiBase()
+      const savedBookmaker = localStorage.getItem('withdraw_bookmaker') || bookmaker
+      const savedBank = localStorage.getItem('withdraw_bank') || bank
+      const savedQrPhoto = localStorage.getItem('withdraw_qr_photo') || qrPhoto
+      const savedPhone = localStorage.getItem('withdraw_phone') || phone
+      const savedUserId = localStorage.getItem('withdraw_user_id') || userId
+      const savedSiteCode = localStorage.getItem('withdraw_site_code') || siteCode.trim()
+
+      // Для 1xbet сначала выполняем вывод (mobile.withdrawal)
+      const normalizedBookmaker = savedBookmaker.toLowerCase()
+      if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
+        console.log('🔄 Выполняем вывод для 1xbet перед созданием заявки...')
+        
+        const withdrawResponse = await safeFetch(`${base}/api/withdraw-execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            bookmaker: savedBookmaker,
+            playerId: savedUserId,
+            code: savedSiteCode,
+            amount: amount,
+          }),
+          timeout: 30000,
+          retries: 2,
+          retryDelay: 1000
+        })
+
+        if (!withdrawResponse.ok) {
+          const errorText = await withdrawResponse.text()
+          let errorData: any = null
+          try {
+            if (errorText) {
+              errorData = JSON.parse(errorText)
+            }
+          } catch (e) {
+            // Не JSON
+          }
+          
+          const errorMsg = errorData?.error || errorData?.message || `Ошибка выполнения вывода: ${withdrawResponse.status}`
+          throw new Error(errorMsg)
+        }
+
+        const withdrawData = await withdrawResponse.json()
+        if (!withdrawData.success) {
+          alert(`Ошибка выполнения вывода: ${withdrawData.message || withdrawData.error || 'Неизвестная ошибка'}`)
+          setIsSubmitting(false)
+          setAutoSubmitAttempted(false)
+          return
+        }
+
+        console.log('✅ Вывод выполнен успешно:', withdrawData)
+      }
+      
+      // Получаем данные пользователя Telegram
+      const tg = (window as any).Telegram?.WebApp
+      let telegramUser = null
+      
+      if (tg?.initDataUnsafe?.user) {
+        telegramUser = tg.initDataUnsafe.user
+      } else if (tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          if (userParam) {
+            telegramUser = JSON.parse(decodeURIComponent(userParam))
+          }
+        } catch (e) {
+          console.log('❌ Error parsing initData:', e)
+        }
+      }
+
+      // Получаем Telegram ID пользователя
+      let telegramUserId: string | null = null
+      
+      if (tg?.initDataUnsafe?.user?.id) {
+        telegramUserId = String(tg.initDataUnsafe.user.id)
+      } else if (tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData)
+          const userParam = params.get('user')
+          if (userParam) {
+            const userData = JSON.parse(decodeURIComponent(userParam))
+            telegramUserId = String(userData.id)
+          }
+        } catch (e) {
+          console.error('Error parsing initData for telegram_user_id:', e)
+        }
+      }
+      
+      if (!telegramUserId && telegramUser?.id) {
+        telegramUserId = String(telegramUser.id)
+      }
+
+      if (!telegramUserId) {
+        console.error('❌ Telegram user ID not found!')
+        alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+        setIsSubmitting(false)
+        setAutoSubmitAttempted(false)
+        return
+      }
+
+      // Проверяем, не заблокирован ли пользователь
+      const isBlocked = await checkUserBlocked(telegramUserId)
+      if (isBlocked) {
+        console.error('❌ Пользователь заблокирован!')
+        alert('Ваш аккаунт заблокирован. Вы не можете создавать заявки на вывод.')
+        window.location.href = '/blocked'
+        setIsSubmitting(false)
+        setAutoSubmitAttempted(false)
+        return
+      }
+
+      // Создаем заявку в админке
+      console.log('📤 Автоматически создаем заявку в админке...')
+      
+      const cleanPhone = savedPhone.replace(/[^\d]/g, '')
+      
+      const requestBody = {
+        type: 'withdraw',
+        bookmaker: savedBookmaker,
+        userId: telegramUserId,
+        phone: cleanPhone,
+        amount: amount,
+        bank: savedBank,
+        account_id: savedUserId,
+        playerId: savedUserId,
+        qr_photo: savedQrPhoto,
+        site_code: savedSiteCode,
+        telegram_user_id: telegramUserId,
+        telegram_username: telegramUser?.username,
+        telegram_first_name: telegramUser?.first_name,
+        telegram_last_name: telegramUser?.last_name,
+        telegram_language_code: telegramUser?.language_code
+      }
+      
+      console.log('[Withdraw Step5] 📤 Автоматическое создание заявки с данными:', {
+        ...requestBody,
+        qr_photo: savedQrPhoto ? `[base64, ${savedQrPhoto.length} chars]` : null,
+        apiUrl: `${base}/api/payment`
+      })
+      
+      const response = await safeFetch(`${base}/api/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        timeout: 30000,
+        retries: 2,
+        retryDelay: 1000
+      })
+      
+      let responseText = ''
+      try {
+        responseText = await response.text()
+      } catch (e) {
+        console.error('❌ Ошибка чтения ответа:', e)
+        throw new Error(`Ошибка чтения ответа сервера: ${response.status} ${response.statusText}`)
+      }
+      
+      if (!response.ok) {
+        let errorData: any = null
+        try {
+          if (responseText) {
+            errorData = JSON.parse(responseText)
+          }
+        } catch (e) {
+          // Не JSON
+        }
+        
+        let errorMessage = `Ошибка создания заявки (${response.status})`
+        if (errorData) {
+          if (errorData.error) {
+            errorMessage = errorData.error
+          } else if (errorData.message) {
+            errorMessage = errorData.message
+          } else if (errorData.data?.error) {
+            errorMessage = errorData.data.error
+          } else if (errorData.data?.message) {
+            errorMessage = errorData.data.message
+          }
+        } else if (responseText && responseText.length < 200 && !responseText.includes('<html')) {
+          errorMessage = responseText
+        }
+        
+        throw new Error(errorMessage)
+      }
+      
+      let result: any
+      try {
+        if (!responseText) {
+          throw new Error('Пустой ответ от сервера')
+        }
+        result = JSON.parse(responseText)
+      } catch (parseError: any) {
+        console.error('❌ Ошибка парсинга ответа:', parseError)
+        throw new Error('Не удалось обработать ответ сервера. Попробуйте еще раз.')
+      }
+      
+      if (result.success !== false) {
+        console.log('✅ Заявка на вывод создана успешно автоматически:', result)
+        
+        const getBankName = (bankCode: string) => {
+          const bankNames: Record<string, string> = {
+            'kompanion': 'Компаньон',
+            'demirbank': 'DemirBank',
+            'odengi': 'O!Money',
+            'omoney': 'O!Money',
+            'balance': 'Balance.kg',
+            'bakai': 'Bakai',
+            'megapay': 'MegaPay',
+            'mbank': 'MBank'
+          }
+          return bankNames[bankCode] || bankCode
+        }
+        
+        const message = `✅ Заявка на вывод создана автоматически!\n\n🏦 Банк: ${getBankName(savedBank)}\n📱 Телефон: +${cleanPhone}\n🆔 ID: ${savedUserId}\n🔑 Код: ${savedSiteCode}\n💰 Сумма: ${amount} сом\n🆔 ID заявки: #${result.id || result.data?.id}\n\n⏳ Ожидайте обработки заявки администратором.`
+        
+        alert(message)
+        
+        // Очищаем данные
+        localStorage.removeItem('withdraw_bookmaker')
+        localStorage.removeItem('withdraw_bank')
+        localStorage.removeItem('withdraw_qr_photo')
+        localStorage.removeItem('withdraw_phone')
+        localStorage.removeItem('withdraw_user_id')
+        localStorage.removeItem('withdraw_site_code')
+        localStorage.removeItem('withdraw_amount')
+        localStorage.removeItem('withdraw_request_created')
+        
+        // Перенаправляем на главную через 2 секунды
+        setTimeout(() => {
+          router.push('/')
+        }, 2000)
+      } else {
+        console.error('❌ API Error:', result)
+        throw new Error(`Failed to create withdraw request: ${result.error || 'Unknown error'}`)
+      }
+    } catch (error: any) {
+      console.error('❌ Error creating withdraw request automatically:', {
+        error,
+        message: error?.message,
+        name: error?.name,
+      })
+      
+      let errorMessage = 'Ошибка при автоматическом создании заявки. Попробуйте отправить вручную.'
+      const errorMsg = String(error?.message || '')
+      const errorName = error?.name || ''
+      
+      if (error?.status || errorMsg.includes('HTTP') || errorMsg.includes('Status:') || errorMsg.includes('Ошибка создания заявки') || errorMsg.includes('Ошибка выполнения вывода')) {
+        errorMessage = errorMsg || 'Ошибка сервера. Попробуйте отправить вручную.'
+      } else if (errorName === 'AbortError' || errorMsg.includes('Таймаут') || errorMsg.includes('timeout')) {
+        errorMessage = 'Превышено время ожидания. Попробуйте отправить вручную.'
+      } else if (errorName === 'TypeError' && errorMsg.includes('Failed to fetch') && !errorMsg.includes('HTTP') && !errorMsg.includes('Status:') && !errorMsg.includes('Ошибка')) {
+        errorMessage = 'Нет подключения к интернету. Попробуйте отправить вручную.'
+      } else if (errorMsg && !errorMsg.includes('Нет подключения к интернету')) {
+        errorMessage = errorMsg
+      }
+      
+      alert(`Ошибка: ${errorMessage}`)
+      setAutoSubmitAttempted(false) // Разрешаем попробовать еще раз вручную
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -793,6 +1108,16 @@ export default function WithdrawStep5() {
                         </span>
                       </div>
                     </div>
+                    {isSubmitting && (
+                      <div className="pt-2 border-t border-green-500/30 mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400"></div>
+                          <p className="text-xs text-green-200">
+                            🚀 Автоматически отправляем заявку...
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Отображение всех данных */}

@@ -486,9 +486,15 @@ export default function DepositStep4() {
       // Если base64 не сохранен, но есть файл - читаем его (fallback)
       let finalReceiptPhotoBase64: string | null = currentReceiptPhotoBase64
       if (!finalReceiptPhotoBase64 && receiptPhoto) {
+        // Проверяем доступность FileReader
+        if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
+          console.error('❌ FileReader недоступен в этом окружении')
+          throw new Error('FileReader недоступен. Пожалуйста, используйте другой браузер или обновите страницу.')
+        }
+        
         console.warn('⚠️ Base64 не сохранен, читаем файл заново (fallback)')
         finalReceiptPhotoBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
+          const reader = new (window as any).FileReader()
           reader.onloadend = async () => {
             const base64String = reader.result as string
             const originalSizeKB = (base64String.length * 3) / 4 / 1024
@@ -505,7 +511,7 @@ export default function DepositStep4() {
               resolve(base64String) // Возвращаем оригинал если сжатие не удалось
             }
           }
-          reader.onerror = (error) => {
+          reader.onerror = (error: ProgressEvent<FileReader>) => {
             console.error('❌ Ошибка при чтении фото:', error)
             reject(error)
           }
@@ -1014,7 +1020,14 @@ export default function DepositStep4() {
       setReceiptPhoto(file)
       
       // Создаем превью и сохраняем base64 сразу
-      const reader = new FileReader()
+      // Проверяем доступность FileReader
+      if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
+        console.error('❌ FileReader недоступен в этом окружении')
+        alert('Ошибка: FileReader недоступен. Пожалуйста, используйте другой браузер или обновите страницу.')
+        return
+      }
+      
+      const reader = new (window as any).FileReader()
       reader.onloadend = async () => {
         const base64String = reader.result as string
         const originalSizeKB = (base64String.length * 3) / 4 / 1024
@@ -1042,7 +1055,7 @@ export default function DepositStep4() {
           setReceiptPhotoBase64(base64String)
         }
       }
-      reader.onerror = (error) => {
+      reader.onerror = (error: ProgressEvent<FileReader>) => {
         console.error('❌ Ошибка при чтении фото:', error)
         setReceiptPhoto(null)
         setReceiptPhotoPreview(null)

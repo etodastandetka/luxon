@@ -22,8 +22,15 @@ export default function WithdrawStep2() {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Проверяем доступность FileReader
+      if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
+        console.error('❌ FileReader недоступен в этом окружении')
+        alert('Ошибка: FileReader недоступен. Пожалуйста, используйте другой браузер или обновите страницу.')
+        return
+      }
+      
       setQrPhoto(file)
-      const reader = new FileReader()
+      const reader = new (window as any).FileReader()
       reader.onload = (e) => {
         const base64 = e.target?.result as string
         setPhotoPreview(base64)
@@ -31,6 +38,10 @@ export default function WithdrawStep2() {
         if (base64) {
           localStorage.setItem('withdraw_qr_photo', base64)
         }
+      }
+      reader.onerror = (error: ProgressEvent<FileReader>) => {
+        console.error('❌ Ошибка при чтении файла:', error)
+        alert('Ошибка при загрузке фото. Попробуйте еще раз.')
       }
       reader.readAsDataURL(file)
     }
@@ -45,8 +56,15 @@ export default function WithdrawStep2() {
     // Проверяем, что base64 уже сохранен в localStorage
     const savedPhoto = localStorage.getItem('withdraw_qr_photo')
     if (!savedPhoto || savedPhoto === 'uploaded') {
+      // Проверяем доступность FileReader
+      if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
+        console.error('❌ FileReader недоступен в этом окружении')
+        alert('Ошибка: FileReader недоступен. Пожалуйста, используйте другой браузер или обновите страницу.')
+        return
+      }
+      
       // Если base64 еще не сохранен, читаем файл еще раз
-      const reader = new FileReader()
+      const reader = new (window as any).FileReader()
       reader.onload = (e) => {
         const base64 = e.target?.result as string
         if (base64) {
@@ -55,6 +73,10 @@ export default function WithdrawStep2() {
         } else {
           alert('Ошибка при загрузке фото. Попробуйте еще раз.')
         }
+      }
+      reader.onerror = (error: ProgressEvent<FileReader>) => {
+        console.error('❌ Ошибка при чтении файла:', error)
+        alert('Ошибка при загрузке фото. Попробуйте еще раз.')
       }
       reader.readAsDataURL(qrPhoto)
     } else {

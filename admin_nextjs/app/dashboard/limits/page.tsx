@@ -11,8 +11,18 @@ interface PlatformLimit {
   balance?: number
 }
 
+interface PlatformStats {
+  key: string
+  name: string
+  depositsSum: number
+  depositsCount: number
+  withdrawalsSum: number
+  withdrawalsCount: number
+}
+
 interface LimitsStats {
   platformLimits: PlatformLimit[]
+  platformStats?: PlatformStats[]
   totalDepositsCount: number
   totalDepositsSum: number
   totalWithdrawalsCount: number
@@ -577,27 +587,73 @@ export default function LimitsPage() {
         )}
       </div>
 
+      {/* Детальная статистика по платформам */}
+      {stats.platformStats && stats.platformStats.length > 0 && (
+        <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
+          <div className="text-base font-bold text-white mb-3">Статистика по платформам</div>
+          <div className="space-y-3">
+            {stats.platformStats.map((platform) => (
+              <div key={platform.key} className="bg-gray-900 bg-opacity-50 rounded-xl p-4 border border-gray-700">
+                <div className="text-white font-semibold mb-3">{platform.name}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">Пополнения</div>
+                    <div className="text-green-500 font-bold text-lg">
+                      {platform.depositsSum.toFixed(2)} с
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {platform.depositsCount} {platform.depositsCount === 1 ? 'операция' : platform.depositsCount < 5 ? 'операции' : 'операций'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">Выводы</div>
+                    <div className="text-yellow-500 font-bold text-lg">
+                      {platform.withdrawalsSum.toFixed(2)} с
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {platform.withdrawalsCount} {platform.withdrawalsCount === 1 ? 'операция' : platform.withdrawalsCount < 5 ? 'операции' : 'операций'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Общая статистика */}
       <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
         <div className="text-base font-bold text-white mb-3">Общая статистика</div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 mb-3">
           <div className="bg-gray-900 bg-opacity-50 rounded-xl p-3 border border-gray-700">
             <div className="text-xs text-gray-400 mb-1">Всего пополнений</div>
             <div className="text-green-500 font-bold text-lg">
               {stats.totalDepositsSum.toFixed(2)} с
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {stats.totalDepositsCount} операций
+              {stats.totalDepositsCount} {stats.totalDepositsCount === 1 ? 'операция' : stats.totalDepositsCount < 5 ? 'операции' : 'операций'}
             </div>
           </div>
           <div className="bg-gray-900 bg-opacity-50 rounded-xl p-3 border border-gray-700">
             <div className="text-xs text-gray-400 mb-1">Всего выводов</div>
-            <div className="text-green-500 font-bold text-lg">
+            <div className="text-yellow-500 font-bold text-lg">
               {stats.totalWithdrawalsSum.toFixed(2)} с
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {stats.totalWithdrawalsCount} операций
+              {stats.totalWithdrawalsCount} {stats.totalWithdrawalsCount === 1 ? 'операция' : stats.totalWithdrawalsCount < 5 ? 'операции' : 'операций'}
             </div>
+          </div>
+        </div>
+        <div className="bg-gradient-to-r from-green-500/20 to-green-600/20 rounded-xl p-3 border border-green-500/30">
+          <div className="text-xs text-gray-400 mb-1">Сумма пополнений</div>
+          <div className="text-green-500 font-bold text-xl">
+            {stats.totalDepositsSum.toFixed(2)} с
+          </div>
+        </div>
+        <div className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 rounded-xl p-3 border border-yellow-500/30 mt-2">
+          <div className="text-xs text-gray-400 mb-1">Сумма выводов</div>
+          <div className="text-yellow-500 font-bold text-xl">
+            {stats.totalWithdrawalsSum.toFixed(2)} с
           </div>
         </div>
       </div>
