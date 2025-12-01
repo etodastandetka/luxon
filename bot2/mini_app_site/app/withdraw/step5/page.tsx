@@ -20,6 +20,8 @@ export default function WithdrawStep5() {
   const [qrPhoto, setQrPhoto] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [autoSubmitAttempted, setAutoSubmitAttempted] = useState(false)
+  const [autoSubmitSuccess, setAutoSubmitSuccess] = useState(false)
+  const [autoSubmitFailed, setAutoSubmitFailed] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -103,8 +105,10 @@ export default function WithdrawStep5() {
     
     // Выполняем вывод только если код полный (минимум 4 символа для большинства кодов)
     if (siteCode.trim().length >= 4 && bookmaker && userId) {
-      // Сбрасываем флаг автоматической отправки при изменении кода
+      // Сбрасываем флаги автоматической отправки при изменении кода
       setAutoSubmitAttempted(false)
+      setAutoSubmitSuccess(false)
+      setAutoSubmitFailed(false)
       // Задержка для debounce - ждем пока пользователь закончит ввод
       const timer = setTimeout(() => {
         processWithdraw(bookmaker, userId)
@@ -115,6 +119,8 @@ export default function WithdrawStep5() {
       setWithdrawAmount(null)
       setError(null)
       setAutoSubmitAttempted(false)
+      setAutoSubmitSuccess(false)
+      setAutoSubmitFailed(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteCode])
@@ -584,6 +590,9 @@ export default function WithdrawStep5() {
       if (result.success !== false) {
         console.log('✅ Заявка на вывод создана успешно автоматически:', result)
         
+        // Устанавливаем флаг успешной автоматической отправки
+        setAutoSubmitSuccess(true)
+        
         const getBankName = (bankCode: string) => {
           const bankNames: Record<string, string> = {
             'kompanion': 'Компаньон',
@@ -643,6 +652,7 @@ export default function WithdrawStep5() {
       
       alert(`Ошибка: ${errorMessage}`)
       setAutoSubmitAttempted(false) // Разрешаем попробовать еще раз вручную
+      setAutoSubmitFailed(true) // Устанавливаем флаг ошибки, чтобы показать кнопку
     } finally {
       setIsSubmitting(false)
     }
@@ -1108,7 +1118,7 @@ export default function WithdrawStep5() {
                         </span>
                       </div>
                     </div>
-                    {isSubmitting && (
+                    {isSubmitting && !autoSubmitSuccess && (
                       <div className="pt-2 border-t border-green-500/30 mt-2">
                         <div className="flex items-center gap-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400"></div>
@@ -1116,6 +1126,13 @@ export default function WithdrawStep5() {
                             🚀 Автоматически отправляем заявку...
                           </p>
                         </div>
+                      </div>
+                    )}
+                    {autoSubmitFailed && (
+                      <div className="pt-2 border-t border-yellow-500/30 mt-2">
+                        <p className="text-xs text-yellow-200">
+                          ⚠️ Автоматическая отправка не удалась. Нажмите кнопку "Отправить заявку" вручную.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1174,13 +1191,20 @@ export default function WithdrawStep5() {
           >
             {t.back}
           </button>
-          <button 
-            className="btn btn-primary"
-            onClick={handleSubmit}
-            disabled={!siteCode.trim() || !withdrawAmount || checking || checkingExists || hasWithdrawals === false || isSubmitting}
-          >
-            {isSubmitting ? '⏳ Отправка заявки...' : checking || checkingExists ? 'Обработка...' : hasWithdrawals === false ? 'Вывод не найден' : t.submit}
-          </button>
+          {/* Показываем кнопку отправки только если:
+              1. Автоматическая отправка не была успешной (autoSubmitSuccess === false)
+              2. ИЛИ автоматическая отправка завершилась с ошибкой (autoSubmitFailed === true)
+              3. И сумма извлечена (withdrawAmount > 0)
+          */}
+          {!autoSubmitSuccess && (
+            <button 
+              className="btn btn-primary"
+              onClick={handleSubmit}
+              disabled={!siteCode.trim() || !withdrawAmount || checking || checkingExists || hasWithdrawals === false || isSubmitting || (autoSubmitAttempted && !autoSubmitFailed)}
+            >
+              {isSubmitting ? '⏳ Отправка заявки...' : checking || checkingExists ? 'Обработка...' : hasWithdrawals === false ? 'Вывод не найден' : (autoSubmitAttempted && !autoSubmitFailed) ? 'Автоматическая отправка...' : t.submit}
+            </button>
+          )}
         </div>
       </div>
     </main>
