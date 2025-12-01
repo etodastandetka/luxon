@@ -15,7 +15,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Убираем начальный loading
 
   const fetchUser = useCallback(async () => {
     try {
@@ -35,6 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }, [router])
 
   useEffect(() => {
+    // Загружаем пользователя в фоне, не блокируя отображение
     fetchUser()
   }, [fetchUser])
 
@@ -48,19 +49,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Загрузка...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return null
+  // Не показываем лоадер - страница открывается сразу
+  // Если пользователь не авторизован, редирект произойдет в fetchUser
+  if (!user && !loading) {
+    return null // Пока идет проверка авторизации, показываем пустую страницу
   }
 
   const bottomNavItems = [
