@@ -91,5 +91,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export const dynamic = 'force-dynamic'
+// Кешируем настройки на 30 секунд (они редко меняются)
+export const revalidate = 30
 

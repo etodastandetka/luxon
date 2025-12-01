@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getExchangeRates } from '@/lib/crypto-pay'
 
-export const dynamic = 'force-dynamic'
+// Кешируем курс валют на 60 секунд (он обновляется не так часто)
+export const revalidate = 60
 
 /**
  * API endpoint для получения курса валют через Crypto Bot API

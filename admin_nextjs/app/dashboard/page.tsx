@@ -58,8 +58,7 @@ export default function DashboardPage() {
       
       // Используем кэширование для более быстрой загрузки
       const response = await fetch(`/api/requests?${params.toString()}`, {
-        cache: 'default',
-        next: { revalidate: 3 } // Перевалидируем каждые 3 секунды
+        cache: 'no-store', // Для динамических данных не кешируем на клиенте
       })
       const data = await response.json()
       
