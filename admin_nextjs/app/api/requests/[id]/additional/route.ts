@@ -31,7 +31,7 @@ export async function GET(
     
     // Загружаем дополнительные данные параллельно с таймаутами
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      // Входящие платежи (с таймаутом 300ms)
+      // Входящие платежи (с таймаутом 200ms - уменьшен для скорости)
       requestAmountInt ? Promise.race([
         prisma.incomingPayment.findMany({
           where: {
@@ -41,7 +41,7 @@ export async function GET(
             },
           },
           orderBy: { paymentDate: 'desc' },
-          take: 5,
+          take: 3, // Уменьшено с 5 до 3
           select: {
             id: true,
             amount: true,
@@ -51,18 +51,18 @@ export async function GET(
             bank: true,
           },
         }),
-        new Promise(resolve => setTimeout(() => resolve([]), 300))
+        new Promise(resolve => setTimeout(() => resolve([]), 200))
       ]) as Promise<any[]> : Promise.resolve([]),
       
-      // Транзакции казино (с таймаутом 300ms)
-      requestData.accountId ? Promise.race([
+      // Транзакции казино (с таймаутом 200ms - уменьшен для скорости)
+      requestData.accountId && requestData.bookmaker ? Promise.race([
         prisma.request.findMany({
           where: {
             accountId: requestData.accountId,
             bookmaker: requestData.bookmaker,
           },
           orderBy: { createdAt: 'desc' },
-          take: 5,
+          take: 3, // Уменьшено с 5 до 3
           select: {
             id: true,
             userId: true,
@@ -77,16 +77,16 @@ export async function GET(
             accountId: true,
           },
         }),
-        new Promise(resolve => setTimeout(() => resolve([]), 300))
+        new Promise(resolve => setTimeout(() => resolve([]), 200))
       ]) as Promise<any[]> : Promise.resolve([]),
       
-      // Заметка пользователя (с таймаутом 200ms)
+      // Заметка пользователя (с таймаутом 150ms - уменьшен для скорости)
       Promise.race([
         prisma.botUser.findUnique({
           where: { userId: requestData.userId },
           select: { note: true },
         }),
-        new Promise(resolve => setTimeout(() => resolve(null), 200))
+        new Promise(resolve => setTimeout(() => resolve(null), 150))
       ]) as Promise<any>,
     ])
 
