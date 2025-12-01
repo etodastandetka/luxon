@@ -27,7 +27,7 @@ export default function HistoryPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
-  const limit = 20 // Увеличиваем лимит для быстрой загрузки
+  const limit = 30 // Увеличиваем лимит для быстрой загрузки и меньше запросов
 
   const fetchHistory = useCallback(async (reset = false) => {
     if (reset) {

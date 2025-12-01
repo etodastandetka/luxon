@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('user_id')
     const type = searchParams.get('type') // deposit, withdraw, or empty for all
     const manual = searchParams.get('manual') === 'true' // Ручные заявки (не автопополнение)
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const limit = parseInt(searchParams.get('limit') || '30') // Увеличиваем лимит по умолчанию
     const offset = parseInt(searchParams.get('offset') || '0')
 
     const where: any = {}

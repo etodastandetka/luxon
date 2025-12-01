@@ -101,6 +101,9 @@ model Request {
   @@index([amount]) // Для поиска matching payments
   @@index([status, requestType]) // Составной индекс для частых фильтров
   @@index([userId, status]) // Для поиска заявок пользователя по статусу
+  @@index([processedBy, status]) // Для фильтрации ручных заявок (manual) - processedBy + status
+  @@index([requestType, createdAt]) // Для истории с фильтром по типу и сортировке по дате
+  @@index([status, createdAt]) // Для истории с фильтром по статусу и сортировке по дате
   @@map("requests")
 }
 
