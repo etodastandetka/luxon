@@ -459,6 +459,7 @@ export default function RequestDetailPage() {
   // Показываем не больше 3 платежей
   const limitedPayments = useMemo(() => filteredPayments.slice(0, 3), [filteredPayments])
 
+  // Функции форматирования (должны быть определены до requestComputed)
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
     // Скопировано в буфер обмена
@@ -547,6 +548,98 @@ export default function RequestDetailPage() {
         return status
     }
   }, [])
+
+  // Мемоизируем вычисления для оптимизации рендеринга (до условных возвратов!)
+  const requestComputed = useMemo(() => {
+    if (!request) return null
+
+    const isDeposit = request.requestType === 'deposit'
+    const isDeferred = request.status === 'deferred'
+    const processedBy = getProcessedBy(request.processedBy)
+    const showMinus = isDeferred && processedBy === 'автопополнение'
+    const isProcessed = request.status === 'completed' || 
+                        request.status === 'approved' || 
+                        request.status === 'rejected' || 
+                        request.status === 'declined' ||
+                        request.status === 'auto_completed' || 
+                        request.status === 'autodeposit_success'
+    const showActionButtons = !isProcessed || request.status === 'api_error' || request.status === 'deposit_failed'
+    const userName = request.username 
+      ? `@${request.username}` 
+      : request.firstName 
+        ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
+        : `ID: ${request.userId}`
+    const displayName = request.firstName || request.username || `ID: ${request.userId}`
+    const statusColor = getStatusColor(request.status)
+    const statusState = getStatusState(request.status)
+    const formattedCreatedAt = formatDate(request.createdAt)
+
+    return {
+      isDeposit,
+      isDeferred,
+      processedBy,
+      showMinus,
+      isProcessed,
+      showActionButtons,
+      userName,
+      displayName,
+      statusColor,
+      statusState,
+      formattedCreatedAt,
+    }
+  }, [request, getProcessedBy, getStatusColor, getStatusState, formatDate])
+
+  // Мемоизированный компонент для транзакции (до условных возвратов!)
+  const TransactionListItem = memo(({ transaction, formatDate, getStatusState }: { 
+    transaction: typeof transactions[0], 
+    formatDate: (date: string) => string,
+    getStatusState: (status: string) => string 
+  }) => {
+    const statusClass = transaction.status === 'completed' || transaction.status === 'approved'
+      ? 'bg-green-500 text-black'
+      : transaction.status === 'pending'
+      ? 'bg-yellow-500 text-black'
+      : transaction.status === 'rejected'
+      ? 'bg-red-500 text-white'
+      : 'bg-gray-700 text-gray-300'
+    
+    const statusLabel = getStatusState(transaction.status)
+    const formattedDate = formatDate(transaction.createdAt)
+
+    return (
+      <Link
+        href={`/dashboard/requests/${transaction.id}`}
+        className="block bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
+      >
+        <div className="flex items-center space-x-3">
+          <div className={`w-1 h-12 rounded-full ${transaction.isDeposit ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1">
+              <p className="text-sm font-medium text-white">
+                {transaction.description}
+              </p>
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusClass}`}>
+                {statusLabel}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400">{formattedDate}</p>
+            {transaction.bookmaker && (
+              <p className="text-xs text-gray-500 mt-1">{transaction.bookmaker}</p>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <p className={`text-lg font-bold ${transaction.isDeposit ? 'text-green-500' : 'text-red-500'}`}>
+              {transaction.isDeposit ? '+' : '-'}{transaction.amount}
+            </p>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </Link>
+    )
+  })
+  TransactionListItem.displayName = 'TransactionListItem'
 
   const deferRequest = async () => {
     if (!request) return
@@ -816,58 +909,6 @@ export default function RequestDetailPage() {
     setSearchId('')
   }
 
-  // Мемоизированный компонент для транзакции
-  const TransactionListItem = memo(({ transaction, formatDate, getStatusState }: { 
-    transaction: typeof transactions[0], 
-    formatDate: (date: string) => string,
-    getStatusState: (status: string) => string 
-  }) => {
-    const statusClass = transaction.status === 'completed' || transaction.status === 'approved'
-      ? 'bg-green-500 text-black'
-      : transaction.status === 'pending'
-      ? 'bg-yellow-500 text-black'
-      : transaction.status === 'rejected'
-      ? 'bg-red-500 text-white'
-      : 'bg-gray-700 text-gray-300'
-    
-    const statusLabel = getStatusState(transaction.status)
-    const formattedDate = formatDate(transaction.createdAt)
-
-    return (
-      <Link
-        href={`/dashboard/requests/${transaction.id}`}
-        className="block bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
-      >
-        <div className="flex items-center space-x-3">
-          <div className={`w-1 h-12 rounded-full ${transaction.isDeposit ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-1">
-              <p className="text-sm font-medium text-white">
-                {transaction.description}
-              </p>
-              <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusClass}`}>
-                {statusLabel}
-              </span>
-            </div>
-            <p className="text-xs text-gray-400">{formattedDate}</p>
-            {transaction.bookmaker && (
-              <p className="text-xs text-gray-500 mt-1">{transaction.bookmaker}</p>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className={`text-lg font-bold ${transaction.isDeposit ? 'text-green-500' : 'text-red-500'}`}>
-              {transaction.isDeposit ? '+' : '-'}{transaction.amount}
-            </p>
-            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </Link>
-    )
-  })
-  TransactionListItem.displayName = 'TransactionListItem'
-
   // Показываем лоадер во время загрузки
   if (loading && !request) {
     return (
@@ -897,46 +938,6 @@ export default function RequestDetailPage() {
       </div>
     )
   }
-
-  // Мемоизируем вычисления для оптимизации рендеринга
-  const requestComputed = useMemo(() => {
-    if (!request) return null
-
-    const isDeposit = request.requestType === 'deposit'
-    const isDeferred = request.status === 'deferred'
-    const processedBy = getProcessedBy(request.processedBy)
-    const showMinus = isDeferred && processedBy === 'автопополнение'
-    const isProcessed = request.status === 'completed' || 
-                        request.status === 'approved' || 
-                        request.status === 'rejected' || 
-                        request.status === 'declined' ||
-                        request.status === 'auto_completed' || 
-                        request.status === 'autodeposit_success'
-    const showActionButtons = !isProcessed || request.status === 'api_error' || request.status === 'deposit_failed'
-    const userName = request.username 
-      ? `@${request.username}` 
-      : request.firstName 
-        ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
-        : `ID: ${request.userId}`
-    const displayName = request.firstName || request.username || `ID: ${request.userId}`
-    const statusColor = getStatusColor(request.status)
-    const statusState = getStatusState(request.status)
-    const formattedCreatedAt = formatDate(request.createdAt)
-
-    return {
-      isDeposit,
-      isDeferred,
-      processedBy,
-      showMinus,
-      isProcessed,
-      showActionButtons,
-      userName,
-      displayName,
-      statusColor,
-      statusState,
-      formattedCreatedAt,
-    }
-  }, [request, getProcessedBy, getStatusColor, getStatusState, formatDate])
 
     const isDeposit = requestComputed?.isDeposit ?? false
     const isDeferred = requestComputed?.isDeferred ?? false
