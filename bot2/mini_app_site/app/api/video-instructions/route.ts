@@ -7,6 +7,17 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Next.js API: Получен запрос на загрузку видео инструкций')
     
+    // Во время сборки (build time) не делаем fetch, возвращаем дефолтные значения
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      return NextResponse.json({
+        success: true,
+        data: {
+          deposit_video_url: 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
+          withdraw_video_url: 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view',
+        }
+      })
+    }
+    
     // Проксируем запрос к админ-панели API
     const response = await fetch(`${ADMIN_API_URL}/api/public/video-instructions`, {
       method: 'GET',
