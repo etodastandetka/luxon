@@ -110,6 +110,44 @@ export async function POST(request: NextRequest) {
       bank
     })
 
+    // Защита от дублирования: проверяем, нет ли уже такой же заявки за последние 30 секунд
+    if (finalUserId && type && amount) {
+      const recentRequest = await prisma.request.findFirst({
+        where: {
+          userId: BigInt(finalUserId),
+          requestType: type,
+          amount: parseFloat(amount),
+          bookmaker: bookmaker || undefined,
+          accountId: finalAccountId || undefined,
+          createdAt: {
+            gte: new Date(Date.now() - 30000) // Последние 30 секунд
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      if (recentRequest) {
+        console.log('⚠️ Payment API: Duplicate request detected, returning existing request:', recentRequest.id)
+        return NextResponse.json(
+          createApiResponse({
+            id: recentRequest.id,
+            userId: recentRequest.userId.toString(),
+            type: recentRequest.requestType,
+            status: recentRequest.status,
+            amount: recentRequest.amount?.toString()
+          }, 'Request already exists'),
+          {
+            status: 200,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+    }
+
     // Проверяем обязательные поля
     // Для error_log не требуется amount
     if (!type) {

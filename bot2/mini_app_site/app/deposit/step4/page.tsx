@@ -1112,9 +1112,21 @@ export default function DepositStep4() {
       return
     }
 
-    // Устанавливаем флаг создания заявки
+    // Устанавливаем флаг создания заявки СРАЗУ, чтобы предотвратить двойной клик
     console.log('✅ Все проверки пройдены, устанавливаем isCreatingRequest=true')
     setIsCreatingRequest(true)
+    
+    // Дополнительная защита: блокируем кнопку на 2 секунды
+    const blockButton = () => {
+      const button = document.querySelector('button:has-text("Я оплатил"), button[class*="paid"]') as HTMLButtonElement
+      if (button) {
+        button.disabled = true
+        setTimeout(() => {
+          button.disabled = false
+        }, 2000)
+      }
+    }
+    blockButton()
     
     try {
       console.log('🔄 Начинаем создание заявки через createDepositRequest()...')
