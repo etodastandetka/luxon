@@ -87,8 +87,12 @@ export default function RequestDetailPage() {
       const abortController = new AbortController()
       let intervalId: NodeJS.Timeout | null = null
 
-      // Загружаем данные сразу, без установки loading (скелетон показывается автоматически)
+      // Загружаем данные сразу, устанавливаем loading для показа индикатора
       const fetchRequest = async (showLoading = true) => {
+        if (showLoading) {
+          setLoading(true) // Показываем индикатор загрузки
+        }
+        
         try {
           // Используем кэширование для более быстрой загрузки
           const response = await fetch(`/api/requests/${requestId}`, {
@@ -118,7 +122,7 @@ export default function RequestDetailPage() {
             // Устанавливаем данные сразу для быстрой загрузки страницы
             setRequest(requestData)
             
-            // Убираем loading после установки данных (только при первой загрузке)
+            // Убираем loading после установки данных
             if (showLoading) {
               setLoading(false)
             }
@@ -197,15 +201,19 @@ export default function RequestDetailPage() {
             }
           } else {
             console.error('❌ Failed to fetch request:', data.error)
+            // Если заявка не найдена, сбрасываем loading
+            if (showLoading) {
+              setLoading(false)
+            }
           }
         } catch (error: any) {
           if (error.name === 'AbortError') {
             return // Запрос был отменен, игнорируем ошибку
           }
           console.error('❌ Failed to fetch request:', error)
-        } finally {
+          // При ошибке тоже сбрасываем loading
           if (isMountedRef.current && !abortController.signal.aborted && showLoading) {
-            // Loading уже сброшен выше, не нужно сбрасывать здесь
+            setLoading(false)
           }
         }
       }
@@ -751,9 +759,10 @@ export default function RequestDetailPage() {
     setSearchId('')
   }
 
-  // Показываем скелетон если нет данных (показывается сразу, без установки loading)
-  const showSkeleton = !request
+  // Показываем скелетон если загружаем или нет данных
+  const showSkeleton = !request || loading
 
+  // Показываем "Заявка не найдена" только если загрузка завершена и заявки нет
   if (!request && !loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -806,25 +815,9 @@ export default function RequestDetailPage() {
     <div className="py-4">
       {/* Скелетон загрузки */}
       {showSkeleton ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="flex items-center mb-4 px-4">
-            <div className="flex items-center space-x-2 flex-1 bg-gray-800 rounded-xl px-3 py-2">
-              <div className="w-8 h-8 bg-gray-700 rounded-lg"></div>
-              <div className="w-10 h-10 bg-gray-700 rounded-full"></div>
-              <div className="flex-1">
-                <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
-                <div className="h-3 bg-gray-700 rounded w-24"></div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gray-800 bg-opacity-50 rounded-xl p-6 border border-gray-700 mx-4">
-            <div className="h-6 bg-gray-700 rounded w-48 mb-4"></div>
-            <div className="space-y-3">
-              <div className="h-4 bg-gray-700 rounded w-full"></div>
-              <div className="h-4 bg-gray-700 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-700 rounded w-1/2"></div>
-            </div>
-          </div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mb-4"></div>
+          <p className="text-white text-lg font-medium">Секундочку, подгружаю...</p>
         </div>
       ) : !request ? (
         <div className="flex flex-col items-center justify-center py-20">
