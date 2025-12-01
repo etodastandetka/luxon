@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = "8042108386:AAFGNVTTfrMy-KwHjxOA72Gd_iV-Bgy5u4U"
 
 # URL сайта
-WEBSITE_URL = "https://luxservice.online"
+WEBSITE_URL = "https://luxon.dad"
 API_URL = "https://japar.click"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

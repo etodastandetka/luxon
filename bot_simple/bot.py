@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = "7927891546:AAHyroAGoOIV6qKFAnZur13i8gvw2hMnJ-4"
 
 # URL сайта
-WEBSITE_URL = "https://luxservice.online"
+WEBSITE_URL = "https://luxon.dad"
 API_URL = "https://japar.click"
 
 async def check_channel_subscription(user_id: int, channel_id: str) -> bool:
