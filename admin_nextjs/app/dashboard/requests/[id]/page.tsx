@@ -124,6 +124,13 @@ export default function RequestDetailPage() {
               setLoading(false)
             }
             
+            // Загружаем дополнительные данные в фоне после отображения страницы
+            if (showLoading) {
+              setTimeout(() => {
+                fetchAdditionalData(requestData.id, requestData.userId, requestData.amount, requestData.accountId, requestData.bookmaker)
+              }, 50) // Задержка 50ms - загружаем сразу после отображения
+            }
+            
             // Обновляем интервал автообновления в зависимости от статуса
             if (requestData.status === 'pending') {
               // Для pending заявок обновляем чаще
@@ -154,7 +161,7 @@ export default function RequestDetailPage() {
                 fetchProfilePhoto(requestData.userId).catch(err => {
                   console.error('Failed to fetch profile photo:', err)
                 })
-              }, 100) // Задержка 100ms для приоритета основной загрузки
+              }, 200) // Задержка 200ms для приоритета основной загрузки
             }
             
             // Проверяем автопополнение (привязанный платеж с совпадающей суммой)
@@ -239,6 +246,33 @@ export default function RequestDetailPage() {
           }
         } catch (error) {
           console.error('Failed to fetch profile photo:', error)
+        }
+      }
+      
+      // Загружаем дополнительные данные (matchingPayments, casinoTransactions, userNote) в фоне
+      const fetchAdditionalData = async (requestId: number, userId: string, amount: string | null, accountId: string | null, bookmaker: string | null) => {
+        try {
+          const requestAmountInt = amount ? Math.floor(parseFloat(amount)) : null
+          
+          // Загружаем все дополнительные данные параллельно через отдельный API endpoint
+          const additionalDataRes = await fetch(`/api/requests/${requestId}/additional`, {
+            cache: 'default',
+          }).catch(() => null)
+          
+          if (!isMountedRef.current || !additionalDataRes || !additionalDataRes.ok) return
+          
+          const data = await additionalDataRes.json()
+          
+          if (data.success && data.data && isMountedRef.current && request) {
+            setRequest(prev => prev ? {
+              ...prev,
+              matchingPayments: data.data.matchingPayments || [],
+              casinoTransactions: data.data.casinoTransactions || [],
+              userNote: data.data.userNote || null,
+            } : null)
+          }
+        } catch (error) {
+          console.error('Failed to fetch additional data:', error)
         }
       }
     
