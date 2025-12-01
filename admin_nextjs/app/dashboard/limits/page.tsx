@@ -655,7 +655,7 @@ export default function LimitsPage() {
         <div className="text-xs text-gray-400">
           {startDate && endDate 
             ? `8% от пополнений + 2% от выводов (за период ${startDate} — ${endDate})`
-            : '8% от пополнений + 2% от выводов (за сегодня)'}
+            : '8% от пополнений + 2% от выводов (за все время)'}
         </div>
       </div>
 

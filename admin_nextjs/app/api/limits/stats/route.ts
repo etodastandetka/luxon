@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('start')
     const endDate = searchParams.get('end')
 
-    // По умолчанию показываем статистику за сегодня
+    // По умолчанию показываем статистику за все время
     // Если выбран период - показываем за период
     let filters: any = {}
     let dateFilterForStats: any = {}
@@ -30,22 +30,8 @@ export async function GET(request: NextRequest) {
         }
       }
     } else {
-      // Период не выбран - показываем за сегодня
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      
-      filters.createdAt = {
-        gte: today,
-        lt: tomorrow
-      }
-      dateFilterForStats = {
-        createdAt: {
-          gte: today,
-          lt: tomorrow
-        }
-      }
+      // Период не выбран - показываем все данные (не применяем фильтр по датам)
+      // Оставляем filters и dateFilterForStats пустыми
     }
 
     // Статистика пополнений и выводов параллельно
@@ -86,40 +72,60 @@ export async function GET(request: NextRequest) {
     // Приблизительный доход: 8% от пополнений + 2% от выводов
     const approximateIncome = totalDepositsSum * 0.08 + totalWithdrawalsSum * 0.02
 
-    // Данные для графика (последние 30 дней если период не указан, иначе за период)
-    let chartStartDate = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    let chartEndDate = endDate ? new Date(endDate) : new Date()
+    // Данные для графика (все данные если период не указан, иначе за период)
+    let chartStartDate = startDate ? new Date(startDate) : null
+    let chartEndDate = endDate ? new Date(endDate) : null
     
     // Группировка по датам для графика используя SQL (оптимизировано)
     // Для пополнений: считаем только РЕАЛЬНО обработанные через API казино
     // Для выводов: считаем все успешные статусы
     const [depositsByDate, withdrawalsByDate] = await Promise.all([
-      prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-        SELECT 
-          TO_CHAR(created_at, 'YYYY-MM-DD') as date,
-          COUNT(*)::bigint as count
-        FROM requests
-        WHERE request_type = 'deposit'
-          AND status IN ('autodeposit_success', 'auto_completed')
-          AND created_at >= ${chartStartDate}::timestamp
-          AND created_at <= ${chartEndDate}::timestamp
-        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
-        ORDER BY date DESC
-        LIMIT 30
-      `,
-      prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-        SELECT 
-          TO_CHAR(created_at, 'YYYY-MM-DD') as date,
-          COUNT(*)::bigint as count
-        FROM requests
-        WHERE request_type = 'withdraw'
-          AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
-          AND created_at >= ${chartStartDate}::timestamp
-          AND created_at <= ${chartEndDate}::timestamp
-        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
-        ORDER BY date DESC
-        LIMIT 30
-      `,
+      chartStartDate && chartEndDate
+        ? prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+            SELECT 
+              TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+              COUNT(*)::bigint as count
+            FROM requests
+            WHERE request_type = 'deposit'
+              AND status IN ('autodeposit_success', 'auto_completed')
+              AND created_at >= ${chartStartDate}::timestamp
+              AND created_at <= ${chartEndDate}::timestamp
+            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            ORDER BY date DESC
+          `
+        : prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+            SELECT 
+              TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+              COUNT(*)::bigint as count
+            FROM requests
+            WHERE request_type = 'deposit'
+              AND status IN ('autodeposit_success', 'auto_completed')
+            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            ORDER BY date DESC
+          `,
+      chartStartDate && chartEndDate
+        ? prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+            SELECT 
+              TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+              COUNT(*)::bigint as count
+            FROM requests
+            WHERE request_type = 'withdraw'
+              AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
+              AND created_at >= ${chartStartDate}::timestamp
+              AND created_at <= ${chartEndDate}::timestamp
+            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            ORDER BY date DESC
+          `
+        : prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+            SELECT 
+              TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+              COUNT(*)::bigint as count
+            FROM requests
+            WHERE request_type = 'withdraw'
+              AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
+            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            ORDER BY date DESC
+          `,
     ])
 
     // Форматируем даты для графика (YYYY-MM-DD -> dd.mm)
