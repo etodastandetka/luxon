@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback, memo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -459,12 +459,12 @@ export default function RequestDetailPage() {
   // Показываем не больше 3 платежей
   const limitedPayments = useMemo(() => filteredPayments.slice(0, 3), [filteredPayments])
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
     // Скопировано в буфер обмена
-  }
+  }, [])
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString)
     const day = date.getDate().toString().padStart(2, '0')
     const month = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -472,18 +472,18 @@ export default function RequestDetailPage() {
     const hours = date.getHours().toString().padStart(2, '0')
     const minutes = date.getMinutes().toString().padStart(2, '0')
     return `${day}.${month}.${year} • ${hours}:${minutes}`
-  }
+  }, [])
 
   // Функция для определения кто обработал заявку (логин админа или "автопополнение")
-  const getProcessedBy = (processedBy: string | null | undefined) => {
+  const getProcessedBy = useCallback((processedBy: string | null | undefined) => {
     if (!processedBy) {
       return null
     }
     return processedBy === 'автопополнение' ? 'автопополнение' : processedBy
-  }
+  }, [])
 
   // Функция для определения состояния (Успешно/Отклонено/Ожидает)
-  const getStatusState = (status: string) => {
+  const getStatusState = useCallback((status: string) => {
     if (status === 'completed' || status === 'approved' || status === 'auto_completed' || status === 'autodeposit_success') {
       return 'Успешно'
     }
@@ -503,9 +503,9 @@ export default function RequestDetailPage() {
       return 'Ошибка API'
     }
     return status
-  }
+  }, [])
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'pending':
       case 'Ожидает':
@@ -524,9 +524,9 @@ export default function RequestDetailPage() {
       default:
         return 'bg-gray-700 text-gray-300'
     }
-  }
+  }, [])
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = useCallback((status: string) => {
     switch (status) {
       case 'pending':
         return 'Ожидает'
@@ -546,7 +546,7 @@ export default function RequestDetailPage() {
       default:
         return status
     }
-  }
+  }, [])
 
   const deferRequest = async () => {
     if (!request) return
@@ -816,6 +816,68 @@ export default function RequestDetailPage() {
     setSearchId('')
   }
 
+  // Мемоизированный компонент для транзакции
+  const TransactionListItem = memo(({ transaction, formatDate, getStatusState }: { 
+    transaction: typeof transactions[0], 
+    formatDate: (date: string) => string,
+    getStatusState: (status: string) => string 
+  }) => {
+    const statusClass = transaction.status === 'completed' || transaction.status === 'approved'
+      ? 'bg-green-500 text-black'
+      : transaction.status === 'pending'
+      ? 'bg-yellow-500 text-black'
+      : transaction.status === 'rejected'
+      ? 'bg-red-500 text-white'
+      : 'bg-gray-700 text-gray-300'
+    
+    const statusLabel = getStatusState(transaction.status)
+    const formattedDate = formatDate(transaction.createdAt)
+
+    return (
+      <Link
+        href={`/dashboard/requests/${transaction.id}`}
+        className="block bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
+      >
+        <div className="flex items-center space-x-3">
+          <div className={`w-1 h-12 rounded-full ${transaction.isDeposit ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1">
+              <p className="text-sm font-medium text-white">
+                {transaction.description}
+              </p>
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusClass}`}>
+                {statusLabel}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400">{formattedDate}</p>
+            {transaction.bookmaker && (
+              <p className="text-xs text-gray-500 mt-1">{transaction.bookmaker}</p>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <p className={`text-lg font-bold ${transaction.isDeposit ? 'text-green-500' : 'text-red-500'}`}>
+              {transaction.isDeposit ? '+' : '-'}{transaction.amount}
+            </p>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </Link>
+    )
+  })
+  TransactionListItem.displayName = 'TransactionListItem'
+
+  // Показываем лоадер во время загрузки
+  if (loading && !request) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-white text-sm">Загрузка...</p>
+      </div>
+    )
+  }
+
   // Показываем "Заявка не найдена" только если загрузка завершена и заявки нет
   if (!request && !loading) {
     return (
@@ -836,34 +898,54 @@ export default function RequestDetailPage() {
     )
   }
 
-    const isDeposit = request?.requestType === 'deposit'
-    const isDeferred = request?.status === 'deferred'
-    
-    // Определяем тип транзакции для проверки
-    // Определяем кто обработал заявку
-    const processedBy = getProcessedBy(request?.processedBy)
-    // Если отложено и автопополнение, показываем минус
+  // Мемоизируем вычисления для оптимизации рендеринга
+  const requestComputed = useMemo(() => {
+    if (!request) return null
+
+    const isDeposit = request.requestType === 'deposit'
+    const isDeferred = request.status === 'deferred'
+    const processedBy = getProcessedBy(request.processedBy)
     const showMinus = isDeferred && processedBy === 'автопополнение'
-    
-    // Проверяем, обработана ли заявка (для скрытия блока "Переводы по QR")
-    // api_error и deposit_failed НЕ считаются обработанными - кнопки должны оставаться
-    const isProcessed = request?.status === 'completed' || 
-                        request?.status === 'approved' || 
-                        request?.status === 'rejected' || 
-                        request?.status === 'declined' ||
-                        request?.status === 'auto_completed' || 
-                        request?.status === 'autodeposit_success'
-    
-    // Для отображения кнопок: показываем их если заявка не обработана ИЛИ если это ошибка API
-    // (чтобы можно было пополнить баланс и потом подтвердить вручную)
-    const showActionButtons = !isProcessed || request?.status === 'api_error' || request?.status === 'deposit_failed'
-    
-    const userName = request?.username 
+    const isProcessed = request.status === 'completed' || 
+                        request.status === 'approved' || 
+                        request.status === 'rejected' || 
+                        request.status === 'declined' ||
+                        request.status === 'auto_completed' || 
+                        request.status === 'autodeposit_success'
+    const showActionButtons = !isProcessed || request.status === 'api_error' || request.status === 'deposit_failed'
+    const userName = request.username 
       ? `@${request.username}` 
-      : request?.firstName 
+      : request.firstName 
         ? `${request.firstName}${request.lastName ? ' ' + request.lastName : ''}` 
-        : request ? `ID: ${request.userId}` : ''
-    const displayName = request?.firstName || request?.username || (request ? `ID: ${request.userId}` : '')
+        : `ID: ${request.userId}`
+    const displayName = request.firstName || request.username || `ID: ${request.userId}`
+    const statusColor = getStatusColor(request.status)
+    const statusState = getStatusState(request.status)
+    const formattedCreatedAt = formatDate(request.createdAt)
+
+    return {
+      isDeposit,
+      isDeferred,
+      processedBy,
+      showMinus,
+      isProcessed,
+      showActionButtons,
+      userName,
+      displayName,
+      statusColor,
+      statusState,
+      formattedCreatedAt,
+    }
+  }, [request, getProcessedBy, getStatusColor, getStatusState, formatDate])
+
+    const isDeposit = requestComputed?.isDeposit ?? false
+    const isDeferred = requestComputed?.isDeferred ?? false
+    const processedBy = requestComputed?.processedBy ?? null
+    const showMinus = requestComputed?.showMinus ?? false
+    const isProcessed = requestComputed?.isProcessed ?? false
+    const showActionButtons = requestComputed?.showActionButtons ?? false
+    const userName = requestComputed?.userName ?? ''
+    const displayName = requestComputed?.displayName ?? ''
 
   return (
     <div className="py-4">
@@ -907,6 +989,8 @@ export default function RequestDetailPage() {
                   alt={displayName}
                   fill
                   className="object-cover"
+                  loading="lazy"
+                  sizes="40px"
                   onError={() => {
                     // Если фото не загрузилось, показываем букву
                     setProfilePhotoUrl(null)
@@ -1019,13 +1103,13 @@ export default function RequestDetailPage() {
               </button>
             )}
           </div>
-          <div className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full ${getStatusColor(request.status)}`}>
+          <div className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full ${requestComputed?.statusColor || 'bg-gray-700 text-gray-300'}`}>
             <div className="w-1.5 h-1.5 rounded-full bg-current"></div>
-            <span className="text-xs font-medium">{getStatusState(request.status)}</span>
+            <span className="text-xs font-medium">{requestComputed?.statusState || request.status}</span>
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 mb-1.5">{formatDate(request.createdAt)}</p>
+        <p className="text-xs text-gray-400 mb-1.5">{requestComputed?.formattedCreatedAt || ''}</p>
 
         {/* Отображение ошибки депозита */}
         {(request.status === 'api_error' || request.status === 'deposit_failed') && request.statusDetail && (
@@ -1066,6 +1150,7 @@ export default function RequestDetailPage() {
               height={500}
               className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
               style={{ width: 'auto', height: 'auto' }}
+              loading="lazy"
               onError={(e) => {
                 // Если фото не загрузилось, скрываем блок
                 const target = e.target as HTMLElement
@@ -1144,6 +1229,7 @@ export default function RequestDetailPage() {
                 width={1200}
                 height={800}
                 className="rounded-lg shadow-2xl"
+                priority
                 style={{ 
                   transform: `scale(${photoZoom})`,
                   transformOrigin: 'center',
@@ -1425,7 +1511,7 @@ export default function RequestDetailPage() {
             </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-400">Дата создания:</span>
-            <span className="text-sm font-medium text-white">{formatDate(request.createdAt)}</span>
+            <span className="text-sm font-medium text-white">{requestComputed?.formattedCreatedAt || ''}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-400">Пользователь:</span>
@@ -1464,8 +1550,8 @@ export default function RequestDetailPage() {
           {request.status && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Статус:</span>
-              <span className={`text-sm font-medium ${getStatusColor(request.status).includes('text-') ? getStatusColor(request.status) : 'text-white'}`}>
-                {getStatusState(request.status)}
+              <span className={`text-sm font-medium ${requestComputed?.statusColor?.includes('text-') ? requestComputed.statusColor : 'text-white'}`}>
+                {requestComputed?.statusState || request.status}
               </span>
             </div>
           )}
@@ -1495,45 +1581,12 @@ export default function RequestDetailPage() {
         {transactions.length > 0 ? (
           <div className="space-y-2">
             {transactions.map((transaction) => (
-              <Link
+              <TransactionListItem
                 key={transaction.id}
-                href={`/dashboard/requests/${transaction.id}`}
-                className="block bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-1 h-12 rounded-full ${transaction.isDeposit ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <p className="text-sm font-medium text-white">
-                        {transaction.description}
-                      </p>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        transaction.status === 'completed' || transaction.status === 'approved'
-                          ? 'bg-green-500 text-black'
-                          : transaction.status === 'pending'
-                          ? 'bg-yellow-500 text-black'
-                          : transaction.status === 'rejected'
-                          ? 'bg-red-500 text-white'
-                          : 'bg-gray-700 text-gray-300'
-                      }`}>
-                        {getStatusState(transaction.status)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-400">{formatDate(transaction.createdAt)}</p>
-                    {transaction.bookmaker && (
-                      <p className="text-xs text-gray-500 mt-1">{transaction.bookmaker}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <p className={`text-lg font-bold ${transaction.isDeposit ? 'text-green-500' : 'text-red-500'}`}>
-                      {transaction.isDeposit ? '+' : '-'}{transaction.amount}
-                    </p>
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              </Link>
+                transaction={transaction}
+                formatDate={formatDate}
+                getStatusState={getStatusState}
+              />
             ))}
           </div>
         ) : (

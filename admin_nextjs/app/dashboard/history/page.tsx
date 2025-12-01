@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -85,7 +85,8 @@ export default function HistoryPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
+  // Мемоизируем функции форматирования
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString)
     const day = String(date.getDate()).padStart(2, '0')
     const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -93,18 +94,18 @@ export default function HistoryPage() {
     const hours = String(date.getHours()).padStart(2, '0')
     const minutes = String(date.getMinutes()).padStart(2, '0')
     return `${day}.${month}.${year} • ${hours}:${minutes}`
-  }
+  }, [])
 
   // Функция для определения кто обработал транзакцию (логин админа или "автопополнение")
-  const getProcessedBy = (processedBy: string | null | undefined) => {
+  const getProcessedBy = useCallback((processedBy: string | null | undefined) => {
     if (!processedBy) {
       return null
     }
     return processedBy === 'автопополнение' ? 'автопополнение' : processedBy
-  }
+  }, [])
 
   // Функция для определения состояния (Успешно/Отклонено/Ожидает)
-  const getStatusState = (status: string) => {
+  const getStatusState = useCallback((status: string) => {
     if (status === 'completed' || status === 'approved' || status === 'auto_completed' || status === 'autodeposit_success') {
       return 'Успешно'
     }
@@ -121,9 +122,9 @@ export default function HistoryPage() {
       return 'Ручная'
     }
     return status
-  }
+  }, [])
 
-  const getStatusLabel = (status: string, statusDetail: string | null) => {
+  const getStatusLabel = useCallback((status: string, statusDetail: string | null) => {
     // Маппинг статусов на русские метки (темная тема)
     if (status === 'completed' || status === 'auto_completed' || status === 'approved' || status === 'autodeposit_success') {
       return { label: 'Успешно', color: 'bg-green-500 text-black border border-green-400', textColor: 'text-green-500' }
@@ -141,35 +142,9 @@ export default function HistoryPage() {
       return { label: 'Отложено', color: 'bg-orange-500 text-white border border-orange-400', textColor: 'text-orange-500' }
     }
     return { label: status, color: 'bg-gray-700 text-gray-300 border border-gray-600', textColor: 'text-gray-300' }
-  }
+  }, [])
 
-  const getTransactionType = (tx: Transaction) => {
-    // Если статус "Ожидает", показываем "-"
-    if (tx.status === 'pending' || tx.status === 'processing') {
-      return '-'
-    }
-    
-    // Используем processedBy если доступно
-    const processedBy = getProcessedBy((tx as any).processedBy)
-    if (processedBy) {
-      return processedBy === 'автопополнение' ? 'автопополнение' : processedBy
-    }
-    
-    // Если processedBy нет, показываем "-"
-    return '-'
-  }
-
-  const getBookmakerName = (bookmaker: string | null) => {
-    if (!bookmaker) return ''
-    const normalized = bookmaker.toLowerCase()
-    if (normalized.includes('1xbet') || normalized.includes('xbet')) return '1xbet'
-    if (normalized.includes('melbet')) return 'Melbet'
-    if (normalized.includes('mostbet')) return 'Mostbet'
-    if (normalized.includes('1win') || normalized.includes('onewin')) return '1win'
-    return bookmaker
-  }
-
-  const getBankImage = (bank: string | null) => {
+  const getBankImage = useCallback((bank: string | null) => {
     if (!bank) return null
     const normalized = bank.toLowerCase()
     
@@ -200,10 +175,121 @@ export default function HistoryPage() {
     }
     
     return null
-  }
+  }, [])
+
+  // Мемоизируем обработанные транзакции для оптимизации рендеринга
+  const processedTransactions = useMemo(() => {
+    return transactions.map((tx) => {
+      const isDeposit = tx.type === 'deposit'
+      const statusInfo = getStatusLabel(tx.status, tx.status_detail)
+      const processedBy = getProcessedBy((tx as any).processedBy)
+      const transactionType = processedBy ? (processedBy === 'автопополнение' ? 'автопополнение' : processedBy) : '-'
+      const statusState = getStatusState(tx.status)
+      const bankImage = getBankImage(tx.bank)
+      const formattedDate = formatDate(tx.created_at)
+      const formattedAmount = tx.amount.toLocaleString('ru-RU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).replace('.', ',')
+
+      return {
+        ...tx,
+        isDeposit,
+        statusInfo,
+        transactionType,
+        statusState,
+        bankImage,
+        formattedDate,
+        formattedAmount,
+      }
+    })
+  }, [transactions, getStatusLabel, getProcessedBy, getStatusState, getBankImage, formatDate])
 
   // Показываем скелетон только если нет данных (показывается сразу)
   const showSkeleton = transactions.length === 0 && !loadingMore
+
+  // Мемоизированный компонент для элемента списка транзакций
+  const TransactionItem = memo(({ tx }: { tx: typeof processedTransactions[0] }) => {
+    const bankImage = tx.bankImage
+    const isDeposit = tx.isDeposit
+    const statusInfo = tx.statusInfo
+    const transactionType = tx.transactionType
+    const statusState = tx.statusState
+    const formattedDate = tx.formattedDate
+    const formattedAmount = tx.formattedAmount
+
+    return (
+      <Link
+        href={`/dashboard/requests/${tx.id}`}
+        className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm cursor-pointer"
+      >
+        <div className="flex items-start justify-between">
+          {/* Левая часть: Аватар и информация о пользователе */}
+          <div className="flex items-start space-x-3 flex-1">
+            {/* Иконка банка */}
+            {bankImage ? (
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900 relative">
+                <Image
+                  src={bankImage}
+                  alt={tx.bank || 'Bank'}
+                  fill
+                  className="object-cover"
+                  loading="lazy"
+                  sizes="48px"
+                />
+              </div>
+            ) : (
+              <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            )}
+
+            {/* Информация о пользователе и транзакции */}
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold text-white mb-0.5">
+                {tx.user_display_name || 'Неизвестный пользователь'}
+              </p>
+              <p className="text-xs text-gray-400 mb-2">
+                ID: {tx.user_id}
+              </p>
+              
+              {/* Тип транзакции */}
+              <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
+                {transactionType}
+              </span>
+            </div>
+          </div>
+
+          {/* Правая часть: Дата, сумма и статус */}
+          <div className="flex flex-col items-end space-y-2 ml-4">
+            {/* Дата и время */}
+            <p className="text-xs text-gray-400 whitespace-nowrap">
+              {formattedDate}
+            </p>
+            
+            {/* Сумма */}
+            <p
+              className={`text-base font-bold ${
+                isDeposit ? 'text-green-500' : 'text-red-500'
+              }`}
+            >
+              {isDeposit ? '+' : '-'}{formattedAmount}
+            </p>
+            
+            {/* Статус */}
+            <span className={`text-xs font-medium whitespace-nowrap ${statusInfo.textColor || 'text-gray-300'}`}>
+              {statusState}
+            </span>
+          </div>
+        </div>
+      </Link>
+    )
+  })
+  TransactionItem.displayName = 'TransactionItem'
 
   return (
     <div className="py-4">
@@ -315,88 +401,9 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {transactions.map((tx) => {
-            const isDeposit = tx.type === 'deposit'
-            const statusInfo = getStatusLabel(tx.status, tx.status_detail)
-            const processedBy = getProcessedBy((tx as any).processedBy)
-            const transactionType = processedBy ? (processedBy === 'автопополнение' ? 'автопополнение' : processedBy) : '-'
-            const transactionTypeLabel = processedBy ? (processedBy === 'автопополнение' ? 'автопополнение' : processedBy) : '-'
-            const statusState = getStatusState(tx.status)
-
-            return (
-              <Link
-                key={tx.id}
-                href={`/dashboard/requests/${tx.id}`}
-                className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm cursor-pointer"
-              >
-                <div className="flex items-start justify-between">
-                  {/* Левая часть: Аватар и информация о пользователе */}
-                  <div className="flex items-start space-x-3 flex-1">
-                    {/* Иконка банка */}
-                    {getBankImage(tx.bank) ? (
-                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900 relative">
-                        <Image
-                          src={getBankImage(tx.bank) || ''}
-                          alt={tx.bank || 'Bank'}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                          <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Информация о пользователе и транзакции */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-bold text-white mb-0.5">
-                        {tx.user_display_name || 'Неизвестный пользователь'}
-                      </p>
-                      <p className="text-xs text-gray-400 mb-2">
-                        ID: {tx.user_id}
-                      </p>
-                      
-                      {/* Тип транзакции */}
-                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
-                        {transactionTypeLabel}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Правая часть: Дата, сумма и статус */}
-                  <div className="flex flex-col items-end space-y-2 ml-4">
-                    {/* Дата и время */}
-                    <p className="text-xs text-gray-400 whitespace-nowrap">
-                      {formatDate(tx.created_at)}
-                    </p>
-                    
-                    {/* Сумма */}
-                    <p
-                      className={`text-base font-bold ${
-                        isDeposit ? 'text-green-500' : 'text-red-500'
-                      }`}
-                    >
-                      {isDeposit ? '+' : '-'}
-                      {tx.amount.toLocaleString('ru-RU', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }).replace('.', ',')}
-                    </p>
-                    
-                    {/* Статус */}
-                    <span className={`text-xs font-medium whitespace-nowrap ${statusInfo.textColor || 'text-gray-300'}`}>
-                      {statusState}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            )
-          })}
+          {processedTransactions.map((tx) => (
+            <TransactionItem key={tx.id} tx={tx} />
+          ))}
         </div>
       )}
 
@@ -406,9 +413,16 @@ export default function HistoryPage() {
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
           >
-            {loadingMore ? 'Загрузка...' : 'Загрузить еще'}
+            {loadingMore ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Загрузка...</span>
+              </>
+            ) : (
+              'Загрузить еще'
+            )}
           </button>
         </div>
       )}
