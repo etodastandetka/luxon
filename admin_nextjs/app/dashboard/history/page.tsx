@@ -34,7 +34,7 @@ export default function HistoryPage() {
       setOffset(0)
       setTransactions([])
       setHasMore(true)
-      setLoading(true)
+      // Не устанавливаем loading - скелетон показывается автоматически
     } else {
       setLoadingMore(true)
     }
@@ -74,11 +74,8 @@ export default function HistoryPage() {
   }, [activeTab, offset, limit])
 
   useEffect(() => {
-    // Загружаем данные после первого рендера (progressive loading)
-    const timer = setTimeout(() => {
-      fetchHistory(true) // Сбрасываем при изменении таба
-    }, 0)
-    return () => clearTimeout(timer)
+    // Загружаем данные сразу при изменении таба
+    fetchHistory(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
@@ -205,8 +202,8 @@ export default function HistoryPage() {
     return null
   }
 
-  // Показываем скелетон только если загружаем и нет данных
-  const showSkeleton = loading && transactions.length === 0
+  // Показываем скелетон только если нет данных (показывается сразу)
+  const showSkeleton = transactions.length === 0 && !loadingMore
 
   return (
     <div className="py-4">

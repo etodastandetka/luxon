@@ -53,7 +53,7 @@ export default function RequestDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [request, setRequest] = useState<RequestDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Начинаем с false - показываем скелетон сразу
   const [searchAmount, setSearchAmount] = useState('')
   const [exactAmount, setExactAmount] = useState(false)
   const [processedOnly, setProcessedOnly] = useState(false)
@@ -86,14 +86,8 @@ export default function RequestDetailPage() {
 
       const abortController = new AbortController()
       let intervalId: NodeJS.Timeout | null = null
-      let timer: NodeJS.Timeout | null = null
 
-      // Загружаем данные после первого рендера (progressive loading)
-      timer = setTimeout(() => {
-        setLoading(true)
-        fetchRequest(true)
-      }, 0)
-
+      // Загружаем данные сразу, без установки loading (скелетон показывается автоматически)
       const fetchRequest = async (showLoading = true) => {
         try {
           // Используем кэширование для более быстрой загрузки
@@ -124,7 +118,7 @@ export default function RequestDetailPage() {
             // Устанавливаем данные сразу для быстрой загрузки страницы
             setRequest(requestData)
             
-            // Убираем loading только после установки данных
+            // Убираем loading после установки данных (только при первой загрузке)
             if (showLoading) {
               setLoading(false)
             }
@@ -211,7 +205,7 @@ export default function RequestDetailPage() {
           console.error('❌ Failed to fetch request:', error)
         } finally {
           if (isMountedRef.current && !abortController.signal.aborted && showLoading) {
-            setLoading(false)
+            // Loading уже сброшен выше, не нужно сбрасывать здесь
           }
         }
       }
@@ -758,8 +752,8 @@ export default function RequestDetailPage() {
     setSearchId('')
   }
 
-  // Показываем скелетон если загружаем и нет данных
-  const showSkeleton = loading && !request
+  // Показываем скелетон если нет данных (показывается сразу, без установки loading)
+  const showSkeleton = !request
 
   if (!request && !loading) {
     return (
