@@ -148,44 +148,46 @@ export default function RequestDetailPage() {
               })
             }
             
-            // Автообновление статуса делаем только при автообновлении (не при первой загрузке)
-            // Это ускоряет первую загрузку страницы
-            if (!showLoading && 
-                requestData.requestType === 'deposit' && 
+            // Проверяем автопополнение (привязанный платеж с совпадающей суммой)
+            // Делаем это в фоне после отображения страницы, чтобы не замедлять загрузку
+            if (requestData.requestType === 'deposit' && 
                 requestData.status !== 'completed' && 
                 requestData.status !== 'approved' &&
                 requestData.status !== 'rejected' &&
                 requestData.matchingPayments) {
-              const linkedPayment = requestData.matchingPayments.find((p: MatchingPayment) => 
-                p.requestId === requestData.id && p.isProcessed
-              )
-              
-              if (linkedPayment && requestData.amount) {
-                const paymentAmount = parseFloat(linkedPayment.amount)
-                const requestAmount = parseFloat(requestData.amount)
+              // Выполняем проверку асинхронно после отображения страницы
+              setTimeout(() => {
+                const linkedPayment = requestData.matchingPayments.find((p: MatchingPayment) => 
+                  p.requestId === requestData.id && p.isProcessed
+                )
                 
-                // Если сумма совпадает (с точностью до 1 копейки), обновляем статус
-                if (Math.abs(paymentAmount - requestAmount) < 0.01) {
-                  // Обновляем статус в фоне, не блокируя UI
-                  fetch(`/api/requests/${requestData.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                      status: 'completed',
-                      statusDetail: null
-                    }),
-                  })
-                  .then(updateResponse => {
-                    if (updateResponse.ok && isMountedRef.current) {
-                      // Обновляем данные без полной перезагрузки
-                      fetchRequest(false)
-                    }
-                  })
-                  .catch(error => {
-                    console.error('Failed to auto-update request status:', error)
-                  })
+                if (linkedPayment && requestData.amount) {
+                  const paymentAmount = parseFloat(linkedPayment.amount)
+                  const requestAmount = parseFloat(requestData.amount)
+                  
+                  // Если сумма совпадает (с точностью до 1 копейки), обновляем статус
+                  if (Math.abs(paymentAmount - requestAmount) < 0.01) {
+                    // Обновляем статус в фоне, не блокируя UI
+                    fetch(`/api/requests/${requestData.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        status: 'completed',
+                        statusDetail: null
+                      }),
+                    })
+                    .then(updateResponse => {
+                      if (updateResponse.ok && isMountedRef.current) {
+                        // Обновляем данные без полной перезагрузки
+                        fetchRequest(false)
+                      }
+                    })
+                    .catch(error => {
+                      console.error('Failed to auto-update request status:', error)
+                    })
+                  }
                 }
-              }
+              }, showLoading ? 500 : 0) // При первой загрузке ждем 500ms чтобы страница успела отобразиться
             }
           } else {
             console.error('❌ Failed to fetch request:', data.error)
