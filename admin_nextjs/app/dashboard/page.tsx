@@ -305,12 +305,16 @@ export default function DashboardPage() {
     
     fetchRequests()
     
-    // Автоматическое обновление каждые 10 секунд (увеличено для снижения нагрузки)
+    // Автоматическое обновление: чаще для вкладки "pending" (новые заявки), реже для других
+    // Для вкладки "pending" обновляем каждые 2 секунды для мгновенного появления новых заявок
+    // Для других вкладок - каждые 10 секунд
+    const updateInterval = activeTab === 'pending' ? 2000 : 10000
+    
     const interval = setInterval(() => {
       if (!document.hidden) {
         fetchRequests(false) // Не показываем loading при автообновлении
       }
-    }, 10000)
+    }, updateInterval)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {
@@ -343,7 +347,7 @@ export default function DashboardPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [fetchRequests])
+  }, [fetchRequests, activeTab]) // Добавляем activeTab в зависимости для пересоздания интервала
 
   const getTypeLabel = (type: string) => {
     return type === 'deposit' ? 'Пополнение' : 'Вывод'
