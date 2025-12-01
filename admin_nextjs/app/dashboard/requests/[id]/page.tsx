@@ -114,9 +114,44 @@ export default function RequestDetailPage() {
           if (data.success && isMountedRef.current) {
             const requestData = data.data
             
-            // Проверяем, есть ли привязанный платеж с совпадающей суммой
-            // Если да, и заявка еще не completed, автоматически обновляем статус
-            if (requestData.requestType === 'deposit' && 
+            // Устанавливаем данные сразу для быстрой загрузки страницы
+            setRequest(requestData)
+            
+            // Обновляем интервал автообновления в зависимости от статуса
+            if (requestData.status === 'pending') {
+              // Для pending заявок обновляем чаще
+              if (intervalId) {
+                clearInterval(intervalId)
+                intervalId = setInterval(() => {
+                  if (!document.hidden) {
+                    fetchRequest(false)
+                  }
+                }, 5000)
+              }
+            } else {
+              // Для остальных - реже
+              if (intervalId) {
+                clearInterval(intervalId)
+                intervalId = setInterval(() => {
+                  if (!document.hidden) {
+                    fetchRequest(false)
+                  }
+                }, 15000)
+              }
+            }
+            
+            // Загружаем фото профиля параллельно (не блокируем отображение страницы)
+            if (requestData.userId) {
+              // Загружаем фото профиля асинхронно, не блокируя основной рендер
+              fetchProfilePhoto(requestData.userId).catch(err => {
+                console.error('Failed to fetch profile photo:', err)
+              })
+            }
+            
+            // Автообновление статуса делаем только при автообновлении (не при первой загрузке)
+            // Это ускоряет первую загрузку страницы
+            if (!showLoading && 
+                requestData.requestType === 'deposit' && 
                 requestData.status !== 'completed' && 
                 requestData.status !== 'approved' &&
                 requestData.status !== 'rejected' &&
@@ -131,57 +166,26 @@ export default function RequestDetailPage() {
                 
                 // Если сумма совпадает (с точностью до 1 копейки), обновляем статус
                 if (Math.abs(paymentAmount - requestAmount) < 0.01) {
-                  try {
-                    const updateResponse = await fetch(`/api/requests/${requestData.id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ 
-                        status: 'completed',
-                        statusDetail: null // "успешно"
-                      }),
-                    })
-                    
-                    // Проверяем Content-Type перед парсингом JSON
-                    const updateContentType = updateResponse.headers.get('content-type')
-                    if (!updateContentType || !updateContentType.includes('application/json')) {
-                      const text = await updateResponse.text()
-                      console.error('❌ Update API returned non-JSON:', updateResponse.status, text.substring(0, 200))
-                      return
+                  // Обновляем статус в фоне, не блокируя UI
+                  fetch(`/api/requests/${requestData.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      status: 'completed',
+                      statusDetail: null
+                    }),
+                  })
+                  .then(updateResponse => {
+                    if (updateResponse.ok && isMountedRef.current) {
+                      // Обновляем данные без полной перезагрузки
+                      fetchRequest(false)
                     }
-                    
-                    const updateData = await updateResponse.json()
-                    if (updateData.success) {
-                      // Обновляем данные заявки
-                      const refreshedResponse = await fetch(`/api/requests/${requestId}`, {
-                        signal: abortController.signal
-                      })
-                      
-                      // Проверяем Content-Type перед парсингом JSON
-                      const refreshedContentType = refreshedResponse.headers.get('content-type')
-                      if (!refreshedContentType || !refreshedContentType.includes('application/json')) {
-                        console.error('❌ Refreshed API returned non-JSON:', refreshedResponse.status)
-                        return
-                      }
-                      
-                      const refreshedData = await refreshedResponse.json()
-                      if (refreshedData.success && isMountedRef.current) {
-                        requestData.status = 'completed'
-                        requestData.statusDetail = null
-                        requestData.processedAt = refreshedData.data.processedAt
-                      }
-                    }
-                  } catch (error) {
+                  })
+                  .catch(error => {
                     console.error('Failed to auto-update request status:', error)
-                  }
+                  })
                 }
               }
-            }
-            
-            setRequest(requestData)
-            
-            // Загружаем фото профиля пользователя
-            if (requestData.userId) {
-              fetchProfilePhoto(requestData.userId)
             }
           } else {
             console.error('❌ Failed to fetch request:', data.error)
@@ -223,14 +227,41 @@ export default function RequestDetailPage() {
         }
       }
     
+    // Загружаем данные сразу
     fetchRequest(true)
     
-    // Автоматическое обновление каждые 15 секунд (увеличено для снижения нагрузки)
-    intervalId = setInterval(() => {
-      if (!document.hidden) {
-        fetchRequest(false)
+    // Автоматическое обновление: чаще для pending заявок (5 сек), реже для остальных (15 сек)
+    // Начинаем с 5 секунд (предполагаем что заявка pending), интервал обновится после первой загрузки
+    let currentInterval = 5000
+    
+    const createInterval = () => {
+      if (intervalId) {
+        clearInterval(intervalId)
       }
-    }, 15000)
+      intervalId = setInterval(() => {
+        if (!document.hidden) {
+          fetchRequest(false)
+        }
+      }, currentInterval)
+    }
+    
+    // Создаем интервал
+    createInterval()
+    
+    // Обновляем интервал после загрузки данных
+    const updateInterval = () => {
+      if (request?.status === 'pending') {
+        currentInterval = 5000
+      } else {
+        currentInterval = 15000
+      }
+      createInterval()
+    }
+    
+    // Вызываем обновление интервала после первой загрузки
+    setTimeout(() => {
+      updateInterval()
+    }, 100)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {
@@ -267,7 +298,7 @@ export default function RequestDetailPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [params.id])
+  }, [params.id]) // Убираем request?.status из зависимостей, интервал обновляется через setTimeout
 
   // Закрываем меню при клике вне его
   useEffect(() => {
