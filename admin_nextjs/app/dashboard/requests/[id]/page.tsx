@@ -1487,7 +1487,7 @@ export default function RequestDetailPage() {
         )}
       </div>
         </>
-      )}
+      ) : null}
     </div>
   )
 }
