@@ -106,57 +106,66 @@ export async function GET(
     // Оптимизация: выполняем все запросы параллельно для ускорения
     const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
     
-    // Параллельно выполняем все дополнительные запросы
-    // Оптимизация: загружаем только критичные данные сразу, остальное можно загрузить лениво
+    // Параллельно выполняем все дополнительные запросы с таймаутами
+    // Оптимизация: если запросы медленные, возвращаем пустые данные вместо блокировки
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      // Входящие платежи (уменьшен лимит с 20 до 10 для ускорения)
-      requestAmountInt ? prisma.incomingPayment.findMany({
-        where: {
-          amount: {
-            gte: requestAmountInt,
-            lt: requestAmountInt + 1,
+      // Входящие платежи (уменьшен лимит с 10 до 5 для ускорения)
+      requestAmountInt ? Promise.race([
+        prisma.incomingPayment.findMany({
+          where: {
+            amount: {
+              gte: requestAmountInt,
+              lt: requestAmountInt + 1,
+            },
           },
-        },
-        orderBy: { paymentDate: 'desc' },
-        take: 10, // Уменьшено с 20 до 10 для ускорения
-        select: {
-          id: true,
-          amount: true,
-          paymentDate: true,
-          requestId: true,
-          isProcessed: true,
-          bank: true,
-        },
-      }) : Promise.resolve([]),
+          orderBy: { paymentDate: 'desc' },
+          take: 5, // Уменьшено с 10 до 5 для ускорения
+          select: {
+            id: true,
+            amount: true,
+            paymentDate: true,
+            requestId: true,
+            isProcessed: true,
+            bank: true,
+          },
+        }),
+        new Promise(resolve => setTimeout(() => resolve([]), 500)) // Таймаут 500ms
+      ]) as Promise<any[]> : Promise.resolve([]),
       
-      // Транзакции казино (уменьшен лимит с 30 до 15 для ускорения)
-      requestData.accountId ? prisma.request.findMany({
-        where: {
-          accountId: requestData.accountId,
-          bookmaker: requestData.bookmaker,
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 15, // Уменьшено с 30 до 15 для ускорения
-        select: {
-          id: true,
-          userId: true,
-          username: true,
-          firstName: true,
-          lastName: true,
-          amount: true,
-          requestType: true,
-          status: true,
-          createdAt: true,
-          bookmaker: true,
-          accountId: true,
-        },
-      }) : Promise.resolve([]),
+      // Транзакции казино (уменьшен лимит с 15 до 5 для ускорения)
+      requestData.accountId ? Promise.race([
+        prisma.request.findMany({
+          where: {
+            accountId: requestData.accountId,
+            bookmaker: requestData.bookmaker,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5, // Уменьшено с 15 до 5 для ускорения
+          select: {
+            id: true,
+            userId: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            amount: true,
+            requestType: true,
+            status: true,
+            createdAt: true,
+            bookmaker: true,
+            accountId: true,
+          },
+        }),
+        new Promise(resolve => setTimeout(() => resolve([]), 500)) // Таймаут 500ms
+      ]) as Promise<any[]> : Promise.resolve([]),
       
-      // Заметка пользователя
-      prisma.botUser.findUnique({
-        where: { userId: requestData.userId },
-        select: { note: true },
-      }),
+      // Заметка пользователя (с таймаутом)
+      Promise.race([
+        prisma.botUser.findUnique({
+          where: { userId: requestData.userId },
+          select: { note: true },
+        }),
+        new Promise(resolve => setTimeout(() => resolve(null), 300)) // Таймаут 300ms
+      ]) as Promise<any>,
     ])
 
     const matchingPayments = matchingPaymentsResult.map(p => ({
