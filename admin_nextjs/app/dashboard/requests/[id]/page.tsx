@@ -298,7 +298,6 @@ export default function RequestDetailPage() {
     window.addEventListener('storage', handleStorageChange)
     
       return () => {
-      clearTimeout(timer)
       abortController.abort()
       if (intervalId) {
         clearInterval(intervalId)
