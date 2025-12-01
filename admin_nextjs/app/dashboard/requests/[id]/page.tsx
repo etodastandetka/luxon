@@ -253,6 +253,29 @@ export default function RequestDetailPage() {
         }
       }
       
+      // Загружаем фото чека отдельно (может быть большим)
+      const fetchPhotoFileUrl = async (requestId: number) => {
+        try {
+          const photoRes = await fetch(`/api/requests/${requestId}/photo`, {
+            cache: 'default',
+          }).catch(() => null)
+          
+          if (!isMountedRef.current || !photoRes || !photoRes.ok) return
+          
+          const data = await photoRes.json()
+          
+          if (data.success && data.data && isMountedRef.current && request) {
+            setRequest(prev => prev ? {
+              ...prev,
+              photoFileUrl: data.data.photoFileUrl || null,
+              cryptoPayment: data.data.cryptoPayment || null,
+            } : null)
+          }
+        } catch (error) {
+          console.error('Failed to fetch photo file URL:', error)
+        }
+      }
+      
       // Загружаем дополнительные данные (matchingPayments, casinoTransactions, userNote) в фоне
       const fetchAdditionalData = async (requestId: number, userId: string, amount: string | null, accountId: string | null, bookmaker: string | null) => {
         try {
