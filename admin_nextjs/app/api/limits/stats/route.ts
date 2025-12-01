@@ -70,7 +70,48 @@ export async function GET(request: NextRequest) {
     const totalWithdrawalsSum = parseFloat(withdrawalStats._sum.amount?.toString() || '0')
 
     // Приблизительный доход: 8% от пополнений + 2% от выводов
-    const approximateIncome = totalDepositsSum * 0.08 + totalWithdrawalsSum * 0.02
+    // Если период не выбран - считаем за сегодня, иначе за выбранный период
+    let approximateIncome: number
+    if (startDate && endDate) {
+      // Период выбран - используем общую статистику
+      approximateIncome = totalDepositsSum * 0.08 + totalWithdrawalsSum * 0.02
+    } else {
+      // Период не выбран - считаем только за сегодня
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      
+      const todayFilter = {
+        createdAt: {
+          gte: today,
+          lt: tomorrow
+        }
+      }
+      
+      const [todayDepositStats, todayWithdrawalStats] = await Promise.all([
+        prisma.request.aggregate({
+          where: {
+            requestType: 'deposit',
+            status: { in: depositSuccessStatuses },
+            ...todayFilter,
+          },
+          _sum: { amount: true },
+        }),
+        prisma.request.aggregate({
+          where: {
+            requestType: 'withdraw',
+            status: { in: withdrawalSuccessStatuses },
+            ...todayFilter,
+          },
+          _sum: { amount: true },
+        }),
+      ])
+      
+      const todayDepositsSum = parseFloat(todayDepositStats._sum.amount?.toString() || '0')
+      const todayWithdrawalsSum = parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0')
+      approximateIncome = todayDepositsSum * 0.08 + todayWithdrawalsSum * 0.02
+    }
 
     // Данные для графика (все данные если период не указан, иначе за период)
     let chartStartDate = startDate ? new Date(startDate) : null
