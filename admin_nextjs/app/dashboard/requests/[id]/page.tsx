@@ -264,12 +264,16 @@ export default function RequestDetailPage() {
           
           const data = await photoRes.json()
           
-          if (data.success && data.data && isMountedRef.current && request) {
-            setRequest(prev => prev ? {
-              ...prev,
-              photoFileUrl: data.data.photoFileUrl || null,
-              cryptoPayment: data.data.cryptoPayment || null,
-            } : null)
+          // Убираем проверку на request - обновляем состояние напрямую
+          if (data.success && data.data && isMountedRef.current) {
+            setRequest(prev => {
+              if (!prev) return null
+              return {
+                ...prev,
+                photoFileUrl: data.data.photoFileUrl || null,
+                cryptoPayment: data.data.cryptoPayment || null,
+              }
+            })
           }
         } catch (error) {
           console.error('Failed to fetch photo file URL:', error)
@@ -290,13 +294,17 @@ export default function RequestDetailPage() {
           
           const data = await additionalDataRes.json()
           
-          if (data.success && data.data && isMountedRef.current && request) {
-            setRequest(prev => prev ? {
-              ...prev,
-              matchingPayments: data.data.matchingPayments || [],
-              casinoTransactions: data.data.casinoTransactions || [],
-              userNote: data.data.userNote || null,
-            } : null)
+          // Убираем проверку на request - обновляем состояние напрямую
+          if (data.success && data.data && isMountedRef.current) {
+            setRequest(prev => {
+              if (!prev) return null
+              return {
+                ...prev,
+                matchingPayments: data.data.matchingPayments || [],
+                casinoTransactions: data.data.casinoTransactions || [],
+                userNote: data.data.userNote || null,
+              }
+            })
           }
         } catch (error) {
           console.error('Failed to fetch additional data:', error)
