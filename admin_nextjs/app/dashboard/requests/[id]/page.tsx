@@ -300,7 +300,8 @@ export default function RequestDetailPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [params.id]) // Убираем request?.status из зависимостей, интервал обновляется через setTimeout
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id]) // request?.status обновляется внутри fetchRequest, не нужно в зависимостях
 
   // Закрываем меню при клике вне его
   useEffect(() => {

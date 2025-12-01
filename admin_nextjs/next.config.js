@@ -37,9 +37,10 @@ const nextConfig = {
   },
   
   // Оптимизация бандла
-  experimental: {
-    optimizeCss: true, // Оптимизация CSS
-  },
+  // Отключаем optimizeCss т.к. требует critters модуль
+  // experimental: {
+  //   optimizeCss: true, // Оптимизация CSS
+  // },
   
   // Production оптимизации
   ...(process.env.NODE_ENV === 'production' && {
