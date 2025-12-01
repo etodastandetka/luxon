@@ -34,7 +34,7 @@ export default function HistoryPage() {
       setOffset(0)
       setTransactions([])
       setHasMore(true)
-      // Не устанавливаем loading - скелетон показывается автоматически
+      setLoading(true) // Показываем лоадер при сбросе
     } else {
       setLoadingMore(true)
     }
@@ -49,9 +49,9 @@ export default function HistoryPage() {
       params.append('limit', limit.toString())
       params.append('offset', reset ? '0' : offset.toString())
 
-      // Используем кеширование для ускорения загрузки
+      // Используем кеширование для ускорения загрузки (API теперь кэширует на 5 сек)
       const response = await fetch(`/api/transaction-history?${params.toString()}`, {
-        cache: reset ? 'no-store' : 'default', // При первой загрузке не кешируем
+        cache: 'default', // Используем кэш браузера и сервера
       })
       const data = await response.json()
 
@@ -59,11 +59,12 @@ export default function HistoryPage() {
         const newTransactions = data.data.transactions || []
         if (reset) {
           setTransactions(newTransactions)
+          setOffset(newTransactions.length)
         } else {
           setTransactions(prev => [...prev, ...newTransactions])
+          setOffset(prev => prev + newTransactions.length)
         }
         setHasMore(data.data.pagination?.hasMore || false)
-        setOffset(reset ? newTransactions.length : offset + newTransactions.length)
       }
     } catch (error) {
       console.error('Failed to fetch history:', error)
@@ -74,8 +75,12 @@ export default function HistoryPage() {
   }, [activeTab, offset, limit])
 
   useEffect(() => {
-    // Загружаем данные сразу при изменении таба
-    fetchHistory(true)
+    // Добавляем debounce для переключения табов чтобы не делать лишние запросы
+    const timeoutId = setTimeout(() => {
+      fetchHistory(true)
+    }, 150) // Небольшая задержка для debounce
+
+    return () => clearTimeout(timeoutId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 

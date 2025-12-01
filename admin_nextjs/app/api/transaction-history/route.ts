@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('user_id')
     const type = searchParams.get('type') // deposit, withdraw, or empty for all
     const manual = searchParams.get('manual') === 'true' // Ручные заявки (не автопополнение)
-    const limit = parseInt(searchParams.get('limit') || '30') // Увеличиваем лимит по умолчанию
+    const limit = parseInt(searchParams.get('limit') || '30')
     const offset = parseInt(searchParams.get('offset') || '0')
 
     const where: any = {}
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Оптимизируем запрос - выбираем только нужные поля
+    // Оптимизация: берем на 1 больше для проверки hasMore без отдельного count запроса
     const requests = await prisma.request.findMany({
       where,
       select: {
@@ -64,17 +64,18 @@ export async function GET(request: NextRequest) {
         processedBy: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      take: limit + 1, // Берем на 1 больше для проверки hasMore
       skip: offset,
     })
 
-    // Подсчитываем общее количество только если offset = 0 (первая загрузка)
-    // Это ускоряет последующие запросы
-    // Оптимизация: делаем count параллельно с основным запросом только если нужно
-    const totalPromise = offset === 0 ? prisma.request.count({ where }) : Promise.resolve(0)
-    const total = await totalPromise
+    // Проверяем hasMore (если получили больше limit, значит есть еще)
+    const hasMore = requests.length > limit
+    const actualRequests = hasMore ? requests.slice(0, limit) : requests
 
-    const transactions = requests.map((r) => ({
+    // Убираем count полностью для ускорения - hasMore достаточно
+    const total = 0
+
+    const transactions = actualRequests.map((r) => ({
       id: r.id.toString(),
       user_id: r.userId.toString(),
       account_id: r.accountId || '',
@@ -97,20 +98,20 @@ export async function GET(request: NextRequest) {
       processedBy: r.processedBy || null,
     }))
 
-    // Определяем hasMore на основе количества полученных записей
-    // Если получили меньше limit, значит больше нет записей
-    const hasMore = requests.length === limit
-
     const response = NextResponse.json(createApiResponse({ 
       transactions,
       pagination: {
         limit,
         offset,
-        total: total || undefined, // Возвращаем total только для первой страницы
         hasMore,
       },
     }))
+    
+    // Добавляем кэширование для ускорения повторных запросов
+    // Кэшируем на 5 секунд для истории (данные не критичны к актуальности)
     response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=15')
+    
     return response
   } catch (error: any) {
     console.error('Transaction history error:', error)
