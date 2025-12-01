@@ -56,6 +56,9 @@ export default function DashboardPage() {
         params.append('status', 'deferred')
       }
       
+      // Добавляем лимит для ускорения загрузки
+      params.append('limit', '20')
+      
       // Используем кэширование для более быстрой загрузки
       const response = await fetch(`/api/requests?${params.toString()}`, {
         cache: 'no-store', // Для динамических данных не кешируем на клиенте
@@ -302,12 +305,12 @@ export default function DashboardPage() {
     
     fetchRequests()
     
-    // Автоматическое обновление каждые 5 секунд (увеличено для снижения нагрузки)
+    // Автоматическое обновление каждые 10 секунд (увеличено для снижения нагрузки)
     const interval = setInterval(() => {
       if (!document.hidden) {
         fetchRequests(false) // Не показываем loading при автообновлении
       }
-    }, 5000)
+    }, 10000)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {

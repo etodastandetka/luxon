@@ -103,14 +103,13 @@ export async function GET(
       )
     }
 
-    // Получаем все входящие платежи с совпадающей суммой (по целой части)
-    // Если заявка на 100.23, показываем все платежи на 100.XX
-    let matchingPayments: any[] = []
-    if (requestData.amount) {
-      const requestAmountInt = Math.floor(parseFloat(requestData.amount.toString()))
-      
-      // Получаем все платежи с той же целой частью суммы
-      const allPayments = await prisma.incomingPayment.findMany({
+    // Оптимизация: выполняем все запросы параллельно для ускорения
+    const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
+    
+    // Параллельно выполняем все дополнительные запросы
+    const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
+      // Входящие платежи (уменьшен лимит с 50 до 20 для ускорения)
+      requestAmountInt ? prisma.incomingPayment.findMany({
         where: {
           amount: {
             gte: requestAmountInt,
@@ -118,26 +117,25 @@ export async function GET(
           },
         },
         orderBy: { paymentDate: 'desc' },
-        take: 50,
-      })
-
-      matchingPayments = allPayments.map(p => ({
-        ...p,
-        amount: p.amount.toString(),
-      }))
-    }
-
-    // Получаем все транзакции по accountId (ID казино), если он есть
-    // Включаем все заявки с таким же accountId и букмекером от всех пользователей
-    let casinoTransactions: any[] = []
-    if (requestData.accountId) {
-      casinoTransactions = await prisma.request.findMany({
+        take: 20, // Уменьшено с 50 до 20
+        select: {
+          id: true,
+          amount: true,
+          paymentDate: true,
+          requestId: true,
+          isProcessed: true,
+          bank: true,
+        },
+      }) : Promise.resolve([]),
+      
+      // Транзакции казино (уменьшен лимит с 100 до 30 для ускорения)
+      requestData.accountId ? prisma.request.findMany({
         where: {
           accountId: requestData.accountId,
-          bookmaker: requestData.bookmaker, // Также фильтруем по букмекеру для точности
+          bookmaker: requestData.bookmaker,
         },
         orderBy: { createdAt: 'desc' },
-        take: 100, // Лимит на количество транзакций
+        take: 30, // Уменьшено с 100 до 30
         select: {
           id: true,
           userId: true,
@@ -151,14 +149,27 @@ export async function GET(
           bookmaker: true,
           accountId: true,
         },
-      })
-    }
+      }) : Promise.resolve([]),
+      
+      // Заметка пользователя
+      prisma.botUser.findUnique({
+        where: { userId: requestData.userId },
+        select: { note: true },
+      }),
+    ])
 
-    // Получаем заметку пользователя
-    const user = await prisma.botUser.findUnique({
-      where: { userId: requestData.userId },
-      select: { note: true },
-    })
+    const matchingPayments = matchingPaymentsResult.map(p => ({
+      ...p,
+      amount: p.amount.toString(),
+    }))
+
+    const casinoTransactions = casinoTransactionsResult.map(t => ({
+      ...t,
+      userId: t.userId.toString(),
+      amount: t.amount ? t.amount.toString() : null,
+    }))
+    
+    const user = userResult
 
     return NextResponse.json(
       createApiResponse({

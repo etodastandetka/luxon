@@ -93,7 +93,6 @@ export default function RequestDetailPage() {
           const response = await fetch(`/api/requests/${requestId}`, {
             signal: abortController.signal,
             cache: showLoading ? 'no-store' : 'default', // При первой загрузке не кэшируем, при автообновлении используем кэш
-            next: { revalidate: 3 } // Перевалидируем каждые 3 секунды
           })
           
           if (abortController.signal.aborted || !isMountedRef.current) return
@@ -226,12 +225,12 @@ export default function RequestDetailPage() {
     
     fetchRequest(true)
     
-    // Автоматическое обновление каждые 5 секунд (увеличено для снижения нагрузки)
+    // Автоматическое обновление каждые 15 секунд (увеличено для снижения нагрузки)
     intervalId = setInterval(() => {
       if (!document.hidden) {
         fetchRequest(false)
       }
-    }, 5000)
+    }, 15000)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {
