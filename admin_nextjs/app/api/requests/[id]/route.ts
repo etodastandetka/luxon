@@ -50,8 +50,7 @@ export async function GET(
 
     const id = parseInt(params.id)
 
-    // КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Выбираем только минимально необходимые поля для быстрой загрузки
-    // photoFileUrl может быть очень большим (base64 изображения), загружаем его отдельно
+    // Оптимизируем запрос - выбираем только нужные поля
     const requestData = await prisma.request.findUnique({
       where: { id },
       select: {
@@ -69,24 +68,22 @@ export async function GET(
         processedBy: true,
         bank: true,
         phone: true,
-        // Убираем photoFileUrl - может быть очень большим, загружаем отдельно если нужен
-        // photoFileUrl: true,
+        photoFileUrl: true,
         paymentMethod: true,
         createdAt: true,
         updatedAt: true,
         processedAt: true,
-        // Убираем cryptoPayment из основного запроса - не критично для первого отображения
-        // cryptoPayment: {
-        //   select: {
-        //     id: true,
-        //     invoice_id: true,
-        //     amount: true,
-        //     fee_amount: true,
-        //     asset: true,
-        //     status: true,
-        //     request_id: true,
-        //   },
-        // },
+        cryptoPayment: {
+          select: {
+            id: true,
+            invoice_id: true,
+            amount: true,
+            fee_amount: true,
+            asset: true,
+            status: true,
+            request_id: true,
+          },
+        },
       },
     })
 
@@ -97,24 +94,97 @@ export async function GET(
       )
     }
 
-    // КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Возвращаем только минимально необходимую информацию сразу
-    // Все остальное загружается отдельными запросами после отображения страницы
+    const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
+    
+    // Загружаем все дополнительные данные параллельно с таймаутами для быстрой загрузки
+    const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
+      // Входящие платежи (с таймаутом 200ms)
+      requestAmountInt ? Promise.race([
+        prisma.incomingPayment.findMany({
+          where: {
+            amount: {
+              gte: requestAmountInt,
+              lt: requestAmountInt + 1,
+            },
+          },
+          orderBy: { paymentDate: 'desc' },
+          take: 3,
+          select: {
+            id: true,
+            amount: true,
+            paymentDate: true,
+            requestId: true,
+            isProcessed: true,
+            bank: true,
+          },
+        }),
+        new Promise(resolve => setTimeout(() => resolve([]), 200))
+      ]) as Promise<any[]> : Promise.resolve([]),
+      
+      // Транзакции казино (с таймаутом 200ms)
+      requestData.accountId && requestData.bookmaker ? Promise.race([
+        prisma.request.findMany({
+          where: {
+            accountId: requestData.accountId,
+            bookmaker: requestData.bookmaker,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+          select: {
+            id: true,
+            userId: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            amount: true,
+            requestType: true,
+            status: true,
+            createdAt: true,
+            bookmaker: true,
+            accountId: true,
+          },
+        }),
+        new Promise(resolve => setTimeout(() => resolve([]), 200))
+      ]) as Promise<any[]> : Promise.resolve([]),
+      
+      // Заметка пользователя (с таймаутом 150ms)
+      Promise.race([
+        prisma.botUser.findUnique({
+          where: { userId: requestData.userId },
+          select: { note: true },
+        }),
+        new Promise(resolve => setTimeout(() => resolve(null), 150))
+      ]) as Promise<any>,
+    ])
+
+    const matchingPayments = matchingPaymentsResult.map(p => ({
+      ...p,
+      amount: p.amount.toString(),
+    }))
+
+    const casinoTransactions = casinoTransactionsResult.map(t => ({
+      ...t,
+      userId: t.userId.toString(),
+      amount: t.amount ? t.amount.toString() : null,
+    }))
+
+    // Возвращаем все данные сразу - быстрее и надежнее
     return NextResponse.json(
       createApiResponse({
         ...requestData,
         userId: requestData.userId.toString(),
         amount: requestData.amount ? requestData.amount.toString() : null,
-        // Убираем photoFileUrl - может быть очень большим, загружаем отдельно
-        photoFileUrl: null,
+        photoFileUrl: requestData.photoFileUrl,
         paymentMethod: requestData.paymentMethod || null,
-        // Убираем cryptoPayment - не критично для первого отображения
-        cryptoPayment: null,
-        // Убираем incomingPayments - они не критичны для первого отображения
+        cryptoPayment: requestData.cryptoPayment ? {
+          ...requestData.cryptoPayment,
+          amount: requestData.cryptoPayment.amount.toString(),
+          fee_amount: requestData.cryptoPayment.fee_amount?.toString() || null,
+        } : null,
         incomingPayments: [],
-        // Дополнительные данные загружаются отдельно
-        matchingPayments: [],
-        casinoTransactions: [],
-        userNote: null,
+        matchingPayments,
+        casinoTransactions,
+        userNote: userResult?.note || null,
       })
     )
   } catch (error: any) {

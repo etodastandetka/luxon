@@ -116,23 +116,12 @@ export default function RequestDetailPage() {
           if (data.success && isMountedRef.current) {
             const requestData = data.data
             
-            // Устанавливаем данные сразу для быстрой загрузки страницы
+            // Устанавливаем данные сразу - все данные уже загружены в одном запросе
             setRequest(requestData)
             
             // Убираем loading после установки данных
             if (showLoading) {
               setLoading(false)
-            }
-            
-            // Загружаем дополнительные данные в фоне после отображения страницы
-            if (showLoading) {
-              setTimeout(() => {
-                // Загружаем фото чека и дополнительные данные параллельно
-                Promise.all([
-                  fetchPhotoFileUrl(requestData.id),
-                  fetchAdditionalData(requestData.id, requestData.userId, requestData.amount, requestData.accountId, requestData.bookmaker)
-                ]).catch(err => console.error('Failed to fetch additional data:', err))
-              }, 50) // Задержка 50ms - загружаем сразу после отображения
             }
             
             // Обновляем интервал автообновления в зависимости от статуса
