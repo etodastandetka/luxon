@@ -127,7 +127,7 @@ if [ -f "ecosystem.config.js" ]; then
     pm2 start ecosystem.config.js
 else
     echo -e "${YELLOW}⚠️  ecosystem.config.js не найден, создаю базовую конфигурацию...${NC}"
-    pm2 start npm --name "luxon-admin" -- start
+    pm2 start node_modules/.bin/next --name "luxon-admin" -- start -p 3001
 fi
 
 # Запуск клиентского сайта
@@ -136,7 +136,7 @@ if [ -f "ecosystem.config.js" ]; then
     pm2 start ecosystem.config.js
 else
     echo -e "${YELLOW}⚠️  ecosystem.config.js не найден, создаю базовую конфигурацию...${NC}"
-    pm2 start npm --name "luxon-mini-app" -- run start:prod
+    pm2 start node_modules/.bin/next --name "luxon-mini-app" -- start -p 3030
 fi
 
 # Сохранение конфигурации PM2

@@ -251,8 +251,8 @@ module.exports = {
     {
       name: 'luxon-admin',
       cwd: '/var/www/luxon/admin_nextjs',
-      script: 'npm',
-      args: 'start',
+      script: 'node_modules/.bin/next',
+      args: 'start -p 3001',
       interpreter: 'none',
       env: {
         NODE_ENV: 'production',
@@ -267,7 +267,9 @@ module.exports = {
       max_memory_restart: '500M',
       restart_delay: 5000,
       max_restarts: 10,
-      min_uptime: '10s'
+      min_uptime: '10s',
+      instances: 1,
+      exec_mode: 'fork'
     },
     {
       name: 'luxon-email-watcher',
@@ -306,8 +308,8 @@ module.exports = {
     {
       name: 'luxon-mini-app',
       cwd: '/var/www/luxon/bot2/mini_app_site',
-      script: 'npm',
-      args: 'run start:prod',
+      script: 'node_modules/.bin/next',
+      args: 'start -p 3030',
       interpreter: 'none',
       env: {
         NODE_ENV: 'production',
