@@ -51,6 +51,7 @@ export async function GET(
     const id = parseInt(params.id)
 
     // КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Выбираем только минимально необходимые поля для быстрой загрузки
+    // photoFileUrl может быть очень большим (base64 изображения), загружаем его отдельно
     const requestData = await prisma.request.findUnique({
       where: { id },
       select: {
@@ -68,24 +69,24 @@ export async function GET(
         processedBy: true,
         bank: true,
         phone: true,
-        photoFileUrl: true,
+        // Убираем photoFileUrl - может быть очень большим, загружаем отдельно если нужен
+        // photoFileUrl: true,
         paymentMethod: true,
         createdAt: true,
         updatedAt: true,
         processedAt: true,
-        // Убираем incomingPayments из основного запроса - они не критичны для первого отображения
-        // incomingPayments загружаются отдельно если нужны
-        cryptoPayment: {
-          select: {
-            id: true,
-            invoice_id: true,
-            amount: true,
-            fee_amount: true,
-            asset: true,
-            status: true,
-            request_id: true,
-          },
-        },
+        // Убираем cryptoPayment из основного запроса - не критично для первого отображения
+        // cryptoPayment: {
+        //   select: {
+        //     id: true,
+        //     invoice_id: true,
+        //     amount: true,
+        //     fee_amount: true,
+        //     asset: true,
+        //     status: true,
+        //     request_id: true,
+        //   },
+        // },
       },
     })
 
@@ -96,20 +97,18 @@ export async function GET(
       )
     }
 
-    // КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Возвращаем только основную информацию сразу
-    // Дополнительные данные загружаются отдельными запросами после отображения страницы
+    // КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Возвращаем только минимально необходимую информацию сразу
+    // Все остальное загружается отдельными запросами после отображения страницы
     return NextResponse.json(
       createApiResponse({
         ...requestData,
         userId: requestData.userId.toString(),
         amount: requestData.amount ? requestData.amount.toString() : null,
-        photoFileUrl: requestData.photoFileUrl,
+        // Убираем photoFileUrl - может быть очень большим, загружаем отдельно
+        photoFileUrl: null,
         paymentMethod: requestData.paymentMethod || null,
-        cryptoPayment: requestData.cryptoPayment ? {
-          ...requestData.cryptoPayment,
-          amount: requestData.cryptoPayment.amount.toString(),
-          fee_amount: requestData.cryptoPayment.fee_amount?.toString() || null,
-        } : null,
+        // Убираем cryptoPayment - не критично для первого отображения
+        cryptoPayment: null,
         // Убираем incomingPayments - они не критичны для первого отображения
         incomingPayments: [],
         // Дополнительные данные загружаются отдельно

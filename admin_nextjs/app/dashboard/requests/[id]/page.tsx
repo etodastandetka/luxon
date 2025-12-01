@@ -127,7 +127,11 @@ export default function RequestDetailPage() {
             // Загружаем дополнительные данные в фоне после отображения страницы
             if (showLoading) {
               setTimeout(() => {
-                fetchAdditionalData(requestData.id, requestData.userId, requestData.amount, requestData.accountId, requestData.bookmaker)
+                // Загружаем фото чека и дополнительные данные параллельно
+                Promise.all([
+                  fetchPhotoFileUrl(requestData.id),
+                  fetchAdditionalData(requestData.id, requestData.userId, requestData.amount, requestData.accountId, requestData.bookmaker)
+                ]).catch(err => console.error('Failed to fetch additional data:', err))
               }, 50) // Задержка 50ms - загружаем сразу после отображения
             }
             
