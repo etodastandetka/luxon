@@ -9,7 +9,7 @@ const isDevelopment = process.env.NODE_ENV === 'development'
 // Всегда используем админку напрямую
 const ADMIN_API_BASE_URL = isDevelopment 
   ? 'http://localhost:3001' 
-  : 'https://xendro.pro'
+  : 'https://japar.click'
 
 export const API_URLS = {
   BASE: ADMIN_API_BASE_URL,

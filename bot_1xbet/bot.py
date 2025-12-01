@@ -23,7 +23,7 @@ BOT_TOKEN = "8042108386:AAFGNVTTfrMy-KwHjxOA72Gd_iV-Bgy5u4U"
 
 # URL сайта
 WEBSITE_URL = "https://luxservice.online"
-API_URL = "https://xendro.pro"
+API_URL = "https://japar.click"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start"""

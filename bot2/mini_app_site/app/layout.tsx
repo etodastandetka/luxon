@@ -62,9 +62,33 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Гарантируем, что title всегда установлен правильно
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = 'LUX ON'
+      // Используем MutationObserver для отслеживания изменений title
+      const titleElement = document.querySelector('title')
+      if (titleElement) {
+        const observer = new MutationObserver(() => {
+          if (document.title !== 'LUX ON') {
+            document.title = 'LUX ON'
+          }
+        })
+        observer.observe(titleElement, { childList: true, subtree: true, characterData: true })
+        
+        return () => observer.disconnect()
+      }
+    }
+  }, [])
+
   return (
     <html lang="ru">
       <head>
+        <title>LUX ON</title>
+        <meta name="description" content="LUX ON" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
       </head>
       <body style={{ position: 'relative', margin: 0, padding: 0, minHeight: '100vh' }}>

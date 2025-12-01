@@ -24,9 +24,9 @@ object DatabaseConfig {
     // Базовый URL для админки Next.js (новый основной endpoint)
     // ВАЖНО: Этот URL используется только как значение по умолчанию!
     // Реальный URL можно настроить через SharedPreferencesHelper.saveAdminApiUrl()
-    // Замени на реальный домен админки, например: "https://xendro.pro" или "http://your-server.com"
+    // Замени на реальный домен админки, например: "https://japar.click" или "http://your-server.com"
     // НЕ используйте localhost - он не будет работать с реального устройства!
-    const val ADMIN_API_BASE_URL = "https://xendro.pro" // Значение по умолчанию
+    const val ADMIN_API_BASE_URL = "https://japar.click" // Значение по умолчанию
 
     // Полный URL подключения
     val DATABASE_URL = "postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"

@@ -21,7 +21,7 @@ function scheduleDelayedNotification(requestId: number) {
         || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:3001' : 'http://localhost:3001')
       
       // Если явно указан публичный URL и нет внутреннего - используем его как запасной вариант
-      const publicApiUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? 'https://xendro.pro' : '')
+      const publicApiUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? 'https://japar.click' : '')
       if (!baseUrl && publicApiUrl) {
         baseUrl = publicApiUrl
       }

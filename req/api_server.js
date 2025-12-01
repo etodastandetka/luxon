@@ -80,7 +80,7 @@ app.post('/api/payments', async (req, res) => {
         console.log(`Платеж сохранен в БД: ID=${result.rows[0].id}, Банк=${bank_name}, Сумма=${amount} ${currency || 'KGS'}`);
 
         // Отправляем в админку Next.js (асинхронно, не блокируем ответ)
-        const adminBaseUrl = process.env.ADMIN_API_BASE_URL || 'https://xendro.pro';
+        const adminBaseUrl = process.env.ADMIN_API_BASE_URL || 'https://japar.click';
         fetch(`${adminBaseUrl}/api/incoming-payment`, {
             method: 'POST',
             headers: {

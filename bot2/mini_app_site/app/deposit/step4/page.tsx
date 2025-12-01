@@ -1027,7 +1027,7 @@ export default function DepositStep4() {
         return
       }
       
-      const reader = new (window as any).FileReader()
+      const reader = new (window as any).FileReader() 
       reader.onloadend = async () => {
         const base64String = reader.result as string
         const originalSizeKB = (base64String.length * 3) / 4 / 1024

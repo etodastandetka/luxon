@@ -2,7 +2,7 @@
 
 /**
  * Получить базовый URL для API
- * Всегда возвращает URL админки (xendro.pro в продакшене)
+ * Всегда возвращает URL админки (japar.click в продакшене)
  */
 export function getApiBase(): string {
   const isDevelopment = process.env.NODE_ENV === 'development'
@@ -11,7 +11,7 @@ export function getApiBase(): string {
     return 'http://localhost:3001'
   }
   // Продакшен: всегда используем админку
-  return 'https://xendro.pro'
+  return 'https://japar.click'
 }
 
 interface FetchOptions extends RequestInit {

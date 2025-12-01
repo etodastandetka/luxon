@@ -14,7 +14,7 @@ https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view
 
 ## Как настроить в админ-панели
 
-1. Зайдите в админ-панель: `https://xendro.pro/dashboard/settings`
+1. Зайдите в админ-панель: `https://japar.click/dashboard/settings`
 2. Найдите раздел **"Видео инструкции"**
 3. Вставьте ссылки в соответствующие поля:
    - **Пополнение**: вставьте ссылку на видео по пополнению
