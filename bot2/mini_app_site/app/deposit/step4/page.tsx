@@ -1086,9 +1086,12 @@ export default function DepositStep4() {
       return
     }
 
-    // Проверяем, требуется ли фото чека
-    if (requireReceiptPhoto && !receiptPhoto) {
-      console.log('❌ Требуется фото чека, но оно не загружено')
+    // Проверяем, требуется ли фото чека (проверяем и receiptPhoto и receiptPhotoBase64)
+    if (requireReceiptPhoto && !receiptPhoto && !receiptPhotoBase64) {
+      console.log('❌ Требуется фото чека, но оно не загружено', {
+        hasReceiptPhoto: !!receiptPhoto,
+        hasReceiptPhotoBase64: !!receiptPhotoBase64
+      })
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',
@@ -1115,18 +1118,6 @@ export default function DepositStep4() {
     // Устанавливаем флаг создания заявки СРАЗУ, чтобы предотвратить двойной клик
     console.log('✅ Все проверки пройдены, устанавливаем isCreatingRequest=true')
     setIsCreatingRequest(true)
-    
-    // Дополнительная защита: блокируем кнопку на 2 секунды
-    const blockButton = () => {
-      const button = document.querySelector('button:has-text("Я оплатил"), button[class*="paid"]') as HTMLButtonElement
-      if (button) {
-        button.disabled = true
-        setTimeout(() => {
-          button.disabled = false
-        }, 2000)
-      }
-    }
-    blockButton()
     
     try {
       console.log('🔄 Начинаем создание заявки через createDepositRequest()...')
@@ -2178,25 +2169,51 @@ export default function DepositStep4() {
       {/* Большая кнопка "Я оплатил" (для банковских переводов) */}
       {!isPaid && paymentType === 'bank' && (
         <button
-          onClick={(e) => {
+          onClick={async (e) => {
             console.log('🔘 Кнопка "Я оплатил" нажата!', {
               event: e,
               currentTarget: e.currentTarget,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              isPaid,
+              isCreatingRequest,
+              requireReceiptPhoto,
+              hasReceiptPhoto: !!receiptPhoto,
+              hasReceiptPhotoBase64: !!receiptPhotoBase64
             })
             e.preventDefault()
             e.stopPropagation()
-            handleIPaid().catch((error) => {
+            
+            // Дополнительная проверка перед вызовом
+            if (isPaid || isCreatingRequest) {
+              console.warn('⚠️ Кнопка заблокирована:', { isPaid, isCreatingRequest })
+              return
+            }
+            
+            try {
+              await handleIPaid()
+            } catch (error) {
               console.error('❌ Необработанная ошибка в handleIPaid:', error)
-            })
+            }
           }}
-          className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+          className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isPaid || isCreatingRequest}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {t.iPaid}
+          {isCreatingRequest ? (
+            <>
+              <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {language === 'ru' ? 'Отправка...' : 'Sending...'}
+            </>
+          ) : (
+            <>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {t.iPaid}
+            </>
+          )}
         </button>
       )}
 
@@ -2204,18 +2221,46 @@ export default function DepositStep4() {
       {paymentType === 'crypto' && cryptoInvoice && !isPaid && (
         <button
           type="button"
-          onClick={(e) => {
+          onClick={async (e) => {
             e.preventDefault()
             e.stopPropagation()
-            console.log('🔘 Кнопка "Я оплатил" нажата для crypto')
-            handleCryptoIPaid()
+            console.log('🔘 Кнопка "Я оплатил" нажата для crypto', {
+              isPaid,
+              isCreatingRequest,
+              hasCryptoInvoice: !!cryptoInvoice
+            })
+            
+            // Дополнительная проверка перед вызовом
+            if (isPaid || isCreatingRequest) {
+              console.warn('⚠️ Кнопка заблокирована:', { isPaid, isCreatingRequest })
+              return
+            }
+            
+            try {
+              await handleCryptoIPaid()
+            } catch (error) {
+              console.error('❌ Необработанная ошибка в handleCryptoIPaid:', error)
+            }
           }}
-          className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+          className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isPaid || isCreatingRequest}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {t.iPaid}
+          {isCreatingRequest ? (
+            <>
+              <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {language === 'ru' ? 'Отправка...' : 'Sending...'}
+            </>
+          ) : (
+            <>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {t.iPaid}
+            </>
+          )}
         </button>
       )}
 
