@@ -87,11 +87,8 @@ export default function RequestDetailPage() {
       const abortController = new AbortController()
       let intervalId: NodeJS.Timeout | null = null
 
-      // Загружаем данные сразу, устанавливаем loading для показа индикатора
+      // Загружаем данные сразу, без показа индикатора загрузки
       const fetchRequest = async (showLoading = true) => {
-        if (showLoading) {
-          setLoading(true) // Показываем индикатор загрузки
-        }
         
         try {
           // Используем кэширование для более быстрой загрузки
@@ -759,9 +756,6 @@ export default function RequestDetailPage() {
     setSearchId('')
   }
 
-  // Показываем скелетон если загружаем или нет данных
-  const showSkeleton = !request || loading
-
   // Показываем "Заявка не найдена" только если загрузка завершена и заявки нет
   if (!request && !loading) {
     return (
@@ -813,13 +807,8 @@ export default function RequestDetailPage() {
 
   return (
     <div className="py-4">
-      {/* Скелетон загрузки */}
-      {showSkeleton ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mb-4"></div>
-          <p className="text-white text-lg font-medium">Секундочку, подгружаю...</p>
-        </div>
-      ) : !request ? (
+      {/* Показываем "Заявка не найдена" только если загрузка завершена */}
+      {!request && !loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-24 h-24 bg-red-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
             <svg className="w-16 h-16 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
