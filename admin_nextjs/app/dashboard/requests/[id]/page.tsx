@@ -147,12 +147,14 @@ export default function RequestDetailPage() {
               }
             }
             
-            // Загружаем фото профиля параллельно (не блокируем отображение страницы)
+            // Загружаем фото профиля асинхронно в фоне (не блокируем отображение страницы)
             if (requestData.userId) {
-              // Загружаем фото профиля асинхронно, не блокируя основной рендер
-              fetchProfilePhoto(requestData.userId).catch(err => {
-                console.error('Failed to fetch profile photo:', err)
-              })
+              // Загружаем фото профиля с задержкой, чтобы не замедлять основную загрузку
+              setTimeout(() => {
+                fetchProfilePhoto(requestData.userId).catch(err => {
+                  console.error('Failed to fetch profile photo:', err)
+                })
+              }, 100) // Задержка 100ms для приоритета основной загрузки
             }
             
             // Проверяем автопополнение (привязанный платеж с совпадающей суммой)
