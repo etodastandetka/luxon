@@ -22,7 +22,7 @@ interface Transaction {
 export default function HistoryPage() {
   const router = useRouter()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Начинаем с false - страница показывается сразу
   const [loadingMore, setLoadingMore] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
   const [hasMore, setHasMore] = useState(true)
@@ -74,7 +74,11 @@ export default function HistoryPage() {
   }, [activeTab, offset, limit])
 
   useEffect(() => {
-    fetchHistory(true) // Сбрасываем при изменении таба
+    // Загружаем данные после первого рендера (progressive loading)
+    const timer = setTimeout(() => {
+      fetchHistory(true) // Сбрасываем при изменении таба
+    }, 0)
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
@@ -201,13 +205,8 @@ export default function HistoryPage() {
     return null
   }
 
-  if (loading && transactions.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-      </div>
-    )
-  }
+  // Показываем скелетон только если загружаем и нет данных
+  const showSkeleton = loading && transactions.length === 0
 
   return (
     <div className="py-4">
@@ -293,7 +292,27 @@ export default function HistoryPage() {
       </div>
 
       {/* Список транзакций */}
-      {transactions.length === 0 ? (
+      {showSkeleton ? (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 animate-pulse">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3 flex-1">
+                  <div className="w-12 h-12 bg-gray-700 rounded-lg"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
+                    <div className="h-3 bg-gray-700 rounded w-24"></div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="h-4 bg-gray-700 rounded w-20 mb-2"></div>
+                  <div className="h-3 bg-gray-700 rounded w-16"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : transactions.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <p>История транзакций пуста</p>
         </div>

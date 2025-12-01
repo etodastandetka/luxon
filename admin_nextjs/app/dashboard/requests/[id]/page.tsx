@@ -86,6 +86,13 @@ export default function RequestDetailPage() {
 
       const abortController = new AbortController()
       let intervalId: NodeJS.Timeout | null = null
+      let timer: NodeJS.Timeout | null = null
+
+      // Загружаем данные после первого рендера (progressive loading)
+      timer = setTimeout(() => {
+        setLoading(true)
+        fetchRequest(true)
+      }, 0)
 
       const fetchRequest = async (showLoading = true) => {
         try {
@@ -116,6 +123,11 @@ export default function RequestDetailPage() {
             
             // Устанавливаем данные сразу для быстрой загрузки страницы
             setRequest(requestData)
+            
+            // Убираем loading только после установки данных
+            if (showLoading) {
+              setLoading(false)
+            }
             
             // Обновляем интервал автообновления в зависимости от статуса
             if (requestData.status === 'pending') {
@@ -291,7 +303,8 @@ export default function RequestDetailPage() {
     window.addEventListener('focus', handleFocus)
     window.addEventListener('storage', handleStorageChange)
     
-    return () => {
+      return () => {
+      clearTimeout(timer)
       abortController.abort()
       if (intervalId) {
         clearInterval(intervalId)
@@ -745,15 +758,10 @@ export default function RequestDetailPage() {
     setSearchId('')
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-      </div>
-    )
-  }
+  // Показываем скелетон если загружаем и нет данных
+  const showSkeleton = loading && !request
 
-  if (!request) {
+  if (!request && !loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="w-24 h-24 bg-red-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
@@ -803,6 +811,45 @@ export default function RequestDetailPage() {
 
   return (
     <div className="py-4">
+      {/* Скелетон загрузки */}
+      {showSkeleton ? (
+        <div className="space-y-4 animate-pulse">
+          <div className="flex items-center mb-4 px-4">
+            <div className="flex items-center space-x-2 flex-1 bg-gray-800 rounded-xl px-3 py-2">
+              <div className="w-8 h-8 bg-gray-700 rounded-lg"></div>
+              <div className="w-10 h-10 bg-gray-700 rounded-full"></div>
+              <div className="flex-1">
+                <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
+                <div className="h-3 bg-gray-700 rounded w-24"></div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-800 bg-opacity-50 rounded-xl p-6 border border-gray-700 mx-4">
+            <div className="h-6 bg-gray-700 rounded w-48 mb-4"></div>
+            <div className="space-y-3">
+              <div className="h-4 bg-gray-700 rounded w-full"></div>
+              <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+            </div>
+          </div>
+        </div>
+      ) : !request ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-24 h-24 bg-red-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+            <svg className="w-16 h-16 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <p className="text-white text-lg font-medium">Заявка не найдена</p>
+          <button
+            onClick={() => router.back()}
+            className="mt-4 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+          >
+            Назад
+          </button>
+        </div>
+      ) : (
+        <>
       {/* Хедер с навигацией */}
       <div className="flex items-center mb-4 px-4">
         <div className="flex items-center space-x-2 flex-1 bg-gray-800 rounded-xl px-3 py-2 border border-gray-700">
@@ -815,7 +862,7 @@ export default function RequestDetailPage() {
             </svg>
           </button>
           <Link
-            href={`/dashboard/users/${request.userId}`}
+            href={`/dashboard/users/${request?.userId || ''}`}
             className="flex items-center space-x-2 flex-1"
           >
             {profilePhotoUrl ? (
@@ -1464,6 +1511,8 @@ export default function RequestDetailPage() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   )
 }
