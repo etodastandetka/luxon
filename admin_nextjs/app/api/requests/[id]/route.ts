@@ -107,8 +107,9 @@ export async function GET(
     const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
     
     // Параллельно выполняем все дополнительные запросы
+    // Оптимизация: загружаем только критичные данные сразу, остальное можно загрузить лениво
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      // Входящие платежи (уменьшен лимит с 50 до 20 для ускорения)
+      // Входящие платежи (уменьшен лимит с 20 до 10 для ускорения)
       requestAmountInt ? prisma.incomingPayment.findMany({
         where: {
           amount: {
@@ -117,7 +118,7 @@ export async function GET(
           },
         },
         orderBy: { paymentDate: 'desc' },
-        take: 20, // Уменьшено с 50 до 20
+        take: 10, // Уменьшено с 20 до 10 для ускорения
         select: {
           id: true,
           amount: true,
@@ -128,14 +129,14 @@ export async function GET(
         },
       }) : Promise.resolve([]),
       
-      // Транзакции казино (уменьшен лимит с 100 до 30 для ускорения)
+      // Транзакции казино (уменьшен лимит с 30 до 15 для ускорения)
       requestData.accountId ? prisma.request.findMany({
         where: {
           accountId: requestData.accountId,
           bookmaker: requestData.bookmaker,
         },
         orderBy: { createdAt: 'desc' },
-        take: 30, // Уменьшено с 100 до 30
+        take: 15, // Уменьшено с 30 до 15 для ускорения
         select: {
           id: true,
           userId: true,

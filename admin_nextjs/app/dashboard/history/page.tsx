@@ -27,7 +27,7 @@ export default function HistoryPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
-  const limit = 10
+  const limit = 20 // Увеличиваем лимит для быстрой загрузки
 
   const fetchHistory = useCallback(async (reset = false) => {
     if (reset) {
@@ -49,7 +49,10 @@ export default function HistoryPage() {
       params.append('limit', limit.toString())
       params.append('offset', reset ? '0' : offset.toString())
 
-      const response = await fetch(`/api/transaction-history?${params.toString()}`)
+      // Используем кеширование для ускорения загрузки
+      const response = await fetch(`/api/transaction-history?${params.toString()}`, {
+        cache: reset ? 'no-store' : 'default', // При первой загрузке не кешируем
+      })
       const data = await response.json()
 
       if (data.success) {

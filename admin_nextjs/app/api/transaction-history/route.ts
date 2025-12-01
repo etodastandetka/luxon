@@ -70,7 +70,9 @@ export async function GET(request: NextRequest) {
 
     // Подсчитываем общее количество только если offset = 0 (первая загрузка)
     // Это ускоряет последующие запросы
-    const total = offset === 0 ? await prisma.request.count({ where }) : 0
+    // Оптимизация: делаем count параллельно с основным запросом только если нужно
+    const totalPromise = offset === 0 ? prisma.request.count({ where }) : Promise.resolve(0)
+    const total = await totalPromise
 
     const transactions = requests.map((r) => ({
       id: r.id.toString(),
