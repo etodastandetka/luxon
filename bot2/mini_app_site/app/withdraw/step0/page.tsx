@@ -17,6 +17,7 @@ export default function WithdrawStep0() {
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [withdrawVideoUrl, setWithdrawVideoUrl] = useState<string>('')
+  const [isNavigating, setIsNavigating] = useState(false)
 
   const translations = {
     ru: {
@@ -120,12 +121,21 @@ export default function WithdrawStep0() {
     setBookmaker(key)
   }
 
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
+    if (isNavigating) return
+    
     console.log('Current bookmaker:', bookmaker)
     if (!bookmaker) {
       alert('Выберите букмекера')
       return
     }
+    
+    setIsNavigating(true)
     
     // Сохраняем выбор букмекера
     localStorage.setItem('withdraw_bookmaker', bookmaker)
@@ -225,9 +235,9 @@ export default function WithdrawStep0() {
           <button 
             className="btn btn-primary flex-1 slide-in-right delay-200" 
             onClick={handleNext}
-            disabled={!bookmaker}
+            disabled={!bookmaker || isNavigating}
           >
-            {t.next}
+            {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
           </button>
         </div>
 

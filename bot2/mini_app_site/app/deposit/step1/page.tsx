@@ -12,6 +12,7 @@ export default function DepositStep1() {
   const [depositsEnabled, setDepositsEnabled] = useState(true)
   const [loadingSettings, setLoadingSettings] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
+  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -55,11 +56,20 @@ export default function DepositStep1() {
     checkSettings()
   }, [])
 
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
+    if (isNavigating) return
+    
     if (!bookmaker) {
       alert('Выберите букмекера')
       return
     }
+    
+    setIsNavigating(true)
     
     // Сохраняем выбор
     localStorage.setItem('deposit_bookmaker', bookmaker)
@@ -186,9 +196,9 @@ export default function DepositStep1() {
             <button 
               className="btn btn-primary flex-1"
               onClick={handleNext}
-              disabled={!bookmaker}
+              disabled={!bookmaker || isNavigating}
             >
-              {t.next}
+              {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
             </button>
           </div>
         </div>

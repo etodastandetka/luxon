@@ -13,6 +13,7 @@ export default function DepositStep3() {
   const [convertedAmount, setConvertedAmount] = useState<string>('')
   const [loadingRate, setLoadingRate] = useState(false)
   const [bookmaker, setBookmaker] = useState<string>('')
+  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -80,53 +81,70 @@ export default function DepositStep3() {
     updateConvertedAmount()
   }, [amount, paymentType])
 
-  const handleNext = async () => {
+  const handleNext = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
+    if (isNavigating) return
+    
     const numAmount = parseFloat(amount)
     if (!amount.trim() || isNaN(numAmount) || numAmount <= 0) {
       alert(paymentType === 'crypto' ? 'Введите корректную сумму в долларах' : 'Введите корректную сумму')
       return
     }
     
-    if (paymentType === 'crypto') {
-      // Для крипты: пользователь вводит сумму в долларах (USD)
-      // Валидируем сумму в долларах
-      const validation = validateCryptoAmount(numAmount)
-      if (!validation.valid) {
-        alert(validation.error || 'Неверная сумма')
-        return
-      }
-      
-      try {
-        // Конвертируем доллары в сомы для пополнения в казино (используя реальный курс из API)
-        const amountInKgs = await usdToKgs(numAmount)
-        
-        // Сохраняем сумму в долларах (что ввел пользователь)
-        localStorage.setItem('deposit_amount_usd', numAmount.toString())
-        // Сохраняем сумму в сомах (для пополнения в казино)
-        localStorage.setItem('deposit_amount', amountInKgs.toString())
-      } catch (error: any) {
-        console.error('❌ Error converting USD to KGS:', error)
-        alert(error.message || 'Ошибка получения курса валют. Пожалуйста, попробуйте позже.')
-        return
-      }
-    } else {
-      // Для банковских переводов: валидация в сомах
-      const minDeposit = getMinDeposit()
-      if (numAmount < minDeposit || numAmount > 100000) {
-        alert(`Сумма должна быть от ${minDeposit} до 100000 сом`)
-        return
-      }
-      
-      // Добавляем случайные копейки к сумме (1-99 копеек)
-      const randomKopecks = Math.floor(Math.random() * 99) + 1
-      const amountWithKopecks = numAmount + (randomKopecks / 100)
-      
-      // Сохраняем сумму с копейками
-      localStorage.setItem('deposit_amount', amountWithKopecks.toString())
-    }
+    setIsNavigating(true)
     
-    // Переходим к оплате (step4 теперь страница оплаты)
-    router.push('/deposit/step4')
+    try {
+      if (paymentType === 'crypto') {
+        // Для крипты: пользователь вводит сумму в долларах (USD)
+        // Валидируем сумму в долларах
+        const validation = validateCryptoAmount(numAmount)
+        if (!validation.valid) {
+          setIsNavigating(false)
+          alert(validation.error || 'Неверная сумма')
+          return
+        }
+        
+        try {
+          // Конвертируем доллары в сомы для пополнения в казино (используя реальный курс из API)
+          const amountInKgs = await usdToKgs(numAmount)
+          
+          // Сохраняем сумму в долларах (что ввел пользователь)
+          localStorage.setItem('deposit_amount_usd', numAmount.toString())
+          // Сохраняем сумму в сомах (для пополнения в казино)
+          localStorage.setItem('deposit_amount', amountInKgs.toString())
+        } catch (error: any) {
+          console.error('❌ Error converting USD to KGS:', error)
+          setIsNavigating(false)
+          alert(error.message || 'Ошибка получения курса валют. Пожалуйста, попробуйте позже.')
+          return
+        }
+      } else {
+        // Для банковских переводов: валидация в сомах
+        const minDeposit = getMinDeposit()
+        if (numAmount < minDeposit || numAmount > 100000) {
+          setIsNavigating(false)
+          alert(`Сумма должна быть от ${minDeposit} до 100000 сом`)
+          return
+        }
+        
+        // Добавляем случайные копейки к сумме (1-99 копеек)
+        const randomKopecks = Math.floor(Math.random() * 99) + 1
+        const amountWithKopecks = numAmount + (randomKopecks / 100)
+        
+        // Сохраняем сумму с копейками
+        localStorage.setItem('deposit_amount', amountWithKopecks.toString())
+      }
+      
+      // Переходим к оплате (step4 теперь страница оплаты)
+      router.push('/deposit/step4')
+    } catch (error) {
+      setIsNavigating(false)
+      console.error('Error in handleNext:', error)
+    }
   }
 
   const handleBack = () => {
@@ -270,9 +288,9 @@ export default function DepositStep3() {
             <button 
               className="btn btn-primary flex-1"
               onClick={handleNext}
-              disabled={!amount.trim()}
+              disabled={!amount.trim() || isNavigating || loadingRate}
             >
-              {t.next}
+              {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
             </button>
           </div>
         </div>

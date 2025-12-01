@@ -10,6 +10,7 @@ export default function DepositStep0() {
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [depositVideoUrl, setDepositVideoUrl] = useState<string>('')
+  const [isNavigating, setIsNavigating] = useState(false)
 
   // Загружаем видео URL из API
   useEffect(() => {
@@ -90,12 +91,21 @@ export default function DepositStep0() {
 
   const t = translations[language as keyof typeof translations] || translations.ru
 
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
+    if (isNavigating) return
+    
     if (!paymentType) {
       alert('Выберите способ оплаты')
       return
     }
 
+    setIsNavigating(true)
+    
     // Сохраняем тип оплаты
     localStorage.setItem('deposit_payment_type', paymentType)
     
@@ -209,9 +219,9 @@ export default function DepositStep0() {
             <button 
               className="btn btn-primary flex-1"
               onClick={handleNext}
-              disabled={!paymentType}
+              disabled={!paymentType || isNavigating}
             >
-              {t.next}
+              {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
             </button>
           </div>
         </div>

@@ -7,8 +7,9 @@ import { useLanguage } from '../../../components/LanguageContext'
 
 export default function DepositStep2() {
   const [userId, setUserId] = useState('')
+  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
-    const router = useRouter()
+  const router = useRouter()
 
   useEffect(() => {
     // Проверяем, что пользователь прошел предыдущие шаги
@@ -42,15 +43,25 @@ export default function DepositStep2() {
     }
   }, [router])
 
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
+    if (isNavigating) return
+    
     if (!userId.trim() || !userId.match(/^\d+$/)) {
       alert('Введите корректный ID (только цифры)')
       return
     }
     
+    setIsNavigating(true)
+    
     // Получаем выбранное казино
     const bookmaker = localStorage.getItem('deposit_bookmaker')
     if (!bookmaker) {
+      setIsNavigating(false)
       alert('Ошибка: не выбрано казино')
       router.push('/deposit/step0')
       return
@@ -164,9 +175,9 @@ export default function DepositStep2() {
             <button 
               className="btn btn-primary flex-1"
               onClick={handleNext}
-              disabled={!userId.trim()}
+              disabled={!userId.trim() || isNavigating}
             >
-              {t.next}
+              {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
             </button>
           </div>
         </div>
