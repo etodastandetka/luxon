@@ -823,7 +823,7 @@ export default function RequestDetailPage() {
             Назад
           </button>
         </div>
-      ) : (
+      ) : request ? (
         <>
       {/* Хедер с навигацией */}
       <div className="flex items-center mb-4 px-4">
