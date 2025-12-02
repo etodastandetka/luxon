@@ -91,8 +91,12 @@ export default function ReferralPage() {
 
       // Загружаем данные рефералов с API
       const apiUrl = getApiBase()
+      console.log('🔄 Загрузка данных рефералов:', { userId, apiUrl: `${apiUrl}/api/public/referral-data?user_id=${userId}` })
+      
       const response = await fetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`)
       const data = await response.json()
+      
+      console.log('📋 Ответ API реферальных данных:', data)
       
       if (data.success) {
         setEarned(data.earned || 0)

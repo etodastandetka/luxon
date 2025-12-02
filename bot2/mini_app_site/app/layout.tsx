@@ -58,17 +58,40 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
       const registerReferral = async () => {
         try {
           const tg = (window as any).Telegram?.WebApp
-          const startParam = tg?.startParam || tg?.initDataUnsafe?.start_param
+          
+          // Пробуем получить startParam из разных источников
+          const startParam = tg?.startParam || 
+                           tg?.initDataUnsafe?.start_param ||
+                           (() => {
+                             // Пробуем получить из URL параметров (если мини-приложение открыто через ссылку)
+                             const urlParams = new URLSearchParams(window.location.search)
+                             return urlParams.get('start_param') || urlParams.get('ref')
+                           })()
+          
+          console.log('🔍 Проверка реферального кода:', {
+            startParam,
+            tgStartParam: tg?.startParam,
+            initDataUnsafeStartParam: tg?.initDataUnsafe?.start_param,
+            userId,
+            tgObject: tg ? 'exists' : 'missing'
+          })
           
           if (startParam && startParam.startsWith('ref')) {
             const referralCode = startParam.substring(3) // Убираем 'ref'
             const referrerId = referralCode.replace(/^_/, '') // Убираем '_' если есть
             
+            console.log('🔍 Обработка реферального кода:', { referralCode, referrerId, userId })
+            
             if (referrerId && referrerId !== userId && /^\d+$/.test(referrerId)) {
               const apiUrl = getApiBase()
               const user = tg?.initDataUnsafe?.user
               
-              console.log('🔄 Регистрация реферала:', { referrerId, referredId: userId })
+              console.log('🔄 Регистрация реферала:', { 
+                referrerId, 
+                referredId: userId,
+                apiUrl: `${apiUrl}/api/referral/register`,
+                user: user ? { id: user.id, username: user.username } : 'no user data'
+              })
               
               const response = await fetch(`${apiUrl}/api/referral/register`, {
                 method: 'POST',
@@ -85,15 +108,21 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
               })
               
               const data = await response.json()
+              console.log('📋 Ответ API регистрации реферала:', data)
+              
               if (data.success) {
                 console.log('✅ Реферал успешно зарегистрирован')
               } else {
                 console.log('⚠️ Ошибка регистрации реферала:', data.error)
               }
+            } else {
+              console.log('⚠️ Некорректный реферальный код:', { referrerId, userId, isValid: referrerId && referrerId !== userId && /^\d+$/.test(referrerId) })
             }
+          } else {
+            console.log('ℹ️ Реферальный код не найден или не начинается с "ref"')
           }
         } catch (error) {
-          console.error('Error registering referral:', error)
+          console.error('❌ Error registering referral:', error)
           // В случае ошибки продолжаем работу
         }
       }

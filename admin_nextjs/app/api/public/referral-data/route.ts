@@ -37,7 +37,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     let userId = searchParams.get('user_id')
     
+    console.log('📋 [Referral Data API] Запрос данных рефералов:', { userId, ip: getClientIP(request) })
+    
     if (!userId) {
+      console.log('❌ [Referral Data API] User ID не предоставлен')
       return NextResponse.json({
         success: false,
         error: 'User ID is required'
@@ -72,6 +75,8 @@ export async function GET(request: NextRequest) {
     }
     
     const userIdBigInt = BigInt(userId)
+    
+    console.log('🔍 [Referral Data API] Поиск рефералов для пользователя:', userIdBigInt.toString())
     
     // Получаем всех рефералов пользователя
     const referrals = await prisma.botReferral.findMany({
@@ -280,7 +285,7 @@ export async function GET(request: NextRequest) {
     ]
     const nextPayoutDateFormatted = `${nextPayoutDate.getDate()} ${monthNames[nextPayoutDate.getMonth()]}`
     
-    const response = NextResponse.json({
+    const responseData = {
       success: true,
       earned: earned,
       available_balance: availableBalance, // Доступный баланс для вывода
@@ -307,7 +312,16 @@ export async function GET(request: NextRequest) {
         total_prize_pool: 20000,
         next_payout_date: nextPayoutDateFormatted
       }
+    }
+    
+    console.log('✅ [Referral Data API] Отправка данных:', {
+      earned: responseData.earned,
+      total_referrals: responseData.total_referrals,
+      referral_count: responseData.referral_count,
+      user_rank: responseData.user_rank
     })
+    
+    const response = NextResponse.json(responseData)
     response.headers.set('Access-Control-Allow-Origin', '*')
     return response
     
