@@ -12,17 +12,17 @@ datasource db {
 
 // Admin Users
 model AdminUser {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique
-  password     String
-  email        String?  @unique
-  isActive     Boolean  @default(true)
-  isSuperAdmin Boolean  @default(false)
-  twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
-  twoFactorSecret String?  @map("two_factor_secret") @db.VarChar(255)
-  twoFactorBackupCodes String? @map("two_factor_backup_codes") @db.Text // JSON array of backup codes
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   Int      @id @default(autoincrement())
+  username             String   @unique
+  password             String
+  email                String?  @unique
+  isActive             Boolean  @default(true)
+  isSuperAdmin         Boolean  @default(false)
+  twoFactorEnabled     Boolean  @default(false) @map("two_factor_enabled")
+  twoFactorSecret      String?  @map("two_factor_secret") @db.VarChar(255)
+  twoFactorBackupCodes String?  @map("two_factor_backup_codes") @db.Text // JSON array of backup codes
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@map("admin_users")
 }
@@ -107,6 +107,11 @@ model Request {
   @@index([processedBy, status]) // Для фильтрации ручных заявок (manual) - processedBy + status
   @@index([requestType, createdAt]) // Для истории с фильтром по типу и сортировке по дате
   @@index([status, createdAt]) // Для истории с фильтром по статусу и сортировке по дате
+  // Индексы для оптимизации запросов лимитов
+  @@index([requestType, status]) // Для агрегации по типу заявки и статусу (limits stats)
+  @@index([requestType, status, createdAt]) // Для запросов графика с фильтрацией (limits stats)
+  @@index([bookmaker]) // Для поиска по платформе (limits stats)
+  @@index([bookmaker, requestType, status]) // Для статистики по платформам (limits stats)
   @@map("requests")
 }
 
