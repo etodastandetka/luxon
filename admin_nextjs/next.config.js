@@ -58,13 +58,34 @@ const nextConfig = {
   },
   
   // Конфигурация webpack для правильного разрешения алиасов
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     const path = require('path')
     
-    // Расширяем существующие алиасы, не перезаписывая их
+    // Убеждаемся, что resolve существует
+    if (!config.resolve) {
+      config.resolve = {}
+    }
+    
+    // Сохраняем существующие алиасы или создаем новый объект
+    const existingAliases = config.resolve.alias || {}
+    
+    // Явно устанавливаем алиас @ с полным путем
+    const rootPath = path.resolve(__dirname)
+    
+    // Создаем новый объект алиасов, явно устанавливая @
     config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': path.resolve(__dirname),
+      ...existingAliases,
+      '@': rootPath,
+    }
+    
+    // Также убеждаемся, что модули разрешаются правильно
+    if (!config.resolve.modules) {
+      config.resolve.modules = ['node_modules']
+    }
+    
+    // Добавляем корневую директорию в modules для резолва
+    if (!config.resolve.modules.includes(rootPath)) {
+      config.resolve.modules = [rootPath, ...config.resolve.modules]
     }
     
     return config
