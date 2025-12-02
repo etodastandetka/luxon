@@ -5,7 +5,8 @@ import {
   rateLimit, 
   getClientIP, 
   isIPBlocked,
-  blockIP 
+  blockIP,
+  unblockIP
 } from './lib/security'
 import { verifyToken } from './lib/auth'
 
@@ -96,8 +97,9 @@ export async function middleware(request: NextRequest) {
   }
   
   // Если токен валиден, но IP был заблокирован - разблокируем его (пользователь авторизован)
-  if (isValidToken && isIPCurrentlyBlocked && pathname === '/dashboard') {
-    console.log(`✅ Valid token found, but IP ${ip} was blocked. User is authenticated, allowing access.`)
+  if (isValidToken && isIPCurrentlyBlocked) {
+    unblockIP(ip)
+    console.log(`✅ Valid token found, but IP ${ip} was blocked. User is authenticated, unblocking IP and allowing access.`)
   }
 
   // 2. Защита API endpoints (пропускаем публичные API)
