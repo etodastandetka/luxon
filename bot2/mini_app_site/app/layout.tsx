@@ -36,7 +36,7 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Проверяем статус пользователя
+    // Проверяем статус пользователя и регистрируем реферала (если есть реферальный код)
     if (userId) {
       const checkUserStatus = async () => {
         try {
@@ -54,7 +54,52 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
         }
       }
       
+      // Регистрируем реферала, если есть реферальный код в start_param
+      const registerReferral = async () => {
+        try {
+          const tg = (window as any).Telegram?.WebApp
+          const startParam = tg?.startParam || tg?.initDataUnsafe?.start_param
+          
+          if (startParam && startParam.startsWith('ref')) {
+            const referralCode = startParam.substring(3) // Убираем 'ref'
+            const referrerId = referralCode.replace(/^_/, '') // Убираем '_' если есть
+            
+            if (referrerId && referrerId !== userId && /^\d+$/.test(referrerId)) {
+              const apiUrl = getApiBase()
+              const user = tg?.initDataUnsafe?.user
+              
+              console.log('🔄 Регистрация реферала:', { referrerId, referredId: userId })
+              
+              const response = await fetch(`${apiUrl}/api/referral/register`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  referrer_id: referrerId,
+                  referred_id: userId,
+                  username: user?.username || null,
+                  first_name: user?.first_name || null,
+                  last_name: user?.last_name || null,
+                }),
+              })
+              
+              const data = await response.json()
+              if (data.success) {
+                console.log('✅ Реферал успешно зарегистрирован')
+              } else {
+                console.log('⚠️ Ошибка регистрации реферала:', data.error)
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error registering referral:', error)
+          // В случае ошибки продолжаем работу
+        }
+      }
+      
       checkUserStatus()
+      registerReferral()
     }
   }, [pathname, router])
 
