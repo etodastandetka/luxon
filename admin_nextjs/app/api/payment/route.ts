@@ -363,12 +363,48 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const photoUrl = receipt_photo || qr_photo || null
+    // Нормализуем фото чека: убеждаемся что это валидный base64 с префиксом
+    let photoUrl = receipt_photo || qr_photo || null
+    if (photoUrl) {
+      // Если фото не имеет префикса data:image, добавляем его
+      if (!photoUrl.startsWith('data:image')) {
+        // Пытаемся определить тип изображения по первым байтам base64
+        // Обычно base64 начинается с /9j/ для JPEG, iVBORw0KGgo для PNG, R0lGODlh для GIF
+        const base64Data = photoUrl.replace(/^data:image\/\w+;base64,/, '')
+        let mimeType = 'image/jpeg' // По умолчанию JPEG
+        
+        if (base64Data.startsWith('iVBORw0KGgo')) {
+          mimeType = 'image/png'
+        } else if (base64Data.startsWith('R0lGODlh') || base64Data.startsWith('R0lGODdh')) {
+          mimeType = 'image/gif'
+        } else if (base64Data.startsWith('/9j/')) {
+          mimeType = 'image/jpeg'
+        } else if (base64Data.startsWith('UklGR')) {
+          mimeType = 'image/webp'
+        }
+        
+        photoUrl = `data:${mimeType};base64,${base64Data}`
+        console.log('📸 [Payment API] Добавлен префикс к фото:', mimeType)
+      }
+      
+      // Проверяем валидность base64 строки
+      const base64Match = photoUrl.match(/^data:image\/(\w+);base64,(.+)$/)
+      if (!base64Match || !base64Match[2]) {
+        console.error('❌ [Payment API] Неверный формат base64 фото:', {
+          photoLength: photoUrl.length,
+          startsWithData: photoUrl.startsWith('data:'),
+          hasBase64: photoUrl.includes('base64,')
+        })
+        photoUrl = null // Не сохраняем невалидное фото
+      }
+    }
+    
     console.log('📸 [Payment API] Сохранение фото чека:', {
       hasPhoto: !!photoUrl,
       photoLength: photoUrl?.length || 0,
       isBase64: photoUrl?.startsWith('data:image') || false,
-      requestType: type
+      requestType: type,
+      photoPreview: photoUrl ? photoUrl.substring(0, 50) + '...' : null
     })
     
     const newRequest = await prisma.request.create({

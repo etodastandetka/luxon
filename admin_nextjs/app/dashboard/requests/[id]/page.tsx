@@ -1145,9 +1145,28 @@ export default function RequestDetailPage() {
               }}
             >
               {(() => {
-                const photoUrl = request.photoFileUrl
-                if (!photoUrl) {
+                let photoUrl = request.photoFileUrl
+                if (!photoUrl || photoUrl.trim() === '') {
                   return null
+                }
+                
+                // Нормализуем фото: если это base64 без префикса, добавляем его
+                if (!photoUrl.startsWith('data:image') && !photoUrl.startsWith('http')) {
+                  // Пытаемся определить тип изображения
+                  let mimeType = 'image/jpeg' // По умолчанию JPEG
+                  
+                  if (photoUrl.startsWith('iVBORw0KGgo')) {
+                    mimeType = 'image/png'
+                  } else if (photoUrl.startsWith('R0lGODlh') || photoUrl.startsWith('R0lGODdh')) {
+                    mimeType = 'image/gif'
+                  } else if (photoUrl.startsWith('/9j/')) {
+                    mimeType = 'image/jpeg'
+                  } else if (photoUrl.startsWith('UklGR')) {
+                    mimeType = 'image/webp'
+                  }
+                  
+                  photoUrl = `data:${mimeType};base64,${photoUrl}`
+                  console.log('📸 [Photo] Нормализован формат фото:', mimeType)
                 }
                 
                 const isBase64 = photoUrl.startsWith('data:image')
@@ -1328,9 +1347,27 @@ export default function RequestDetailPage() {
               }}
             >
               {(() => {
-                const photoUrl = request.photoFileUrl
-                if (!photoUrl) {
+                let photoUrl = request.photoFileUrl
+                if (!photoUrl || photoUrl.trim() === '') {
                   return null
+                }
+                
+                // Нормализуем фото: если это base64 без префикса, добавляем его
+                if (!photoUrl.startsWith('data:image') && !photoUrl.startsWith('http')) {
+                  // Пытаемся определить тип изображения
+                  let mimeType = 'image/jpeg' // По умолчанию JPEG
+                  
+                  if (photoUrl.startsWith('iVBORw0KGgo')) {
+                    mimeType = 'image/png'
+                  } else if (photoUrl.startsWith('R0lGODlh') || photoUrl.startsWith('R0lGODdh')) {
+                    mimeType = 'image/gif'
+                  } else if (photoUrl.startsWith('/9j/')) {
+                    mimeType = 'image/jpeg'
+                  } else if (photoUrl.startsWith('UklGR')) {
+                    mimeType = 'image/webp'
+                  }
+                  
+                  photoUrl = `data:${mimeType};base64,${photoUrl}`
                 }
                 
                 const isBase64 = photoUrl.startsWith('data:image')
