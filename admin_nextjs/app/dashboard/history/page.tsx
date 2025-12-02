@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, memo } from 'react'
+import { useEffect, useState, useCallback, useMemo, memo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -32,17 +32,16 @@ export default function HistoryPage() {
 
   const fetchHistory = useCallback(async (reset = false, currentOffset = 0) => {
     // При первой загрузке не показываем лоадер - данные загружаются в фоне
-    if (reset && !isInitialLoad) {
+    const isFirstLoad = isInitialLoad && reset
+    
+    if (reset) {
       setOffset(0)
       setTransactions([])
       setHasMore(true)
-      setLoading(true) // Показываем лоадер только при переключении табов (не при первой загрузке)
-    } else if (reset && isInitialLoad) {
-      // При первой загрузке просто сбрасываем состояние, но НЕ показываем лоадер
-      setOffset(0)
-      setTransactions([])
-      setHasMore(true)
-      setIsInitialLoad(false)
+      // Показываем лоадер только при переключении табов (не при первой загрузке)
+      if (!isInitialLoad) {
+        setLoading(true)
+      }
     } else {
       setLoadingMore(true)
     }
@@ -62,6 +61,14 @@ export default function HistoryPage() {
         cache: 'default', // Используем кэш браузера и сервера
         priority: 'high', // Высокий приоритет для быстрой загрузки
       })
+      
+      // Проверяем rate limiting
+      if (response.status === 429) {
+        console.warn('⚠️ Rate limit exceeded for history API')
+        // Не показываем ошибку, просто не обновляем данные
+        return
+      }
+      
       const data = await response.json()
 
       if (data.success) {
@@ -78,6 +85,11 @@ export default function HistoryPage() {
         }
         setHasMore(data.data.pagination?.hasMore || false)
       }
+      
+      // Сбрасываем флаг первой загрузки после успешной загрузки
+      if (isFirstLoad) {
+        setIsInitialLoad(false)
+      }
     } catch (error) {
       console.error('Failed to fetch history:', error)
     } finally {
@@ -89,7 +101,7 @@ export default function HistoryPage() {
   // Загружаем данные при монтировании и при изменении таба
   // Загружаем сразу без задержек - страница показывается мгновенно
   useEffect(() => {
-    // Загружаем данные сразу при монтировании компонента
+    // Загружаем данные сразу при монтировании компонента и при изменении таба
     fetchHistory(true, 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
