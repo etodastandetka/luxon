@@ -79,28 +79,27 @@ export async function middleware(request: NextRequest) {
     console.log(`⚠️  No token cookie found for ${pathname}, IP: ${ip}`)
   }
   
-  // Не блокируем публичные маршруты и страницы (login должен быть доступен всегда)
-  // Также не блокируем если есть валидный токен (пользователь уже авторизован)
-  const shouldCheckIPBlock = !isInternalRequest && !isPublicRoute && !isPublicPage && !pathname.startsWith('/api/geolocation') && !isValidToken
-  const isIPCurrentlyBlocked = isIPBlocked(ip)
+  // ОТКЛЮЧЕНО: Проверка блокировки IP (убрана по запросу пользователя)
+  // IP блокировки отключены, чтобы не блокировать легитимных пользователей
+  // const shouldCheckIPBlock = !isInternalRequest && !isPublicRoute && !isPublicPage && !pathname.startsWith('/api/geolocation') && !isValidToken
+  // const isIPCurrentlyBlocked = isIPBlocked(ip)
   
-  if (pathname === '/dashboard') {
-    console.log(`🔍 IP Block Check: shouldCheck=${shouldCheckIPBlock}, isBlocked=${isIPCurrentlyBlocked}, isValidToken=${isValidToken}, isInternal=${isInternalRequest}, isPublicRoute=${isPublicRoute}, isPublicPage=${isPublicPage}`)
-  }
+  // if (pathname === '/dashboard') {
+  //   console.log(`🔍 IP Block Check: shouldCheck=${shouldCheckIPBlock}, isBlocked=${isIPCurrentlyBlocked}, isValidToken=${isValidToken}, isInternal=${isInternalRequest}, isPublicRoute=${isPublicRoute}, isPublicPage=${isPublicPage}`)
+  // }
   
-  if (shouldCheckIPBlock && isIPCurrentlyBlocked) {
-    console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname} (no valid token, IP is blocked)`)
-    return NextResponse.json(
-      { error: 'Forbidden', message: 'Access denied' },
-      { status: 403 }
-    )
-  }
+  // if (shouldCheckIPBlock && isIPCurrentlyBlocked) {
+  //   console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname} (no valid token, IP is blocked)`)
+  //   return NextResponse.json(
+  //     { error: 'Forbidden', message: 'Access denied' },
+  //     { status: 403 }
+  //   )
+  // }
   
-  // Если токен валиден, но IP был заблокирован - разблокируем его (пользователь авторизован)
-  if (isValidToken && isIPCurrentlyBlocked) {
-    unblockIP(ip)
-    console.log(`✅ Valid token found, but IP ${ip} was blocked. User is authenticated, unblocking IP and allowing access.`)
-  }
+  // if (isValidToken && isIPCurrentlyBlocked) {
+  //   unblockIP(ip)
+  //   console.log(`✅ Valid token found, but IP ${ip} was blocked. User is authenticated, unblocking IP and allowing access.`)
+  // }
 
   // 2. Защита API endpoints (пропускаем публичные API)
   // ВАЖНО: Если токен валиден, пропускаем защиту API (пользователь авторизован)
@@ -159,10 +158,10 @@ export async function middleware(request: NextRequest) {
     
     const rateLimitResult = rateLimit(rateLimitOptions)(request)
     if (rateLimitResult) {
-      // При превышении лимита блокируем IP на 24 часа (только для внешних запросов)
-      if (rateLimitResult.status === 429 && !isInternalRequest) {
-        blockIP(ip, 24 * 60 * 60 * 1000)
-      }
+      // ОТКЛЮЧЕНО: Блокировка IP при превышении rate limit (убрана по запросу пользователя)
+      // if (rateLimitResult.status === 429 && !isInternalRequest) {
+      //   blockIP(ip, 24 * 60 * 60 * 1000)
+      // }
       return rateLimitResult
     }
 

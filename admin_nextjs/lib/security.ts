@@ -429,57 +429,57 @@ export function protectAPI(request: NextRequest): NextResponse | null {
     return null
   }
 
-  // 1. Проверка блокировки IP (пропускаем внутренние IP)
-  if (!isInternalIP(ip) && isIPBlocked(ip)) {
-    console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${url}`)
-    return NextResponse.json(
-      { error: 'Forbidden', message: 'Access denied' },
-      { status: 403 }
-    )
-  }
+  // ОТКЛЮЧЕНО: Проверка блокировки IP (убрана по запросу пользователя)
+  // if (!isInternalIP(ip) && isIPBlocked(ip)) {
+  //   console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${url}`)
+  //   return NextResponse.json(
+  //     { error: 'Forbidden', message: 'Access denied' },
+  //     { status: 403 }
+  //   )
+  // }
 
-  // 2. Проверка User-Agent (пропускаем внутренние IP)
-  if (!isInternalIP(ip)) {
-    const userAgent = request.headers.get('user-agent')
-    if (isSuspiciousUserAgent(userAgent)) {
-      console.warn(`🚫 Suspicious User-Agent blocked: ${userAgent} from ${ip}`)
-      blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Invalid request' },
-        { status: 403 }
-      )
-    }
-  }
+  // ОТКЛЮЧЕНО: Проверка User-Agent с блокировкой IP (убрана по запросу пользователя)
+  // if (!isInternalIP(ip)) {
+  //   const userAgent = request.headers.get('user-agent')
+  //   if (isSuspiciousUserAgent(userAgent)) {
+  //     console.warn(`🚫 Suspicious User-Agent blocked: ${userAgent} from ${ip}`)
+  //     blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
+  //     return NextResponse.json(
+  //       { error: 'Forbidden', message: 'Invalid request' },
+  //       { status: 403 }
+  //     )
+  //   }
+  // }
 
-  // 3. Проверка подозрительных URL паттернов
-  if (isSuspiciousURL(url)) {
-    console.warn(`🚫 Suspicious URL blocked: ${url} from ${ip}`)
-    blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
-    return NextResponse.json(
-      { error: 'Forbidden', message: 'Invalid request' },
-      { status: 403 }
-    )
-  }
+  // ОТКЛЮЧЕНО: Проверка подозрительных URL с блокировкой IP (убрана по запросу пользователя)
+  // if (isSuspiciousURL(url)) {
+  //   console.warn(`🚫 Suspicious URL blocked: ${url} from ${ip}`)
+  //   blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
+  //   return NextResponse.json(
+  //     { error: 'Forbidden', message: 'Invalid request' },
+  //     { status: 403 }
+  //   )
+  // }
 
-  // 4. Проверка подозрительных заголовков
-  if (hasSuspiciousHeaders(request)) {
-    console.warn(`🚫 Suspicious headers blocked from ${ip}`)
-    blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
-    return NextResponse.json(
-      { error: 'Forbidden', message: 'Invalid request' },
-      { status: 403 }
-    )
-  }
+  // ОТКЛЮЧЕНО: Проверка подозрительных заголовков с блокировкой IP (убрана по запросу пользователя)
+  // if (hasSuspiciousHeaders(request)) {
+  //   console.warn(`🚫 Suspicious headers blocked from ${ip}`)
+  //   blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
+  //   return NextResponse.json(
+  //     { error: 'Forbidden', message: 'Invalid request' },
+  //     { status: 403 }
+  //   )
+  // }
 
-  // 5. Проверка параметров запроса
-  if (hasSuspiciousParams(request.nextUrl.searchParams)) {
-    console.warn(`🚫 Suspicious params blocked from ${ip}`)
-    blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
-    return NextResponse.json(
-      { error: 'Forbidden', message: 'Invalid request' },
-      { status: 403 }
-    )
-  }
+  // ОТКЛЮЧЕНО: Проверка параметров запроса с блокировкой IP (убрана по запросу пользователя)
+  // if (hasSuspiciousParams(request.nextUrl.searchParams)) {
+  //   console.warn(`🚫 Suspicious params blocked from ${ip}`)
+  //   blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
+  //   return NextResponse.json(
+  //     { error: 'Forbidden', message: 'Invalid request' },
+  //     { status: 403 }
+  //   )
+  // }
 
   // 6. Проверка размера запроса
   const contentLength = request.headers.get('content-length')
@@ -491,15 +491,15 @@ export function protectAPI(request: NextRequest): NextResponse | null {
     )
   }
 
-  // 7. Проверка Cloudflare (только в продакшене, пропускаем внутренние IP)
-  if (!isInternalIP(ip) && !validateCloudflareHeaders(request)) {
-    console.warn(`🚫 Direct access attempt blocked from ${ip}`)
-    blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
-    return NextResponse.json(
-      { error: 'Forbidden', message: 'Direct access not allowed' },
-      { status: 403 }
-    )
-  }
+  // ОТКЛЮЧЕНО: Проверка Cloudflare с блокировкой IP (убрана по запросу пользователя)
+  // if (!isInternalIP(ip) && !validateCloudflareHeaders(request)) {
+  //   console.warn(`🚫 Direct access attempt blocked from ${ip}`)
+  //   blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
+  //   return NextResponse.json(
+  //     { error: 'Forbidden', message: 'Direct access not allowed' },
+  //     { status: 403 }
+  //   )
+  // }
 
   // 8. Проверка метода запроса (только разрешенные методы)
   const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']
