@@ -63,24 +63,30 @@ export default function DashboardPage() {
       const response = await fetch(`/api/requests?${params.toString()}`, {
         cache: 'no-store', // Для динамических данных не кешируем на клиенте
       })
+      
+      // Обработка ошибки rate limiting
+      if (response.status === 429) {
+        console.warn('⚠️ Rate limit exceeded, will retry after delay')
+        // Не обновляем данные при rate limit, просто пропускаем этот запрос
+        if (showLoading) {
+          setLoading(false)
+        }
+        return
+      }
+      
+      if (!response.ok) {
+        console.error(`❌ HTTP error! status: ${response.status}`)
+        if (showLoading) {
+          setLoading(false)
+        }
+        return
+      }
+      
       const data = await response.json()
       
-      // Также проверяем недавние автопополнения для уведомлений
-      // Делаем отдельный запрос для автопополнений
+      // Убираем отдельный запрос для autodeposit - это вызывает rate limiting
+      // Автопополнения будут отслеживаться через изменения статуса в основном запросе
       let autodepositRequests: Request[] = []
-      if (!isFirstLoadRef.current && !showLoading) {
-        try {
-          const autodepositResponse = await fetch('/api/requests?status=autodeposit_success&limit=20', {
-            cache: 'no-store'
-          })
-          const autodepositData = await autodepositResponse.json()
-          if (autodepositData.success && autodepositData.data) {
-            autodepositRequests = autodepositData.data.requests || []
-          }
-        } catch (err) {
-          console.error('Error fetching autodeposit requests:', err)
-        }
-      }
 
       console.log('📋 Fetched requests data:', data)
 
@@ -270,11 +276,17 @@ export default function DashboardPage() {
         setRequests(requestsList)
       } else {
         console.error('❌ Failed to fetch requests:', data.error || data)
-        setRequests([])
+        // Не сбрасываем список заявок при ошибке API, чтобы пользователь видел старые данные
+        // setRequests([])
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Игнорируем ошибки rate limiting, не сбрасываем список заявок
+      if (error?.message?.includes('429') || error?.message?.includes('Too Many Requests')) {
+        console.warn('⚠️ Rate limit exceeded, keeping current requests list')
+        return
+      }
       console.error('❌ Failed to fetch requests:', error)
-      setRequests([])
+      // Не сбрасываем список заявок при ошибке, чтобы пользователь видел старые данные
     } finally {
       if (showLoading) {
         setLoading(false)
@@ -305,10 +317,10 @@ export default function DashboardPage() {
     
     fetchRequests()
     
-    // Автоматическое обновление: чаще для вкладки "pending" (новые заявки), реже для других
-    // Для вкладки "pending" обновляем каждые 2 секунды для мгновенного появления новых заявок
+    // Автоматическое обновление: уменьшена частота для избежания rate limiting
+    // Для вкладки "pending" обновляем каждые 5 секунд (было 2)
     // Для других вкладок - каждые 10 секунд
-    const updateInterval = activeTab === 'pending' ? 2000 : 10000
+    const updateInterval = activeTab === 'pending' ? 5000 : 10000
     
     const interval = setInterval(() => {
       if (!document.hidden) {
