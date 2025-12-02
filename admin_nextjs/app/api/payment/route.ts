@@ -377,11 +377,26 @@ export async function POST(request: NextRequest) {
         }
         
         // Если есть неправильный формат (например, data:image/jpegbase64 или data:image/jpegbase64,)
-        const wrongFormatMatch = str.match(/^data:image\/(\w+)(base64|base64,)(.+)$/i)
+        // Ищем паттерн data:image/типbase64 (без точки с запятой между типом и base64)
+        const wrongFormatMatch = str.match(/^data:image\/(jpeg|png|gif|webp|jpg)base64,?(.+)$/i)
         if (wrongFormatMatch) {
-          const mimeType = wrongFormatMatch[1]
-          const base64Data = wrongFormatMatch[3]
-          return `data:image/${mimeType};base64,${base64Data}`
+          const mimeType = wrongFormatMatch[1].toLowerCase()
+          const base64Data = wrongFormatMatch[2]
+          // Нормализуем mimeType (jpg -> jpeg)
+          const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
+          console.log('📸 [Payment API] Исправлен неправильный формат (без точки с запятой):', normalizedMimeType)
+          return `data:image/${normalizedMimeType};base64,${base64Data}`
+        }
+        
+        // Также проверяем более общий случай: data:image/любое_словоbase64
+        const generalWrongMatch = str.match(/^data:image\/(\w+)base64,?(.+)$/i)
+        if (generalWrongMatch) {
+          const mimeType = generalWrongMatch[1].toLowerCase()
+          const base64Data = generalWrongMatch[2]
+          // Нормализуем mimeType
+          const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
+          console.log('📸 [Payment API] Исправлен общий неправильный формат:', normalizedMimeType)
+          return `data:image/${normalizedMimeType};base64,${base64Data}`
         }
         
         // Если есть data:image/... но без base64, или неправильный формат

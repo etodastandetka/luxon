@@ -1257,12 +1257,33 @@ export default function RequestDetailPage() {
                   }
                   
                   // Если есть неправильный формат (например, data:image/jpegbase64 или data:image/jpegbase64,)
-                  const wrongFormatMatch = str.match(/^data:image\/(\w+)(base64|base64,)(.+)$/i)
+                  // Ищем паттерн data:image/типbase64 (без точки с запятой между типом и base64)
+                  const wrongFormatMatch = str.match(/^data:image\/(jpeg|png|gif|webp|jpg)base64,?(.+)$/i)
                   if (wrongFormatMatch) {
-                    const mimeType = wrongFormatMatch[1]
-                    const base64Data = wrongFormatMatch[3]
-                    console.log('📸 [Photo] Исправлен неправильный формат:', { was: str.substring(0, 50), mimeType })
-                    return `data:image/${mimeType};base64,${base64Data}`
+                    const mimeType = wrongFormatMatch[1].toLowerCase()
+                    const base64Data = wrongFormatMatch[2]
+                    // Нормализуем mimeType (jpg -> jpeg)
+                    const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
+                    console.log('📸 [Photo] Исправлен неправильный формат (без точки с запятой):', { 
+                      was: str.substring(0, 50), 
+                      mimeType: normalizedMimeType,
+                      base64Length: base64Data.length
+                    })
+                    return `data:image/${normalizedMimeType};base64,${base64Data}`
+                  }
+                  
+                  // Также проверяем более общий случай: data:image/любое_словоbase64
+                  const generalWrongMatch = str.match(/^data:image\/(\w+)base64,?(.+)$/i)
+                  if (generalWrongMatch) {
+                    const mimeType = generalWrongMatch[1].toLowerCase()
+                    const base64Data = generalWrongMatch[2]
+                    // Нормализуем mimeType
+                    const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
+                    console.log('📸 [Photo] Исправлен общий неправильный формат:', { 
+                      was: str.substring(0, 50), 
+                      mimeType: normalizedMimeType 
+                    })
+                    return `data:image/${normalizedMimeType};base64,${base64Data}`
                   }
                   
                   // Если есть data:image/... но без base64, или неправильный формат
