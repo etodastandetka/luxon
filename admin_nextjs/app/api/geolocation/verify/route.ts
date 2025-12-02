@@ -98,12 +98,12 @@ export async function POST(request: NextRequest) {
       const userMessage = `Сайт недоступен в вашем регионе. Вы находитесь на расстоянии ${distance.toFixed(0)}м от разрешенной зоны (требуется быть в пределах ${coords.radius}м).`
       
       return NextResponse.json(
-        createApiResponse(null, userMessage, {
+        createApiResponse({
           distance: distance.toFixed(2),
           requiredRadius: coords.radius,
           userCoords: { lat, lon },
           allowedCoords: { lat: coords.latitude, lon: coords.longitude }
-        }),
+        }, userMessage),
         { status: 403 }
       )
     }
