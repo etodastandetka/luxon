@@ -101,10 +101,13 @@ else
 fi
 
 echo "   Проверяю next.config.js..."
-if grep -q "'@':" next.config.js || grep -q '"@":' next.config.js; then
-    echo "   ✅ next.config.js: webpack alias @ настроен"
+if grep -q "alias\['@'\]" next.config.js || grep -q 'alias\["@"\]' next.config.js || grep -q "'@':" next.config.js || grep -q '"@":' next.config.js || grep -q "webpack" next.config.js; then
+    echo "   ✅ next.config.js: webpack конфигурация найдена"
+    # Показываем строку с webpack для диагностики
+    echo "   📝 Содержимое webpack конфигурации:"
+    grep -A 15 "webpack:" next.config.js | head -10
 else
-    echo "   ⚠️  next.config.js: webpack alias @ не найден"
+    echo "   ❌ next.config.js: webpack конфигурация НЕ найдена!"
 fi
 echo ""
 
