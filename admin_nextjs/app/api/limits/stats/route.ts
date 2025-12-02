@@ -114,60 +114,50 @@ export async function GET(request: NextRequest) {
     }
 
     // Данные для графика (все данные если период не указан, иначе за период)
+    // Ограничиваем данные графика последними 30 днями для ускорения загрузки
     let chartStartDate = startDate ? new Date(startDate) : null
     let chartEndDate = endDate ? new Date(endDate) : null
+    
+    // Если период не указан, ограничиваем последними 30 днями
+    if (!chartStartDate || !chartEndDate) {
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      chartStartDate = chartStartDate || thirtyDaysAgo
+      chartEndDate = chartEndDate || new Date()
+    }
     
     // Группировка по датам для графика используя SQL (оптимизировано с индексами)
     // Для пополнений: считаем только РЕАЛЬНО обработанные через API казино
     // Для выводов: считаем все успешные статусы
     // Используем DATE() для более быстрой группировки
+    // Ограничиваем последними 30 днями для ускорения
     const [depositsByDate, withdrawalsByDate] = await Promise.all([
-      chartStartDate && chartEndDate
-        ? prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-            SELECT 
-              DATE(created_at)::text as date,
-              COUNT(*)::bigint as count
-            FROM requests
-            WHERE request_type = 'deposit'
-              AND status IN ('autodeposit_success', 'auto_completed')
-              AND created_at >= ${chartStartDate}::timestamp
-              AND created_at <= ${chartEndDate}::timestamp
-            GROUP BY DATE(created_at)
-            ORDER BY date DESC
-          `
-        : prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-            SELECT 
-              DATE(created_at)::text as date,
-              COUNT(*)::bigint as count
-            FROM requests
-            WHERE request_type = 'deposit'
-              AND status IN ('autodeposit_success', 'auto_completed')
-            GROUP BY DATE(created_at)
-            ORDER BY date DESC
-          `,
-      chartStartDate && chartEndDate
-        ? prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-            SELECT 
-              DATE(created_at)::text as date,
-              COUNT(*)::bigint as count
-            FROM requests
-            WHERE request_type = 'withdraw'
-              AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
-              AND created_at >= ${chartStartDate}::timestamp
-              AND created_at <= ${chartEndDate}::timestamp
-            GROUP BY DATE(created_at)
-            ORDER BY date DESC
-          `
-        : prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-            SELECT 
-              DATE(created_at)::text as date,
-              COUNT(*)::bigint as count
-            FROM requests
-            WHERE request_type = 'withdraw'
-              AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
-            GROUP BY DATE(created_at)
-            ORDER BY date DESC
-          `,
+      prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+        SELECT 
+          DATE(created_at)::text as date,
+          COUNT(*)::bigint as count
+        FROM requests
+        WHERE request_type = 'deposit'
+          AND status IN ('autodeposit_success', 'auto_completed')
+          AND created_at >= ${chartStartDate}::timestamp
+          AND created_at <= ${chartEndDate}::timestamp
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+        LIMIT 30
+      `,
+      prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+        SELECT 
+          DATE(created_at)::text as date,
+          COUNT(*)::bigint as count
+        FROM requests
+        WHERE request_type = 'withdraw'
+          AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
+          AND created_at >= ${chartStartDate}::timestamp
+          AND created_at <= ${chartEndDate}::timestamp
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+        LIMIT 30
+      `,
     ])
 
     // Форматируем даты для графика (YYYY-MM-DD -> dd.mm)
@@ -265,123 +255,79 @@ export async function GET(request: NextRequest) {
     
     console.log(`✅ Platform limits received:`, platformLimits.map(p => `${p.name}=${p.limit}`).join(', '))
 
-    // Получаем статистику по каждой платформе отдельно
-    const platformStatsPromises = platformLimits.map(async (platform) => {
-      const platformKey = platform.key.toLowerCase()
-      const platformName = platform.name.toLowerCase()
-      
-      // Нормализуем название платформы для поиска в БД
-      // В БД могут быть разные варианты написания: "1xbet", "1XBet", "1xBet" и т.д.
-      // Используем case-insensitive поиск через SQL для большей гибкости
-      let searchPatterns: string[] = []
-      if (platformKey === '1xbet' || platformKey.includes('xbet')) {
-        searchPatterns = ['1xbet', '1XBet', '1xBet', '1XBET', 'xbet', 'XBet']
-      } else if (platformKey === '1win' || platformKey.includes('1win')) {
-        searchPatterns = ['1win', '1Win', '1WIN', 'onewin', 'OneWin']
-      } else if (platformKey === 'melbet' || platformName.includes('melbet')) {
-        searchPatterns = ['melbet', 'Melbet', 'MELBET']
-      } else if (platformKey === 'mostbet' || platformName.includes('mostbet')) {
-        searchPatterns = ['mostbet', 'Mostbet', 'MOSTBET']
-      } else if (platformKey === 'winwin' || platformName.includes('winwin')) {
-        searchPatterns = ['winwin', 'WinWin', 'WINWIN', 'win win']
-      } else if (platformKey === '888starz' || platformName.includes('888')) {
-        searchPatterns = ['888starz', '888Starz', '888STARZ', '888 starz']
-      } else {
-        // Для остальных используем варианты написания
-        searchPatterns = [
-          platformKey,
-          platformKey.charAt(0).toUpperCase() + platformKey.slice(1),
-          platformKey.toUpperCase(),
-          platform.name,
-        ]
-      }
-      
-      // Используем SQL для более надежного поиска по платформам
-      // Это позволяет находить платформы независимо от регистра и вариантов написания
-      // Например, "Melbet", "melbet", "MELBET" все будут найдены
-      
-      // Строим условия для дат
-      let depositDateCondition = ''
-      let withdrawalDateCondition = ''
-      const depositDateParams: any[] = []
-      const withdrawalDateParams: any[] = []
-      
-      if (dateFilterForStats.createdAt?.gte) {
-        depositDateCondition += ` AND created_at >= $${depositDateParams.length + 2}::timestamp`
-        depositDateParams.push(dateFilterForStats.createdAt.gte)
-        withdrawalDateCondition += ` AND created_at >= $${withdrawalDateParams.length + 2}::timestamp`
-        withdrawalDateParams.push(dateFilterForStats.createdAt.gte)
-      }
-      if (dateFilterForStats.createdAt?.lt) {
-        depositDateCondition += ` AND created_at < $${depositDateParams.length + 2}::timestamp`
-        depositDateParams.push(dateFilterForStats.createdAt.lt)
-        withdrawalDateCondition += ` AND created_at < $${withdrawalDateParams.length + 2}::timestamp`
-        withdrawalDateParams.push(dateFilterForStats.createdAt.lt)
-      } else if (dateFilterForStats.createdAt?.lte) {
-        depositDateCondition += ` AND created_at <= $${depositDateParams.length + 2}::timestamp`
-        depositDateParams.push(dateFilterForStats.createdAt.lte)
-        withdrawalDateCondition += ` AND created_at <= $${withdrawalDateParams.length + 2}::timestamp`
-        withdrawalDateParams.push(dateFilterForStats.createdAt.lte)
-      }
-      
-      // Используем оптимизированный SQL с индексами для быстрого поиска
-      // Используем ILIKE для case-insensitive поиска (быстрее чем LOWER)
-      const [depositStatsRaw, withdrawalStatsRaw] = await Promise.all([
-        prisma.$queryRawUnsafe<Array<{ count: bigint; sum: string | null }>>(
-          `SELECT 
-            COUNT(*)::bigint as count,
-            COALESCE(SUM(amount), 0)::text as sum
-          FROM requests
-          WHERE request_type = 'deposit'
-            AND status IN ('autodeposit_success', 'auto_completed')
-            AND bookmaker ILIKE $1
-            ${depositDateCondition}`,
-          `%${platformKey}%`,
-          ...depositDateParams
-        ),
-        prisma.$queryRawUnsafe<Array<{ count: bigint; sum: string | null }>>(
-          `SELECT 
-            COUNT(*)::bigint as count,
-            COALESCE(SUM(amount), 0)::text as sum
-          FROM requests
-          WHERE request_type = 'withdraw'
-            AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
-            AND bookmaker ILIKE $1
-            ${withdrawalDateCondition}`,
-          `%${platformKey}%`,
-          ...withdrawalDateParams
-        ),
-      ])
-      
-      // Преобразуем результаты SQL
-      const depositsSum = parseFloat(depositStatsRaw[0]?.sum || '0')
-      const withdrawalsSum = parseFloat(withdrawalStatsRaw[0]?.sum || '0')
-      const depositsCount = Number(depositStatsRaw[0]?.count || 0)
-      const withdrawalsCount = Number(withdrawalStatsRaw[0]?.count || 0)
-      
-      console.log(`📊 Platform ${platform.name} (${platformKey}): deposits=${depositsSum} (${depositsCount}), withdrawals=${withdrawalsSum} (${withdrawalsCount})`)
-      
-      const depositStats = {
-        _count: { id: depositsCount },
-        _sum: { amount: depositsSum }
-      }
-      
-      const withdrawalStats = {
-        _count: { id: withdrawalsCount },
-        _sum: { amount: withdrawalsSum }
-      }
-      
-      return {
-        key: platform.key,
-        name: platform.name,
-        depositsSum: depositsSum,
-        depositsCount: depositsCount,
-        withdrawalsSum: withdrawalsSum,
-        withdrawalsCount: withdrawalsCount,
+    // Оптимизация: получаем статистику по всем платформам одним запросом вместо множества запросов
+    // Строим условия для дат
+    let dateCondition = ''
+    const dateParams: any[] = []
+    
+    if (dateFilterForStats.createdAt?.gte) {
+      dateCondition += ` AND created_at >= $${dateParams.length + 1}::timestamp`
+      dateParams.push(dateFilterForStats.createdAt.gte)
+    }
+    if (dateFilterForStats.createdAt?.lt) {
+      dateCondition += ` AND created_at < $${dateParams.length + 1}::timestamp`
+      dateParams.push(dateFilterForStats.createdAt.lt)
+    } else if (dateFilterForStats.createdAt?.lte) {
+      dateCondition += ` AND created_at <= $${dateParams.length + 1}::timestamp`
+      dateParams.push(dateFilterForStats.createdAt.lte)
+    }
+    
+    // Один запрос для всех платформ - значительно быстрее
+    const platformStatsQuery = await prisma.$queryRawUnsafe<Array<{
+      platform_key: string;
+      deposits_count: bigint;
+      deposits_sum: string | null;
+      withdrawals_count: bigint;
+      withdrawals_sum: string | null;
+    }>>(`
+      SELECT 
+        CASE 
+          WHEN bookmaker ILIKE '%1xbet%' OR bookmaker ILIKE '%xbet%' THEN '1xbet'
+          WHEN bookmaker ILIKE '%1win%' OR bookmaker ILIKE '%onewin%' THEN '1win'
+          WHEN bookmaker ILIKE '%melbet%' THEN 'melbet'
+          WHEN bookmaker ILIKE '%mostbet%' THEN 'mostbet'
+          WHEN bookmaker ILIKE '%winwin%' OR bookmaker ILIKE '%win win%' THEN 'winwin'
+          WHEN bookmaker ILIKE '%888%' OR bookmaker ILIKE '%888starz%' THEN '888starz'
+          ELSE NULL
+        END as platform_key,
+        SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as deposits_count,
+        COALESCE(SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed') THEN amount ELSE 0 END), 0)::text as deposits_sum,
+        SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as withdrawals_count,
+        COALESCE(SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN amount ELSE 0 END), 0)::text as withdrawals_sum
+      FROM requests
+      WHERE bookmaker IS NOT NULL
+        ${dateCondition}
+      GROUP BY platform_key
+      HAVING platform_key IS NOT NULL
+    `, ...dateParams)
+    
+    // Преобразуем результаты в нужный формат
+    const platformStatsMap = new Map<string, PlatformStats>()
+    platformStatsQuery.forEach((row) => {
+      const platform = platformLimits.find(p => p.key.toLowerCase() === row.platform_key.toLowerCase())
+      if (platform) {
+        platformStatsMap.set(platform.key, {
+          key: platform.key,
+          name: platform.name,
+          depositsSum: parseFloat(row.deposits_sum || '0'),
+          depositsCount: Number(row.deposits_count || 0),
+          withdrawalsSum: parseFloat(row.withdrawals_sum || '0'),
+          withdrawalsCount: Number(row.withdrawals_count || 0),
+        })
       }
     })
     
-    const platformStats = await Promise.all(platformStatsPromises)
+    // Заполняем недостающие платформы нулями
+    const platformStats = platformLimits.map(platform => 
+      platformStatsMap.get(platform.key) || {
+        key: platform.key,
+        name: platform.name,
+        depositsSum: 0,
+        depositsCount: 0,
+        withdrawalsSum: 0,
+        withdrawalsCount: 0,
+      }
+    )
     
     // Убрали отладочные запросы для ускорения
 
@@ -402,8 +348,8 @@ export async function GET(request: NextRequest) {
       })
     )
     
-    // Добавляем кэширование для быстрой загрузки (5 секунд)
-    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
+    // Добавляем кэширование для быстрой загрузки (10 секунд)
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
     
     return response
   } catch (error: any) {

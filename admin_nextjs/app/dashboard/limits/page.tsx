@@ -64,7 +64,8 @@ export default function LimitsPage() {
       if (end) params.append('end', end)
 
       const response = await fetch(`/api/limits/stats?${params.toString()}`, {
-        cache: 'default', // Используем кэш для быстрой загрузки
+        cache: 'force-cache', // Агрессивное кэширование для быстрой загрузки
+        next: { revalidate: 10 }, // Перевалидируем каждые 10 секунд
       })
       const data = await response.json()
 
