@@ -61,11 +61,28 @@ const nextConfig = {
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     const path = require('path')
     
-    // Явно настраиваем алиас @
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': path.resolve(__dirname),
+    // Убеждаемся, что resolve существует
+    if (!config.resolve) {
+      config.resolve = {}
     }
+    
+    // Явно настраиваем алиас @ с полным путем
+    const rootPath = path.resolve(__dirname)
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@': rootPath,
+    }
+    
+    // Убеждаемся, что расширения файлов включены
+    if (!config.resolve.extensions) {
+      config.resolve.extensions = []
+    }
+    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.json']
+    extensions.forEach((ext) => {
+      if (!config.resolve.extensions.includes(ext)) {
+        config.resolve.extensions.push(ext)
+      }
+    })
     
     return config
   },
