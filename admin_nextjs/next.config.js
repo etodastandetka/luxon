@@ -57,6 +57,33 @@ const nextConfig = {
     BOT_TOKEN: process.env.BOT_TOKEN,
   },
   
+  // Webpack конфигурация для правильного разрешения путей
+  webpack: (config, { isServer }) => {
+    const path = require('path')
+    
+    // Убеждаемся, что webpack правильно разрешает относительные пути
+    config.resolve.modules = [
+      path.resolve(__dirname, '.'),
+      'node_modules',
+      ...(config.resolve.modules || []),
+    ]
+    
+    // Убеждаемся, что webpack ищет файлы с расширениями
+    config.resolve.extensions = [
+      '.tsx',
+      '.ts',
+      '.jsx',
+      '.js',
+      '.json',
+      ...(config.resolve.extensions || []),
+    ]
+    
+    // Включаем полное разрешение путей
+    config.resolve.fullySpecified = false
+    
+    return config
+  },
+  
 }
 
 module.exports = nextConfig
