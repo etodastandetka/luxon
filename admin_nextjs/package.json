@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "clean": "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache .swc",
-    "clean:full": "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache .swc && npm run build",
+    "clean": "node -e \"const fs=require('fs');const path=require('path');['.next','tsconfig.tsbuildinfo','node_modules/.cache','.swc'].forEach(p=>{try{fs.rmSync(p,{recursive:true,force:true})}catch(e){}})\"",
+    "clean:full": "npm run clean && npm run build",
     "clean:build": "npm run clean && npm run build",
     "start": "next start -p 3001",
     "start:prod": "NODE_ENV=production next start -p 3001",
