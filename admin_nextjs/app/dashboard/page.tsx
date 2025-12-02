@@ -41,8 +41,20 @@ export default function DashboardPage() {
   // Отслеживаем уже воспроизведенные звуки для конкретных заявок
   // Используем строковый ключ: "type-status-id" для уникальности
   const playedSoundsRef = useRef<Set<string>>(new Set())
+  // Отслеживаем задержку для exponential backoff при rate limiting
+  // Для pending вкладки начинаем с быстрого обновления (2 сек)
+  const retryDelayRef = useRef(2000) // Начальная задержка 2 секунды для быстрого обновления
+  const isFetchingRef = useRef(false) // Флаг для предотвращения параллельных запросов
 
   const fetchRequests = useCallback(async (showLoading = true) => {
+    // Предотвращаем параллельные запросы
+    if (isFetchingRef.current) {
+      console.log('⏸️ Request already in progress, skipping...')
+      return
+    }
+    
+    isFetchingRef.current = true
+    
     if (showLoading) {
       setLoading(true)
     }
@@ -64,14 +76,31 @@ export default function DashboardPage() {
         cache: 'no-store', // Для динамических данных не кешируем на клиенте
       })
       
-      // Обработка ошибки rate limiting
+      // Обработка ошибки rate limiting с exponential backoff
       if (response.status === 429) {
-        console.warn('⚠️ Rate limit exceeded, will retry after delay')
+        const retryAfter = response.headers.get('Retry-After')
+        const delay = retryAfter ? parseInt(retryAfter) * 1000 : retryDelayRef.current
+        
+        console.warn(`⚠️ Rate limit exceeded, will retry after ${delay}ms`)
+        
+        // Увеличиваем задержку для следующего раза (exponential backoff, максимум 30 секунд)
+        // Для pending вкладки используем более мягкий backoff
+        retryDelayRef.current = activeTab === 'pending' 
+          ? Math.min(retryDelayRef.current * 1.5, 30000) // Мягче для pending
+          : Math.min(retryDelayRef.current * 2, 60000)
+        
         // Не обновляем данные при rate limit, просто пропускаем этот запрос
         if (showLoading) {
           setLoading(false)
         }
+        isFetchingRef.current = false
         return
+      }
+      
+      // Если запрос успешен, постепенно уменьшаем задержку обратно к минимальному значению
+      if (response.ok) {
+        // Для pending вкладки быстро возвращаемся к быстрому обновлению
+        retryDelayRef.current = activeTab === 'pending' ? 2000 : 5000
       }
       
       if (!response.ok) {
@@ -283,6 +312,9 @@ export default function DashboardPage() {
       // Игнорируем ошибки rate limiting, не сбрасываем список заявок
       if (error?.message?.includes('429') || error?.message?.includes('Too Many Requests')) {
         console.warn('⚠️ Rate limit exceeded, keeping current requests list')
+        // Увеличиваем задержку для следующего раза
+        retryDelayRef.current = Math.min(retryDelayRef.current * 2, 60000)
+        isFetchingRef.current = false
         return
       }
       console.error('❌ Failed to fetch requests:', error)
@@ -291,6 +323,7 @@ export default function DashboardPage() {
       if (showLoading) {
         setLoading(false)
       }
+      isFetchingRef.current = false
     }
   }, [activeTab])
 
@@ -299,6 +332,15 @@ export default function DashboardPage() {
     initAudioContext()
     setSoundsEnabledState(isSoundsEnabled())
   }, [])
+  
+  // Перезагружаем данные при изменении вкладки
+  useEffect(() => {
+    // Сбрасываем состояние при переключении вкладки
+    previousRequestsRef.current = []
+    isFirstLoadRef.current = true
+    // Загружаем данные для новой вкладки
+    fetchRequests(true)
+  }, [activeTab, fetchRequests])
   
   useEffect(() => {
     // Инициализируем уведомления при загрузке
@@ -317,13 +359,18 @@ export default function DashboardPage() {
     
     fetchRequests()
     
-    // Автоматическое обновление: уменьшена частота для избежания rate limiting
-    // Для вкладки "pending" обновляем каждые 5 секунд (было 2)
-    // Для других вкладок - каждые 10 секунд
-    const updateInterval = activeTab === 'pending' ? 5000 : 10000
+    // Автоматическое обновление: для вкладки "pending" - быстрое обновление каждые 2 секунды
+    // для мгновенного появления новых заявок, для других вкладок - реже (10 сек)
+    const updateInterval = activeTab === 'pending' ? 2000 : 10000
     
     const interval = setInterval(() => {
-      if (!document.hidden) {
+      if (!document.hidden && !isFetchingRef.current) {
+        // Для pending вкладки проверяем, не слишком ли большая задержка из-за rate limiting
+        // Если задержка больше 5 секунд, пропускаем этот запрос
+        if (activeTab === 'pending' && retryDelayRef.current > 5000) {
+          console.log(`⏸️ Пропускаем запрос из-за rate limiting (задержка: ${retryDelayRef.current}ms)`)
+          return
+        }
         fetchRequests(false) // Не показываем loading при автообновлении
       }
     }, updateInterval)
@@ -566,7 +613,15 @@ export default function DashboardPage() {
       {/* Табы */}
       <div className="flex space-x-2 mb-6">
         <button
-          onClick={() => setActiveTab('pending')}
+          onClick={() => {
+            if (activeTab !== 'pending') {
+              setActiveTab('pending')
+              // Сбрасываем данные при переключении вкладки
+              setRequests([])
+              previousRequestsRef.current = []
+              isFirstLoadRef.current = true
+            }
+          }}
           className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
             activeTab === 'pending'
               ? 'bg-green-500 text-black shadow-lg'
@@ -576,7 +631,15 @@ export default function DashboardPage() {
           Ожидающие
         </button>
         <button
-          onClick={() => setActiveTab('deferred')}
+          onClick={() => {
+            if (activeTab !== 'deferred') {
+              setActiveTab('deferred')
+              // Сбрасываем данные при переключении вкладки
+              setRequests([])
+              previousRequestsRef.current = []
+              isFirstLoadRef.current = true
+            }
+          }}
           className={`flex-1 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
             activeTab === 'deferred'
               ? 'bg-green-500 text-black shadow-lg'
