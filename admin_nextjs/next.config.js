@@ -58,7 +58,7 @@ const nextConfig = {
   },
   
   // Конфигурация webpack для правильного разрешения алиасов
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     const path = require('path')
     
     // Убеждаемся, что resolve существует
@@ -66,27 +66,37 @@ const nextConfig = {
       config.resolve = {}
     }
     
-    // Сохраняем существующие алиасы или создаем новый объект
-    const existingAliases = config.resolve.alias || {}
-    
     // Явно устанавливаем алиас @ с полным путем
     const rootPath = path.resolve(__dirname)
     
-    // Создаем новый объект алиасов, явно устанавливая @
+    // Полностью переопределяем alias, чтобы гарантировать правильную настройку
     config.resolve.alias = {
-      ...existingAliases,
       '@': rootPath,
     }
     
-    // Также убеждаемся, что модули разрешаются правильно
+    // Добавляем корневую директорию в modules
     if (!config.resolve.modules) {
-      config.resolve.modules = ['node_modules']
+      config.resolve.modules = []
     }
+    if (!Array.isArray(config.resolve.modules)) {
+      config.resolve.modules = [config.resolve.modules]
+    }
+    config.resolve.modules = [
+      rootPath,
+      path.resolve(rootPath, 'node_modules'),
+      ...config.resolve.modules.filter((m) => m !== rootPath),
+    ]
     
-    // Добавляем корневую директорию в modules для резолва
-    if (!config.resolve.modules.includes(rootPath)) {
-      config.resolve.modules = [rootPath, ...config.resolve.modules]
+    // Убеждаемся, что расширения файлов включены
+    if (!config.resolve.extensions) {
+      config.resolve.extensions = []
     }
+    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.json']
+    extensions.forEach((ext) => {
+      if (!config.resolve.extensions.includes(ext)) {
+        config.resolve.extensions.push(ext)
+      }
+    })
     
     return config
   },
