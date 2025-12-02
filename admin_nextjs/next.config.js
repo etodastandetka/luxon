@@ -81,11 +81,15 @@ const nextConfig = {
     // Включаем полное разрешение путей
     config.resolve.fullySpecified = false
     
-    // Добавляем alias для lib/
+    // Добавляем alias для lib/ - важно использовать абсолютный путь
     config.resolve.alias = {
       ...config.resolve.alias,
+      '@': path.resolve(__dirname, '.'),
       '@/lib': path.resolve(__dirname, 'lib'),
     }
+    
+    // Убеждаемся, что symlinks разрешены
+    config.resolve.symlinks = true
     
     return config
   },
