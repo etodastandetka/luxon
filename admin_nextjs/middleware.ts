@@ -110,19 +110,40 @@ export async function middleware(request: NextRequest) {
   // }
 
   // 2. Защита API endpoints (пропускаем публичные API)
-  // ВАЖНО: Если токен валиден, пропускаем защиту API (пользователь авторизован)
-  // Также пропускаем для публичных API маршрутов
+  // ВАЖНО: Сначала определяем публичные API маршруты, чтобы пропустить protectAPI для них
+  const publicApiRoutes = [
+    '/api/auth', 
+    '/api/payment', 
+    '/api/transaction-history', 
+    '/api/public', 
+    '/api/withdraw-check', 
+    '/api/withdraw-check-exists', 
+    '/api/withdraw-execute', 
+    '/api/incoming-payment', 
+    '/api/referral/register', 
+    '/api/users', 
+    '/api/crypto-pay', 
+    '/api/requests', 
+    '/api/channel'
+  ]
+  
+  const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
+  
+  // Защита API endpoints (пропускаем публичные API и маршруты с валидным токеном)
   if (pathname.startsWith('/api/') && !isPublicRoute) {
-    // Если токен валиден, пропускаем все проверки безопасности API
-    if (!isValidToken) {
+    // Пропускаем protectAPI для публичных API маршрутов (они должны быть доступны без токена)
+    if (!isPublicApiRoute && !isValidToken) {
       const protectionResult = protectAPI(request)
       if (protectionResult) {
-        if (pathname === '/dashboard') {
-          console.log(`⚠️  protectAPI blocked request to ${pathname}, IP: ${ip}`)
-        }
+        console.log(`⚠️  protectAPI blocked request to ${pathname}, IP: ${ip}`)
         return protectionResult
       }
-    } else {
+    } else if (isPublicApiRoute) {
+      // Публичный API маршрут - логируем для отладки
+      if (pathname === '/api/payment' || pathname === '/api/incoming-payment') {
+        console.log(`✅ Public API route accessed: ${pathname}, IP: ${ip}`)
+      }
+    } else if (isValidToken) {
       // Токен валиден - пропускаем защиту API, но логируем
       if (pathname.startsWith('/api/') && pathname !== '/api/auth/me') {
         console.log(`✅ Valid token, skipping API protection for ${pathname}, IP: ${ip}`)
@@ -130,23 +151,6 @@ export async function middleware(request: NextRequest) {
     }
 
     // 3. Rate limiting для API (более строгий для публичных endpoints)
-    const publicApiRoutes = [
-      '/api/auth', 
-      '/api/payment', 
-      '/api/transaction-history', 
-      '/api/public', 
-      '/api/withdraw-check', 
-      '/api/withdraw-check-exists', 
-      '/api/withdraw-execute', 
-      '/api/incoming-payment', 
-      '/api/referral/register', 
-      '/api/users', 
-      '/api/crypto-pay', 
-      '/api/requests', 
-      '/api/channel'
-    ]
-    
-    const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
     
     // Для внутренних запросов (localhost) - более мягкий rate limit
     // (isInternalRequest уже определен выше)
