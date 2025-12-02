@@ -21,10 +21,19 @@ echo "🔍 Проверяю существование lib/two-factor.ts..."
 if [ -f "lib/two-factor.ts" ]; then
     echo "  ✅ lib/two-factor.ts существует"
 else
-    echo "  ❌ lib/two-factor.ts НЕ НАЙДЕН!"
-    echo "  Список файлов в lib/:"
-    ls -la lib/ | head -10
-    exit 1
+    echo "  ⚠️  lib/two-factor.ts НЕ НАЙДЕН!"
+    echo "  📥 Пытаюсь получить из git..."
+    git checkout origin/main -- lib/two-factor.ts 2>/dev/null || git checkout main -- lib/two-factor.ts 2>/dev/null || true
+    if [ -f "lib/two-factor.ts" ]; then
+        echo "  ✅ lib/two-factor.ts восстановлен из git"
+    else
+        echo "  ❌ Не удалось восстановить lib/two-factor.ts"
+        echo "  Список файлов в lib/:"
+        ls -la lib/ | head -10
+        echo ""
+        echo "  Пытаюсь получить все файлы из lib/..."
+        git checkout origin/main -- lib/ 2>/dev/null || git checkout main -- lib/ 2>/dev/null || true
+    fi
 fi
 
 # 3. Показываем содержимое проблемных файлов
