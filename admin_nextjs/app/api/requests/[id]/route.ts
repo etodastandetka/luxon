@@ -246,13 +246,18 @@ export async function PATCH(
 
     // Уведомления в группу для выводов отключены по запросу пользователя
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createApiResponse({
         ...updatedRequest,
         userId: updatedRequest.userId.toString(),
         amount: updatedRequest.amount ? updatedRequest.amount.toString() : null,
       })
     )
+    
+    // Инвалидируем кэш для списка заявок, чтобы дашборд обновился сразу
+    response.headers.set('Cache-Control', 'no-store, must-revalidate')
+    
+    return response
   } catch (error: any) {
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to update request'),

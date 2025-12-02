@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { 
@@ -30,6 +31,8 @@ interface Request {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(false) // Начинаем с false - показываем скелетон сразу
   const [activeTab, setActiveTab] = useState<'pending' | 'deferred'>('pending')
@@ -68,10 +71,9 @@ export default function DashboardPage() {
       // Добавляем лимит для ускорения загрузки
       params.append('limit', '20')
       
-      // Используем кэширование для более быстрой загрузки
+      // Используем кэширование, но не агрессивное - данные должны обновляться сразу
       const response = await fetch(`/api/requests?${params.toString()}`, {
-        cache: 'force-cache', // Агрессивное кэширование для мгновенной загрузки
-        next: { revalidate: 2 }, // Перевалидируем каждые 2 секунды
+        cache: 'no-store', // Не кэшируем - данные должны быть актуальными
       })
       
       if (!response.ok) {
@@ -306,6 +308,16 @@ export default function DashboardPage() {
   }, [activeTab, fetchRequests])
   
   useEffect(() => {
+    // Проверяем параметр refresh в URL - если есть, обновляем данные
+    const refreshParam = searchParams.get('refresh')
+    if (refreshParam) {
+      // Убираем параметр из URL
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+      // Принудительно обновляем данные
+      fetchRequests(true)
+    }
+    
     // Инициализируем уведомления при загрузке
     initNotifications().then(success => {
       if (success) {

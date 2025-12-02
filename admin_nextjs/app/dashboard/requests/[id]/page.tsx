@@ -871,8 +871,10 @@ export default function RequestDetailPage() {
           setSelectedPaymentId(null)
           
           // Перенаправляем на дашборд после успешного обновления статуса
+          // Используем router.refresh() для обновления данных перед редиректом
           setTimeout(() => {
-            router.push('/dashboard')
+            router.refresh() // Обновляем данные перед редиректом
+            router.push('/dashboard?refresh=' + Date.now()) // Добавляем timestamp для обхода кэша
           }, 500)
         } else {
           console.error('Failed to update request:', data.error)
