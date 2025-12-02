@@ -16,10 +16,29 @@ git clean -fd
 echo "✅ Все локальные изменения сброшены"
 echo ""
 
-# 2. Восстанавливаем ВСЕ файлы из lib/
+# 2. Восстанавливаем ВСЕ файлы из lib/ (ПРИНУДИТЕЛЬНО)
 echo "📥 Восстанавливаю ВСЕ файлы из lib/..."
 mkdir -p lib
+# Принудительно восстанавливаем каждый файл
 git checkout origin/main -- lib/ 2>/dev/null || git checkout main -- lib/ 2>/dev/null || true
+# Дополнительно восстанавливаем каждый файл отдельно
+for file in lib/*.ts; do
+    filename=$(basename "$file")
+    git checkout origin/main -- "lib/$filename" 2>/dev/null || git checkout main -- "lib/$filename" 2>/dev/null || true
+done
+# Проверяем наличие критических файлов
+required_files=("lib/geolocation.ts" "lib/sounds.ts" "lib/notifications.ts" "lib/api-helpers.ts" "lib/prisma.ts" "lib/security.ts" "lib/two-factor.ts")
+for file in "${required_files[@]}"; do
+    if [ ! -f "$file" ]; then
+        echo "  ⚠️  $file отсутствует, восстанавливаю..."
+        git checkout origin/main -- "$file" 2>/dev/null || git checkout main -- "$file" 2>/dev/null || true
+        if [ -f "$file" ]; then
+            echo "  ✅ $file восстановлен"
+        else
+            echo "  ❌ $file НЕ УДАЛОСЬ восстановить!"
+        fi
+    fi
+done
 echo "✅ Файлы lib/ восстановлены"
 echo ""
 
