@@ -135,37 +135,64 @@ export default function RequestDetailPage() {
               isBase64: requestData.photoFileUrl?.startsWith('data:image') || false
             })
             
+            // Логируем информацию о фото для отладки
+            if (typeof window !== 'undefined') {
+              console.log('[DEBUG] Photo in API response:', {
+                requestId,
+                hasPhoto: !!requestData.photoFileUrl,
+                photoLength: requestData.photoFileUrl?.length || 0,
+                photoPreview: requestData.photoFileUrl ? requestData.photoFileUrl.substring(0, 100) : 'null'
+              })
+            }
+            
             // Если фото нет в основном ответе, загружаем его через отдельный endpoint
             if (!requestData.photoFileUrl || requestData.photoFileUrl.trim() === '') {
-              console.log('📸 [Request Detail] Фото нет в основном ответе, загружаем через отдельный endpoint')
+              if (typeof window !== 'undefined') {
+                console.log('[DEBUG] Photo not in main response, fetching from /photo endpoint')
+              }
               setPhotoLoading(true)
               fetch(`/api/requests/${requestId}/photo`)
-                .then(res => res.json())
+                .then(res => {
+                  if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`)
+                  }
+                  return res.json()
+                })
                 .then(photoData => {
-                  console.log('📸 [Request Detail] Ответ от /photo endpoint:', {
-                    success: photoData.success,
-                    hasPhoto: !!photoData.data?.photoFileUrl,
-                    photoLength: photoData.data?.photoFileUrl?.length || 0
-                  })
+                  if (typeof window !== 'undefined') {
+                    console.log('[DEBUG] Photo endpoint response:', {
+                      success: photoData.success,
+                      hasPhoto: !!photoData.data?.photoFileUrl,
+                      photoLength: photoData.data?.photoFileUrl?.length || 0
+                    })
+                  }
                   if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
                     setRequest(prev => prev ? {
                       ...prev,
                       photoFileUrl: photoData.data.photoFileUrl
                     } : null)
                     setPhotoLoading(false)
-                    console.log('✅ [Request Detail] Фото успешно загружено и установлено в state')
+                    if (typeof window !== 'undefined') {
+                      console.log('[DEBUG] Photo loaded and set in state successfully')
+                    }
                   } else {
                     setPhotoLoading(false)
-                    console.warn('⚠️ [Request Detail] Фото не найдено в ответе /photo endpoint')
+                    if (typeof window !== 'undefined') {
+                      console.warn('[DEBUG] Photo not found in /photo endpoint response')
+                    }
                   }
                 })
                 .catch(err => {
                   setPhotoLoading(false)
-                  console.error('❌ [Request Detail] Ошибка загрузки фото через отдельный endpoint:', err)
+                  if (typeof window !== 'undefined') {
+                    console.error('[DEBUG] Error loading photo from /photo endpoint:', err)
+                  }
                 })
             } else {
               setPhotoLoading(false)
-              console.log('✅ [Request Detail] Фото есть в основном ответе, используем его')
+              if (typeof window !== 'undefined') {
+                console.log('[DEBUG] Photo found in main response')
+              }
             }
             
             // Обновляем интервал автообновления в зависимости от статуса
@@ -1153,18 +1180,10 @@ export default function RequestDetailPage() {
         const hasPhoto = request.photoFileUrl && request.photoFileUrl.trim() !== ''
         const shouldShowPhotoBlock = hasPhoto || photoLoading
         
-        console.log('📸 [Photo Display] Проверка отображения фото:', {
-          hasPhoto,
-          photoLoading,
-          shouldShowPhotoBlock,
-          photoFileUrl: request.photoFileUrl ? request.photoFileUrl.substring(0, 50) + '...' : null,
-          photoLength: request.photoFileUrl?.length || 0
-        })
-        
-        if (!shouldShowPhotoBlock) {
-          console.log('⚠️ [Photo Display] Фото нет и не загружается, не отображаем блок')
-          return null
-        }
+        // ВСЕГДА показываем блок для отладки
+        // if (!shouldShowPhotoBlock) {
+        //   return null
+        // }
         
         return (
           <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
@@ -1175,19 +1194,42 @@ export default function RequestDetailPage() {
               className="relative w-full flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity" 
               style={{ minHeight: '200px', maxHeight: '500px' }}
               onClick={() => {
-                setShowPhotoModal(true)
-                setPhotoZoom(1)
+                if (request.photoFileUrl) {
+                  setShowPhotoModal(true)
+                  setPhotoZoom(1)
+                }
               }}
             >
               {(() => {
                 let photoUrl = request.photoFileUrl
+                
+                // Отладочная информация
+                if (typeof window !== 'undefined') {
+                  console.log('[DEBUG PHOTO]', {
+                    hasPhotoUrl: !!photoUrl,
+                    photoUrlLength: photoUrl?.length || 0,
+                    photoUrlPreview: photoUrl ? photoUrl.substring(0, 100) : 'null',
+                    isBase64: photoUrl?.startsWith('data:image') || false,
+                    requestId: request.id
+                  })
+                }
+                
                 if (!photoUrl || photoUrl.trim() === '') {
-                  console.log('⚠️ [Photo Display] photoUrl пустой внутри блока, показываем индикатор загрузки')
                   return (
                     <div className="w-full h-[200px] flex items-center justify-center p-4 bg-yellow-900/30 border border-yellow-500 rounded-lg">
                       <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-2"></div>
-                        <p className="text-yellow-300 text-sm">Загрузка фото...</p>
+                        {photoLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-2"></div>
+                            <p className="text-yellow-300 text-sm">Загрузка фото...</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-yellow-300 text-sm mb-2">⚠️ Фото чека не загружено</p>
+                            <p className="text-yellow-400 text-xs">ID заявки: {request.id}</p>
+                            <p className="text-yellow-400 text-xs mt-1">Проверьте, что фото было отправлено при создании заявки</p>
+                          </>
+                        )}
                       </div>
                     </div>
                   )
