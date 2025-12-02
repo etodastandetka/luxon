@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '../../../../lib/api-helpers'
-import { createApiResponse } from '../../../../lib/api-helpers'
+import { getAuthUser } from '@/lib/api-helpers'
+import { createApiResponse } from '@/lib/api-helpers'
 import { 
   saveAllowedCoordinates,
   getAllowedCoordinates,
   validateCoordinates 
-} from '../../../../lib/geolocation'
+} from '@/lib/geolocation'
 import { 
   protectAPI, 
   rateLimit, 
   getClientIP 
-} from '../../../../lib/security'
+} from '@/lib/security'
 
 /**
  * GET /api/geolocation/settings

@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createApiResponse } from '../../../../lib/api-helpers'
+import { createApiResponse } from '@/lib/api-helpers'
 import { 
   isInAllowedZone, 
   validateCoordinates,
   getAllowedCoordinates,
   calculateDistance 
-} from '../../../../lib/geolocation'
+} from '@/lib/geolocation'
 import { 
   protectAPI, 
   rateLimit, 
   getClientIP 
-} from '../../../../lib/security'
-import { sendTelegramGroupMessage } from '../../../../lib/telegram-group'
+} from '@/lib/security'
+import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 
 /**
  * POST /api/geolocation/verify
