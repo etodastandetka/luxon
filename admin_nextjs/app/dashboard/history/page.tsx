@@ -22,14 +22,14 @@ interface Transaction {
 export default function HistoryPage() {
   const router = useRouter()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(false) // Начинаем с false - страница показывается сразу
+  const [loading, setLoading] = useState(true) // Показываем лоадер при первой загрузке
   const [loadingMore, setLoadingMore] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
-  const limit = 30 // Увеличиваем лимит для быстрой загрузки и меньше запросов
+  const limit = 50 // Увеличиваем лимит для быстрой загрузки и меньше запросов
 
-  const fetchHistory = useCallback(async (reset = false) => {
+  const fetchHistory = useCallback(async (reset = false, currentOffset = 0) => {
     if (reset) {
       setOffset(0)
       setTransactions([])
@@ -47,7 +47,7 @@ export default function HistoryPage() {
         params.append('type', activeTab === 'deposit' ? 'deposit' : 'withdraw')
       }
       params.append('limit', limit.toString())
-      params.append('offset', reset ? '0' : offset.toString())
+      params.append('offset', reset ? '0' : currentOffset.toString())
 
       // Используем кеширование для ускорения загрузки (API теперь кэширует на 5 сек)
       const response = await fetch(`/api/transaction-history?${params.toString()}`, {
@@ -61,8 +61,11 @@ export default function HistoryPage() {
           setTransactions(newTransactions)
           setOffset(newTransactions.length)
         } else {
-          setTransactions(prev => [...prev, ...newTransactions])
-          setOffset(prev => prev + newTransactions.length)
+          setTransactions(prev => {
+            const combined = [...prev, ...newTransactions]
+            setOffset(combined.length)
+            return combined
+          })
         }
         setHasMore(data.data.pagination?.hasMore || false)
       }
@@ -72,23 +75,20 @@ export default function HistoryPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [activeTab, offset, limit])
+  }, [activeTab, limit])
 
+  // Загружаем данные при монтировании и при изменении таба
   useEffect(() => {
-    // Добавляем debounce для переключения табов чтобы не делать лишние запросы
-    const timeoutId = setTimeout(() => {
-      fetchHistory(true)
-    }, 150) // Небольшая задержка для debounce
-
-    return () => clearTimeout(timeoutId)
+    // Убираем debounce для мгновенной загрузки при переключении табов
+    fetchHistory(true, 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
-  const loadMore = () => {
+  const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
-      fetchHistory(false)
+      fetchHistory(false, offset)
     }
-  }
+  }, [loadingMore, hasMore, fetchHistory, offset])
 
   // Мемоизируем функции форматирования
   const formatDate = useCallback((dateString: string) => {
