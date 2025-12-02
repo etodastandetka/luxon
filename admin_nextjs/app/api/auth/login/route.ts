@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateUser } from '@/lib/auth'
-import { createApiResponse } from '@/lib/api-helpers'
-import { is2FAEnabled } from '@/lib/two-factor'
-import { prisma } from '@/lib/prisma'
+import { authenticateUser } from '../../../../lib/auth'
+import { createApiResponse } from '../../../../lib/api-helpers'
+import { is2FAEnabled } from '../../../../lib/two-factor'
+import { prisma } from '../../../../lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем пароль
-    const { verifyPassword } = await import('@/lib/auth')
+    const { verifyPassword } = await import('../../../../lib/auth')
     const isValidPassword = await verifyPassword(password, user.password)
 
     if (!isValidPassword) {

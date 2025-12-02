@@ -6,7 +6,7 @@ import {
   getClientIP, 
   isIPBlocked,
   blockIP 
-} from '@/lib/security'
+} from './lib/security'
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value

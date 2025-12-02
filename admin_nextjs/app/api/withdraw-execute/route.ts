@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { createApiResponse } from '@/lib/api-helpers'
-import { processWithdraw, checkWithdrawAmountCashdesk } from '@/lib/casino-withdraw'
-import { getCasinoConfig } from '@/lib/deposit-balance'
-import { rateLimit, sanitizeInput, containsSQLInjection, getClientIP } from '@/lib/security'
+import { prisma } from '../../../../lib/prisma'
+import { createApiResponse } from '../../../../lib/api-helpers'
+import { processWithdraw, checkWithdrawAmountCashdesk } from '../../../../lib/casino-withdraw'
+import { getCasinoConfig } from '../../../../lib/deposit-balance'
+import { rateLimit, sanitizeInput, containsSQLInjection, getClientIP } from '../../../../lib/security'
 
 /**
  * API для выполнения вывода средств (mobile.withdrawal)

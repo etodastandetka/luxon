@@ -2,7 +2,7 @@ import { prisma } from './prisma'
 
 /**
  * ЕДИНСТВЕННАЯ функция автопополнения - работает только здесь
- * Все вызовы должны использовать эту функцию из @/lib/auto-deposit
+ * Все вызовы должны использовать эту функцию из ./auto-deposit
  * Работает секунду в секунду - мгновенно
  * ВАЖНО: Гарантирует что статус заявки ОБЯЗАТЕЛЬНО обновится на autodeposit_success
  */
@@ -88,7 +88,7 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
 
   // Оптимизированная обработка: все в одной транзакции для максимальной скорости
   try {
-    const { depositToCasino } = await import('@/lib/deposit-balance')
+    const { depositToCasino } = await import('./deposit-balance')
     
     // Сразу пополняем баланс через казино API (самое важное - делаем мгновенно)
     const depositResult = await depositToCasino(

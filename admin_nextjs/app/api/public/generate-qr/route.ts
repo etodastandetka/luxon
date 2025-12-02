@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../../../../lib/prisma'
 import { createHash } from 'crypto'
 import { 
   protectAPI, 
@@ -8,7 +8,7 @@ import {
   containsSQLInjection,
   containsXSS,
   getClientIP 
-} from '@/lib/security'
+} from '../../../../lib/security'
 
 // Публичный эндпоинт для генерации QR кода (без авторизации)
 export async function OPTIONS() {

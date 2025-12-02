@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { createApiResponse } from '@/lib/api-helpers'
-import { checkWithdrawsExistMostbet } from '@/lib/casino-withdraw'
+import { prisma } from '../../../../lib/prisma'
+import { createApiResponse } from '../../../../lib/api-helpers'
+import { checkWithdrawsExistMostbet } from '../../../../lib/casino-withdraw'
 
 /**
  * API для проверки наличия выводов для игрока (без кода)

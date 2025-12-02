@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { createApiResponse } from '@/lib/api-helpers'
-import { sendTelegramGroupMessage } from '@/lib/telegram-group'
+import { prisma } from '../../../../lib/prisma'
+import { createApiResponse } from '../../../../lib/api-helpers'
+import { sendTelegramGroupMessage } from '../../../../lib/telegram-group'
 import { 
   rateLimit, 
   sanitizeInput, 
   containsSQLInjection, 
   containsXSS,
   getClientIP 
-} from '@/lib/security'
+} from '../../../../lib/security'
 
 /**
  * Планирует отложенное уведомление о депозите через минуту
@@ -430,7 +430,7 @@ export async function POST(request: NextRequest) {
           console.log(`✅ [Auto-Deposit] Found matching payment ${payment.id} for NEW request ${newRequest.id}, processing INSTANTLY...`)
           
           // Импортируем функцию автопополнения из отдельного модуля
-          const { matchAndProcessPayment } = await import('@/lib/auto-deposit')
+          const { matchAndProcessPayment } = await import('../../../lib/auto-deposit')
           
           // Вызываем автопополнение СИНХРОННО - ждем результат
           // Это гарантирует что автопополнение произойдет секунду в секунду

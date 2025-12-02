@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/api-helpers'
-import { createApiResponse } from '@/lib/api-helpers'
+import { getAuthUser } from '../../../../../lib/api-helpers'
+import { createApiResponse } from '../../../../../lib/api-helpers'
 import { 
   generateSecret, 
   generateQRCode, 
   generateBackupCodes,
   is2FAEnabled 
-} from '@/lib/two-factor'
+} from '../../../../../lib/two-factor'
 
 /**
  * GET /api/auth/2fa/setup

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../../../../lib/prisma'
 import { 
   protectAPI, 
   rateLimit, 
   sanitizeInput, 
   containsSQLInjection,
   getClientIP 
-} from '@/lib/security'
+} from '../../../../lib/security'
 
 // Публичный эндпоинт для получения данных реферальной программы (без авторизации)
 export async function OPTIONS() {

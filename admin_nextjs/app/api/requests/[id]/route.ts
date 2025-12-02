@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { requireAuth, createApiResponse } from '@/lib/api-helpers'
-import { sendTelegramGroupMessage } from '@/lib/telegram-group'
+import { prisma } from '../../../../lib/prisma'
+import { requireAuth, createApiResponse } from '../../../../lib/api-helpers'
+import { sendTelegramGroupMessage } from '../../../../lib/telegram-group'
 
 // Функция для отправки уведомления пользователю в Telegram
 async function sendTelegramNotification(userId: bigint, message: string) {

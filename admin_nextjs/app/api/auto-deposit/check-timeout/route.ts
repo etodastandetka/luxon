@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { createApiResponse } from '@/lib/api-helpers'
+import { prisma } from '../../../../lib/prisma'
+import { createApiResponse } from '../../../../lib/api-helpers'
 
 /**
  * API endpoint для проверки таймаутов автопополнения

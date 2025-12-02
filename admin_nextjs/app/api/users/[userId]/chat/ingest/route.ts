@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../../../../../../lib/prisma'
 
 // Публичный эндпоинт для сохранения входящих сообщений от пользователя (вызывается ботом)
 export async function POST(

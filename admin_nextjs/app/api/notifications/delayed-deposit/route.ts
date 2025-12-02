@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { sendTelegramGroupMessage } from '@/lib/telegram-group'
-import { createApiResponse } from '@/lib/api-helpers'
+import { prisma } from '../../../../lib/prisma'
+import { sendTelegramGroupMessage } from '../../../../lib/telegram-group'
+import { createApiResponse } from '../../../../lib/api-helpers'
 
 export const dynamic = 'force-dynamic'
 

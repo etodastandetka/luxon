@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, createApiResponse } from '@/lib/api-helpers'
-import { prisma } from '@/lib/prisma'
+import { requireAuth, createApiResponse } from '../../../../../lib/api-helpers'
+import { prisma } from '../../../../../lib/prisma'
 
 // Получение истории чата с пользователем
 export async function GET(

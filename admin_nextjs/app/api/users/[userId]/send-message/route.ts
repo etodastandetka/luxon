@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, createApiResponse } from '@/lib/api-helpers'
-import { prisma } from '@/lib/prisma'
+import { requireAuth, createApiResponse } from '../../../../../lib/api-helpers'
+import { prisma } from '../../../../../lib/prisma'
 
 // Отправка сообщения пользователю через бота (поддерживает текст, фото и видео)
 export async function POST(

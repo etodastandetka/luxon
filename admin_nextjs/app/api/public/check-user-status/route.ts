@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { createApiResponse } from '@/lib/api-helpers'
+import { prisma } from '../../../../lib/prisma'
+import { createApiResponse } from '../../../../lib/api-helpers'
 import { 
   protectAPI, 
   rateLimit, 
   sanitizeInput, 
   containsSQLInjection,
   getClientIP 
-} from '@/lib/security'
+} from '../../../../lib/security'
 
 // Публичный эндпоинт для проверки статуса пользователя (для клиентского сайта)
 export async function GET(request: NextRequest) {

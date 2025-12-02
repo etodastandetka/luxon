@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { createApiResponse } from '@/lib/api-helpers'
-import { matchAndProcessPayment } from '@/lib/auto-deposit'
+import { prisma } from '../../../../lib/prisma'
+import { createApiResponse } from '../../../../lib/api-helpers'
+import { matchAndProcessPayment } from '../../../../lib/auto-deposit'
 
 // Функция для отправки уведомления пользователю в Telegram
 async function sendTelegramNotification(userId: bigint, message: string) {
@@ -45,7 +45,7 @@ async function sendTelegramNotification(userId: bigint, message: string) {
  * POST /api/auto-deposit/match
  * Body: { paymentId } или пустой для проверки всех необработанных платежей
  * 
- * ВАЖНО: Использует функцию matchAndProcessPayment из @/lib/auto-deposit
+ * ВАЖНО: Использует функцию matchAndProcessPayment из ../../lib/auto-deposit
  * Это гарантирует что автопополнение работает только в одном месте
  */
 export async function POST(request: NextRequest) {
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Используем функцию из @/lib/auto-deposit - ЕДИНСТВЕННОЕ место автопополнения
+      // Используем функцию из ../../lib/auto-deposit - ЕДИНСТВЕННОЕ место автопополнения
       const result = await matchAndProcessPayment(paymentId, parseFloat(payment.amount.toString()))
       return NextResponse.json(createApiResponse(result, 'Processing completed'))
     } else {
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       const results = []
       for (const payment of unprocessedPayments) {
         try {
-          // Используем функцию из @/lib/auto-deposit - ЕДИНСТВЕННОЕ место автопополнения
+          // Используем функцию из ../../lib/auto-deposit - ЕДИНСТВЕННОЕ место автопополнения
           const result = await matchAndProcessPayment(
             payment.id,
             parseFloat(payment.amount.toString())

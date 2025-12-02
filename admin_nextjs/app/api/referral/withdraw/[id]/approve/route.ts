@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/api-helpers'
-import { sendTelegramGroupMessage } from '@/lib/telegram-group'
+import { prisma } from '../../../../../../lib/prisma'
+import { requireAuth } from '../../../../../../lib/api-helpers'
+import { sendTelegramGroupMessage } from '../../../../../../lib/telegram-group'
 
 export async function POST(
   request: NextRequest,
@@ -39,7 +39,7 @@ export async function POST(
     }
     
     // Пополняем баланс в казино
-    const { depositToCasino } = await import('@/lib/deposit-balance')
+    const { depositToCasino } = await import('../../../../../../lib/deposit-balance')
     
     try {
       await depositToCasino(

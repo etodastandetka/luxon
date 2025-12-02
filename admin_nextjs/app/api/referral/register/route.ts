@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../../../../lib/prisma'
 import { 
   protectAPI, 
   rateLimit, 
@@ -7,7 +7,7 @@ import {
   containsSQLInjection,
   containsXSS,
   getClientIP 
-} from '@/lib/security'
+} from '../../../../lib/security'
 
 export async function OPTIONS() {
   return new NextResponse(null, {

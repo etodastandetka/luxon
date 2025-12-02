@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyWebhookSignature, getInvoice, getExchangeRates } from '@/lib/crypto-pay'
-import { prisma } from '@/lib/prisma'
-import { depositToCasino } from '@/lib/deposit-balance'
-import { rateLimit, getClientIP } from '@/lib/security'
+import { verifyWebhookSignature, getInvoice, getExchangeRates } from '../../../../lib/crypto-pay'
+import { prisma } from '../../../../lib/prisma'
+import { depositToCasino } from '../../../../lib/deposit-balance'
+import { rateLimit, getClientIP } from '../../../../lib/security'
 
 export const dynamic = 'force-dynamic'
 
