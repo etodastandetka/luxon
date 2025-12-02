@@ -157,23 +157,18 @@ export async function middleware(request: NextRequest) {
     // (isInternalRequest уже определен выше)
     
     // Более строгий rate limit для публичных API
-    // Исключение: для /api/requests с валидным токеном используем более высокий лимит
-    // Исключение: для /api/transaction-history убираем rate limiting (внутренний админский эндпоинт)
+    // Исключение: для /api/requests и /api/transaction-history убираем rate limiting (внутренние админские эндпоинты)
     const isRequestsApi = pathname.startsWith('/api/requests')
     const isTransactionHistory = pathname.startsWith('/api/transaction-history')
-    const shouldUseAuthRateLimit = isRequestsApi && isValidToken
     
-    // Пропускаем rate limiting для transaction-history (внутренний админский эндпоинт)
-    if (isTransactionHistory) {
-      // Пропускаем rate limiting для истории транзакций
+    // Пропускаем rate limiting для transaction-history и requests (внутренние админские эндпоинты)
+    if (isTransactionHistory || isRequestsApi) {
+      // Пропускаем rate limiting для истории транзакций и заявок
     } else {
       let rateLimitOptions
       if (isInternalRequest) {
         // Внутренние запросы - очень мягкий лимит
         rateLimitOptions = { maxRequests: 1000, windowMs: 60 * 1000 }
-      } else if (shouldUseAuthRateLimit) {
-        // Аутентифицированные пользователи для /api/requests - более высокий лимит
-        rateLimitOptions = { maxRequests: 120, windowMs: 60 * 1000 }
       } else if (isPublicApiRoute) {
         // Публичные API - строгий лимит
         rateLimitOptions = { maxRequests: 30, windowMs: 60 * 1000 }

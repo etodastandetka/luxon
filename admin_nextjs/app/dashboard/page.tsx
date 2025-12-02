@@ -31,7 +31,7 @@ interface Request {
 
 export default function DashboardPage() {
   const [requests, setRequests] = useState<Request[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Начинаем с false - показываем скелетон сразу
   const [activeTab, setActiveTab] = useState<'pending' | 'deferred'>('pending')
   const [soundsEnabled, setSoundsEnabledState] = useState(true)
   
@@ -41,9 +41,6 @@ export default function DashboardPage() {
   // Отслеживаем уже воспроизведенные звуки для конкретных заявок
   // Используем строковый ключ: "type-status-id" для уникальности
   const playedSoundsRef = useRef<Set<string>>(new Set())
-  // Отслеживаем задержку для exponential backoff при rate limiting
-  // Для pending вкладки начинаем с быстрого обновления (2 сек)
-  const retryDelayRef = useRef(2000) // Начальная задержка 2 секунды для быстрого обновления
   const isFetchingRef = useRef(false) // Флаг для предотвращения параллельных запросов
 
   const fetchRequests = useCallback(async (showLoading = true) => {
@@ -73,35 +70,8 @@ export default function DashboardPage() {
       
       // Используем кэширование для более быстрой загрузки
       const response = await fetch(`/api/requests?${params.toString()}`, {
-        cache: 'no-store', // Для динамических данных не кешируем на клиенте
+        cache: 'default', // Используем кэш для мгновенной загрузки
       })
-      
-      // Обработка ошибки rate limiting с exponential backoff
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After')
-        const delay = retryAfter ? parseInt(retryAfter) * 1000 : retryDelayRef.current
-        
-        console.warn(`⚠️ Rate limit exceeded, will retry after ${delay}ms`)
-        
-        // Увеличиваем задержку для следующего раза (exponential backoff, максимум 30 секунд)
-        // Для pending вкладки используем более мягкий backoff
-        retryDelayRef.current = activeTab === 'pending' 
-          ? Math.min(retryDelayRef.current * 1.5, 30000) // Мягче для pending
-          : Math.min(retryDelayRef.current * 2, 60000)
-        
-        // Не обновляем данные при rate limit, просто пропускаем этот запрос
-        if (showLoading) {
-          setLoading(false)
-        }
-        isFetchingRef.current = false
-        return
-      }
-      
-      // Если запрос успешен, постепенно уменьшаем задержку обратно к минимальному значению
-      if (response.ok) {
-        // Для pending вкладки быстро возвращаемся к быстрому обновлению
-        retryDelayRef.current = activeTab === 'pending' ? 2000 : 5000
-      }
       
       if (!response.ok) {
         console.error(`❌ HTTP error! status: ${response.status}`)
@@ -309,14 +279,6 @@ export default function DashboardPage() {
         // setRequests([])
       }
     } catch (error: any) {
-      // Игнорируем ошибки rate limiting, не сбрасываем список заявок
-      if (error?.message?.includes('429') || error?.message?.includes('Too Many Requests')) {
-        console.warn('⚠️ Rate limit exceeded, keeping current requests list')
-        // Увеличиваем задержку для следующего раза
-        retryDelayRef.current = Math.min(retryDelayRef.current * 2, 60000)
-        isFetchingRef.current = false
-        return
-      }
       console.error('❌ Failed to fetch requests:', error)
       // Не сбрасываем список заявок при ошибке, чтобы пользователь видел старые данные
     } finally {
@@ -359,18 +321,12 @@ export default function DashboardPage() {
     
     fetchRequests()
     
-    // Автоматическое обновление: для вкладки "pending" - быстрое обновление каждые 2 секунды
-    // для мгновенного появления новых заявок, для других вкладок - реже (10 сек)
-    const updateInterval = activeTab === 'pending' ? 2000 : 10000
+    // Автоматическое обновление: для вкладки "pending" - очень быстрое обновление каждую секунду
+    // для мгновенного появления новых заявок, для других вкладок - реже (5 сек)
+    const updateInterval = activeTab === 'pending' ? 1000 : 5000
     
     const interval = setInterval(() => {
       if (!document.hidden && !isFetchingRef.current) {
-        // Для pending вкладки проверяем, не слишком ли большая задержка из-за rate limiting
-        // Если задержка больше 5 секунд, пропускаем этот запрос
-        if (activeTab === 'pending' && retryDelayRef.current > 5000) {
-          console.log(`⏸️ Пропускаем запрос из-за rate limiting (задержка: ${retryDelayRef.current}ms)`)
-          return
-        }
         fetchRequests(false) // Не показываем loading при автообновлении
       }
     }, updateInterval)
@@ -651,11 +607,31 @@ export default function DashboardPage() {
       </div>
 
       {/* Контент заявок */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-        </div>
-      ) : requests.length === 0 ? (
+      {loading || requests.length === 0 ? (
+        loading ? (
+          // Скелетон для быстрой загрузки
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 animate-pulse">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-3 flex-1">
+                    <div className="w-12 h-12 bg-gray-700 rounded-lg"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
+                      <div className="h-3 bg-gray-700 rounded w-24 mb-2"></div>
+                      <div className="h-5 bg-gray-700 rounded w-20"></div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end space-y-2">
+                    <div className="h-3 bg-gray-700 rounded w-20"></div>
+                    <div className="h-5 bg-gray-700 rounded w-16"></div>
+                    <div className="h-5 bg-gray-700 rounded w-24"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-24 h-24 bg-green-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
             <svg className="w-16 h-16 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -664,6 +640,7 @@ export default function DashboardPage() {
           </div>
           <p className="text-white text-lg font-medium">Нет заявок</p>
         </div>
+        )
       ) : (
         <div className="space-y-3">
           {requests.map((request) => {
