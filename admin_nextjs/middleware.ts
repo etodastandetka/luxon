@@ -56,10 +56,30 @@ export async function middleware(request: NextRequest) {
                             ip === '::ffff:127.0.0.1' || ip.startsWith('192.168.') || 
                             ip.startsWith('10.') || ip.startsWith('172.16.')
   
+  // Проверяем валидность токена ПЕРЕД проверкой блокировки IP
+  // Если токен валиден, пользователь авторизован и не должен блокироваться
+  let isValidToken = false
+  let tokenPayload: { username: string } | null = null
+  if (token) {
+    try {
+      const payload = verifyToken(token)
+      isValidToken = !!payload
+      if (payload) {
+        tokenPayload = payload
+        console.log(`✅ Valid token detected for ${pathname}, user: ${payload.username}, IP: ${ip}`)
+      } else {
+        console.log(`⚠️  Invalid token for ${pathname}, IP: ${ip}`)
+      }
+    } catch (error) {
+      console.log(`⚠️  Token verification error for ${pathname}, IP: ${ip}:`, error)
+      isValidToken = false
+    }
+  }
+  
   // Не блокируем публичные маршруты и страницы (login должен быть доступен всегда)
   // Также не блокируем если есть валидный токен (пользователь уже авторизован)
-  if (!isInternalRequest && !isPublicRoute && !isPublicPage && !pathname.startsWith('/api/geolocation') && !token && isIPBlocked(ip)) {
-    console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname}`)
+  if (!isInternalRequest && !isPublicRoute && !isPublicPage && !pathname.startsWith('/api/geolocation') && !isValidToken && isIPBlocked(ip)) {
+    console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname} (no valid token)`)
     return NextResponse.json(
       { error: 'Forbidden', message: 'Access denied' },
       { status: 403 }
@@ -188,23 +208,18 @@ export async function middleware(request: NextRequest) {
       return rateLimitResult
     }
 
-    if (!token) {
-      console.log(`⚠️  No token found for ${pathname}, redirecting to login. IP: ${ip}`)
+    // Используем уже проверенный токен (isValidToken определен выше)
+    if (!isValidToken) {
+      if (!token) {
+        console.log(`⚠️  No token found for ${pathname}, redirecting to login. IP: ${ip}`)
+      } else {
+        console.log(`⚠️  Invalid token for ${pathname}, redirecting to login. IP: ${ip}, token: ${token.substring(0, 20)}...`)
+      }
       return NextResponse.redirect(new URL('/login', request.url))
     }
     
-    // Проверяем валидность токена
-    try {
-      const payload = verifyToken(token)
-      if (!payload) {
-        console.log(`⚠️  Invalid token for ${pathname}, redirecting to login. IP: ${ip}, token: ${token.substring(0, 20)}...`)
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-      console.log(`✅ Valid token for ${pathname}, user: ${payload.username}, IP: ${ip}`)
-    } catch (error) {
-      console.log(`⚠️  Token verification error for ${pathname}, redirecting to login. IP: ${ip}`, error)
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+    // Токен уже проверен выше, просто логируем успех
+    console.log(`✅ Access granted to ${pathname}, IP: ${ip}`)
   }
 
   // 8. Public routes (login, etc.) - isPublicRoute уже определен выше
