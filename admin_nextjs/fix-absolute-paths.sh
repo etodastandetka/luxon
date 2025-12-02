@@ -19,13 +19,19 @@ echo ""
 # 2. Заменяем относительные пути на абсолютные через @/lib/
 echo "📝 Заменяю относительные пути на @/lib/..."
 
+# СНАЧАЛА заменяем все a/lib/ на @/lib/ (старые алиасы)
+find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|'a/lib/|'@/lib/|g" {} \;
+find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|"a/lib/|"@/lib/|g' {} \;
+sed -i "s|'a/lib/|'@/lib/|g" middleware.ts 2>/dev/null || true
+sed -i 's|"a/lib/|"@/lib/|g' middleware.ts 2>/dev/null || true
+
 # app/dashboard - 3 уровня вверх -> @/lib/
 find app/dashboard -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from '../../../lib/|from '@/lib/|g" {} \;
 find app/dashboard -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|from "../../../lib/|from "@/lib/|g' {} \;
 
-# app/api - 4 уровня вверх -> @/lib/
-find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" ! -path "*/crypto-pay/*" ! -path "*/requests/\[*\]/*" ! -path "*/limits/*" ! -path "*/users/\[*\]/*" -exec sed -i "s|from '../../../../lib/|from '@/lib/|g" {} \;
-find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" ! -path "*/crypto-pay/*" ! -path "*/requests/\[*\]/*" ! -path "*/limits/*" ! -path "*/users/\[*\]/*" -exec sed -i 's|from "../../../../lib/|from "@/lib/|g' {} \;
+# app/api - 4 уровня вверх -> @/lib/ (включая geolocation)
+find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" -exec sed -i "s|from '../../../../lib/|from '@/lib/|g" {} \;
+find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" -exec sed -i 's|from "../../../../lib/|from "@/lib/|g' {} \;
 
 # app/api/auth/2fa - 6 уровней вверх -> @/lib/
 find app/api/auth/2fa -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from '../../../../../lib/|from '@/lib/|g" {} \;
