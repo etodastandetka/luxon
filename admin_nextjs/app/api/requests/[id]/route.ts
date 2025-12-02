@@ -45,12 +45,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Не требуем авторизацию для публичного доступа к статусу заявки
-    // requireAuth(request)
-
     const id = parseInt(params.id)
+    
+    if (isNaN(id)) {
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid request ID'),
+        { status: 400 }
+      )
+    }
 
-    // Оптимизируем запрос - выбираем только нужные поля
     const requestData = await prisma.request.findUnique({
       where: { id },
       select: {
@@ -96,9 +99,7 @@ export async function GET(
 
     const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
     
-    // Загружаем все дополнительные данные параллельно БЕЗ таймаутов для максимальной скорости
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      // Входящие платежи (убрали таймаут для ускорения)
       requestAmountInt ? prisma.incomingPayment.findMany({
           where: {
             amount: {
@@ -118,7 +119,6 @@ export async function GET(
           },
         }) : Promise.resolve([]),
       
-      // Транзакции казино (убрали таймаут для ускорения)
       requestData.accountId && requestData.bookmaker ? prisma.request.findMany({
           where: {
             accountId: requestData.accountId,
@@ -141,7 +141,6 @@ export async function GET(
           },
         }) : Promise.resolve([]),
       
-      // Заметка пользователя (убрали таймаут для ускорения)
       prisma.botUser.findUnique({
           where: { userId: requestData.userId },
           select: { note: true },
@@ -159,50 +158,42 @@ export async function GET(
       amount: t.amount ? t.amount.toString() : null,
     }))
 
-    // Логируем photoFileUrl для отладки
-    console.log('📸 [Request API] photoFileUrl:', {
-      requestId: id,
-      hasPhoto: !!requestData.photoFileUrl,
-      photoLength: requestData.photoFileUrl?.length || 0,
-      isBase64: requestData.photoFileUrl?.startsWith('data:image') || false,
-      preview: requestData.photoFileUrl?.substring(0, 50) || 'null',
-      photoType: requestData.photoFileUrl?.substring(0, 20) || 'null',
-      isNull: requestData.photoFileUrl === null,
-      isUndefined: requestData.photoFileUrl === undefined,
-      isEmpty: requestData.photoFileUrl === '',
-      trimmedEmpty: requestData.photoFileUrl?.trim() === ''
-    })
+    // Если photoFileUrl - большой base64, не включаем его в ответ (фото загружается через отдельный endpoint)
+    // Это предотвращает ошибки сериализации JSON при очень больших base64 строках
+    const MAX_PHOTO_SIZE = 1 * 1024 * 1024 // 1MB лимит для base64 в основном ответе
+    const isBase64Photo = requestData.photoFileUrl?.startsWith('data:image') || false
+    let photoFileUrl = (isBase64Photo && requestData.photoFileUrl && requestData.photoFileUrl.length > MAX_PHOTO_SIZE)
+      ? null // Большие base64 фото загружаются через /api/requests/[id]/photo
+      : requestData.photoFileUrl
     
-    // ВАЖНО: Проверяем, что photoFileUrl действительно есть в БД
-    if (!requestData.photoFileUrl || requestData.photoFileUrl.trim() === '') {
-      console.warn('⚠️ [Request API] photoFileUrl ПУСТОЙ в БД для заявки:', id)
-    } else {
-      console.log('✅ [Request API] photoFileUrl найден в БД:', {
-        requestId: id,
-        length: requestData.photoFileUrl.length,
-        startsWith: requestData.photoFileUrl.substring(0, 30)
-      })
+    const responseData = {
+      ...requestData,
+      userId: requestData.userId.toString(),
+      amount: requestData.amount ? requestData.amount.toString() : null,
+      photoFileUrl: photoFileUrl,
+      paymentMethod: requestData.paymentMethod || null,
+      cryptoPayment: requestData.cryptoPayment ? {
+        ...requestData.cryptoPayment,
+        amount: requestData.cryptoPayment.amount.toString(),
+        fee_amount: requestData.cryptoPayment.fee_amount?.toString() || null,
+      } : null,
+      incomingPayments: [],
+      matchingPayments,
+      casinoTransactions,
+      userNote: userResult?.note || null,
     }
     
-    // Возвращаем все данные сразу - быстрее и надежнее
-    return NextResponse.json(
-      createApiResponse({
-        ...requestData,
-        userId: requestData.userId.toString(),
-        amount: requestData.amount ? requestData.amount.toString() : null,
-        photoFileUrl: requestData.photoFileUrl, // Может быть base64 или URL
-        paymentMethod: requestData.paymentMethod || null,
-        cryptoPayment: requestData.cryptoPayment ? {
-          ...requestData.cryptoPayment,
-          amount: requestData.cryptoPayment.amount.toString(),
-          fee_amount: requestData.cryptoPayment.fee_amount?.toString() || null,
-        } : null,
-        incomingPayments: [],
-        matchingPayments,
-        casinoTransactions,
-        userNote: userResult?.note || null,
-      })
-    )
+    // Пытаемся вернуть ответ с фото, если не получается - без фото
+    try {
+      return NextResponse.json(createApiResponse(responseData))
+    } catch {
+      // Если сериализация падает (скорее всего из-за фото), возвращаем без фото
+      const responseDataWithoutPhoto = {
+        ...responseData,
+        photoFileUrl: null,
+      }
+      return NextResponse.json(createApiResponse(responseDataWithoutPhoto))
+    }
   } catch (error: any) {
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to fetch request'),
