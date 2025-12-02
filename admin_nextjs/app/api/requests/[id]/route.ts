@@ -161,11 +161,28 @@ export async function GET(
 
     // Логируем photoFileUrl для отладки
     console.log('📸 [Request API] photoFileUrl:', {
+      requestId: id,
       hasPhoto: !!requestData.photoFileUrl,
       photoLength: requestData.photoFileUrl?.length || 0,
       isBase64: requestData.photoFileUrl?.startsWith('data:image') || false,
-      preview: requestData.photoFileUrl?.substring(0, 50) || 'null'
+      preview: requestData.photoFileUrl?.substring(0, 50) || 'null',
+      photoType: requestData.photoFileUrl?.substring(0, 20) || 'null',
+      isNull: requestData.photoFileUrl === null,
+      isUndefined: requestData.photoFileUrl === undefined,
+      isEmpty: requestData.photoFileUrl === '',
+      trimmedEmpty: requestData.photoFileUrl?.trim() === ''
     })
+    
+    // ВАЖНО: Проверяем, что photoFileUrl действительно есть в БД
+    if (!requestData.photoFileUrl || requestData.photoFileUrl.trim() === '') {
+      console.warn('⚠️ [Request API] photoFileUrl ПУСТОЙ в БД для заявки:', id)
+    } else {
+      console.log('✅ [Request API] photoFileUrl найден в БД:', {
+        requestId: id,
+        length: requestData.photoFileUrl.length,
+        startsWith: requestData.photoFileUrl.substring(0, 30)
+      })
+    }
     
     // Возвращаем все данные сразу - быстрее и надежнее
     return NextResponse.json(

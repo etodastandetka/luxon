@@ -123,8 +123,25 @@ export default function RequestDetailPage() {
               hasPhoto: !!requestData.photoFileUrl,
               photoLength: requestData.photoFileUrl?.length || 0,
               isBase64: requestData.photoFileUrl?.startsWith('data:image') || false,
-              photoPreview: requestData.photoFileUrl?.substring(0, 100) || 'null'
+              photoPreview: requestData.photoFileUrl?.substring(0, 100) || 'null',
+              photoType: requestData.photoFileUrl?.substring(0, 20) || 'null',
+              fullPhotoUrl: requestData.photoFileUrl // Временно для отладки
             })
+            
+            // ВАЖНО: Проверяем, что photoFileUrl действительно есть
+            if (!requestData.photoFileUrl || requestData.photoFileUrl.trim() === '') {
+              console.error('❌ [Request Detail] photoFileUrl ПУСТОЙ или NULL!', {
+                id: requestData.id,
+                photoFileUrl: requestData.photoFileUrl,
+                type: typeof requestData.photoFileUrl
+              })
+            } else {
+              console.log('✅ [Request Detail] photoFileUrl найден:', {
+                id: requestData.id,
+                startsWith: requestData.photoFileUrl.substring(0, 20),
+                length: requestData.photoFileUrl.length
+              })
+            }
             
             // Устанавливаем данные сразу - все данные уже загружены в одном запросе
             setRequest(requestData)
