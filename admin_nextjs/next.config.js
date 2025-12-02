@@ -57,28 +57,13 @@ const nextConfig = {
     BOT_TOKEN: process.env.BOT_TOKEN,
   },
 
-  // КРИТИЧЕСКИ ВАЖНО: Конфигурация webpack для правильного разрешения алиаса @
-  // Без этого @ превращается в 'a' на сервере
+  // КРИТИЧЕСКИ ВАЖНО: Webpack alias для @
   webpack: (config) => {
     const path = require('path')
-    const rootPath = path.resolve(__dirname)
-    
-    // Инициализируем resolve
-    config.resolve = config.resolve || {}
-    config.resolve.alias = config.resolve.alias || {}
-    
-    // ЯВНО устанавливаем алиас @ - ОБЯЗАТЕЛЬНО!
-    config.resolve.alias['@'] = rootPath
-    
-    // Добавляем корневую директорию в modules
-    config.resolve.modules = config.resolve.modules || []
-    if (!Array.isArray(config.resolve.modules)) {
-      config.resolve.modules = [config.resolve.modules]
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname),
     }
-    if (!config.resolve.modules.includes(rootPath)) {
-      config.resolve.modules.unshift(rootPath)
-    }
-    
     return config
   },
   
