@@ -1341,7 +1341,9 @@ export default function RequestDetailPage() {
                 
                 return isBase64 ? (
                   // Если это base64, используем обычный img
+                  // Используем key для принудительного перерендера при изменении photoUrl
                   <img
+                    key={`photo-${request.id}-${photoUrl.substring(0, 50)}`}
                     src={photoUrl}
                     alt="Фото чека об оплате"
                     className="w-full h-auto rounded-lg object-contain"
@@ -1353,10 +1355,13 @@ export default function RequestDetailPage() {
                       display: 'block',
                       margin: '0 auto',
                       objectFit: 'contain',
-                      backgroundColor: 'transparent'
+                      backgroundColor: 'transparent',
+                      opacity: 1,
+                      visibility: 'visible'
                     }}
                     loading="lazy"
                     decoding="async"
+                    crossOrigin="anonymous"
                     onLoad={(e) => {
                       const target = e.target as HTMLImageElement
                       console.log('✅ [Photo] Фото успешно загружено (base64):', {
@@ -1367,11 +1372,14 @@ export default function RequestDetailPage() {
                         display: window.getComputedStyle(target).display,
                         visibility: window.getComputedStyle(target).visibility,
                         opacity: window.getComputedStyle(target).opacity,
-                        srcLength: target.src?.length || 0
+                        srcLength: target.src?.length || 0,
+                        isComplete: target.complete,
+                        isBase64Format: /^data:image\/\w+;base64,.+$/.test(target.src || '')
                       })
                       // Убеждаемся, что изображение видно
                       target.style.opacity = '1'
                       target.style.visibility = 'visible'
+                      target.style.display = 'block'
                     }}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
@@ -1384,7 +1392,8 @@ export default function RequestDetailPage() {
                         naturalWidth: target.naturalWidth,
                         naturalHeight: target.naturalHeight,
                         complete: target.complete,
-                        isBase64Valid: /^data:image\/\w+;base64,.+$/.test(photoUrl)
+                        isBase64Valid: /^data:image\/\w+;base64,.+$/.test(photoUrl),
+                        srcIsBase64Valid: /^data:image\/\w+;base64,.+$/.test(target.src || '')
                       })
                       
                       // Показываем сообщение об ошибке
@@ -1396,7 +1405,7 @@ export default function RequestDetailPage() {
                           <p class="text-red-300 text-sm">⚠️ Ошибка загрузки фото</p>
                           <p class="text-red-400 text-xs mt-1">Попробуйте обновить страницу</p>
                           <p class="text-red-400 text-xs mt-1">Длина base64: ${photoUrl.length} символов</p>
-                          <p class="text-red-400 text-xs mt-1">Формат: ${photoUrl.substring(0, 30)}...</p>
+                          <p class="text-red-400 text-xs mt-1">Формат: ${photoUrl.substring(0, 50)}...</p>
                         `
                         target.style.display = 'none'
                         parent.appendChild(errorDiv)
