@@ -8,7 +8,7 @@ import {
   blockIP,
   unblockIP
 } from './lib/security'
-import { verifyToken } from './lib/auth'
+import { verifyTokenEdge } from './lib/auth-edge'
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value
@@ -67,7 +67,7 @@ export async function middleware(request: NextRequest) {
       if (pathname === '/dashboard') {
         console.log(`🔍 Verifying token for /dashboard, token length: ${token.length}, first 50 chars: ${token.substring(0, 50)}...`)
       }
-      const payload = verifyToken(token)
+      const payload = verifyTokenEdge(token)
       isValidToken = !!payload
       if (payload) {
         tokenPayload = payload
