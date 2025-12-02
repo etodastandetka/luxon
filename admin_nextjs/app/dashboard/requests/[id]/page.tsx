@@ -1242,24 +1242,56 @@ export default function RequestDetailPage() {
                   startsWithHttp: photoUrl.startsWith('http')
                 })
                 
-                // Нормализуем фото: если это base64 без префикса, добавляем его
-                if (!photoUrl.startsWith('data:image') && !photoUrl.startsWith('http')) {
-                  // Пытаемся определить тип изображения
+                // Функция для нормализации base64 строки
+                const normalizeBase64 = (str: string): string => {
+                  if (str.startsWith('http')) return str // URL не нормализуем
+                  
+                  // Удаляем все пробелы и переносы строк
+                  str = str.trim().replace(/\s/g, '')
+                  
+                  // Если уже правильный формат, возвращаем как есть
+                  if (/^data:image\/\w+;base64,.+$/.test(str)) {
+                    return str
+                  }
+                  
+                  // Если есть неправильный формат (например, data:image/jpegbase64 или data:image/jpegbase64,)
+                  const wrongFormatMatch = str.match(/^data:image\/(\w+)(base64|base64,)(.+)$/i)
+                  if (wrongFormatMatch) {
+                    const mimeType = wrongFormatMatch[1]
+                    const base64Data = wrongFormatMatch[3]
+                    console.log('📸 [Photo] Исправлен неправильный формат:', { was: str.substring(0, 30), mimeType })
+                    return `data:image/${mimeType};base64,${base64Data}`
+                  }
+                  
+                  // Если есть data:image/... но без base64, или неправильный формат
+                  const partialMatch = str.match(/^data:image\/(\w+)([^;]*)(.+)$/i)
+                  if (partialMatch) {
+                    const mimeType = partialMatch[1]
+                    const base64Data = partialMatch[3].replace(/^[,;]/, '') // Убираем лишние символы
+                    console.log('📸 [Photo] Исправлен частичный формат:', { mimeType })
+                    return `data:image/${mimeType};base64,${base64Data}`
+                  }
+                  
+                  // Если нет префикса data:image, добавляем его
+                  // Пытаемся определить тип изображения по первым байтам base64
                   let mimeType = 'image/jpeg' // По умолчанию JPEG
                   
-                  if (photoUrl.startsWith('iVBORw0KGgo')) {
+                  if (str.startsWith('iVBORw0KGgo')) {
                     mimeType = 'image/png'
-                  } else if (photoUrl.startsWith('R0lGODlh') || photoUrl.startsWith('R0lGODdh')) {
+                  } else if (str.startsWith('R0lGODlh') || str.startsWith('R0lGODdh')) {
                     mimeType = 'image/gif'
-                  } else if (photoUrl.startsWith('/9j/')) {
+                  } else if (str.startsWith('/9j/')) {
                     mimeType = 'image/jpeg'
-                  } else if (photoUrl.startsWith('UklGR')) {
+                  } else if (str.startsWith('UklGR')) {
                     mimeType = 'image/webp'
                   }
                   
-                  photoUrl = `data:${mimeType};base64,${photoUrl}`
-                  console.log('📸 [Photo] Нормализован формат фото:', mimeType)
+                  console.log('📸 [Photo] Добавлен префикс к фото:', mimeType)
+                  return `data:${mimeType};base64,${str}`
                 }
+                
+                // Нормализуем фото
+                photoUrl = normalizeBase64(photoUrl)
                 
                 const isBase64 = photoUrl.startsWith('data:image')
                 
@@ -1455,23 +1487,53 @@ export default function RequestDetailPage() {
                   return null
                 }
                 
-                // Нормализуем фото: если это base64 без префикса, добавляем его
-                if (!photoUrl.startsWith('data:image') && !photoUrl.startsWith('http')) {
-                  // Пытаемся определить тип изображения
+                // Функция для нормализации base64 строки (та же что и выше)
+                const normalizeBase64 = (str: string): string => {
+                  if (str.startsWith('http')) return str // URL не нормализуем
+                  
+                  // Удаляем все пробелы и переносы строк
+                  str = str.trim().replace(/\s/g, '')
+                  
+                  // Если уже правильный формат, возвращаем как есть
+                  if (/^data:image\/\w+;base64,.+$/.test(str)) {
+                    return str
+                  }
+                  
+                  // Если есть неправильный формат (например, data:image/jpegbase64 или data:image/jpegbase64,)
+                  const wrongFormatMatch = str.match(/^data:image\/(\w+)(base64|base64,)(.+)$/i)
+                  if (wrongFormatMatch) {
+                    const mimeType = wrongFormatMatch[1]
+                    const base64Data = wrongFormatMatch[3]
+                    return `data:image/${mimeType};base64,${base64Data}`
+                  }
+                  
+                  // Если есть data:image/... но без base64, или неправильный формат
+                  const partialMatch = str.match(/^data:image\/(\w+)([^;]*)(.+)$/i)
+                  if (partialMatch) {
+                    const mimeType = partialMatch[1]
+                    const base64Data = partialMatch[3].replace(/^[,;]/, '') // Убираем лишние символы
+                    return `data:image/${mimeType};base64,${base64Data}`
+                  }
+                  
+                  // Если нет префикса data:image, добавляем его
+                  // Пытаемся определить тип изображения по первым байтам base64
                   let mimeType = 'image/jpeg' // По умолчанию JPEG
                   
-                  if (photoUrl.startsWith('iVBORw0KGgo')) {
+                  if (str.startsWith('iVBORw0KGgo')) {
                     mimeType = 'image/png'
-                  } else if (photoUrl.startsWith('R0lGODlh') || photoUrl.startsWith('R0lGODdh')) {
+                  } else if (str.startsWith('R0lGODlh') || str.startsWith('R0lGODdh')) {
                     mimeType = 'image/gif'
-                  } else if (photoUrl.startsWith('/9j/')) {
+                  } else if (str.startsWith('/9j/')) {
                     mimeType = 'image/jpeg'
-                  } else if (photoUrl.startsWith('UklGR')) {
+                  } else if (str.startsWith('UklGR')) {
                     mimeType = 'image/webp'
                   }
                   
-                  photoUrl = `data:${mimeType};base64,${photoUrl}`
+                  return `data:${mimeType};base64,${str}`
                 }
+                
+                // Нормализуем фото
+                photoUrl = normalizeBase64(photoUrl)
                 
                 const isBase64 = photoUrl.startsWith('data:image')
                 

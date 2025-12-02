@@ -366,36 +366,61 @@ export async function POST(request: NextRequest) {
     // Нормализуем фото чека: убеждаемся что это валидный base64 с префиксом
     let photoUrl = receipt_photo || qr_photo || null
     if (photoUrl) {
-      // Если фото не имеет префикса data:image, добавляем его
-      if (!photoUrl.startsWith('data:image')) {
+      // Функция для нормализации base64 строки
+      const normalizeBase64 = (str: string): string | null => {
+        // Удаляем все пробелы и переносы строк
+        str = str.trim().replace(/\s/g, '')
+        
+        // Если уже правильный формат, возвращаем как есть
+        if (/^data:image\/\w+;base64,.+$/.test(str)) {
+          return str
+        }
+        
+        // Если есть неправильный формат (например, data:image/jpegbase64 или data:image/jpegbase64,)
+        const wrongFormatMatch = str.match(/^data:image\/(\w+)(base64|base64,)(.+)$/i)
+        if (wrongFormatMatch) {
+          const mimeType = wrongFormatMatch[1]
+          const base64Data = wrongFormatMatch[3]
+          return `data:image/${mimeType};base64,${base64Data}`
+        }
+        
+        // Если есть data:image/... но без base64, или неправильный формат
+        const partialMatch = str.match(/^data:image\/(\w+)([^;]*)(.+)$/i)
+        if (partialMatch) {
+          const mimeType = partialMatch[1]
+          const base64Data = partialMatch[3].replace(/^[,;]/, '') // Убираем лишние символы
+          return `data:image/${mimeType};base64,${base64Data}`
+        }
+        
+        // Если нет префикса data:image, добавляем его
         // Пытаемся определить тип изображения по первым байтам base64
-        // Обычно base64 начинается с /9j/ для JPEG, iVBORw0KGgo для PNG, R0lGODlh для GIF
-        const base64Data = photoUrl.replace(/^data:image\/\w+;base64,/, '')
         let mimeType = 'image/jpeg' // По умолчанию JPEG
         
-        if (base64Data.startsWith('iVBORw0KGgo')) {
+        if (str.startsWith('iVBORw0KGgo')) {
           mimeType = 'image/png'
-        } else if (base64Data.startsWith('R0lGODlh') || base64Data.startsWith('R0lGODdh')) {
+        } else if (str.startsWith('R0lGODlh') || str.startsWith('R0lGODdh')) {
           mimeType = 'image/gif'
-        } else if (base64Data.startsWith('/9j/')) {
+        } else if (str.startsWith('/9j/')) {
           mimeType = 'image/jpeg'
-        } else if (base64Data.startsWith('UklGR')) {
+        } else if (str.startsWith('UklGR')) {
           mimeType = 'image/webp'
         }
         
-        photoUrl = `data:${mimeType};base64,${base64Data}`
-        console.log('📸 [Payment API] Добавлен префикс к фото:', mimeType)
+        return `data:${mimeType};base64,${str}`
       }
       
+      photoUrl = normalizeBase64(photoUrl)
+      
       // Проверяем валидность base64 строки
-      const base64Match = photoUrl.match(/^data:image\/(\w+);base64,(.+)$/)
-      if (!base64Match || !base64Match[2]) {
-        console.error('❌ [Payment API] Неверный формат base64 фото:', {
-          photoLength: photoUrl.length,
-          startsWithData: photoUrl.startsWith('data:'),
-          hasBase64: photoUrl.includes('base64,')
-        })
-        photoUrl = null // Не сохраняем невалидное фото
+      if (photoUrl) {
+        const base64Match = photoUrl.match(/^data:image\/(\w+);base64,(.+)$/)
+        if (!base64Match || !base64Match[2]) {
+          console.error('❌ [Payment API] Неверный формат base64 фото:', {
+            photoLength: photoUrl.length,
+            photoPreview: photoUrl.substring(0, 100)
+          })
+          photoUrl = null // Не сохраняем невалидное фото
+        }
       }
     }
     

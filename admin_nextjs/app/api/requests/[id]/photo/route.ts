@@ -32,24 +32,57 @@ export async function GET(
 
     let photoFileUrl = requestData.photoFileUrl
     
-    // Нормализуем фото: если это base64 без префикса, добавляем его
-    if (photoFileUrl && !photoFileUrl.startsWith('data:image') && !photoFileUrl.startsWith('http')) {
-      // Пытаемся определить тип изображения
+    // Функция для нормализации base64 строки
+    const normalizeBase64 = (str: string | null): string | null => {
+      if (!str) return null
+      if (str.startsWith('http')) return str // URL не нормализуем
+      
+      // Удаляем все пробелы и переносы строк
+      str = str.trim().replace(/\s/g, '')
+      
+      // Если уже правильный формат, возвращаем как есть
+      if (/^data:image\/\w+;base64,.+$/.test(str)) {
+        return str
+      }
+      
+      // Если есть неправильный формат (например, data:image/jpegbase64 или data:image/jpegbase64,)
+      const wrongFormatMatch = str.match(/^data:image\/(\w+)(base64|base64,)(.+)$/i)
+      if (wrongFormatMatch) {
+        const mimeType = wrongFormatMatch[1]
+        const base64Data = wrongFormatMatch[3]
+        console.log('📸 [Photo API] Исправлен неправильный формат:', { id, was: str.substring(0, 30), mimeType })
+        return `data:image/${mimeType};base64,${base64Data}`
+      }
+      
+      // Если есть data:image/... но без base64, или неправильный формат
+      const partialMatch = str.match(/^data:image\/(\w+)([^;]*)(.+)$/i)
+      if (partialMatch) {
+        const mimeType = partialMatch[1]
+        const base64Data = partialMatch[3].replace(/^[,;]/, '') // Убираем лишние символы
+        console.log('📸 [Photo API] Исправлен частичный формат:', { id, mimeType })
+        return `data:image/${mimeType};base64,${base64Data}`
+      }
+      
+      // Если нет префикса data:image, добавляем его
+      // Пытаемся определить тип изображения по первым байтам base64
       let mimeType = 'image/jpeg' // По умолчанию JPEG
       
-      if (photoFileUrl.startsWith('iVBORw0KGgo')) {
+      if (str.startsWith('iVBORw0KGgo')) {
         mimeType = 'image/png'
-      } else if (photoFileUrl.startsWith('R0lGODlh') || photoFileUrl.startsWith('R0lGODdh')) {
+      } else if (str.startsWith('R0lGODlh') || str.startsWith('R0lGODdh')) {
         mimeType = 'image/gif'
-      } else if (photoFileUrl.startsWith('/9j/')) {
+      } else if (str.startsWith('/9j/')) {
         mimeType = 'image/jpeg'
-      } else if (photoFileUrl.startsWith('UklGR')) {
+      } else if (str.startsWith('UklGR')) {
         mimeType = 'image/webp'
       }
       
-      photoFileUrl = `data:${mimeType};base64,${photoFileUrl}`
-      console.log('📸 [Photo API] Нормализован формат фото:', { id, mimeType })
+      console.log('📸 [Photo API] Добавлен префикс к фото:', { id, mimeType })
+      return `data:${mimeType};base64,${str}`
     }
+    
+    // Нормализуем фото
+    photoFileUrl = normalizeBase64(photoFileUrl)
 
     console.log('📸 [Photo API] Загрузка фото:', {
       id,
