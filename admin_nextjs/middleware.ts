@@ -63,6 +63,10 @@ export async function middleware(request: NextRequest) {
   let tokenPayload: { username: string } | null = null
   if (token) {
     try {
+      // Детальное логирование для /dashboard
+      if (pathname === '/dashboard') {
+        console.log(`🔍 Verifying token for /dashboard, token length: ${token.length}, first 50 chars: ${token.substring(0, 50)}...`)
+      }
       const payload = verifyToken(token)
       isValidToken = !!payload
       if (payload) {
@@ -70,6 +74,10 @@ export async function middleware(request: NextRequest) {
         console.log(`✅ Valid token detected for ${pathname}, user: ${payload.username}, IP: ${ip}, userId: ${payload.userId}`)
       } else {
         console.log(`⚠️  Invalid token (verifyToken returned null) for ${pathname}, IP: ${ip}, token: ${token.substring(0, 30)}...`)
+        // Дополнительная диагностика для /dashboard
+        if (pathname === '/dashboard') {
+          console.log(`🔍 Token verification failed for /dashboard. Check JWT_SECRET in .env file.`)
+        }
       }
     } catch (error) {
       console.log(`⚠️  Token verification error (exception) for ${pathname}, IP: ${ip}:`, error)

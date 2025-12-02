@@ -25,8 +25,11 @@ export function generateToken(payload: TokenPayload): string {
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload
-  } catch {
+    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload
+    console.log(`✅ Token verified successfully: userId=${payload.userId}, username=${payload.username}`)
+    return payload
+  } catch (error: any) {
+    console.error(`❌ Token verification failed: ${error.message || error}, JWT_SECRET length: ${JWT_SECRET?.length || 0}`)
     return null
   }
 }
