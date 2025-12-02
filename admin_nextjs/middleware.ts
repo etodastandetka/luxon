@@ -20,12 +20,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 1. Проверка блокировки IP (пропускаем внутренние IP и геолокацию)
+  // Определяем публичные маршруты (которые должны быть доступны даже при блокировке IP)
+  const publicRoutes = ['/login', '/api/auth/login']
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+
+  // 1. Проверка блокировки IP (пропускаем внутренние IP, геолокацию и публичные маршруты)
   const isInternalRequest = ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' ||
                             ip === '::ffff:127.0.0.1' || ip.startsWith('192.168.') || 
                             ip.startsWith('10.') || ip.startsWith('172.16.')
   
-  if (!isInternalRequest && !pathname.startsWith('/api/geolocation') && isIPBlocked(ip)) {
+  // Не блокируем публичные маршруты (login должен быть доступен всегда)
+  if (!isInternalRequest && !isPublicRoute && !pathname.startsWith('/api/geolocation') && isIPBlocked(ip)) {
     console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname}`)
     return NextResponse.json(
       { error: 'Forbidden', message: 'Access denied' },
@@ -33,8 +38,8 @@ export function middleware(request: NextRequest) {
     )
   }
 
-  // 2. Защита API endpoints
-  if (pathname.startsWith('/api/')) {
+  // 2. Защита API endpoints (пропускаем публичные API)
+  if (pathname.startsWith('/api/') && !isPublicRoute) {
     const protectionResult = protectAPI(request)
     if (protectionResult) {
       return protectionResult
@@ -158,10 +163,7 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 8. Public routes (login, etc.)
-  const publicRoutes = ['/login', '/api/auth/login']
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
-
+  // 8. Public routes (login, etc.) - isPublicRoute уже определен выше
   if (isPublicRoute) {
     // Rate limiting для публичных страниц (защита от брутфорса)
     const rateLimitResult = rateLimit({ maxRequests: 20, windowMs: 60 * 1000 })(request)
