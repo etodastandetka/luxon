@@ -36,7 +36,17 @@ echo "✅ Все конфигурационные файлы найдены"
 echo ""
 
 echo "📥 Получаю последние изменения из git..."
-git pull origin main
+# Если есть локальные изменения, сохраняем их
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "⚠️  Обнаружены локальные изменения, сохраняю в stash..."
+    git stash push -m "Auto-stash before pull $(date +%Y%m%d_%H%M%S)"
+fi
+# Пытаемся получить изменения
+if ! git pull origin main; then
+    echo "⚠️  Конфликт при pull, принудительно обновляю файлы..."
+    git fetch origin main
+    git reset --hard origin/main
+fi
 echo ""
 
 echo "🧹 Очищаю ВСЕ кеши и артефакты сборки..."
