@@ -75,8 +75,17 @@ for file in app/api/auth/2fa/*/route.ts; do
     fi
 done
 
-# 8. Исправляем все остальные файлы
-echo "📝 Исправляю все остальные файлы..."
+# 8. Исправляем неправильные пути (2 уровня вместо 3, 3 вместо 4)
+echo "📝 Исправляю неправильные пути в app/dashboard..."
+find app/dashboard -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from '../../lib/|from '../../../lib/|g" {} \;
+find app/dashboard -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|from "../../lib/|from "../../../lib/|g' {} \;
+
+echo "📝 Исправляю неправильные пути в app/api..."
+find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" ! -path "*/crypto-pay/*" ! -path "*/requests/\[*\]/*" ! -path "*/limits/*" ! -path "*/users/\[*\]/*" -exec sed -i "s|from '../../../lib/|from '../../../../lib/|g" {} \;
+find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" ! -path "*/crypto-pay/*" ! -path "*/requests/\[*\]/*" ! -path "*/limits/*" ! -path "*/users/\[*\]/*" -exec sed -i 's|from "../../../lib/|from "../../../../lib/|g' {} \;
+
+# 9. Исправляем все остальные файлы (алиасы и абсолютные пути)
+echo "📝 Исправляю алиасы и абсолютные пути..."
 # Пути начинающиеся с /
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from '/components/|from '../../../components/|g" {} \;
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|from "/components/|from "../../../components/|g' {} \;
@@ -102,15 +111,6 @@ sed -i "s|'a/lib/|'./lib/|g" middleware.ts 2>/dev/null || true
 sed -i 's|"a/lib/|"./lib/|g' middleware.ts 2>/dev/null || true
 sed -i "s|'@/lib/|'./lib/|g" middleware.ts 2>/dev/null || true
 sed -i 's|"@/lib/|"./lib/|g' middleware.ts 2>/dev/null || true
-
-# 9. Исправляем неправильные пути (2 уровня вместо 3, 3 вместо 4)
-echo "📝 Исправляю неправильные пути в app/dashboard..."
-find app/dashboard -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from '../../lib/|from '../../../lib/|g" {} \;
-find app/dashboard -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|from "../../lib/|from "../../../lib/|g' {} \;
-
-echo "📝 Исправляю неправильные пути в app/api..."
-find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" -exec sed -i "s|from '../../../lib/|from '../../../../lib/|g" {} \;
-find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" -exec sed -i 's|from "../../../lib/|from "../../../../lib/|g' {} \;
 
 echo ""
 echo "✅ Исправление завершено!"
