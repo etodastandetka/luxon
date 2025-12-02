@@ -92,6 +92,12 @@ if [ "$remaining" -gt 0 ]; then
     find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|import("../../../../lib/|import("@/lib/|g' {} \;
     find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|await import('../../../../lib/|await import('@/lib/|g" {} \;
     find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|await import("../../../../lib/|await import("@/lib/|g' {} \;
+    # Исправляем некорректные пути (с двойными слешами и точками)
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/lib/|@/lib/|g" {} \;
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/lib/|@/lib/|g" {} \;
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|\.\.\/\/\.\/lib/|@/lib/|g" {} \;
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|\.\/\.\/\.\/\.\/\.\.\/\.\.\/lib/|@/lib/|g" {} \;
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|\.\/\/\/\/\.\/lib/|@/lib/|g" {} \;
     echo "  ✅ Заменено"
 else
     echo "  ✅ Проблем не найдено"
