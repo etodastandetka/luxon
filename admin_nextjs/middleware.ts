@@ -101,10 +101,23 @@ export async function middleware(request: NextRequest) {
   }
 
   // 2. Защита API endpoints (пропускаем публичные API)
+  // ВАЖНО: Если токен валиден, пропускаем защиту API (пользователь авторизован)
+  // Также пропускаем для публичных API маршрутов
   if (pathname.startsWith('/api/') && !isPublicRoute) {
-    const protectionResult = protectAPI(request)
-    if (protectionResult) {
-      return protectionResult
+    // Если токен валиден, пропускаем все проверки безопасности API
+    if (!isValidToken) {
+      const protectionResult = protectAPI(request)
+      if (protectionResult) {
+        if (pathname === '/dashboard') {
+          console.log(`⚠️  protectAPI blocked request to ${pathname}, IP: ${ip}`)
+        }
+        return protectionResult
+      }
+    } else {
+      // Токен валиден - пропускаем защиту API, но логируем
+      if (pathname.startsWith('/api/') && pathname !== '/api/auth/me') {
+        console.log(`✅ Valid token, skipping API protection for ${pathname}, IP: ${ip}`)
+      }
     }
 
     // 3. Rate limiting для API (более строгий для публичных endpoints)
