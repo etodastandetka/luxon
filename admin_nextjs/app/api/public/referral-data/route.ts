@@ -90,6 +90,8 @@ export async function GET(request: NextRequest) {
       }
     })
     
+    console.log('📊 [Referral Data API] Найдено рефералов:', referrals.length)
+    
     const referredUserIds = referrals.map(r => r.referred.userId)
     
     // Получаем только успешные завершенные депозиты рефералов (исключаем pending, rejected и другие неуспешные статусы)
@@ -123,6 +125,9 @@ export async function GET(request: NextRequest) {
     const earned = earnings.reduce((sum, e) => {
       return sum + (e.commissionAmount ? parseFloat(e.commissionAmount.toString()) : 0)
     }, 0)
+    
+    console.log('📊 [Referral Data API] Найдено завершенных депозитов:', completedDeposits.length)
+    console.log('📊 [Referral Data API] Заработано:', earned)
     
     // НОВАЯ ЛОГИКА: Топ-5 реферов по сумме пополнений их рефералов
     // Получаем всех реферов и их рефералов
@@ -264,6 +269,9 @@ export async function GET(request: NextRequest) {
     })
     
     const hasPendingWithdrawal = !!pendingWithdrawal
+    
+    console.log('📊 [Referral Data API] Доступный баланс:', availableBalance)
+    console.log('📊 [Referral Data API] Есть pending заявка:', hasPendingWithdrawal)
     
     // Рассчитываем дату следующей выплаты (21 число каждого месяца)
     const now = new Date()
