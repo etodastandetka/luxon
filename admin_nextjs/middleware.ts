@@ -21,7 +21,25 @@ export async function middleware(request: NextRequest) {
 
   // 🛡️ ЗАЩИТА ОТ DDoS И АТАК
 
-  // 0. Пропускаем страницу геолокации и API геолокации
+  // 0. Пропускаем статические файлы и ресурсы
+  const staticFiles = [
+    '/manifest.json',
+    '/icon-192.png',
+    '/icon-512.png',
+    '/icon.jpg',
+    '/service-worker.js',
+    '/ringtone-sms-notification.mp3',
+    '/social-media-logout-sound.mp3',
+  ]
+  
+  if (pathname.startsWith('/_next/') || 
+      pathname.startsWith('/favicon') ||
+      pathname.startsWith('/images/') ||
+      staticFiles.includes(pathname)) {
+    return NextResponse.next()
+  }
+
+  // 0.1. Пропускаем страницу геолокации и API геолокации
   if (pathname === '/geolocation' || pathname.startsWith('/api/geolocation')) {
     return NextResponse.next()
   }
@@ -215,6 +233,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|icon-|.*\\.mp3|.*\\.js|.*\\.json|images/).*)',
+  ],
 }
 
