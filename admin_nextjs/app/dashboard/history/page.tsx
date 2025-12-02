@@ -73,6 +73,7 @@ export default function HistoryPage() {
 
       if (data.success) {
         const newTransactions = data.data.transactions || []
+        console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
         if (reset) {
           setTransactions(newTransactions)
           setOffset(newTransactions.length)
@@ -84,6 +85,8 @@ export default function HistoryPage() {
           })
         }
         setHasMore(data.data.pagination?.hasMore || false)
+      } else {
+        console.error('❌ [History] Ошибка загрузки:', data.error)
       }
       
       // Сбрасываем флаг первой загрузки после успешной загрузки
@@ -101,6 +104,7 @@ export default function HistoryPage() {
   // Загружаем данные при монтировании и при изменении таба
   // Загружаем сразу без задержек - страница показывается мгновенно
   useEffect(() => {
+    console.log('📋 [History] Загрузка данных для таба:', activeTab, 'isInitialLoad:', isInitialLoad)
     // Загружаем данные сразу при монтировании компонента и при изменении таба
     fetchHistory(true, 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -425,10 +429,31 @@ export default function HistoryPage() {
       </div>
 
       {/* Список транзакций */}
-      {transactions.length === 0 && !loadingMore ? (
-        // Показываем пустое состояние только если данных нет и не идет загрузка
+      {transactions.length === 0 && !loadingMore && !isInitialLoad ? (
+        // Показываем пустое состояние только если данных нет, не идет загрузка И не первая загрузка
         <div className="text-center py-12 text-gray-400">
           <p>История транзакций пуста</p>
+        </div>
+      ) : transactions.length === 0 && isInitialLoad ? (
+        // При первой загрузке показываем скелетон (данные загружаются в фоне)
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 animate-pulse">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3 flex-1">
+                  <div className="w-12 h-12 bg-gray-700 rounded-lg"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
+                    <div className="h-3 bg-gray-700 rounded w-24"></div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="h-4 bg-gray-700 rounded w-20 mb-2"></div>
+                  <div className="h-3 bg-gray-700 rounded w-16"></div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="space-y-3">
@@ -456,8 +481,8 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {/* Кнопка "Загрузить еще" */}
-      {hasMore && (
+      {/* Кнопка "Загрузить еще" - показываем только если есть данные и есть еще для загрузки */}
+      {hasMore && transactions.length > 0 && (
         <div className="text-center mt-4">
           <button
             onClick={loadMore}
