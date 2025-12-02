@@ -157,13 +157,14 @@ export async function middleware(request: NextRequest) {
     // (isInternalRequest уже определен выше)
     
     // Более строгий rate limit для публичных API
-    // Исключение: для /api/requests и /api/transaction-history убираем rate limiting (внутренние админские эндпоинты)
+    // Исключение: для /api/requests, /api/transaction-history и /api/limits убираем rate limiting (внутренние админские эндпоинты)
     const isRequestsApi = pathname.startsWith('/api/requests')
     const isTransactionHistory = pathname.startsWith('/api/transaction-history')
+    const isLimitsApi = pathname.startsWith('/api/limits')
     
-    // Пропускаем rate limiting для transaction-history и requests (внутренние админские эндпоинты)
-    if (isTransactionHistory || isRequestsApi) {
-      // Пропускаем rate limiting для истории транзакций и заявок
+    // Пропускаем rate limiting для transaction-history, requests и limits (внутренние админские эндпоинты)
+    if (isTransactionHistory || isRequestsApi || isLimitsApi) {
+      // Пропускаем rate limiting для истории транзакций, заявок и лимитов
     } else {
       let rateLimitOptions
       if (isInternalRequest) {

@@ -39,7 +39,7 @@ export default function LimitsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [stats, setStats] = useState<LimitsStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Начинаем с false - показываем скелетон сразу
   const [showCalendar, setShowCalendar] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -64,8 +64,7 @@ export default function LimitsPage() {
       if (end) params.append('end', end)
 
       const response = await fetch(`/api/limits/stats?${params.toString()}`, {
-        cache: 'default',
-        next: { revalidate: 10 } // Кэшируем на 10 секунд
+        cache: 'default', // Используем кэш для быстрой загрузки
       })
       const data = await response.json()
 
@@ -384,16 +383,59 @@ export default function LimitsPage() {
     loadChart()
   }, [stats, loading])
 
-  if (loading) {
+  // Показываем скелетон пока загружаются данные
+  if (loading || !stats) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+      <div className="py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-10"></div>
+          <div className="flex-1 text-center">
+            <div className="h-6 bg-gray-700 rounded w-24 mx-auto mb-2 animate-pulse"></div>
+            <div className="h-3 bg-gray-700 rounded w-32 mx-auto animate-pulse"></div>
+          </div>
+          <div className="w-10"></div>
+        </div>
+
+        {/* Скелетон периода */}
+        <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 animate-pulse">
+          <div className="h-5 bg-gray-700 rounded w-32 mb-3"></div>
+          <div className="h-10 bg-gray-700 rounded w-full"></div>
+        </div>
+
+        {/* Скелетон лимитов */}
+        <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 animate-pulse">
+          <div className="h-5 bg-gray-700 rounded w-40 mb-3"></div>
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between py-2">
+                <div className="h-4 bg-gray-700 rounded w-24"></div>
+                <div className="h-4 bg-gray-700 rounded w-20"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Скелетон статистики */}
+        <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 animate-pulse">
+          <div className="h-5 bg-gray-700 rounded w-40 mb-3"></div>
+          <div className="grid grid-cols-2 gap-3">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="bg-gray-900 bg-opacity-50 rounded-xl p-3 border border-gray-700">
+                <div className="h-3 bg-gray-700 rounded w-24 mb-2"></div>
+                <div className="h-6 bg-gray-700 rounded w-20 mb-1"></div>
+                <div className="h-3 bg-gray-700 rounded w-16"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Скелетон графика */}
+        <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 animate-pulse">
+          <div className="h-5 bg-gray-700 rounded w-32 mb-3"></div>
+          <div className="h-[250px] bg-gray-700 rounded"></div>
+        </div>
       </div>
     )
-  }
-
-  if (!stats) {
-    return <div className="text-center text-gray-400 py-12">Не удалось загрузить данные</div>
   }
 
   return (

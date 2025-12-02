@@ -117,54 +117,55 @@ export async function GET(request: NextRequest) {
     let chartStartDate = startDate ? new Date(startDate) : null
     let chartEndDate = endDate ? new Date(endDate) : null
     
-    // Группировка по датам для графика используя SQL (оптимизировано)
+    // Группировка по датам для графика используя SQL (оптимизировано с индексами)
     // Для пополнений: считаем только РЕАЛЬНО обработанные через API казино
     // Для выводов: считаем все успешные статусы
+    // Используем DATE() для более быстрой группировки
     const [depositsByDate, withdrawalsByDate] = await Promise.all([
       chartStartDate && chartEndDate
         ? prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
             SELECT 
-              TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+              DATE(created_at)::text as date,
               COUNT(*)::bigint as count
             FROM requests
             WHERE request_type = 'deposit'
               AND status IN ('autodeposit_success', 'auto_completed')
               AND created_at >= ${chartStartDate}::timestamp
               AND created_at <= ${chartEndDate}::timestamp
-            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            GROUP BY DATE(created_at)
             ORDER BY date DESC
           `
         : prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
             SELECT 
-              TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+              DATE(created_at)::text as date,
               COUNT(*)::bigint as count
             FROM requests
             WHERE request_type = 'deposit'
               AND status IN ('autodeposit_success', 'auto_completed')
-            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            GROUP BY DATE(created_at)
             ORDER BY date DESC
           `,
       chartStartDate && chartEndDate
         ? prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
             SELECT 
-              TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+              DATE(created_at)::text as date,
               COUNT(*)::bigint as count
             FROM requests
             WHERE request_type = 'withdraw'
               AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
               AND created_at >= ${chartStartDate}::timestamp
               AND created_at <= ${chartEndDate}::timestamp
-            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            GROUP BY DATE(created_at)
             ORDER BY date DESC
           `
         : prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
             SELECT 
-              TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+              DATE(created_at)::text as date,
               COUNT(*)::bigint as count
             FROM requests
             WHERE request_type = 'withdraw'
               AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
-            GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+            GROUP BY DATE(created_at)
             ORDER BY date DESC
           `,
     ])
@@ -323,7 +324,8 @@ export async function GET(request: NextRequest) {
         withdrawalDateParams.push(dateFilterForStats.createdAt.lte)
       }
       
-      // Используем SQL для более точного поиска
+      // Используем оптимизированный SQL с индексами для быстрого поиска
+      // Используем ILIKE для case-insensitive поиска (быстрее чем LOWER)
       const [depositStatsRaw, withdrawalStatsRaw] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{ count: bigint; sum: string | null }>>(
           `SELECT 
@@ -332,7 +334,7 @@ export async function GET(request: NextRequest) {
           FROM requests
           WHERE request_type = 'deposit'
             AND status IN ('autodeposit_success', 'auto_completed')
-            AND LOWER(bookmaker) LIKE LOWER($1)
+            AND bookmaker ILIKE $1
             ${depositDateCondition}`,
           `%${platformKey}%`,
           ...depositDateParams
@@ -344,7 +346,7 @@ export async function GET(request: NextRequest) {
           FROM requests
           WHERE request_type = 'withdraw'
             AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
-            AND LOWER(bookmaker) LIKE LOWER($1)
+            AND bookmaker ILIKE $1
             ${withdrawalDateCondition}`,
           `%${platformKey}%`,
           ...withdrawalDateParams
@@ -381,53 +383,9 @@ export async function GET(request: NextRequest) {
     
     const platformStats = await Promise.all(platformStatsPromises)
     
-    // Дополнительная проверка: ищем выводы без фильтра по платформе для отладки
-    const allWithdrawalsCheck = await prisma.request.findMany({
-      where: {
-        requestType: 'withdraw',
-        status: { in: withdrawalSuccessStatuses },
-        ...dateFilterForStats,
-      },
-      select: {
-        id: true,
-        bookmaker: true,
-        status: true,
-        amount: true,
-        createdAt: true,
-      },
-      take: 20,
-      orderBy: { createdAt: 'desc' },
-    })
-    
-    console.log(`🔍 Debug: Found ${allWithdrawalsCheck.length} withdrawals with statuses:`, 
-      allWithdrawalsCheck.map(w => ({ 
-        id: w.id,
-        bookmaker: w.bookmaker, 
-        status: w.status, 
-        amount: w.amount?.toString(),
-        date: w.createdAt.toISOString().split('T')[0]
-      }))
-    )
-    
-    // Проверяем общий подсчет выводов
-    const totalWithdrawalsCheck = await prisma.request.aggregate({
-      where: {
-        requestType: 'withdraw',
-        status: { in: withdrawalSuccessStatuses },
-        ...dateFilterForStats,
-      },
-      _count: { id: true },
-      _sum: { amount: true },
-    })
-    
-    console.log(`🔍 Debug: Total withdrawals aggregate:`, {
-      count: totalWithdrawalsCheck._count.id,
-      sum: totalWithdrawalsCheck._sum.amount?.toString(),
-      calculatedCount: totalWithdrawalsCount,
-      calculatedSum: totalWithdrawalsSum,
-    })
+    // Убрали отладочные запросы для ускорения
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createApiResponse({
         platformLimits,
         platformStats,
@@ -443,6 +401,11 @@ export async function GET(request: NextRequest) {
         },
       })
     )
+    
+    // Добавляем кэширование для быстрой загрузки (5 секунд)
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
+    
+    return response
   } catch (error: any) {
     console.error('Limits stats error:', error)
     return NextResponse.json(
