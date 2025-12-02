@@ -58,20 +58,35 @@ const nextConfig = {
   },
 
   // Конфигурация webpack для правильного разрешения алиасов
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     const path = require('path')
     const rootPath = path.resolve(__dirname)
     
-    // Явно настраиваем алиас @ - это критически важно для разрешения путей
+    // КРИТИЧЕСКИ ВАЖНО: Явно настраиваем алиас @ для правильного разрешения путей
+    // Это исправляет проблему, когда @ преобразуется в 'a' на сервере
     if (!config.resolve) {
       config.resolve = {}
     }
     
-    // Сохраняем существующие алиасы и добавляем наш
+    // Полностью переопределяем alias, чтобы гарантировать правильную настройку
+    // Сохраняем только важные алиасы Next.js
     const existingAliases = config.resolve.alias || {}
     config.resolve.alias = {
       ...existingAliases,
       '@': rootPath,
+      // Явно указываем, что @ должен резолвиться в корневую директорию
+    }
+    
+    // Убеждаемся, что модули резолвятся правильно
+    if (!config.resolve.modules) {
+      config.resolve.modules = []
+    }
+    if (!Array.isArray(config.resolve.modules)) {
+      config.resolve.modules = [config.resolve.modules]
+    }
+    // Добавляем корневую директорию в начало списка модулей
+    if (!config.resolve.modules.includes(rootPath)) {
+      config.resolve.modules.unshift(rootPath)
     }
     
     return config
