@@ -159,13 +159,21 @@ export async function GET(
       amount: t.amount ? t.amount.toString() : null,
     }))
 
+    // Логируем photoFileUrl для отладки
+    console.log('📸 [Request API] photoFileUrl:', {
+      hasPhoto: !!requestData.photoFileUrl,
+      photoLength: requestData.photoFileUrl?.length || 0,
+      isBase64: requestData.photoFileUrl?.startsWith('data:image') || false,
+      preview: requestData.photoFileUrl?.substring(0, 50) || 'null'
+    })
+    
     // Возвращаем все данные сразу - быстрее и надежнее
     return NextResponse.json(
       createApiResponse({
         ...requestData,
         userId: requestData.userId.toString(),
         amount: requestData.amount ? requestData.amount.toString() : null,
-        photoFileUrl: requestData.photoFileUrl,
+        photoFileUrl: requestData.photoFileUrl, // Может быть base64 или URL
         paymentMethod: requestData.paymentMethod || null,
         cryptoPayment: requestData.cryptoPayment ? {
           ...requestData.cryptoPayment,

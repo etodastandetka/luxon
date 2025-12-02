@@ -363,6 +363,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    const photoUrl = receipt_photo || qr_photo || null
+    console.log('📸 [Payment API] Сохранение фото чека:', {
+      hasPhoto: !!photoUrl,
+      photoLength: photoUrl?.length || 0,
+      isBase64: photoUrl?.startsWith('data:image') || false,
+      requestType: type
+    })
+    
     const newRequest = await prisma.request.create({
       data: {
         userId: userIdBigInt,
@@ -377,11 +385,17 @@ export async function POST(request: NextRequest) {
         phone,
         status: 'pending',
         statusDetail: statusDetail, // Для error_log содержит JSON с информацией об ошибке, для крипты - amount_usd и amount_kgs
-        photoFileUrl: receipt_photo || qr_photo || null, // Сохраняем base64 фото чека (для deposit) или QR-кода (для withdraw)
+        photoFileUrl: photoUrl, // Сохраняем base64 фото чека (для deposit) или QR-кода (для withdraw)
         paymentMethod: payment_method || 'bank', // 'bank' или 'crypto'
         cryptoPaymentId: cryptoPaymentId,
         withdrawalCode: site_code || null, // Код ордера на вывод (для 1xbet)
       },
+    })
+    
+    console.log('✅ [Payment API] Заявка создана:', {
+      id: newRequest.id,
+      hasPhoto: !!newRequest.photoFileUrl,
+      photoFileUrlLength: newRequest.photoFileUrl?.length || 0
     })
     
     // Если есть crypto_invoice_id, обновляем крипто-платеж с request_id

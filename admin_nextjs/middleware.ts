@@ -120,10 +120,10 @@ export async function middleware(request: NextRequest) {
     '/api/withdraw-check-exists', 
     '/api/withdraw-execute', 
     '/api/incoming-payment', 
-    '/api/referral/register', 
+    '/api/referral', // Все реферальные endpoints (register, withdraw/create, withdraw/list, public/referral-data)
     '/api/users', 
     '/api/crypto-pay', 
-    '/api/requests', 
+    '/api/requests', // Все endpoints для заявок (включая /api/requests/[id] и /api/requests/[id]/photo)
     '/api/channel'
   ]
   

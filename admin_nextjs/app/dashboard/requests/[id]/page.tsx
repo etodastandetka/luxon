@@ -117,6 +117,15 @@ export default function RequestDetailPage() {
           if (data.success && isMountedRef.current) {
             const requestData = data.data
             
+            // Логируем photoFileUrl для отладки
+            console.log('📸 [Request Detail] Загружены данные заявки:', {
+              id: requestData.id,
+              hasPhoto: !!requestData.photoFileUrl,
+              photoLength: requestData.photoFileUrl?.length || 0,
+              isBase64: requestData.photoFileUrl?.startsWith('data:image') || false,
+              photoPreview: requestData.photoFileUrl?.substring(0, 100) || 'null'
+            })
+            
             // Устанавливаем данные сразу - все данные уже загружены в одном запросе
             setRequest(requestData)
             
@@ -1119,24 +1128,45 @@ export default function RequestDetailPage() {
               setPhotoZoom(1)
             }}
           >
-            <Image
-              src={request.photoFileUrl}
-              alt="Фото чека об оплате"
-              width={800}
-              height={500}
-              className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
-              style={{ width: 'auto', height: 'auto' }}
-              loading="lazy"
-              onError={(e) => {
-                // Если фото не загрузилось, скрываем блок
-                const target = e.target as HTMLElement
-                target.style.display = 'none'
-                const parent = target.closest('.bg-gray-800')
-                if (parent) {
-                  (parent as HTMLElement).style.display = 'none'
-                }
-              }}
-            />
+            {request.photoFileUrl?.startsWith('data:image') ? (
+              // Если это base64, используем обычный img
+              <img
+                src={request.photoFileUrl}
+                alt="Фото чека об оплате"
+                className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
+                style={{ width: 'auto', height: 'auto' }}
+                onError={(e) => {
+                  console.error('❌ Ошибка загрузки фото чека (base64):', e)
+                  const target = e.target as HTMLElement
+                  target.style.display = 'none'
+                  const parent = target.closest('.bg-gray-800')
+                  if (parent) {
+                    (parent as HTMLElement).style.display = 'none'
+                  }
+                }}
+              />
+            ) : (
+              // Если это URL, используем Next.js Image
+              <Image
+                src={request.photoFileUrl}
+                alt="Фото чека об оплате"
+                width={800}
+                height={500}
+                className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
+                style={{ width: 'auto', height: 'auto' }}
+                priority
+                unoptimized
+                onError={(e) => {
+                  console.error('❌ Ошибка загрузки фото чека (URL):', request.photoFileUrl)
+                  const target = e.target as HTMLElement
+                  target.style.display = 'none'
+                  const parent = target.closest('.bg-gray-800')
+                  if (parent) {
+                    (parent as HTMLElement).style.display = 'none'
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1199,22 +1229,41 @@ export default function RequestDetailPage() {
                 setPhotoZoom(Math.max(0.5, Math.min(5, photoZoom + delta)))
               }}
             >
-              <Image
-                src={request.photoFileUrl}
-                alt="Фото чека об оплате (увеличенное)"
-                width={1200}
-                height={800}
-                className="rounded-lg shadow-2xl"
-                priority
-                style={{ 
-                  transform: `scale(${photoZoom})`,
-                  transformOrigin: 'center',
-                  transition: 'transform 0.1s ease-out',
-                  maxWidth: '90vw',
-                  maxHeight: '90vh',
-                  objectFit: 'contain'
-                }}
-              />
+              {request.photoFileUrl?.startsWith('data:image') ? (
+                // Если это base64, используем обычный img
+                <img
+                  src={request.photoFileUrl}
+                  alt="Фото чека об оплате (увеличенное)"
+                  className="rounded-lg shadow-2xl"
+                  style={{ 
+                    transform: `scale(${photoZoom})`,
+                    transformOrigin: 'center',
+                    transition: 'transform 0.1s ease-out',
+                    maxWidth: '90vw',
+                    maxHeight: '90vh',
+                    objectFit: 'contain'
+                  }}
+                />
+              ) : (
+                // Если это URL, используем Next.js Image
+                <Image
+                  src={request.photoFileUrl}
+                  alt="Фото чека об оплате (увеличенное)"
+                  width={1200}
+                  height={800}
+                  className="rounded-lg shadow-2xl"
+                  priority
+                  unoptimized
+                  style={{ 
+                    transform: `scale(${photoZoom})`,
+                    transformOrigin: 'center',
+                    transition: 'transform 0.1s ease-out',
+                    maxWidth: '90vw',
+                    maxHeight: '90vh',
+                    objectFit: 'contain'
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
