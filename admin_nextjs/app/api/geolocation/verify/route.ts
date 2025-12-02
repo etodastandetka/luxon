@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { getAuthUser } = await import('../../../../lib/api-helpers')
+    const { getAuthUser } = await import('@/lib/api-helpers')
     const authUser = getAuthUser(request)
     
     // Только для авторизованных пользователей

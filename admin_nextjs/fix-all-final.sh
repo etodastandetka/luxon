@@ -34,6 +34,10 @@ find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from 'a/lib
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|from "a/lib/|from "@/lib/|g' {} \;
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|import.*'a/lib/|import.*'@/lib/|g" {} \;
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|import.*"a/lib/|import.*"@/lib/|g' {} \;
+find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|await import('a/lib/|await import('@/lib/|g" {} \;
+find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|await import("a/lib/|await import("@/lib/|g' {} \;
+find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|import('a/lib/|import('@/lib/|g" {} \;
+find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|import("a/lib/|import("@/lib/|g' {} \;
 sed -i "s|'a/lib/|'@/lib/|g" middleware.ts 2>/dev/null || true
 sed -i 's|"a/lib/|"@/lib/|g' middleware.ts 2>/dev/null || true
 sed -i "s|from 'a/lib/|from '@/lib/|g" middleware.ts 2>/dev/null || true
@@ -74,18 +78,23 @@ echo "app/dashboard/page.tsx:"
 grep -E "from ['\"].*lib/" app/dashboard/page.tsx | head -3 || echo "  (не найдено)"
 echo ""
 
-# 5. Ищем оставшиеся a/lib/
-echo "🔍 Ищу оставшиеся a/lib/:"
-remaining=$(grep -r "a/lib/" app/ middleware.ts 2>/dev/null | wc -l || echo "0")
+# 5. Ищем оставшиеся a/lib/ и относительные пути в динамических импортах
+echo "🔍 Ищу оставшиеся проблемы:"
+remaining=$(grep -r "a/lib/\|../../../../lib/" app/ middleware.ts 2>/dev/null | wc -l || echo "0")
 if [ "$remaining" -gt 0 ]; then
-    echo "  ⚠️  Найдено $remaining вхождений a/lib/!"
-    grep -r "a/lib/" app/ middleware.ts 2>/dev/null | head -10
+    echo "  ⚠️  Найдено $remaining проблемных вхождений!"
+    grep -r "a/lib/\|../../../../lib/" app/ middleware.ts 2>/dev/null | head -10
     echo ""
     echo "  🔧 Принудительно заменяю..."
     grep -rl "a/lib/" app/ middleware.ts 2>/dev/null | xargs sed -i "s|a/lib/|@/lib/|g" 2>/dev/null || true
+    # Заменяем относительные пути в динамических импортах
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|import('../../../../lib/|import('@/lib/|g" {} \;
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|import("../../../../lib/|import("@/lib/|g' {} \;
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|await import('../../../../lib/|await import('@/lib/|g" {} \;
+    find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|await import("../../../../lib/|await import("@/lib/|g' {} \;
     echo "  ✅ Заменено"
 else
-    echo "  ✅ a/lib/ не найдено"
+    echo "  ✅ Проблем не найдено"
 fi
 echo ""
 
