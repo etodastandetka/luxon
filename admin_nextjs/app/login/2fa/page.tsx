@@ -52,9 +52,11 @@ export default function TwoFactorPage() {
 
       if (!data.success) {
         setError(data.error || 'Invalid 2FA code')
+        setLoading(false)
         return
       }
 
+      // Cookie уже установлен сервером, просто переходим в дашборд
       // После успешной проверки 2FA переходим в дашборд
       router.push('/dashboard')
       router.refresh()
