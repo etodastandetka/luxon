@@ -56,6 +56,19 @@ const nextConfig = {
     JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
     BOT_TOKEN: process.env.BOT_TOKEN,
   },
+  
+  // Конфигурация webpack для правильного разрешения алиасов
+  webpack: (config) => {
+    const path = require('path')
+    
+    // Расширяем существующие алиасы, не перезаписывая их
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname),
+    }
+    
+    return config
+  },
 }
 
 module.exports = nextConfig
