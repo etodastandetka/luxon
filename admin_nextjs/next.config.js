@@ -56,6 +56,23 @@ const nextConfig = {
     JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
     BOT_TOKEN: process.env.BOT_TOKEN,
   },
+  
+  // Явная конфигурация webpack для правильного разрешения путей
+  webpack: (config, { isServer }) => {
+    // Убеждаемся, что алиас @ правильно разрешается
+    if (!config.resolve) {
+      config.resolve = {}
+    }
+    if (!config.resolve.alias) {
+      config.resolve.alias = {}
+    }
+    
+    // Явно указываем пути для алиаса @
+    const path = require('path')
+    config.resolve.alias['@'] = path.resolve(__dirname)
+    
+    return config
+  },
 }
 
 module.exports = nextConfig
