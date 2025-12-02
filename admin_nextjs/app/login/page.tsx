@@ -31,6 +31,13 @@ export default function LoginPage() {
         return
       }
 
+      // Проверяем, требуется ли 2FA
+      if (data.data?.requires2FA) {
+        // Редиректим на страницу ввода 2FA кода
+        router.push(`/login/2fa?userId=${data.data.userId}`)
+        return
+      }
+
       // После успешного логина переходим в дашборд
       // Геолокация уже проверена до логина (middleware)
       router.push('/dashboard')

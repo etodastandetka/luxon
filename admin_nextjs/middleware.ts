@@ -21,7 +21,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Определяем публичные маршруты (которые должны быть доступны даже при блокировке IP)
-  const publicRoutes = ['/login', '/api/auth/login']
+  const publicRoutes = ['/login', '/api/auth/login', '/api/auth/2fa']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
 
   // 1. Проверка блокировки IP (пропускаем внутренние IP, геолокацию и публичные маршруты)
