@@ -288,9 +288,35 @@ export function rateLimit(options: RateLimitOptions = {}) {
 }
 
 /**
+ * Проверяет, является ли IP внутренним (localhost, локальная сеть)
+ */
+export function isInternalIP(ip: string): boolean {
+  if (!ip || ip === 'unknown') return false
+  
+  // localhost варианты
+  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || ip === '::ffff:127.0.0.1') {
+    return true
+  }
+  
+  // Локальные сети
+  if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.')) {
+    return true
+  }
+  
+  return false
+}
+
+/**
  * Проверяет Cloudflare защиту (только для продакшена)
  */
 export function validateCloudflareHeaders(request: NextRequest): boolean {
+  const ip = getClientIP(request)
+  
+  // Внутренние IP всегда разрешены
+  if (isInternalIP(ip)) {
+    return true
+  }
+  
   // В продакшене проверяем наличие Cloudflare заголовков
   if (process.env.NODE_ENV === 'production') {
     const cfRay = request.headers.get('cf-ray')
@@ -403,8 +429,8 @@ export function protectAPI(request: NextRequest): NextResponse | null {
     return null
   }
 
-  // 1. Проверка блокировки IP
-  if (isIPBlocked(ip)) {
+  // 1. Проверка блокировки IP (пропускаем внутренние IP)
+  if (!isInternalIP(ip) && isIPBlocked(ip)) {
     console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${url}`)
     return NextResponse.json(
       { error: 'Forbidden', message: 'Access denied' },
@@ -412,15 +438,17 @@ export function protectAPI(request: NextRequest): NextResponse | null {
     )
   }
 
-  // 2. Проверка User-Agent
-  const userAgent = request.headers.get('user-agent')
-  if (isSuspiciousUserAgent(userAgent)) {
-    console.warn(`🚫 Suspicious User-Agent blocked: ${userAgent} from ${ip}`)
-    blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
-    return NextResponse.json(
-      { error: 'Forbidden', message: 'Invalid request' },
-      { status: 403 }
-    )
+  // 2. Проверка User-Agent (пропускаем внутренние IP)
+  if (!isInternalIP(ip)) {
+    const userAgent = request.headers.get('user-agent')
+    if (isSuspiciousUserAgent(userAgent)) {
+      console.warn(`🚫 Suspicious User-Agent blocked: ${userAgent} from ${ip}`)
+      blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'Invalid request' },
+        { status: 403 }
+      )
+    }
   }
 
   // 3. Проверка подозрительных URL паттернов
@@ -463,8 +491,8 @@ export function protectAPI(request: NextRequest): NextResponse | null {
     )
   }
 
-  // 7. Проверка Cloudflare (только в продакшене)
-  if (!validateCloudflareHeaders(request)) {
+  // 7. Проверка Cloudflare (только в продакшене, пропускаем внутренние IP)
+  if (!isInternalIP(ip) && !validateCloudflareHeaders(request)) {
     console.warn(`🚫 Direct access attempt blocked from ${ip}`)
     blockIP(ip, 24 * 60 * 60 * 1000) // Блокируем на 24 часа
     return NextResponse.json(

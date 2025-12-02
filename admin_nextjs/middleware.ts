@@ -20,8 +20,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 1. Проверка блокировки IP
-  if (isIPBlocked(ip)) {
+  // 1. Проверка блокировки IP (пропускаем внутренние IP и геолокацию)
+  const isInternalRequest = ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' ||
+                            ip === '::ffff:127.0.0.1' || ip.startsWith('192.168.') || 
+                            ip.startsWith('10.') || ip.startsWith('172.16.')
+  
+  if (!isInternalRequest && !pathname.startsWith('/api/geolocation') && isIPBlocked(ip)) {
     console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname}`)
     return NextResponse.json(
       { error: 'Forbidden', message: 'Access denied' },
@@ -56,8 +60,7 @@ export function middleware(request: NextRequest) {
     const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
     
     // Для внутренних запросов (localhost) - более мягкий rate limit
-    const isInternalRequest = ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' ||
-                              ip.startsWith('192.168.') || ip.startsWith('10.')
+    // (isInternalRequest уже определен выше)
     
     // Более строгий rate limit для публичных API
     let rateLimitOptions
