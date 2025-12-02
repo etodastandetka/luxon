@@ -12,6 +12,28 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(req: NextRequest) {
   try {
+    // ВАЖНО: Это внутренний endpoint, вызываемый через setTimeout из payment API
+    // Проверяем, что это внутренний запрос (localhost или внутренний IP)
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 
+               req.headers.get('x-real-ip') || 
+               'unknown'
+    
+    const isInternalRequest = ip === '127.0.0.1' || 
+                             ip === '::1' || 
+                             ip === 'localhost' ||
+                             ip === '::ffff:127.0.0.1' ||
+                             ip.startsWith('192.168.') || 
+                             ip.startsWith('10.') || 
+                             ip.startsWith('172.16.')
+    
+    // Логируем для отладки
+    console.log(`📧 [Delayed Notification] Request received:`, {
+      requestId: req.nextUrl.searchParams.get('requestId'),
+      ip,
+      isInternal: isInternalRequest,
+      userAgent: req.headers.get('user-agent')
+    })
+    
     const searchParams = req.nextUrl.searchParams
     const requestId = searchParams.get('requestId')
 

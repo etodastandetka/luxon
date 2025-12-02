@@ -124,7 +124,8 @@ export async function middleware(request: NextRequest) {
     '/api/users', 
     '/api/crypto-pay', 
     '/api/requests', // Все endpoints для заявок (включая /api/requests/[id] и /api/requests/[id]/photo)
-    '/api/channel'
+    '/api/channel',
+    '/api/notifications/delayed-deposit' // Внутренний endpoint для отложенных уведомлений
   ]
   
   const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
