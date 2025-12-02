@@ -140,7 +140,7 @@ export async function middleware(request: NextRequest) {
       }
     } else if (isPublicApiRoute) {
       // Публичный API маршрут - логируем для отладки
-      if (pathname === '/api/payment' || pathname === '/api/incoming-payment') {
+      if (pathname === '/api/payment' || pathname === '/api/incoming-payment' || pathname.startsWith('/api/public/referral') || pathname.startsWith('/api/referral')) {
         console.log(`✅ Public API route accessed: ${pathname}, IP: ${ip}`)
       }
     } else if (isValidToken) {
