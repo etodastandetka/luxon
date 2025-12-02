@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, createApiResponse } from '../../../../lib/api-helpers'
-import { prisma } from '../../../../lib/prisma'
-import { depositToCasino } from '../../../../lib/deposit-balance'
+import { requireAuth, createApiResponse } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+import { depositToCasino } from '@/lib/deposit-balance'
 
 // Функция для отправки уведомления пользователю в Telegram
 async function sendTelegramNotification(userId: bigint, message: string) {
