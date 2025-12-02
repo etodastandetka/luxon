@@ -58,22 +58,13 @@ const nextConfig = {
   },
 
   // Конфигурация webpack для правильного разрешения алиасов
-  webpack: (config) => {
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     const path = require('path')
     
-    // Убеждаемся, что resolve и alias существуют
-    if (!config.resolve) {
-      config.resolve = {}
-    }
-    if (!config.resolve.alias) {
-      config.resolve.alias = {}
-    }
-    
-    // Добавляем алиас @ с полным путем, сохраняя существующие алиасы
-    const rootPath = path.resolve(__dirname)
+    // Явно настраиваем алиас @
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': rootPath,
+      '@': path.resolve(__dirname),
     }
     
     return config
