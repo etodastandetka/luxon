@@ -118,41 +118,6 @@ export default function RequestDetailPage() {
           if (data.success && isMountedRef.current) {
             const requestData = data.data
             
-            // Нормализуем photoFileUrl если он есть в основном ответе
-            if (requestData.photoFileUrl && typeof requestData.photoFileUrl === 'string' && !requestData.photoFileUrl.startsWith('http')) {
-              // Функция нормализации
-              const normalizeBase64 = (str: string): string => {
-                if (str.startsWith('http')) return str
-                str = str.trim().replace(/\s/g, '')
-                
-                if (/^data:image\/\w+;base64,.+$/.test(str)) {
-                  return str
-                }
-                
-                const wrongFormatMatch = str.match(/^data:image\/(jpeg|png|gif|webp|jpg)base64,?(.+)$/i)
-                if (wrongFormatMatch) {
-                  const mimeType = wrongFormatMatch[1].toLowerCase()
-                  const base64Data = wrongFormatMatch[2]
-                  const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
-                  console.log('📸 [Request Detail] Нормализован формат фото из основного ответа:', normalizedMimeType)
-                  return `data:image/${normalizedMimeType};base64,${base64Data}`
-                }
-                
-                const generalWrongMatch = str.match(/^data:image\/(\w+)base64,?(.+)$/i)
-                if (generalWrongMatch) {
-                  const mimeType = generalWrongMatch[1].toLowerCase()
-                  const base64Data = generalWrongMatch[2]
-                  const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
-                  console.log('📸 [Request Detail] Нормализован общий формат фото:', normalizedMimeType)
-                  return `data:image/${normalizedMimeType};base64,${base64Data}`
-                }
-                
-                return str
-              }
-              
-              requestData.photoFileUrl = normalizeBase64(requestData.photoFileUrl)
-            }
-            
             // Устанавливаем данные сразу - все данные уже загружены в одном запросе
             setRequest(requestData)
             
@@ -161,129 +126,23 @@ export default function RequestDetailPage() {
               setLoading(false)
             }
             
-            // Логируем информацию о фото
-            console.log('📸 [Request Detail] Фото чека в ответе API:', {
-              hasPhoto: !!requestData.photoFileUrl,
-              photoLength: requestData.photoFileUrl?.length || 0,
-              photoPreview: requestData.photoFileUrl ? requestData.photoFileUrl.substring(0, 50) + '...' : null,
-              isBase64: requestData.photoFileUrl?.startsWith('data:image') || false
-            })
-            
-            // Логируем информацию о фото для отладки
-            if (typeof window !== 'undefined') {
-              console.log('[DEBUG] Photo in API response:', {
-                requestId,
-                hasPhoto: !!requestData.photoFileUrl,
-                photoLength: requestData.photoFileUrl?.length || 0,
-                photoPreview: requestData.photoFileUrl ? requestData.photoFileUrl.substring(0, 100) : 'null'
-              })
-            }
-            
-            // Если фото нет в основном ответе (null или пустая строка), загружаем его через отдельный endpoint
-            // Это может быть если фото большое (>1MB) или просто отсутствует
-            const needsSeparateFetch = !requestData.photoFileUrl || 
-                                      (typeof requestData.photoFileUrl === 'string' && requestData.photoFileUrl.trim() === '')
-            
-            if (needsSeparateFetch) {
-              if (typeof window !== 'undefined') {
-                console.log('[DEBUG] Photo not in main response, fetching from /photo endpoint', {
-                  photoFileUrl: requestData.photoFileUrl,
-                  isNull: requestData.photoFileUrl === null,
-                  isEmpty: requestData.photoFileUrl === '',
-                  isString: typeof requestData.photoFileUrl === 'string'
-                })
-              }
+            // Если фото нет в основном ответе, загружаем его через отдельный endpoint
+            if (!requestData.photoFileUrl) {
               setPhotoLoading(true)
               fetch(`/api/requests/${requestId}/photo`)
-                .then(res => {
-                  if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`)
-                  }
-                  return res.json()
-                })
+                .then(res => res.json())
                 .then(photoData => {
-                  if (typeof window !== 'undefined') {
-                    console.log('[DEBUG] Photo endpoint response:', {
-                      success: photoData.success,
-                      hasPhoto: !!photoData.data?.photoFileUrl,
-                      photoLength: photoData.data?.photoFileUrl?.length || 0,
-                      photoPreview: photoData.data?.photoFileUrl ? photoData.data.photoFileUrl.substring(0, 50) : null,
-                      isBase64: photoData.data?.photoFileUrl?.startsWith('data:image') || false
-                    })
-                  }
                   if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
-                    // Нормализуем фото перед сохранением в state
-                    let normalizedPhoto = photoData.data.photoFileUrl
-                    
-                    // Применяем нормализацию если нужно
-                    if (normalizedPhoto && !normalizedPhoto.startsWith('http')) {
-                      // Функция нормализации (та же что используется при отображении)
-                      const normalizeBase64 = (str: string): string => {
-                        if (str.startsWith('http')) return str
-                        str = str.trim().replace(/\s/g, '')
-                        
-                        if (/^data:image\/\w+;base64,.+$/.test(str)) {
-                          return str
-                        }
-                        
-                        const wrongFormatMatch = str.match(/^data:image\/(jpeg|png|gif|webp|jpg)base64,?(.+)$/i)
-                        if (wrongFormatMatch) {
-                          const mimeType = wrongFormatMatch[1].toLowerCase()
-                          const base64Data = wrongFormatMatch[2]
-                          const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
-                          return `data:image/${normalizedMimeType};base64,${base64Data}`
-                        }
-                        
-                        const generalWrongMatch = str.match(/^data:image\/(\w+)base64,?(.+)$/i)
-                        if (generalWrongMatch) {
-                          const mimeType = generalWrongMatch[1].toLowerCase()
-                          const base64Data = generalWrongMatch[2]
-                          const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
-                          return `data:image/${normalizedMimeType};base64,${base64Data}`
-                        }
-                        
-                        return str
-                      }
-                      
-                      normalizedPhoto = normalizeBase64(normalizedPhoto)
-                    }
-                    
                     setRequest(prev => prev ? {
                       ...prev,
-                      photoFileUrl: normalizedPhoto
+                      photoFileUrl: photoData.data.photoFileUrl
                     } : null)
-                    setPhotoLoading(false)
-                    if (typeof window !== 'undefined') {
-                      console.log('[DEBUG] Photo loaded and set in state successfully', {
-                        normalizedLength: normalizedPhoto.length,
-                        normalizedPreview: normalizedPhoto.substring(0, 50)
-                      })
-                    }
-                  } else {
-                    setPhotoLoading(false)
-                    if (typeof window !== 'undefined') {
-                      console.warn('[DEBUG] Photo not found in /photo endpoint response', {
-                        success: photoData.success,
-                        hasData: !!photoData.data,
-                        hasPhotoFileUrl: !!photoData.data?.photoFileUrl
-                      })
-                    }
                   }
-                })
-                .catch(err => {
                   setPhotoLoading(false)
-                  if (typeof window !== 'undefined') {
-                    console.error('[DEBUG] Error loading photo from /photo endpoint:', err)
-                  }
                 })
+                .catch(() => setPhotoLoading(false))
             } else {
               setPhotoLoading(false)
-              if (typeof window !== 'undefined') {
-                console.log('[DEBUG] Photo found in main response', {
-                  photoLength: requestData.photoFileUrl?.length || 0,
-                  photoPreview: requestData.photoFileUrl ? requestData.photoFileUrl.substring(0, 50) : null
-                })
-              }
             }
             
             // Обновляем интервал автообновления в зависимости от статуса
@@ -1266,310 +1125,30 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      {/* Фото чека или QR-кода (если есть) */}
-      {(() => {
-        const hasPhoto = request.photoFileUrl && request.photoFileUrl.trim() !== ''
-        const shouldShowPhotoBlock = hasPhoto || photoLoading
-        
-        // ВСЕГДА показываем блок для отладки
-        // if (!shouldShowPhotoBlock) {
-        //   return null
-        // }
-        
-        return (
-          <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
-            <h3 className="text-base font-semibold text-white mb-3">
-              {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-            </h3>
-            <div 
-              className="relative w-full flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity bg-gray-900 rounded-lg overflow-hidden" 
-              style={{ minHeight: '200px' }}
-              onClick={() => {
-                if (request.photoFileUrl) {
-                  setShowPhotoModal(true)
-                  setPhotoZoom(1)
-                }
-              }}
-            >
-              {(() => {
-                let photoUrl = request.photoFileUrl
-                
-                // Отладочная информация
-                if (typeof window !== 'undefined') {
-                  console.log('[DEBUG PHOTO]', {
-                    hasPhotoUrl: !!photoUrl,
-                    photoUrlLength: photoUrl?.length || 0,
-                    photoUrlPreview: photoUrl ? photoUrl.substring(0, 100) : 'null',
-                    isBase64: photoUrl?.startsWith('data:image') || false,
-                    requestId: request.id
-                  })
-                }
-                
-                if (!photoUrl || photoUrl.trim() === '') {
-                  return (
-                    <div className="w-full h-[200px] flex items-center justify-center p-4 bg-yellow-900/30 border border-yellow-500 rounded-lg">
-                      <div className="text-center">
-                        {photoLoading ? (
-                          <>
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-2"></div>
-                            <p className="text-yellow-300 text-sm">Загрузка фото...</p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-yellow-300 text-sm mb-2">⚠️ Фото чека не загружено</p>
-                            <p className="text-yellow-400 text-xs">ID заявки: {request.id}</p>
-                            <p className="text-yellow-400 text-xs mt-1">Проверьте, что фото было отправлено при создании заявки</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )
-                }
-                
-                console.log('📸 [Photo Display] Обработка photoUrl:', {
-                  photoUrl: photoUrl.substring(0, 50) + '...',
-                  photoLength: photoUrl.length,
-                  startsWithData: photoUrl.startsWith('data:'),
-                  startsWithHttp: photoUrl.startsWith('http')
-                })
-                
-                // Функция для нормализации base64 строки
-                const normalizeBase64 = (str: string): string => {
-                  if (!str) return str
-                  if (str.startsWith('http')) return str // URL не нормализуем
-                  
-                  // Удаляем все пробелы и переносы строк
-                  str = str.trim().replace(/\s/g, '')
-                  
-                  // Если уже правильный формат, возвращаем как есть
-                  if (/^data:image\/\w+;base64,.+$/.test(str)) {
-                    console.log('📸 [Photo] Формат уже правильный')
-                    return str
-                  }
-                  
-                  // Если есть неправильный формат (например, data:image/jpegbase64 или data:image/jpegbase64,)
-                  // Ищем паттерн data:image/типbase64 (без точки с запятой между типом и base64)
-                  const wrongFormatMatch = str.match(/^data:image\/(jpeg|png|gif|webp|jpg)base64,?(.+)$/i)
-                  if (wrongFormatMatch) {
-                    const mimeType = wrongFormatMatch[1].toLowerCase()
-                    const base64Data = wrongFormatMatch[2]
-                    // Нормализуем mimeType (jpg -> jpeg)
-                    const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
-                    console.log('📸 [Photo] Исправлен неправильный формат (без точки с запятой):', { 
-                      was: str.substring(0, 50), 
-                      mimeType: normalizedMimeType,
-                      base64Length: base64Data.length
-                    })
-                    return `data:image/${normalizedMimeType};base64,${base64Data}`
-                  }
-                  
-                  // Также проверяем более общий случай: data:image/любое_словоbase64
-                  const generalWrongMatch = str.match(/^data:image\/(\w+)base64,?(.+)$/i)
-                  if (generalWrongMatch) {
-                    const mimeType = generalWrongMatch[1].toLowerCase()
-                    const base64Data = generalWrongMatch[2]
-                    // Нормализуем mimeType
-                    const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
-                    console.log('📸 [Photo] Исправлен общий неправильный формат:', { 
-                      was: str.substring(0, 50), 
-                      mimeType: normalizedMimeType 
-                    })
-                    return `data:image/${normalizedMimeType};base64,${base64Data}`
-                  }
-                  
-                  // Если есть data:image/... но без base64, или неправильный формат
-                  const partialMatch = str.match(/^data:image\/(\w+)([^;]*)(.+)$/i)
-                  if (partialMatch) {
-                    const mimeType = partialMatch[1]
-                    const base64Data = partialMatch[3].replace(/^[,;]/, '') // Убираем лишние символы
-                    console.log('📸 [Photo] Исправлен частичный формат:', { mimeType, base64Length: base64Data.length })
-                    return `data:image/${mimeType};base64,${base64Data}`
-                  }
-                  
-                  // Если нет префикса data:image вообще, добавляем его
-                  // Пытаемся определить тип изображения по первым байтам base64
-                  let mimeType = 'image/jpeg' // По умолчанию JPEG
-                  
-                  // Проверяем начало base64 строки (после декодирования первых байтов)
-                  if (str.startsWith('iVBORw0KGgo') || str.startsWith('iVBOR')) {
-                    mimeType = 'image/png'
-                  } else if (str.startsWith('R0lGODlh') || str.startsWith('R0lGODdh')) {
-                    mimeType = 'image/gif'
-                  } else if (str.startsWith('/9j/') || str.startsWith('/9j')) {
-                    mimeType = 'image/jpeg'
-                  } else if (str.startsWith('UklGR')) {
-                    mimeType = 'image/webp'
-                  } else {
-                    // Если не можем определить, пробуем по длине и содержимому
-                    // JPEG обычно начинается с FF D8 FF
-                    // Но в base64 это будет /9j/4AAQ...
-                    if (str.length > 100 && /^[A-Za-z0-9+/=]+$/.test(str)) {
-                      // Похоже на валидный base64, используем JPEG по умолчанию
-                      mimeType = 'image/jpeg'
-                    }
-                  }
-                  
-                  console.log('📸 [Photo] Добавлен префикс к фото:', { mimeType, originalLength: str.length })
-                  const normalized = `data:${mimeType};base64,${str}`
-                  console.log('📸 [Photo] Нормализованная строка:', { 
-                    normalizedLength: normalized.length,
-                    startsWith: normalized.substring(0, 30)
-                  })
-                  return normalized
-                }
-                
-                // Нормализуем фото
-                photoUrl = normalizeBase64(photoUrl)
-                
-                const isBase64 = photoUrl.startsWith('data:image')
-                
-                // Проверяем валидность base64
-                if (isBase64) {
-                  // Проверяем, что base64 строка не повреждена
-                  const base64Match = photoUrl.match(/^data:image\/(\w+);base64,(.+)$/)
-                  if (!base64Match || !base64Match[2]) {
-                    console.error('❌ [Photo] Неверный формат base64:', {
-                      photoUrl: photoUrl.substring(0, 100),
-                      hasDataPrefix: photoUrl.startsWith('data:'),
-                      hasBase64: photoUrl.includes('base64,')
-                    })
-                    return (
-                      <div className="p-4 bg-red-900/30 border border-red-500 rounded-lg">
-                        <p className="text-red-300 text-sm">⚠️ Ошибка: Неверный формат изображения</p>
-                        <p className="text-red-400 text-xs mt-1">Фото не может быть отображено</p>
-                      </div>
-                    )
-                  }
-                  
-                  // Проверяем длину base64 данных (слишком большие могут не загружаться)
-                  const base64Data = base64Match[2]
-                  if (base64Data.length > 10 * 1024 * 1024) { // Больше 10MB
-                    console.warn('⚠️ [Photo] Base64 изображение очень большое:', {
-                      size: `${(base64Data.length / 1024 / 1024).toFixed(2)}MB`,
-                      photoUrl: photoUrl.substring(0, 50)
-                    })
-                  }
-                }
-                
-                return isBase64 ? (
-                  // Если это base64, используем обычный img
-                  // Используем key для принудительного перерендера при изменении photoUrl
-                  <img
-                    key={`photo-${request.id}-${photoUrl.substring(0, 50)}`}
-                    src={photoUrl}
-                    alt="Фото чека об оплате"
-                    className="w-full h-auto rounded-lg object-contain"
-                    style={{ 
-                      maxWidth: '100%',
-                      maxHeight: '600px',
-                      width: 'auto',
-                      height: 'auto',
-                      display: 'block',
-                      margin: '0 auto',
-                      objectFit: 'contain',
-                      backgroundColor: 'transparent',
-                      opacity: 1,
-                      visibility: 'visible'
-                    }}
-                    loading="lazy"
-                    decoding="async"
-                    crossOrigin="anonymous"
-                    onLoad={(e) => {
-                      const target = e.target as HTMLImageElement
-                      console.log('✅ [Photo] Фото успешно загружено (base64):', {
-                        photoLength: photoUrl.length,
-                        photoType: photoUrl.substring(0, 50),
-                        naturalWidth: target.naturalWidth,
-                        naturalHeight: target.naturalHeight,
-                        display: window.getComputedStyle(target).display,
-                        visibility: window.getComputedStyle(target).visibility,
-                        opacity: window.getComputedStyle(target).opacity,
-                        srcLength: target.src?.length || 0,
-                        isComplete: target.complete,
-                        isBase64Format: /^data:image\/\w+;base64,.+$/.test(target.src || '')
-                      })
-                      // Убеждаемся, что изображение видно
-                      target.style.opacity = '1'
-                      target.style.visibility = 'visible'
-                      target.style.display = 'block'
-                    }}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      console.error('❌ [Photo] Ошибка загрузки фото чека (base64):', {
-                        error: e,
-                        photoUrl: photoUrl.substring(0, 100),
-                        photoLength: photoUrl.length,
-                        src: target.src?.substring(0, 100),
-                        srcLength: target.src?.length || 0,
-                        naturalWidth: target.naturalWidth,
-                        naturalHeight: target.naturalHeight,
-                        complete: target.complete,
-                        isBase64Valid: /^data:image\/\w+;base64,.+$/.test(photoUrl),
-                        srcIsBase64Valid: /^data:image\/\w+;base64,.+$/.test(target.src || '')
-                      })
-                      
-                      // Показываем сообщение об ошибке
-                      const parent = target.closest('.bg-gray-800')
-                      if (parent) {
-                        const errorDiv = document.createElement('div')
-                        errorDiv.className = 'p-4 bg-red-900/30 border border-red-500 rounded-lg'
-                        errorDiv.innerHTML = `
-                          <p class="text-red-300 text-sm">⚠️ Ошибка загрузки фото</p>
-                          <p class="text-red-400 text-xs mt-1">Попробуйте обновить страницу</p>
-                          <p class="text-red-400 text-xs mt-1">Длина base64: ${photoUrl.length} символов</p>
-                          <p class="text-red-400 text-xs mt-1">Формат: ${photoUrl.substring(0, 50)}...</p>
-                        `
-                        target.style.display = 'none'
-                        parent.appendChild(errorDiv)
-                      }
-                    }}
-                  />
-                ) : (
-                  // Если это URL, используем Next.js Image
-                  <Image
-                    src={photoUrl}
-                    alt="Фото чека об оплате"
-                    width={800}
-                    height={500}
-                    className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
-                    style={{ 
-                      width: 'auto', 
-                      height: 'auto',
-                      display: 'block' // Явно показываем изображение
-                    }}
-                    priority
-                    unoptimized
-                    onLoad={() => {
-                      console.log('✅ [Photo] Фото успешно загружено (URL):', {
-                        photoUrl: photoUrl
-                      })
-                    }}
-                    onError={(e) => {
-                      console.error('❌ [Photo] Ошибка загрузки фото чека (URL):', {
-                        error: e,
-                        photoUrl: photoUrl
-                      })
-                      // НЕ скрываем блок - показываем сообщение об ошибке
-                      const target = e.target as HTMLElement
-                      const parent = target.closest('.bg-gray-800')
-                      if (parent) {
-                        const errorDiv = document.createElement('div')
-                        errorDiv.className = 'p-4 bg-red-900/30 border border-red-500 rounded-lg'
-                        errorDiv.innerHTML = `
-                          <p class="text-red-300 text-sm">⚠️ Ошибка загрузки фото</p>
-                          <p class="text-red-400 text-xs mt-1">URL: ${photoUrl.substring(0, 50)}...</p>
-                        `
-                        target.style.display = 'none'
-                        parent.appendChild(errorDiv)
-                      }
-                    }}
-                  />
-                )
-              })()}
-            </div>
+      {/* Фото чека или QR-кода */}
+      {request.photoFileUrl && (
+        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
+          <h3 className="text-base font-semibold text-white mb-3">
+            {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+          </h3>
+          <div 
+            className="relative w-full flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity bg-gray-900 rounded-lg overflow-hidden" 
+            style={{ minHeight: '200px' }}
+            onClick={() => {
+              setShowPhotoModal(true)
+              setPhotoZoom(1)
+            }}
+          >
+            <img
+              src={request.photoFileUrl}
+              alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+              className="w-full h-auto max-h-[600px] rounded-lg object-contain"
+              style={{ display: 'block' }}
+              loading="lazy"
+            />
           </div>
-        )
-      })()}
+        </div>
+      )}
 
       {/* Модальное окно для увеличения фото */}
       {showPhotoModal && request.photoFileUrl && (
@@ -1577,177 +1156,21 @@ export default function RequestDetailPage() {
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
           onClick={() => setShowPhotoModal(false)}
         >
-          <div className="relative w-full h-full flex items-center justify-center">
-            <button
-              onClick={() => setShowPhotoModal(false)}
-              className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-2 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            
-            <div className="flex items-center space-x-4 absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 bg-gray-800/80 rounded-lg p-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setPhotoZoom(Math.max(0.5, photoZoom - 0.25))
-                }}
-                className="bg-gray-700 hover:bg-gray-600 text-white rounded px-3 py-1 text-sm font-medium"
-              >
-                −
-              </button>
-              <span className="text-white text-sm font-medium min-w-[60px] text-center">
-                {Math.round(photoZoom * 100)}%
-              </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setPhotoZoom(Math.min(5, photoZoom + 0.25))
-                }}
-                className="bg-gray-700 hover:bg-gray-600 text-white rounded px-3 py-1 text-sm font-medium"
-              >
-                +
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setPhotoZoom(1)
-                }}
-                className="bg-gray-700 hover:bg-gray-600 text-white rounded px-3 py-1 text-sm font-medium ml-2"
-              >
-                Сброс
-              </button>
-            </div>
-
-            <div 
-              className="max-w-full max-h-full overflow-auto"
-              onClick={(e) => e.stopPropagation()}
-              onWheel={(e) => {
-                e.preventDefault()
-                const delta = e.deltaY > 0 ? -0.1 : 0.1
-                setPhotoZoom(Math.max(0.5, Math.min(5, photoZoom + delta)))
-              }}
-            >
-              {(() => {
-                let photoUrl = request.photoFileUrl
-                if (!photoUrl || photoUrl.trim() === '') {
-                  return null
-                }
-                
-                // Функция для нормализации base64 строки (та же что и выше)
-                const normalizeBase64 = (str: string): string => {
-                  if (str.startsWith('http')) return str // URL не нормализуем
-                  
-                  // Удаляем все пробелы и переносы строк
-                  str = str.trim().replace(/\s/g, '')
-                  
-                  // Если уже правильный формат, возвращаем как есть
-                  if (/^data:image\/\w+;base64,.+$/.test(str)) {
-                    return str
-                  }
-                  
-                  // Если есть неправильный формат (например, data:image/jpegbase64 или data:image/jpegbase64,)
-                  const wrongFormatMatch = str.match(/^data:image\/(\w+)(base64|base64,)(.+)$/i)
-                  if (wrongFormatMatch) {
-                    const mimeType = wrongFormatMatch[1]
-                    const base64Data = wrongFormatMatch[3]
-                    return `data:image/${mimeType};base64,${base64Data}`
-                  }
-                  
-                  // Если есть data:image/... но без base64, или неправильный формат
-                  const partialMatch = str.match(/^data:image\/(\w+)([^;]*)(.+)$/i)
-                  if (partialMatch) {
-                    const mimeType = partialMatch[1]
-                    const base64Data = partialMatch[3].replace(/^[,;]/, '') // Убираем лишние символы
-                    return `data:image/${mimeType};base64,${base64Data}`
-                  }
-                  
-                  // Если нет префикса data:image, добавляем его
-                  // Пытаемся определить тип изображения по первым байтам base64
-                  let mimeType = 'image/jpeg' // По умолчанию JPEG
-                  
-                  if (str.startsWith('iVBORw0KGgo')) {
-                    mimeType = 'image/png'
-                  } else if (str.startsWith('R0lGODlh') || str.startsWith('R0lGODdh')) {
-                    mimeType = 'image/gif'
-                  } else if (str.startsWith('/9j/')) {
-                    mimeType = 'image/jpeg'
-                  } else if (str.startsWith('UklGR')) {
-                    mimeType = 'image/webp'
-                  }
-                  
-                  return `data:${mimeType};base64,${str}`
-                }
-                
-                // Нормализуем фото
-                photoUrl = normalizeBase64(photoUrl)
-                
-                const isBase64 = photoUrl.startsWith('data:image')
-                
-                if (isBase64) {
-                  // Проверяем валидность base64
-                  const base64Match = photoUrl.match(/^data:image\/(\w+);base64,(.+)$/)
-                  if (!base64Match || !base64Match[2]) {
-                    return (
-                      <div className="p-4 bg-red-900/30 border border-red-500 rounded-lg">
-                        <p className="text-red-300 text-sm">⚠️ Ошибка: Неверный формат изображения</p>
-                      </div>
-                    )
-                  }
-                  
-                  return (
-                    <img
-                      src={photoUrl}
-                      alt="Фото чека об оплате (увеличенное)"
-                      className="rounded-lg shadow-2xl"
-                      style={{ 
-                        transform: `scale(${photoZoom})`,
-                        transformOrigin: 'center',
-                        transition: 'transform 0.1s ease-out',
-                        maxWidth: '90vw',
-                        maxHeight: '90vh',
-                        objectFit: 'contain',
-                        display: 'block'
-                      }}
-                      onError={(e) => {
-                        console.error('❌ [Photo Modal] Ошибка загрузки фото (base64):', {
-                          photoLength: photoUrl.length,
-                          photoType: photoUrl.substring(0, 30)
-                        })
-                      }}
-                    />
-                  )
-                } else {
-                  return (
-                    <Image
-                      src={photoUrl}
-                      alt="Фото чека об оплате (увеличенное)"
-                      width={1200}
-                      height={800}
-                      className="rounded-lg shadow-2xl"
-                      priority
-                      unoptimized
-                      style={{ 
-                        transform: `scale(${photoZoom})`,
-                        transformOrigin: 'center',
-                        transition: 'transform 0.1s ease-out',
-                        maxWidth: '90vw',
-                        maxHeight: '90vh',
-                        objectFit: 'contain',
-                        display: 'block'
-                      }}
-                      onError={(e) => {
-                        console.error('❌ [Photo Modal] Ошибка загрузки фото (URL):', {
-                          photoUrl: photoUrl
-                        })
-                      }}
-                    />
-                  )
-                }
-              })()}
-            </div>
-          </div>
+          <button
+            onClick={() => setShowPhotoModal(false)}
+            className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-2 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <img
+            src={request.photoFileUrl}
+            alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 

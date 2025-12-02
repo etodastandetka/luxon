@@ -265,6 +265,7 @@ export async function PATCH(
     return NextResponse.json(
       createApiResponse({
         ...updatedRequest,
+        userId: updatedRequest.userId.toString(),
         amount: updatedRequest.amount ? updatedRequest.amount.toString() : null,
       })
     )
