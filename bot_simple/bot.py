@@ -10,6 +10,7 @@ import httpx
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
+from security import rate_limit_decorator, validate_input, sanitize_input
 
 # Настройка логирования
 logging.basicConfig(
@@ -95,6 +96,7 @@ async def send_channel_subscription_message(update: Update, channel_username: st
     except Exception as e:
         logger.error(f"❌ Ошибка при отправке сообщения о подписке: {e}")
 
+@rate_limit_decorator
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start"""
     user = update.effective_user
@@ -256,6 +258,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             logger.error(f"❌ Ошибка при отправке ответа пользователю {user_id}: {e}")
             raise
 
+@rate_limit_decorator
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик всех текстовых сообщений от пользователей (не команд)"""
     if not update.message or not update.message.from_user:
@@ -270,6 +273,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if message_text and message_text.startswith('/'):
         logger.warning(f"⚠️ handle_message получил команду {message_text} - это не должно происходить! Пропускаем.")
         return
+    
+    # 🛡️ Валидация входных данных
+    if message_text:
+        is_valid, error_msg = validate_input(message_text)
+        if not is_valid:
+            logger.warning(f"🚫 Invalid input from user {user_id}: {error_msg}")
+            try:
+                await update.message.reply_text("⚠️ Сообщение содержит недопустимые символы. Пожалуйста, отправьте корректное сообщение.")
+            except:
+                pass
+            return
+        # Очищаем входные данные
+        message_text = sanitize_input(message_text)
     
     logger.info(f"📨 Получено сообщение от пользователя {user_id}: {message_text[:50] if message_text else 'медиа'}")
     
@@ -434,6 +450,7 @@ async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         logger.error(f"Ошибка при получении реферальной статистики: {e}")
         await update.message.reply_text("❌ Произошла ошибка при получении данных")
 
+@rate_limit_decorator
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик callback от inline кнопок"""
     query = update.callback_query
@@ -445,6 +462,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user = update.effective_user
     user_id = user.id
     callback_data = query.data
+    
+    # 🛡️ Валидация callback_data
+    if callback_data:
+        is_valid, error_msg = validate_input(callback_data, max_length=64)
+        if not is_valid:
+            logger.warning(f"🚫 Invalid callback_data from user {user_id}: {error_msg}")
+            try:
+                await query.answer("⚠️ Недопустимые данные", show_alert=True)
+            except:
+                pass
+            return
+        callback_data = sanitize_input(callback_data)
     
     logger.info(f"📥 Получен callback от пользователя {user_id}: {callback_data}")
     

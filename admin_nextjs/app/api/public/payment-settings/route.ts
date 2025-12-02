@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
+import { 
+  protectAPI, 
+  rateLimit, 
+  getClientIP 
+} from '@/lib/security'
 
 // Публичный эндпоинт для получения настроек платежей (без авторизации)
 export async function OPTIONS() {
@@ -16,6 +21,24 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   try {
+    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
+    const protectionResult = protectAPI(request)
+    if (protectionResult) return protectionResult
+
+    // Rate limiting (строгий для публичного endpoint)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 30, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `payment_settings:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) {
+      const response = NextResponse.json(
+        createApiResponse(null, 'Rate limit exceeded'),
+        { status: 429 }
+      )
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
+    }
     // Получаем настройки из BotConfiguration
     const configs = await prisma.botConfiguration.findMany()
     const settingsMap: Record<string, any> = {}

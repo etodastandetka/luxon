@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { 
+  protectAPI, 
+  rateLimit, 
+  sanitizeInput, 
+  containsSQLInjection,
+  containsXSS,
+  getClientIP 
+} from '@/lib/security'
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -14,13 +22,98 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
+    const protectionResult = protectAPI(request)
+    if (protectionResult) return protectionResult
+
+    // Rate limiting (строгий для публичного endpoint)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 10, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `referral_register:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) {
+      const response = NextResponse.json({
+        success: false,
+        error: 'Rate limit exceeded'
+      }, { status: 429 })
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
+    }
+
     const body = await request.json()
     
-    const referrerId = body.referrer_id || body.referrerId
-    const referredId = body.referred_id || body.referredId
-    const username = body.username || null
-    const firstName = body.first_name || body.firstName || null
-    const lastName = body.last_name || body.lastName || null
+    // 🛡️ Валидация и очистка всех входных данных
+    const sanitizedBody = sanitizeInput(body)
+    
+    let referrerId = sanitizedBody.referrer_id || sanitizedBody.referrerId
+    let referredId = sanitizedBody.referred_id || sanitizedBody.referredId
+    let username = sanitizedBody.username || null
+    let firstName = sanitizedBody.first_name || sanitizedBody.firstName || null
+    let lastName = sanitizedBody.last_name || sanitizedBody.lastName || null
+
+    // 🛡️ Проверка на SQL инъекции и XSS во всех строковых полях
+    const stringFields = [referrerId, referredId, username, firstName, lastName].filter(Boolean)
+    for (const field of stringFields) {
+      if (typeof field === 'string') {
+        if (containsSQLInjection(field) || containsXSS(field)) {
+          console.warn(`🚫 Security threat from ${getClientIP(request)}`)
+          const errorResponse = NextResponse.json({
+            success: false,
+            error: 'Invalid input detected'
+          }, { status: 400 })
+          errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+          return errorResponse
+        }
+      }
+    }
+
+    // Валидация формата ID (должны быть числами)
+    if (referrerId && !/^\d+$/.test(String(referrerId))) {
+      const errorResponse = NextResponse.json({
+        success: false,
+        error: 'Invalid referrer ID format'
+      }, { status: 400 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
+
+    if (referredId && !/^\d+$/.test(String(referredId))) {
+      const errorResponse = NextResponse.json({
+        success: false,
+        error: 'Invalid referred ID format'
+      }, { status: 400 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
+
+    // Ограничение длины строковых полей
+    if (username && username.length > 100) {
+      const errorResponse = NextResponse.json({
+        success: false,
+        error: 'Username too long'
+      }, { status: 400 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
+
+    if (firstName && firstName.length > 100) {
+      const errorResponse = NextResponse.json({
+        success: false,
+        error: 'First name too long'
+      }, { status: 400 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
+
+    if (lastName && lastName.length > 100) {
+      const errorResponse = NextResponse.json({
+        success: false,
+        error: 'Last name too long'
+      }, { status: 400 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
     
     if (!referrerId || !referredId) {
       const errorResponse = NextResponse.json({

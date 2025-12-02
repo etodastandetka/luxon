@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { 
+  protectAPI, 
+  rateLimit, 
+  sanitizeInput, 
+  containsSQLInjection,
+  getClientIP 
+} from '@/lib/security'
 
 // Публичный эндпоинт для получения данных реферальной программы (без авторизации)
 export async function OPTIONS() {
@@ -15,8 +22,20 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   try {
+    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
+    const protectionResult = protectAPI(request)
+    if (protectionResult) return protectionResult
+
+    // Rate limiting (строгий для публичного endpoint)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 20, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `referral_data:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) return rateLimitResult
+
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
+    let userId = searchParams.get('user_id')
     
     if (!userId) {
       return NextResponse.json({
@@ -25,11 +44,30 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // 🛡️ Валидация и очистка
+    if (containsSQLInjection(userId)) {
+      console.warn(`🚫 SQL injection attempt from ${getClientIP(request)}`)
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid input'
+      }, { status: 400 })
+    }
+
+    userId = sanitizeInput(userId) as string
+
     // Telegram user_id должен состоять только из цифр
     if (!/^\d+$/.test(userId)) {
       return NextResponse.json({
         success: false,
         error: 'Invalid user ID format'
+      }, { status: 400 })
+    }
+
+    // Ограничение длины
+    if (userId.length > 20) {
+      return NextResponse.json({
+        success: false,
+        error: 'User ID too long'
       }, { status: 400 })
     }
     

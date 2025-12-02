@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyWebhookSignature, getInvoice, getExchangeRates } from '@/lib/crypto-pay'
 import { prisma } from '@/lib/prisma'
 import { depositToCasino } from '@/lib/deposit-balance'
+import { rateLimit, getClientIP } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,11 +33,22 @@ interface WebhookUpdate {
 
 export async function POST(request: NextRequest) {
   try {
+    // 🛡️ Rate limiting для webhook (строгий, т.к. это внешний endpoint)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 100, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `webhook:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) {
+      console.warn(`🚫 Rate limit exceeded for webhook from ${getClientIP(request)}`)
+      return rateLimitResult
+    }
+
     const body = await request.json()
     const signature = request.headers.get('crypto-pay-api-signature')
 
     if (!signature) {
-      console.error('Missing crypto-pay-api-signature header')
+      console.error(`🚫 Missing crypto-pay-api-signature header from ${getClientIP(request)}`)
       return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
     }
 
@@ -45,7 +57,7 @@ export async function POST(request: NextRequest) {
     const isValid = verifyWebhookSignature(token, body, signature)
 
     if (!isValid) {
-      console.error('Invalid webhook signature')
+      console.error(`🚫 Invalid webhook signature from ${getClientIP(request)}`)
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 

@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createHash } from 'crypto'
+import { 
+  protectAPI, 
+  rateLimit, 
+  sanitizeInput, 
+  containsSQLInjection,
+  containsXSS,
+  getClientIP 
+} from '@/lib/security'
 
 // Публичный эндпоинт для генерации QR кода (без авторизации)
 export async function OPTIONS() {
@@ -16,11 +24,49 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
+    const protectionResult = protectAPI(request)
+    if (protectionResult) return protectionResult
+
+    // Rate limiting (строгий для публичного endpoint)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 20, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `generate_qr:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) {
+      const errorResponse = NextResponse.json(
+        { success: false, error: 'Rate limit exceeded' },
+        { status: 429 }
+      )
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
+    }
+
     const body = await request.json()
     
-    const amount = parseFloat(String(body.amount || 0))
-    const playerId = body.playerId || ''
-    const bank = body.bank || 'demirbank'
+    // 🛡️ Валидация и очистка всех входных данных
+    const sanitizedBody = sanitizeInput(body)
+    
+    // Проверка на SQL инъекции и XSS
+    const stringFields = [sanitizedBody.playerId, sanitizedBody.bank].filter(Boolean)
+    for (const field of stringFields) {
+      if (typeof field === 'string') {
+        if (containsSQLInjection(field) || containsXSS(field)) {
+          console.warn(`🚫 Security threat from ${getClientIP(request)}`)
+          const errorResponse = NextResponse.json(
+            { success: false, error: 'Invalid input detected' },
+            { status: 400 }
+          )
+          errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+          return errorResponse
+        }
+      }
+    }
+    
+    const amount = parseFloat(String(sanitizedBody.amount || 0))
+    const playerId = sanitizedBody.playerId || ''
+    const bank = sanitizedBody.bank || 'demirbank'
     
     // Валидация
     if (isNaN(amount) || amount <= 0) {

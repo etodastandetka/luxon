@@ -31,6 +31,8 @@ export default function LoginPage() {
         return
       }
 
+      // После успешного логина переходим в дашборд
+      // Геолокация уже проверена до логина (middleware)
       router.push('/dashboard')
       router.refresh()
     } catch (err: any) {

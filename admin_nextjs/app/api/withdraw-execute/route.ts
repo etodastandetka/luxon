@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 import { processWithdraw, checkWithdrawAmountCashdesk } from '@/lib/casino-withdraw'
 import { getCasinoConfig } from '@/lib/deposit-balance'
+import { rateLimit, sanitizeInput, containsSQLInjection, getClientIP } from '@/lib/security'
 
 /**
  * API для выполнения вывода средств (mobile.withdrawal)
@@ -22,9 +23,46 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    // 🛡️ Rate limiting для withdraw-execute (критичный endpoint)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 20, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `withdraw:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) {
+      return NextResponse.json(
+        createApiResponse(null, 'Rate limit exceeded'),
+        { 
+          status: 429,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
     const body = await request.json()
 
-    const { bookmaker, playerId, code, amount } = body
+    // 🛡️ Валидация и очистка входных данных
+    const sanitizedBody = sanitizeInput(body)
+    const { bookmaker, playerId, code, amount } = sanitizedBody
+
+    // 🛡️ Проверка на SQL инъекции
+    const stringFields = [bookmaker, playerId, code].filter(Boolean)
+    for (const field of stringFields) {
+      if (typeof field === 'string' && containsSQLInjection(field)) {
+        console.warn(`🚫 SQL injection attempt from ${getClientIP(request)}`)
+        return NextResponse.json(
+          createApiResponse(null, 'Invalid input detected'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+    }
 
     if (!bookmaker || !playerId || !code || !amount) {
       return NextResponse.json(

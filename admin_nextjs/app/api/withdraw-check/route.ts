@@ -3,6 +3,13 @@ import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 import { processWithdraw, checkWithdrawAmountCashdesk } from '@/lib/casino-withdraw'
 import { getCasinoConfig } from '@/lib/deposit-balance'
+import { 
+  protectAPI, 
+  rateLimit, 
+  sanitizeInput, 
+  containsSQLInjection,
+  getClientIP 
+} from '@/lib/security'
 
 /**
  * API для проверки суммы вывода и подтверждения вывода
@@ -22,9 +29,51 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
+    const protectionResult = protectAPI(request)
+    if (protectionResult) {
+      const response = NextResponse.json(
+        createApiResponse(null, 'Forbidden'),
+        { status: 403 }
+      )
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
+    }
+
+    // Rate limiting (строгий для критичного endpoint)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 20, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `withdraw_check:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) {
+      const response = NextResponse.json(
+        createApiResponse(null, 'Rate limit exceeded'),
+        { status: 429 }
+      )
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
+    }
+
     const body = await request.json()
 
-    const { bookmaker, playerId, code } = body
+    // 🛡️ Валидация и очистка входных данных
+    const sanitizedBody = sanitizeInput(body)
+    const { bookmaker, playerId, code } = sanitizedBody
+
+    // 🛡️ Проверка на SQL инъекции
+    const stringFields = [bookmaker, playerId, code].filter(Boolean)
+    for (const field of stringFields) {
+      if (typeof field === 'string' && containsSQLInjection(field)) {
+        console.warn(`🚫 SQL injection attempt from ${getClientIP(request)}`)
+        const response = NextResponse.json(
+          createApiResponse(null, 'Invalid input detected'),
+          { status: 400 }
+        )
+        response.headers.set('Access-Control-Allow-Origin', '*')
+        return response
+      }
+    }
 
     if (!bookmaker || !playerId || !code) {
       return NextResponse.json(

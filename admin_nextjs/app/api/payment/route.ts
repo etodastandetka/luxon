@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 import { sendTelegramGroupMessage } from '@/lib/telegram-group'
+import { 
+  rateLimit, 
+  sanitizeInput, 
+  containsSQLInjection, 
+  containsXSS,
+  getClientIP 
+} from '@/lib/security'
 
 /**
  * Планирует отложенное уведомление о депозите через минуту
@@ -65,8 +72,21 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    // 🛡️ Rate limiting для payment endpoint (критичный)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 20, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `payment:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) {
+      return rateLimitResult
+    }
+
     const body = await request.json()
 
+    // 🛡️ Валидация и очистка входных данных
+    const sanitizedBody = sanitizeInput(body)
+    
     const {
       userId,
       user_id,
@@ -87,7 +107,25 @@ export async function POST(request: NextRequest) {
       payment_method, // 'bank' или 'crypto'
       crypto_invoice_id, // ID крипто invoice
       site_code, // Код ордера на вывод (для withdraw)
-    } = body
+    } = sanitizedBody
+
+    // 🛡️ Проверка на SQL инъекции и XSS в строковых полях
+    const stringFields = [
+      telegram_username, telegram_first_name, telegram_last_name,
+      bookmaker, bank, phone, account_id, site_code
+    ].filter(Boolean)
+    
+    for (const field of stringFields) {
+      if (typeof field === 'string') {
+        if (containsSQLInjection(field) || containsXSS(field)) {
+          console.warn(`🚫 Security threat detected from ${getClientIP(request)}: ${field.substring(0, 50)}`)
+          return NextResponse.json(
+            { error: 'Invalid input detected' },
+            { status: 400 }
+          )
+        }
+      }
+    }
 
     // Определяем user_id (Telegram ID пользователя - обязателен для правильной идентификации)
     // Приоритет: telegram_user_id > userId > user_id

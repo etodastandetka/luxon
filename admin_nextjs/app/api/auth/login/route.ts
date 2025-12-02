@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateUser } from '@/lib/auth'
 import { createApiResponse } from '@/lib/api-helpers'
+import { is2FAEnabled } from '@/lib/two-factor'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +16,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Проверяем пользователя (но не выдаем токен, если включена 2FA)
+    const user = await prisma.adminUser.findUnique({
+      where: { username },
+    })
+
+    if (!user || !user.isActive) {
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid credentials'),
+        { status: 401 }
+      )
+    }
+
+    // Проверяем пароль
+    const { verifyPassword } = await import('@/lib/auth')
+    const isValidPassword = await verifyPassword(password, user.password)
+
+    if (!isValidPassword) {
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid credentials'),
+        { status: 401 }
+      )
+    }
+
+    // Проверяем, включена ли 2FA (используем безопасный доступ к полю)
+    const has2FA = (user as any).twoFactorEnabled === true
+
+    if (has2FA) {
+      // Если 2FA включена, возвращаем userId для следующего шага
+      return NextResponse.json(
+        createApiResponse({ 
+          requires2FA: true,
+          userId: user.id,
+          message: '2FA verification required' 
+        })
+      )
+    }
+
+    // Если 2FA не включена, выдаем токен как обычно
     const result = await authenticateUser(username, password)
 
     if (!result) {

@@ -18,6 +18,9 @@ model AdminUser {
   email        String?  @unique
   isActive     Boolean  @default(true)
   isSuperAdmin Boolean  @default(false)
+  twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
+  twoFactorSecret String?  @map("two_factor_secret") @db.VarChar(255)
+  twoFactorBackupCodes String? @map("two_factor_backup_codes") @db.Text // JSON array of backup codes
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

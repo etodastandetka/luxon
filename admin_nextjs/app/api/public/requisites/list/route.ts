@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { 
+  protectAPI, 
+  rateLimit, 
+  getClientIP 
+} from '@/lib/security'
 
 // Публичный эндпоинт для получения списка реквизитов (без авторизации)
 export async function OPTIONS() {
@@ -15,6 +20,24 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   try {
+    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
+    const protectionResult = protectAPI(request)
+    if (protectionResult) return protectionResult
+
+    // Rate limiting (строгий для публичного endpoint)
+    const rateLimitResult = rateLimit({ 
+      maxRequests: 30, 
+      windowMs: 60 * 1000,
+      keyGenerator: (req) => `requisites:${getClientIP(req)}`
+    })(request)
+    if (rateLimitResult) {
+      const res = NextResponse.json({
+        success: false,
+        error: 'Rate limit exceeded'
+      }, { status: 429 })
+      res.headers.set('Access-Control-Allow-Origin', '*')
+      return res
+    }
     const requisites = await prisma.botRequisite.findMany({
       orderBy: [
         { isActive: 'desc' },

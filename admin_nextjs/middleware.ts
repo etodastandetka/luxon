@@ -1,50 +1,172 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { 
+  protectAPI, 
+  rateLimit, 
+  getClientIP, 
+  isIPBlocked,
+  blockIP 
+} from '@/lib/security'
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value
+  const ip = getClientIP(request)
+  const pathname = request.nextUrl.pathname
 
-  // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/api/auth/login']
-  const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
+  // 🛡️ ЗАЩИТА ОТ DDoS И АТАК
 
-  // API routes that don't require authentication (for external integrations)
-  const publicApiRoutes = ['/api/auth', '/api/payment', '/api/transaction-history', '/api/public', '/api/withdraw-check', '/api/withdraw-check-exists', '/api/withdraw-execute', '/api/incoming-payment', '/api/referral/register', '/api/users', '/api/crypto-pay', '/api/requests', '/api/channel']
-  const isPublicApiRoute = publicApiRoutes.some(route => request.nextUrl.pathname.startsWith(route))
-
-  // Add CORS headers for public API routes
-  if (isPublicApiRoute && request.method === 'OPTIONS') {
-    const response = new NextResponse(null, { status: 200 })
-    response.headers.set('Access-Control-Allow-Origin', '*')
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    return response
+  // 0. Пропускаем страницу геолокации и API геолокации
+  if (pathname === '/geolocation' || pathname.startsWith('/api/geolocation')) {
+    return NextResponse.next()
   }
 
-  if (isPublicRoute || isPublicApiRoute) {
-    const response = NextResponse.next()
-    // Add CORS headers
-    response.headers.set('Access-Control-Allow-Origin', '*')
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    return response
+  // 1. Проверка блокировки IP
+  if (isIPBlocked(ip)) {
+    console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname}`)
+    return NextResponse.json(
+      { error: 'Forbidden', message: 'Access denied' },
+      { status: 403 }
+    )
   }
 
-  // Protect API routes
-  if (request.nextUrl.pathname.startsWith('/api/') && !isPublicApiRoute) {
-    if (!token) {
+  // 2. Защита API endpoints
+  if (pathname.startsWith('/api/')) {
+    const protectionResult = protectAPI(request)
+    if (protectionResult) {
+      return protectionResult
+    }
+
+    // 3. Rate limiting для API (более строгий для публичных endpoints)
+    const publicApiRoutes = [
+      '/api/auth', 
+      '/api/payment', 
+      '/api/transaction-history', 
+      '/api/public', 
+      '/api/withdraw-check', 
+      '/api/withdraw-check-exists', 
+      '/api/withdraw-execute', 
+      '/api/incoming-payment', 
+      '/api/referral/register', 
+      '/api/users', 
+      '/api/crypto-pay', 
+      '/api/requests', 
+      '/api/channel'
+    ]
+    
+    const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
+    
+    // Для внутренних запросов (localhost) - более мягкий rate limit
+    const isInternalRequest = ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' ||
+                              ip.startsWith('192.168.') || ip.startsWith('10.')
+    
+    // Более строгий rate limit для публичных API
+    let rateLimitOptions
+    if (isInternalRequest) {
+      // Внутренние запросы - очень мягкий лимит
+      rateLimitOptions = { maxRequests: 1000, windowMs: 60 * 1000 }
+    } else if (isPublicApiRoute) {
+      // Публичные API - строгий лимит
+      rateLimitOptions = { maxRequests: 30, windowMs: 60 * 1000 }
+    } else {
+      // Защищенные API
+      rateLimitOptions = { maxRequests: 100, windowMs: 60 * 1000 }
+    }
+    
+    const rateLimitResult = rateLimit(rateLimitOptions)(request)
+    if (rateLimitResult) {
+      // При превышении лимита блокируем IP на 24 часа (только для внешних запросов)
+      if (rateLimitResult.status === 429 && !isInternalRequest) {
+        blockIP(ip, 24 * 60 * 60 * 1000)
+      }
+      return rateLimitResult
+    }
+
+    // 4. CORS headers для публичных API
+    if (isPublicApiRoute && request.method === 'OPTIONS') {
+      const response = new NextResponse(null, { status: 200 })
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+      response.headers.set('Access-Control-Max-Age', '86400')
+      return response
+    }
+
+    if (isPublicApiRoute) {
+      const response = NextResponse.next()
+      // Add CORS headers
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+      // Security headers
+      response.headers.set('X-Content-Type-Options', 'nosniff')
+      response.headers.set('X-Frame-Options', 'DENY')
+      response.headers.set('X-XSS-Protection', '1; mode=block')
+      response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+      return response
+    }
+
+    // 5. Защита приватных API endpoints
+    if (!isPublicApiRoute && !token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
   }
 
-  // Protect dashboard pages
-  if (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname === '/') {
+  // 6. 🗺️ ГЕОЛОКАЦИОННАЯ ЗАЩИТА (для всех страниц кроме геолокации и API)
+  // Проверяем, прошла ли проверка геолокации
+  // Исключаем: API endpoints, страницу геолокации, статические файлы
+  const isGeolocationPage = pathname === '/geolocation'
+  const isApiRoute = pathname.startsWith('/api/')
+  const isStaticFile = pathname.startsWith('/_next/') || pathname.startsWith('/favicon')
+  
+  if (!isApiRoute && !isGeolocationPage && !isStaticFile) {
+    const geolocationVerified = request.cookies.get('geolocation_verified')?.value
+    
+    // Если геолокация не проверена, редиректим на страницу проверки
+    if (!geolocationVerified || geolocationVerified !== 'true') {
+      const geolocationUrl = new URL('/geolocation', request.url)
+      geolocationUrl.searchParams.set('return', pathname)
+      return NextResponse.redirect(geolocationUrl)
+    }
+  }
+
+  // 7. Rate limiting для страниц (менее строгий)
+  if (pathname.startsWith('/dashboard') || pathname === '/') {
+    const rateLimitResult = rateLimit({ maxRequests: 120, windowMs: 60 * 1000 })(request)
+    if (rateLimitResult) {
+      return rateLimitResult
+    }
+
     if (!token) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }
 
-  return NextResponse.next()
+  // 8. Public routes (login, etc.)
+  const publicRoutes = ['/login', '/api/auth/login']
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+
+  if (isPublicRoute) {
+    // Rate limiting для публичных страниц (защита от брутфорса)
+    const rateLimitResult = rateLimit({ maxRequests: 20, windowMs: 60 * 1000 })(request)
+    if (rateLimitResult) {
+      return rateLimitResult
+    }
+  }
+
+  // 9. Security headers для всех ответов
+  const response = NextResponse.next()
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-XSS-Protection', '1; mode=block')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+  
+  // HSTS (только для HTTPS)
+  if (request.nextUrl.protocol === 'https:') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  }
+
+  return response
 }
 
 export const config = {
