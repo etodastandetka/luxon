@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Requests API - Found ${requests.length} requests (total: ${total})`)
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createApiResponse({
         requests: requests.map(r => ({
           ...r,
@@ -73,6 +73,11 @@ export async function GET(request: NextRequest) {
         },
       })
     )
+    
+    // Добавляем кэширование для быстрой загрузки (3 секунды)
+    response.headers.set('Cache-Control', 'public, s-maxage=3, stale-while-revalidate=10')
+    
+    return response
   } catch (error: any) {
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to fetch requests'),

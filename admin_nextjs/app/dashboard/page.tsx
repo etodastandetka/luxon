@@ -70,7 +70,8 @@ export default function DashboardPage() {
       
       // Используем кэширование для более быстрой загрузки
       const response = await fetch(`/api/requests?${params.toString()}`, {
-        cache: 'default', // Используем кэш для мгновенной загрузки
+        cache: 'force-cache', // Агрессивное кэширование для мгновенной загрузки
+        next: { revalidate: 2 }, // Перевалидируем каждые 2 секунды
       })
       
       if (!response.ok) {

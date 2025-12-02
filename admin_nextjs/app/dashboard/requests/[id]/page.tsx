@@ -101,7 +101,8 @@ export default function RequestDetailPage() {
           // Используем кэш для быстрой загрузки
           const response = await fetch(`/api/requests/${requestId}`, {
             signal: abortController.signal,
-            cache: 'default', // Используем кэш браузера для мгновенной загрузки
+            cache: 'force-cache', // Агрессивное кэширование для мгновенной загрузки
+            next: { revalidate: 3 }, // Перевалидируем каждые 3 секунды
           })
           
           if (abortController.signal.aborted || !isMountedRef.current) return
@@ -130,31 +131,29 @@ export default function RequestDetailPage() {
             setLoading(false)
             
             // Загружаем фото асинхронно в фоне (не блокируем отображение страницы)
-            if (!requestData.photoFileUrl) {
-              setPhotoLoading(true)
-              // Загружаем фото через отдельный endpoint в фоне
-              fetch(`/api/requests/${requestId}/photo`)
-                .then(res => {
-                  if (!res.ok) return { success: false }
-                  return res.json()
-                })
-                .then(photoData => {
-                  if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
-                    setRequest(prev => prev ? {
-                      ...prev,
-                      photoFileUrl: photoData.data.photoFileUrl
-                    } : null)
-                    setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
-                  }
-                  setPhotoLoading(false)
-                })
-                .catch(() => {
-                  setPhotoLoading(false)
-                })
-            } else {
-              setPhotoLoading(false)
-              setImageLoading(true) // Фото есть, но еще загружается
-            }
+            // Всегда загружаем фото отдельно для уменьшения размера основного ответа
+            setPhotoLoading(true)
+            // Загружаем фото через отдельный endpoint в фоне
+            fetch(`/api/requests/${requestId}/photo`, {
+              cache: 'default', // Используем кэш для быстрой загрузки
+            })
+              .then(res => {
+                if (!res.ok) return { success: false }
+                return res.json()
+              })
+              .then(photoData => {
+                if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
+                  setRequest(prev => prev ? {
+                    ...prev,
+                    photoFileUrl: photoData.data.photoFileUrl
+                  } : null)
+                  setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
+                }
+                setPhotoLoading(false)
+              })
+              .catch(() => {
+                setPhotoLoading(false)
+              })
             
             // Интервал автообновления управляется в основном useEffect
             
@@ -326,23 +325,21 @@ export default function RequestDetailPage() {
 
     // Определяем интервал на основе статуса
     const interval = request.status === 'pending' ? 5000 : 15000
+    const requestId = Array.isArray(params.id) ? params.id[0] : params.id
 
     // Создаем новый интервал
     intervalRef.current = setInterval(() => {
-      if (!document.hidden && isMountedRef.current) {
-        const requestId = Array.isArray(params.id) ? params.id[0] : params.id
-        if (requestId) {
-          fetch(`/api/requests/${requestId}`, {
-            cache: 'no-store',
+      if (!document.hidden && isMountedRef.current && requestId) {
+        fetch(`/api/requests/${requestId}`, {
+          cache: 'no-store',
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && isMountedRef.current) {
+              setRequest(data.data)
+            }
           })
-            .then(res => res.json())
-            .then(data => {
-              if (data.success && isMountedRef.current) {
-                setRequest(data.data)
-              }
-            })
-            .catch(() => {})
-        }
+          .catch(() => {})
       }
     }, interval)
 
@@ -352,7 +349,8 @@ export default function RequestDetailPage() {
         intervalRef.current = null
       }
     }
-  }, [request?.status, params.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.status, params.id]) // request используется только для получения status
 
   // Закрываем меню при клике вне его
   useEffect(() => {
@@ -1176,12 +1174,15 @@ export default function RequestDetailPage() {
                 </div>
               </div>
             )}
-            <img
+            <Image
               src={request.photoFileUrl}
               alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+              width={800}
+              height={600}
               className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
               style={{ display: 'block' }}
               loading="lazy"
+              unoptimized={request.photoFileUrl?.startsWith('data:')}
               onError={(e) => {
                 console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
                 setImageLoading(false)
@@ -1243,11 +1244,14 @@ export default function RequestDetailPage() {
             </svg>
           </button>
           
-          <img
+          <Image
             src={request.photoFileUrl}
             alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+            width={1200}
+            height={1200}
             className="max-w-full max-h-full object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
+            unoptimized
           />
         </div>
       )}

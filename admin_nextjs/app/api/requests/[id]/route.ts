@@ -71,7 +71,7 @@ export async function GET(
         processedBy: true,
         bank: true,
         phone: true,
-        photoFileUrl: true,
+        // photoFileUrl не загружаем в основном запросе - он загружается отдельно через /photo endpoint
         paymentMethod: true,
         createdAt: true,
         updatedAt: true,
@@ -99,8 +99,13 @@ export async function GET(
 
     const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
     
+    // Загружаем дополнительные данные параллельно, но только если они нужны
+    // Оптимизация: загружаем только для pending заявок или если явно запрошено
+    const needsAdditionalData = requestData.status === 'pending' || requestData.requestType === 'deposit'
+    
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      requestAmountInt ? prisma.incomingPayment.findMany({
+      // Matching payments - только для pending депозитов
+      (needsAdditionalData && requestAmountInt) ? prisma.incomingPayment.findMany({
           where: {
             amount: {
               gte: requestAmountInt,
@@ -108,7 +113,7 @@ export async function GET(
             },
           },
           orderBy: { paymentDate: 'desc' },
-          take: 3,
+          take: 3, // Только первые 3 для ускорения
           select: {
             id: true,
             amount: true,
@@ -119,13 +124,14 @@ export async function GET(
           },
         }) : Promise.resolve([]),
       
-      requestData.accountId && requestData.bookmaker ? prisma.request.findMany({
+      // Casino transactions - только если есть accountId
+      (requestData.accountId && requestData.bookmaker) ? prisma.request.findMany({
           where: {
             accountId: requestData.accountId,
             bookmaker: requestData.bookmaker,
           },
           orderBy: { createdAt: 'desc' },
-          take: 3,
+          take: 3, // Только первые 3 для ускорения
           select: {
             id: true,
             userId: true,
@@ -141,6 +147,7 @@ export async function GET(
           },
         }) : Promise.resolve([]),
       
+      // User note - загружаем всегда, но это быстрый запрос
       prisma.botUser.findUnique({
           where: { userId: requestData.userId },
           select: { note: true },
@@ -158,29 +165,13 @@ export async function GET(
       amount: t.amount ? t.amount.toString() : null,
     }))
 
-    // Если photoFileUrl - большой base64, не включаем его в ответ (фото загружается через отдельный endpoint)
-    // Это предотвращает ошибки сериализации JSON при очень больших base64 строках
-    const MAX_PHOTO_SIZE = 1 * 1024 * 1024 // 1MB лимит для base64 в основном ответе
-    const isBase64Photo = requestData.photoFileUrl?.startsWith('data:image') || false
-    let photoFileUrl = (isBase64Photo && requestData.photoFileUrl && requestData.photoFileUrl.length > MAX_PHOTO_SIZE)
-      ? null // Большие base64 фото загружаются через /api/requests/[id]/photo
-      : requestData.photoFileUrl
-    
-    console.log('📸 [Request API] Фото чека в ответе:', {
-      requestId: id,
-      hasPhoto: !!requestData.photoFileUrl,
-      photoLength: requestData.photoFileUrl?.length || 0,
-      isBase64: isBase64Photo,
-      isLarge: isBase64Photo && requestData.photoFileUrl && requestData.photoFileUrl.length > MAX_PHOTO_SIZE,
-      willIncludeInResponse: !!photoFileUrl,
-      photoPreview: photoFileUrl ? photoFileUrl.substring(0, 50) + '...' : null
-    })
-    
+    // photoFileUrl НЕ включаем в основной ответ - он загружается отдельно через /photo endpoint
+    // Это значительно уменьшает размер ответа и ускоряет загрузку
     const responseData = {
       ...requestData,
       userId: requestData.userId.toString(),
       amount: requestData.amount ? requestData.amount.toString() : null,
-      photoFileUrl: photoFileUrl,
+      photoFileUrl: null, // Всегда null - загружается отдельно
       paymentMethod: requestData.paymentMethod || null,
       cryptoPayment: requestData.cryptoPayment ? {
         ...requestData.cryptoPayment,
@@ -193,22 +184,10 @@ export async function GET(
       userNote: userResult?.note || null,
     }
     
-    // Пытаемся вернуть ответ с фото, если не получается - без фото
-    try {
-      const response = NextResponse.json(createApiResponse(responseData))
-      // Добавляем кэширование для быстрой загрузки (5 секунд)
-      response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
-      return response
-    } catch {
-      // Если сериализация падает (скорее всего из-за фото), возвращаем без фото
-      const responseDataWithoutPhoto = {
-        ...responseData,
-        photoFileUrl: null,
-      }
-      const response = NextResponse.json(createApiResponse(responseDataWithoutPhoto))
-      response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
-      return response
-    }
+    const response = NextResponse.json(createApiResponse(responseData))
+    // Добавляем кэширование для быстрой загрузки (5 секунд)
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
+    return response
   } catch (error: any) {
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to fetch request'),
