@@ -22,19 +22,27 @@ interface Transaction {
 export default function HistoryPage() {
   const router = useRouter()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true) // Показываем лоадер при первой загрузке
+  const [loading, setLoading] = useState(false) // НЕ показываем лоадер - данные загружаются в фоне
   const [loadingMore, setLoadingMore] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
   const limit = 50 // Увеличиваем лимит для быстрой загрузки и меньше запросов
+  const [isInitialLoad, setIsInitialLoad] = useState(true) // Флаг первой загрузки
 
   const fetchHistory = useCallback(async (reset = false, currentOffset = 0) => {
-    if (reset) {
+    // При первой загрузке не показываем лоадер - данные загружаются в фоне
+    if (reset && !isInitialLoad) {
       setOffset(0)
       setTransactions([])
       setHasMore(true)
-      setLoading(true) // Показываем лоадер при сбросе
+      setLoading(true) // Показываем лоадер только при переключении табов (не при первой загрузке)
+    } else if (reset && isInitialLoad) {
+      // При первой загрузке просто сбрасываем состояние, но НЕ показываем лоадер
+      setOffset(0)
+      setTransactions([])
+      setHasMore(true)
+      setIsInitialLoad(false)
     } else {
       setLoadingMore(true)
     }
@@ -52,6 +60,7 @@ export default function HistoryPage() {
       // Используем кеширование для ускорения загрузки (API теперь кэширует на 5 сек)
       const response = await fetch(`/api/transaction-history?${params.toString()}`, {
         cache: 'default', // Используем кэш браузера и сервера
+        priority: 'high', // Высокий приоритет для быстрой загрузки
       })
       const data = await response.json()
 
@@ -75,14 +84,38 @@ export default function HistoryPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [activeTab, limit])
+  }, [activeTab, limit, isInitialLoad])
 
   // Загружаем данные при монтировании и при изменении таба
+  // Загружаем сразу без задержек - страница показывается мгновенно
   useEffect(() => {
-    // Убираем debounce для мгновенной загрузки при переключении табов
+    // Загружаем данные сразу при монтировании компонента
     fetchHistory(true, 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
+  
+  // Предзагружаем данные для всех табов в фоне для мгновенного переключения
+  useEffect(() => {
+    const prefetchTabs = ['all', 'deposit', 'withdraw', 'manual'] as const
+    prefetchTabs.forEach(tab => {
+      if (tab !== activeTab) {
+        const params = new URLSearchParams()
+        if (tab === 'manual') {
+          params.append('manual', 'true')
+        } else if (tab !== 'all') {
+          params.append('type', tab === 'deposit' ? 'deposit' : 'withdraw')
+        }
+        params.append('limit', limit.toString())
+        params.append('offset', '0')
+        
+        // Предзагружаем в фоне для кэша
+        fetch(`/api/transaction-history?${params.toString()}`, {
+          cache: 'default',
+          priority: 'low', // Низкий приоритет для фоновой загрузки
+        }).catch(() => {}) // Игнорируем ошибки предзагрузки
+      }
+    })
+  }, [activeTab, limit])
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -210,8 +243,8 @@ export default function HistoryPage() {
     })
   }, [transactions, getStatusLabel, getProcessedBy, getStatusState, getBankImage, formatDate])
 
-  // Показываем скелетон только если нет данных (показывается сразу)
-  const showSkeleton = transactions.length === 0 && !loadingMore
+  // Показываем скелетон только если нет данных И идет загрузка (не при первой загрузке)
+  const showSkeleton = transactions.length === 0 && loading && !isInitialLoad
 
   // Мемоизированный компонент для элемента списка транзакций
   const TransactionItem = memo(({ tx }: { tx: typeof processedTransactions[0] }) => {
@@ -380,10 +413,19 @@ export default function HistoryPage() {
       </div>
 
       {/* Список транзакций */}
-      {showSkeleton ? (
+      {transactions.length === 0 && !loadingMore ? (
+        // Показываем пустое состояние только если данных нет и не идет загрузка
+        <div className="text-center py-12 text-gray-400">
+          <p>История транзакций пуста</p>
+        </div>
+      ) : (
         <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 animate-pulse">
+          {processedTransactions.map((tx) => (
+            <TransactionItem key={tx.id} tx={tx} />
+          ))}
+          {/* Показываем скелетон только при загрузке дополнительных данных */}
+          {loadingMore && (
+            <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 animate-pulse">
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-3 flex-1">
                   <div className="w-12 h-12 bg-gray-700 rounded-lg"></div>
@@ -398,17 +440,7 @@ export default function HistoryPage() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      ) : transactions.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
-          <p>История транзакций пуста</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {processedTransactions.map((tx) => (
-            <TransactionItem key={tx.id} tx={tx} />
-          ))}
+          )}
         </div>
       )}
 
