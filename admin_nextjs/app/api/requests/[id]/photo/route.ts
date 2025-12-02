@@ -50,7 +50,7 @@ export async function GET(
       if (wrongFormatMatch) {
         const mimeType = wrongFormatMatch[1]
         const base64Data = wrongFormatMatch[3]
-        console.log('📸 [Photo API] Исправлен неправильный формат:', { id, was: str.substring(0, 30), mimeType })
+        console.log('📸 [Photo API] Исправлен неправильный формат:', { id, was: str.substring(0, 50), mimeType })
         return `data:image/${mimeType};base64,${base64Data}`
       }
       
@@ -59,25 +59,30 @@ export async function GET(
       if (partialMatch) {
         const mimeType = partialMatch[1]
         const base64Data = partialMatch[3].replace(/^[,;]/, '') // Убираем лишние символы
-        console.log('📸 [Photo API] Исправлен частичный формат:', { id, mimeType })
+        console.log('📸 [Photo API] Исправлен частичный формат:', { id, mimeType, base64Length: base64Data.length })
         return `data:image/${mimeType};base64,${base64Data}`
       }
       
-      // Если нет префикса data:image, добавляем его
+      // Если нет префикса data:image вообще, добавляем его
       // Пытаемся определить тип изображения по первым байтам base64
       let mimeType = 'image/jpeg' // По умолчанию JPEG
       
-      if (str.startsWith('iVBORw0KGgo')) {
+      if (str.startsWith('iVBORw0KGgo') || str.startsWith('iVBOR')) {
         mimeType = 'image/png'
       } else if (str.startsWith('R0lGODlh') || str.startsWith('R0lGODdh')) {
         mimeType = 'image/gif'
-      } else if (str.startsWith('/9j/')) {
+      } else if (str.startsWith('/9j/') || str.startsWith('/9j')) {
         mimeType = 'image/jpeg'
       } else if (str.startsWith('UklGR')) {
         mimeType = 'image/webp'
+      } else {
+        // Если не можем определить, но это похоже на валидный base64
+        if (str.length > 100 && /^[A-Za-z0-9+/=]+$/.test(str)) {
+          mimeType = 'image/jpeg' // Используем JPEG по умолчанию
+        }
       }
       
-      console.log('📸 [Photo API] Добавлен префикс к фото:', { id, mimeType })
+      console.log('📸 [Photo API] Добавлен префикс к фото:', { id, mimeType, originalLength: str.length })
       return `data:${mimeType};base64,${str}`
     }
     

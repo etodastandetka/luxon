@@ -1191,8 +1191,8 @@ export default function RequestDetailPage() {
               {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
             </h3>
             <div 
-              className="relative w-full flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity" 
-              style={{ minHeight: '200px', maxHeight: '500px' }}
+              className="relative w-full flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity bg-gray-900 rounded-lg overflow-hidden" 
+              style={{ minHeight: '200px' }}
               onClick={() => {
                 if (request.photoFileUrl) {
                   setShowPhotoModal(true)
@@ -1244,6 +1244,7 @@ export default function RequestDetailPage() {
                 
                 // Функция для нормализации base64 строки
                 const normalizeBase64 = (str: string): string => {
+                  if (!str) return str
                   if (str.startsWith('http')) return str // URL не нормализуем
                   
                   // Удаляем все пробелы и переносы строк
@@ -1251,6 +1252,7 @@ export default function RequestDetailPage() {
                   
                   // Если уже правильный формат, возвращаем как есть
                   if (/^data:image\/\w+;base64,.+$/.test(str)) {
+                    console.log('📸 [Photo] Формат уже правильный')
                     return str
                   }
                   
@@ -1259,7 +1261,7 @@ export default function RequestDetailPage() {
                   if (wrongFormatMatch) {
                     const mimeType = wrongFormatMatch[1]
                     const base64Data = wrongFormatMatch[3]
-                    console.log('📸 [Photo] Исправлен неправильный формат:', { was: str.substring(0, 30), mimeType })
+                    console.log('📸 [Photo] Исправлен неправильный формат:', { was: str.substring(0, 50), mimeType })
                     return `data:image/${mimeType};base64,${base64Data}`
                   }
                   
@@ -1268,26 +1270,40 @@ export default function RequestDetailPage() {
                   if (partialMatch) {
                     const mimeType = partialMatch[1]
                     const base64Data = partialMatch[3].replace(/^[,;]/, '') // Убираем лишние символы
-                    console.log('📸 [Photo] Исправлен частичный формат:', { mimeType })
+                    console.log('📸 [Photo] Исправлен частичный формат:', { mimeType, base64Length: base64Data.length })
                     return `data:image/${mimeType};base64,${base64Data}`
                   }
                   
-                  // Если нет префикса data:image, добавляем его
+                  // Если нет префикса data:image вообще, добавляем его
                   // Пытаемся определить тип изображения по первым байтам base64
                   let mimeType = 'image/jpeg' // По умолчанию JPEG
                   
-                  if (str.startsWith('iVBORw0KGgo')) {
+                  // Проверяем начало base64 строки (после декодирования первых байтов)
+                  if (str.startsWith('iVBORw0KGgo') || str.startsWith('iVBOR')) {
                     mimeType = 'image/png'
                   } else if (str.startsWith('R0lGODlh') || str.startsWith('R0lGODdh')) {
                     mimeType = 'image/gif'
-                  } else if (str.startsWith('/9j/')) {
+                  } else if (str.startsWith('/9j/') || str.startsWith('/9j')) {
                     mimeType = 'image/jpeg'
                   } else if (str.startsWith('UklGR')) {
                     mimeType = 'image/webp'
+                  } else {
+                    // Если не можем определить, пробуем по длине и содержимому
+                    // JPEG обычно начинается с FF D8 FF
+                    // Но в base64 это будет /9j/4AAQ...
+                    if (str.length > 100 && /^[A-Za-z0-9+/=]+$/.test(str)) {
+                      // Похоже на валидный base64, используем JPEG по умолчанию
+                      mimeType = 'image/jpeg'
+                    }
                   }
                   
-                  console.log('📸 [Photo] Добавлен префикс к фото:', mimeType)
-                  return `data:${mimeType};base64,${str}`
+                  console.log('📸 [Photo] Добавлен префикс к фото:', { mimeType, originalLength: str.length })
+                  const normalized = `data:${mimeType};base64,${str}`
+                  console.log('📸 [Photo] Нормализованная строка:', { 
+                    normalizedLength: normalized.length,
+                    startsWith: normalized.substring(0, 30)
+                  })
+                  return normalized
                 }
                 
                 // Нормализуем фото
@@ -1328,26 +1344,34 @@ export default function RequestDetailPage() {
                   <img
                     src={photoUrl}
                     alt="Фото чека об оплате"
-                    className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
+                    className="w-full h-auto rounded-lg object-contain"
                     style={{ 
-                      width: 'auto', 
-                      height: 'auto',
                       maxWidth: '100%',
-                      maxHeight: '500px',
+                      maxHeight: '600px',
+                      width: 'auto',
+                      height: 'auto',
                       display: 'block',
-                      margin: '0 auto' // Центрируем изображение
+                      margin: '0 auto',
+                      objectFit: 'contain',
+                      backgroundColor: 'transparent'
                     }}
                     loading="lazy"
+                    decoding="async"
                     onLoad={(e) => {
                       const target = e.target as HTMLImageElement
                       console.log('✅ [Photo] Фото успешно загружено (base64):', {
                         photoLength: photoUrl.length,
-                        photoType: photoUrl.substring(0, 30),
+                        photoType: photoUrl.substring(0, 50),
                         naturalWidth: target.naturalWidth,
                         naturalHeight: target.naturalHeight,
                         display: window.getComputedStyle(target).display,
-                        visibility: window.getComputedStyle(target).visibility
+                        visibility: window.getComputedStyle(target).visibility,
+                        opacity: window.getComputedStyle(target).opacity,
+                        srcLength: target.src?.length || 0
                       })
+                      // Убеждаемся, что изображение видно
+                      target.style.opacity = '1'
+                      target.style.visibility = 'visible'
                     }}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
@@ -1356,9 +1380,11 @@ export default function RequestDetailPage() {
                         photoUrl: photoUrl.substring(0, 100),
                         photoLength: photoUrl.length,
                         src: target.src?.substring(0, 100),
+                        srcLength: target.src?.length || 0,
                         naturalWidth: target.naturalWidth,
                         naturalHeight: target.naturalHeight,
-                        complete: target.complete
+                        complete: target.complete,
+                        isBase64Valid: /^data:image\/\w+;base64,.+$/.test(photoUrl)
                       })
                       
                       // Показываем сообщение об ошибке
@@ -1370,6 +1396,7 @@ export default function RequestDetailPage() {
                           <p class="text-red-300 text-sm">⚠️ Ошибка загрузки фото</p>
                           <p class="text-red-400 text-xs mt-1">Попробуйте обновить страницу</p>
                           <p class="text-red-400 text-xs mt-1">Длина base64: ${photoUrl.length} символов</p>
+                          <p class="text-red-400 text-xs mt-1">Формат: ${photoUrl.substring(0, 30)}...</p>
                         `
                         target.style.display = 'none'
                         parent.appendChild(errorDiv)
