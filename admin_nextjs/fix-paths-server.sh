@@ -1,21 +1,19 @@
 #!/bin/bash
-# ПОЛНОЕ исправление всех путей с правильным подсчётом уровней
+# Скрипт для исправления путей на сервере (с принудительным сбросом локальных изменений)
 
 set -e
 
-echo "🔧 ПОЛНОЕ исправление всех путей..."
+echo "🔧 Исправление путей на сервере..."
 echo ""
 
 cd /var/www/luxon/admin_nextjs || exit 1
 
-# 1. Принудительно обновляем ВСЁ из git (сбрасываем все локальные изменения)
-echo "📥 Принудительно обновляю ВСЁ из git..."
-echo "⚠️  ВНИМАНИЕ: Все локальные изменения будут удалены!"
+# 1. Принудительно сбрасываем ВСЕ локальные изменения
+echo "📥 Сбрасываю все локальные изменения..."
 git fetch origin main
 git reset --hard origin/main
 git clean -fd
-git pull origin main || true
-echo "✅ Файлы обновлены"
+echo "✅ Локальные изменения сброшены"
 echo ""
 
 # 2. Восстанавливаем ВСЕ файлы из lib/
@@ -42,42 +40,7 @@ if [ -f "app/api/deposit-balance/route.ts" ]; then
     echo "  ✅ Исправлено"
 fi
 
-# 5. Исправляем app/dashboard/crypto/page.tsx
-echo "📝 Исправляю app/dashboard/crypto/page.tsx..."
-if [ -f "app/dashboard/crypto/page.tsx" ]; then
-    sed -i "s|from 'a/components/Layout'|from '../../../components/Layout'|g" app/dashboard/crypto/page.tsx
-    sed -i 's|from "a/components/Layout"|from "../../../components/Layout"|g' app/dashboard/crypto/page.tsx
-    sed -i "s|from '@/components/Layout'|from '../../../components/Layout'|g" app/dashboard/crypto/page.tsx
-    sed -i 's|from "@/components/Layout"|from "../../../components/Layout"|g' app/dashboard/crypto/page.tsx
-    sed -i "s|from '/components/Layout'|from '../../../components/Layout'|g" app/dashboard/crypto/page.tsx
-    sed -i 's|from "/components/Layout"|from "../../../components/Layout"|g' app/dashboard/crypto/page.tsx
-    echo "  ✅ Исправлено"
-fi
-
-# 6. Исправляем app/api/auth/login/route.ts
-echo "📝 Исправляю app/api/auth/login/route.ts..."
-if [ -f "app/api/auth/login/route.ts" ]; then
-    sed -i "s|'a/lib/auth'|'../../../../lib/auth'|g" app/api/auth/login/route.ts
-    sed -i 's|"a/lib/auth"|"../../../../lib/auth"|g' app/api/auth/login/route.ts
-    sed -i "s|'@/lib/auth'|'../../../../lib/auth'|g" app/api/auth/login/route.ts
-    sed -i 's|"@/lib/auth"|"../../../../lib/auth"|g' app/api/auth/login/route.ts
-    echo "  ✅ Исправлено"
-fi
-
-# 7. Исправляем app/api/auth/2fa/* - путь ../../../../../lib/ (6 уровней)
-echo "📝 Исправляю app/api/auth/2fa/*..."
-for file in app/api/auth/2fa/*/route.ts; do
-    if [ -f "$file" ]; then
-        sed -i "s|'a/lib/|'../../../../../lib/|g" "$file"
-        sed -i 's|"a/lib/|"../../../../../lib/|g' "$file"
-        sed -i "s|'@/lib/|'../../../../../lib/|g" "$file"
-        sed -i 's|"@/lib/|"../../../../../lib/|g' "$file"
-        sed -i "s|'../../../../lib/|'../../../../../lib/|g" "$file"
-        sed -i 's|"../../../../lib/|"../../../../../lib/|g' "$file"
-    fi
-done
-
-# 8. Исправляем неправильные пути (2 уровня вместо 3, 3 вместо 4)
+# 5. Исправляем неправильные пути (2 уровня вместо 3, 3 вместо 4)
 echo "📝 Исправляю неправильные пути в app/dashboard..."
 find app/dashboard -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from '../../lib/|from '../../../lib/|g" {} \;
 find app/dashboard -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|from "../../lib/|from "../../../lib/|g' {} \;
@@ -86,15 +49,13 @@ echo "📝 Исправляю неправильные пути в app/api..."
 find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" ! -path "*/crypto-pay/*" ! -path "*/requests/\[*\]/*" ! -path "*/limits/*" ! -path "*/users/\[*\]/*" -exec sed -i "s|from '../../../lib/|from '../../../../lib/|g" {} \;
 find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" ! -path "*/crypto-pay/*" ! -path "*/requests/\[*\]/*" ! -path "*/limits/*" ! -path "*/users/\[*\]/*" -exec sed -i 's|from "../../../lib/|from "../../../../lib/|g' {} \;
 
-# 9. Исправляем все остальные файлы (алиасы и абсолютные пути)
+# 6. Исправляем алиасы и абсолютные пути
 echo "📝 Исправляю алиасы и абсолютные пути..."
-# Пути начинающиеся с /
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from '/components/|from '../../../components/|g" {} \;
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|from "/components/|from "../../../components/|g' {} \;
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i "s|from '/lib/|from '../../../../lib/|g" {} \;
 find app -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sed -i 's|from "/lib/|from "../../../../lib/|g' {} \;
 
-# Алиасы a/ и @/
 find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" -exec sed -i "s|'a/lib/|'../../../../lib/|g" {} \;
 find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" -exec sed -i 's|"a/lib/|"../../../../lib/|g' {} \;
 find app/api -type f \( -name "*.ts" -o -name "*.tsx" \) ! -path "*/auth/2fa/*" -exec sed -i "s|'@/lib/|'../../../../lib/|g" {} \;
@@ -113,6 +74,19 @@ sed -i "s|'a/lib/|'./lib/|g" middleware.ts 2>/dev/null || true
 sed -i 's|"a/lib/|"./lib/|g' middleware.ts 2>/dev/null || true
 sed -i "s|'@/lib/|'./lib/|g" middleware.ts 2>/dev/null || true
 sed -i 's|"@/lib/|"./lib/|g' middleware.ts 2>/dev/null || true
+
+# 7. Исправляем app/api/auth/2fa/* - путь ../../../../../lib/ (6 уровней)
+echo "📝 Исправляю app/api/auth/2fa/*..."
+for file in app/api/auth/2fa/*/route.ts; do
+    if [ -f "$file" ]; then
+        sed -i "s|'a/lib/|'../../../../../lib/|g" "$file"
+        sed -i 's|"a/lib/|"../../../../../lib/|g' "$file"
+        sed -i "s|'@/lib/|'../../../../../lib/|g" "$file"
+        sed -i 's|"@/lib/|"../../../../../lib/|g' "$file"
+        sed -i "s|'../../../../lib/|'../../../../../lib/|g" "$file"
+        sed -i 's|"../../../../lib/|"../../../../../lib/|g' "$file"
+    fi
+done
 
 echo ""
 echo "✅ Исправление завершено!"
