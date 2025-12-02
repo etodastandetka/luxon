@@ -13,6 +13,11 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value
   const ip = getClientIP(request)
   const pathname = request.nextUrl.pathname
+  
+  // Детальное логирование для отладки 2FA
+  if (pathname === '/dashboard' || pathname === '/login/2fa') {
+    console.log(`🔍 Middleware: path=${pathname}, hasToken=${!!token}, tokenPreview=${token ? token.substring(0, 20) + '...' : 'none'}, IP=${ip}`)
+  }
 
   // 🛡️ ЗАЩИТА ОТ DDoS И АТАК
 

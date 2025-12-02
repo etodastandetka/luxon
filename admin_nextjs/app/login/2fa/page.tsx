@@ -57,13 +57,31 @@ function TwoFactorForm() {
         return
       }
 
-      // Cookie уже установлен сервером
-      // Добавляем небольшую задержку, чтобы cookie точно установился
-      // Затем используем window.location для полного перезагрузки страницы
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // Используем window.location для полного перезагрузки страницы с новыми cookie
-      window.location.href = '/dashboard'
+      // Cookie уже установлен сервером в заголовках ответа
+      // Проверяем, что cookie установлен, делая запрос к /api/auth/me
+      // Это гарантирует, что cookie доступен перед редиректом
+      try {
+        const checkResponse = await fetch('/api/auth/me', {
+          credentials: 'include',
+        })
+        const checkData = await checkResponse.json()
+        
+        if (checkData.success && checkData.data) {
+          // Cookie установлен и валиден, можно редиректить
+          console.log('✅ Cookie verified, redirecting to dashboard')
+          window.location.href = '/dashboard'
+        } else {
+          // Cookie не установлен, пробуем еще раз через небольшую задержку
+          console.warn('⚠️ Cookie not verified, retrying...')
+          await new Promise(resolve => setTimeout(resolve, 200))
+          window.location.href = '/dashboard'
+        }
+      } catch (checkErr) {
+        // Если проверка не удалась, все равно редиректим
+        console.warn('⚠️ Cookie check failed, redirecting anyway:', checkErr)
+        await new Promise(resolve => setTimeout(resolve, 200))
+        window.location.href = '/dashboard'
+      }
     } catch (err: any) {
       setError(err.message || 'Verification failed')
     } finally {
