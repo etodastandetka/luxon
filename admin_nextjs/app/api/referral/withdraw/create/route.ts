@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '../../../../../lib/prisma'
-import { sendTelegramGroupMessage } from '../../../../../lib/telegram-group'
+import { prisma } from '@/lib/prisma'
+import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 
 export async function OPTIONS() {
   return new NextResponse(null, {

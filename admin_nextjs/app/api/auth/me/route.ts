@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '../../../../lib/api-helpers'
-import { prisma } from '../../../../lib/prisma'
-import { createApiResponse } from '../../../../lib/api-helpers'
+import { getAuthUser } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+import { createApiResponse } from '@/lib/api-helpers'
 
 export async function GET(request: NextRequest) {
   try {

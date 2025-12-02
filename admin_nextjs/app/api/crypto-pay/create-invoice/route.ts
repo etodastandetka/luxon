@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createInvoice, getExchangeRates } from '../../../../lib/crypto-pay'
+import { createInvoice, getExchangeRates } from '@/lib/crypto-pay'
 // @ts-ignore - @koo0ki/send types may not be available
 import { CryptoPayClient, Networks } from "@koo0ki/send"
 

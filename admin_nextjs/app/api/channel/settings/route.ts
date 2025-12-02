@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createApiResponse } from '../../../../lib/api-helpers'
-import { prisma } from '../../../../lib/prisma'
+import { createApiResponse } from '@/lib/api-helpers'
+import { prisma } from '@/lib/prisma'
 import { 
   protectAPI, 
   rateLimit, 
   getClientIP 
-} from '../../../../lib/security'
+} from '@/lib/security'
 
 // Публичный эндпоинт для получения настроек канала (без авторизации, для бота)
 export async function OPTIONS() {

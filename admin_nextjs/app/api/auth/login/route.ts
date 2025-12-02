@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateUser } from '../../../../lib/auth'
-import { createApiResponse } from '../../../../lib/api-helpers'
-import { is2FAEnabled } from '../../../../lib/two-factor'
-import { prisma } from '../../../../lib/prisma'
+import { authenticateUser } from '@/lib/auth'
+import { createApiResponse } from '@/lib/api-helpers'
+import { is2FAEnabled } from '@/lib/two-factor'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {

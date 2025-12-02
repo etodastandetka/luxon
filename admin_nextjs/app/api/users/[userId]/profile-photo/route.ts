@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, createApiResponse } from '../../../../../lib/api-helpers'
+import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 
 const DEFAULT_TIMEOUT_MS = 2000 // Уменьшаем таймаут с 5 до 2 секунд
 

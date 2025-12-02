@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getExchangeRates } from '../../../../lib/crypto-pay'
+import { getExchangeRates } from '@/lib/crypto-pay'
 
 // Кешируем курс валют на 60 секунд (он обновляется не так часто)
 export const revalidate = 60

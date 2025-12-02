@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Layout from '../../../components/Layout'
-import { getBalance, getExchangeRates, Balance, ExchangeRate } from '../../../lib/crypto-pay'
+import { getBalance, getExchangeRates, Balance, ExchangeRate } from '@/lib/crypto-pay'
 
 export default function CryptoPage() {
   const router = useRouter()

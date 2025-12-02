@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '../../../../lib/prisma'
-import { requireAuth, createApiResponse } from '../../../../lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 
 export async function PATCH(
   request: NextRequest,

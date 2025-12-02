@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '../../../../../lib/prisma'
-import { requireAuth, createApiResponse } from '../../../../../lib/api-helpers'
+import { prisma } from '@/lib/prisma'
+import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 
 // Функция для отправки уведомления пользователю в Telegram
 async function sendTelegramNotification(userId: bigint, message: string) {

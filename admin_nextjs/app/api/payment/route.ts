@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '../../../../lib/prisma'
-import { createApiResponse } from '../../../../lib/api-helpers'
-import { sendTelegramGroupMessage } from '../../../../lib/telegram-group'
+import { prisma } from '@/lib/prisma'
+import { createApiResponse } from '@/lib/api-helpers'
+import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 import { 
   rateLimit, 
   sanitizeInput, 
   containsSQLInjection, 
   containsXSS,
   getClientIP 
-} from '../../../../lib/security'
+} from '@/lib/security'
 
 /**
  * Планирует отложенное уведомление о депозите через минуту

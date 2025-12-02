@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createApiResponse } from '../../../../../lib/api-helpers'
+import { createApiResponse } from '@/lib/api-helpers'
 import { 
   verifyToken, 
   verifyBackupCode,
   getUserSecret,
   is2FAEnabled 
-} from '../../../../../lib/two-factor'
-import { prisma } from '../../../../../lib/prisma'
-import { generateToken } from '../../../../../lib/auth'
+} from '@/lib/two-factor'
+import { prisma } from '@/lib/prisma'
+import { generateToken } from '@/lib/auth'
 
 /**
  * POST /api/auth/2fa/verify
