@@ -55,6 +55,7 @@ const nextConfig = {
     DATABASE_URL: process.env.DATABASE_URL,
     JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
     BOT_TOKEN: process.env.BOT_TOKEN,
+    GEOLOCATION_ENABLED: process.env.GEOLOCATION_ENABLED, // Для middleware
   },
   
   // Webpack конфигурация для правильного разрешения путей

@@ -118,10 +118,19 @@ export function middleware(request: NextRequest) {
          // Проверяем, прошла ли проверка геолокации
          // Исключаем: API endpoints, страницу геолокации, статические файлы
          // Можно отключить через .env: GEOLOCATION_ENABLED=false
-         const isGeolocationEnabled = process.env.GEOLOCATION_ENABLED !== 'false'
+         const geolocationEnvValue = process.env.GEOLOCATION_ENABLED
+         // Проверяем явно: если переменная установлена в 'false' (строка), отключаем
+         // Если переменная не установлена или установлена в 'true', включаем
+         const isGeolocationEnabled = geolocationEnvValue !== 'false' && geolocationEnvValue !== '0'
+         
          const isGeolocationPage = pathname === '/geolocation'
          const isApiRoute = pathname.startsWith('/api/')
          const isStaticFile = pathname.startsWith('/_next/') || pathname.startsWith('/favicon')
+         
+         // Логируем только при первом запросе или если геолокация отключена (для отладки)
+         if (pathname === '/dashboard' || pathname === '/') {
+           console.log(`🗺️  Геолокация: enabled=${isGeolocationEnabled}, env=${geolocationEnvValue || 'не установлено'}, path=${pathname}`)
+         }
          
          if (isGeolocationEnabled && !isApiRoute && !isGeolocationPage && !isStaticFile) {
            const geolocationVerified = request.cookies.get('geolocation_verified')?.value
@@ -132,6 +141,9 @@ export function middleware(request: NextRequest) {
              geolocationUrl.searchParams.set('return', pathname)
              return NextResponse.redirect(geolocationUrl)
            }
+         } else if (!isGeolocationEnabled && !isApiRoute && !isGeolocationPage && !isStaticFile) {
+           // Если геолокация отключена, пропускаем проверку
+           console.log(`✅ Геолокация отключена, пропускаем проверку для ${pathname}`)
          }
 
   // 7. Rate limiting для страниц (менее строгий)
