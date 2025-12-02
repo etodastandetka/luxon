@@ -117,31 +117,6 @@ export default function RequestDetailPage() {
           if (data.success && isMountedRef.current) {
             const requestData = data.data
             
-            // Логируем photoFileUrl для отладки
-            console.log('📸 [Request Detail] Загружены данные заявки:', {
-              id: requestData.id,
-              hasPhoto: !!requestData.photoFileUrl,
-              photoLength: requestData.photoFileUrl?.length || 0,
-              isBase64: requestData.photoFileUrl?.startsWith('data:image') || false,
-              photoPreview: requestData.photoFileUrl?.substring(0, 100) || 'null',
-              photoType: requestData.photoFileUrl?.substring(0, 20) || 'null',
-              fullPhotoUrl: requestData.photoFileUrl // Временно для отладки
-            })
-            
-            // ВАЖНО: Проверяем, что photoFileUrl действительно есть
-            if (!requestData.photoFileUrl || requestData.photoFileUrl.trim() === '') {
-              console.error('❌ [Request Detail] photoFileUrl ПУСТОЙ или NULL!', {
-                id: requestData.id,
-                photoFileUrl: requestData.photoFileUrl,
-                type: typeof requestData.photoFileUrl
-              })
-            } else {
-              console.log('✅ [Request Detail] photoFileUrl найден:', {
-                id: requestData.id,
-                startsWith: requestData.photoFileUrl.substring(0, 20),
-                length: requestData.photoFileUrl.length
-              })
-            }
             
             // Устанавливаем данные сразу - все данные уже загружены в одном запросе
             setRequest(requestData)
@@ -149,6 +124,23 @@ export default function RequestDetailPage() {
             // Убираем loading после установки данных
             if (showLoading) {
               setLoading(false)
+            }
+            
+            // Если фото нет в основном ответе, загружаем его через отдельный endpoint
+            if (!requestData.photoFileUrl || requestData.photoFileUrl.trim() === '') {
+              fetch(`/api/requests/${requestId}/photo`)
+                .then(res => res.json())
+                .then(photoData => {
+                  if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
+                    setRequest(prev => prev ? {
+                      ...prev,
+                      photoFileUrl: photoData.data.photoFileUrl
+                    } : null)
+                  }
+                })
+                .catch(err => {
+                  console.error('Failed to fetch photo from separate endpoint:', err)
+                })
             }
             
             // Обновляем интервал автообновления в зависимости от статуса
@@ -1134,15 +1126,8 @@ export default function RequestDetailPage() {
       {/* Фото чека или QR-кода (если есть) */}
       {(() => {
         const hasPhoto = request.photoFileUrl && request.photoFileUrl.trim() !== ''
-        console.log('📸 [Render] Проверка отображения фото:', {
-          hasPhoto,
-          photoFileUrl: request.photoFileUrl ? `${request.photoFileUrl.substring(0, 50)}...` : 'null',
-          photoLength: request.photoFileUrl?.length || 0,
-          isBase64: request.photoFileUrl?.startsWith('data:image') || false
-        })
         
         if (!hasPhoto) {
-          console.warn('⚠️ [Render] photoFileUrl пустой или null, фото не будет отображено')
           return null
         }
         
