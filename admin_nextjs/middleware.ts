@@ -8,7 +8,7 @@ import {
   blockIP 
 } from './lib/security'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value
   const ip = getClientIP(request)
   const pathname = request.nextUrl.pathname
