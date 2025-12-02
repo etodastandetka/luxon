@@ -81,6 +81,12 @@ const nextConfig = {
     // Включаем полное разрешение путей
     config.resolve.fullySpecified = false
     
+    // Добавляем alias для lib/
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@/lib': path.resolve(__dirname, 'lib'),
+    }
+    
     return config
   },
   
