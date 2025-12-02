@@ -17,6 +17,18 @@ if [ ! -d "venv-2fa" ]; then
     echo ""
 fi
 
+# Проверяем и обновляем схему БД для 2FA
+echo "🗄️  Проверяю схему базы данных..."
+if [ -f "scripts/update-db-2fa.sh" ]; then
+    chmod +x scripts/update-db-2fa.sh
+    ./scripts/update-db-2fa.sh
+    echo ""
+else
+    echo "⚠️  Скрипт обновления БД не найден, пропускаю..."
+    echo "   Убедитесь, что схема БД обновлена: npm run db:push"
+    echo ""
+fi
+
 # Активируем виртуальное окружение
 source venv-2fa/bin/activate
 
