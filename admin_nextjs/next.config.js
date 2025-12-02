@@ -56,50 +56,29 @@ const nextConfig = {
     JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
     BOT_TOKEN: process.env.BOT_TOKEN,
   },
-  
+
   // Конфигурация webpack для правильного разрешения алиасов
-  webpack: (config, { isServer, dev }) => {
+  webpack: (config) => {
     const path = require('path')
     
-    // Убеждаемся, что resolve существует
+    // Убеждаемся, что resolve и alias существуют
     if (!config.resolve) {
       config.resolve = {}
     }
+    if (!config.resolve.alias) {
+      config.resolve.alias = {}
+    }
     
-    // Явно устанавливаем алиас @ с полным путем
+    // Добавляем алиас @ с полным путем, сохраняя существующие алиасы
     const rootPath = path.resolve(__dirname)
-    
-    // Полностью переопределяем alias, чтобы гарантировать правильную настройку
     config.resolve.alias = {
+      ...config.resolve.alias,
       '@': rootPath,
     }
     
-    // Добавляем корневую директорию в modules
-    if (!config.resolve.modules) {
-      config.resolve.modules = []
-    }
-    if (!Array.isArray(config.resolve.modules)) {
-      config.resolve.modules = [config.resolve.modules]
-    }
-    config.resolve.modules = [
-      rootPath,
-      path.resolve(rootPath, 'node_modules'),
-      ...config.resolve.modules.filter((m) => m !== rootPath),
-    ]
-    
-    // Убеждаемся, что расширения файлов включены
-    if (!config.resolve.extensions) {
-      config.resolve.extensions = []
-    }
-    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.json']
-    extensions.forEach((ext) => {
-      if (!config.resolve.extensions.includes(ext)) {
-        config.resolve.extensions.push(ext)
-      }
-    })
-    
     return config
   },
+  
 }
 
 module.exports = nextConfig
