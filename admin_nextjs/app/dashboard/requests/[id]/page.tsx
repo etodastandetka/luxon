@@ -118,6 +118,40 @@ export default function RequestDetailPage() {
           if (data.success && isMountedRef.current) {
             const requestData = data.data
             
+            // Нормализуем photoFileUrl если он есть в основном ответе
+            if (requestData.photoFileUrl && typeof requestData.photoFileUrl === 'string' && !requestData.photoFileUrl.startsWith('http')) {
+              // Функция нормализации
+              const normalizeBase64 = (str: string): string => {
+                if (str.startsWith('http')) return str
+                str = str.trim().replace(/\s/g, '')
+                
+                if (/^data:image\/\w+;base64,.+$/.test(str)) {
+                  return str
+                }
+                
+                const wrongFormatMatch = str.match(/^data:image\/(jpeg|png|gif|webp|jpg)base64,?(.+)$/i)
+                if (wrongFormatMatch) {
+                  const mimeType = wrongFormatMatch[1].toLowerCase()
+                  const base64Data = wrongFormatMatch[2]
+                  const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
+                  console.log('📸 [Request Detail] Нормализован формат фото из основного ответа:', normalizedMimeType)
+                  return `data:image/${normalizedMimeType};base64,${base64Data}`
+                }
+                
+                const generalWrongMatch = str.match(/^data:image\/(\w+)base64,?(.+)$/i)
+                if (generalWrongMatch) {
+                  const mimeType = generalWrongMatch[1].toLowerCase()
+                  const base64Data = generalWrongMatch[2]
+                  const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
+                  console.log('📸 [Request Detail] Нормализован общий формат фото:', normalizedMimeType)
+                  return `data:image/${normalizedMimeType};base64,${base64Data}`
+                }
+                
+                return str
+              }
+              
+              requestData.photoFileUrl = normalizeBase64(requestData.photoFileUrl)
+            }
             
             // Устанавливаем данные сразу - все данные уже загружены в одном запросе
             setRequest(requestData)
@@ -145,10 +179,19 @@ export default function RequestDetailPage() {
               })
             }
             
-            // Если фото нет в основном ответе, загружаем его через отдельный endpoint
-            if (!requestData.photoFileUrl || requestData.photoFileUrl.trim() === '') {
+            // Если фото нет в основном ответе (null или пустая строка), загружаем его через отдельный endpoint
+            // Это может быть если фото большое (>1MB) или просто отсутствует
+            const needsSeparateFetch = !requestData.photoFileUrl || 
+                                      (typeof requestData.photoFileUrl === 'string' && requestData.photoFileUrl.trim() === '')
+            
+            if (needsSeparateFetch) {
               if (typeof window !== 'undefined') {
-                console.log('[DEBUG] Photo not in main response, fetching from /photo endpoint')
+                console.log('[DEBUG] Photo not in main response, fetching from /photo endpoint', {
+                  photoFileUrl: requestData.photoFileUrl,
+                  isNull: requestData.photoFileUrl === null,
+                  isEmpty: requestData.photoFileUrl === '',
+                  isString: typeof requestData.photoFileUrl === 'string'
+                })
               }
               setPhotoLoading(true)
               fetch(`/api/requests/${requestId}/photo`)
@@ -163,22 +206,67 @@ export default function RequestDetailPage() {
                     console.log('[DEBUG] Photo endpoint response:', {
                       success: photoData.success,
                       hasPhoto: !!photoData.data?.photoFileUrl,
-                      photoLength: photoData.data?.photoFileUrl?.length || 0
+                      photoLength: photoData.data?.photoFileUrl?.length || 0,
+                      photoPreview: photoData.data?.photoFileUrl ? photoData.data.photoFileUrl.substring(0, 50) : null,
+                      isBase64: photoData.data?.photoFileUrl?.startsWith('data:image') || false
                     })
                   }
                   if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
+                    // Нормализуем фото перед сохранением в state
+                    let normalizedPhoto = photoData.data.photoFileUrl
+                    
+                    // Применяем нормализацию если нужно
+                    if (normalizedPhoto && !normalizedPhoto.startsWith('http')) {
+                      // Функция нормализации (та же что используется при отображении)
+                      const normalizeBase64 = (str: string): string => {
+                        if (str.startsWith('http')) return str
+                        str = str.trim().replace(/\s/g, '')
+                        
+                        if (/^data:image\/\w+;base64,.+$/.test(str)) {
+                          return str
+                        }
+                        
+                        const wrongFormatMatch = str.match(/^data:image\/(jpeg|png|gif|webp|jpg)base64,?(.+)$/i)
+                        if (wrongFormatMatch) {
+                          const mimeType = wrongFormatMatch[1].toLowerCase()
+                          const base64Data = wrongFormatMatch[2]
+                          const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
+                          return `data:image/${normalizedMimeType};base64,${base64Data}`
+                        }
+                        
+                        const generalWrongMatch = str.match(/^data:image\/(\w+)base64,?(.+)$/i)
+                        if (generalWrongMatch) {
+                          const mimeType = generalWrongMatch[1].toLowerCase()
+                          const base64Data = generalWrongMatch[2]
+                          const normalizedMimeType = mimeType === 'jpg' ? 'jpeg' : mimeType
+                          return `data:image/${normalizedMimeType};base64,${base64Data}`
+                        }
+                        
+                        return str
+                      }
+                      
+                      normalizedPhoto = normalizeBase64(normalizedPhoto)
+                    }
+                    
                     setRequest(prev => prev ? {
                       ...prev,
-                      photoFileUrl: photoData.data.photoFileUrl
+                      photoFileUrl: normalizedPhoto
                     } : null)
                     setPhotoLoading(false)
                     if (typeof window !== 'undefined') {
-                      console.log('[DEBUG] Photo loaded and set in state successfully')
+                      console.log('[DEBUG] Photo loaded and set in state successfully', {
+                        normalizedLength: normalizedPhoto.length,
+                        normalizedPreview: normalizedPhoto.substring(0, 50)
+                      })
                     }
                   } else {
                     setPhotoLoading(false)
                     if (typeof window !== 'undefined') {
-                      console.warn('[DEBUG] Photo not found in /photo endpoint response')
+                      console.warn('[DEBUG] Photo not found in /photo endpoint response', {
+                        success: photoData.success,
+                        hasData: !!photoData.data,
+                        hasPhotoFileUrl: !!photoData.data?.photoFileUrl
+                      })
                     }
                   }
                 })
@@ -191,7 +279,10 @@ export default function RequestDetailPage() {
             } else {
               setPhotoLoading(false)
               if (typeof window !== 'undefined') {
-                console.log('[DEBUG] Photo found in main response')
+                console.log('[DEBUG] Photo found in main response', {
+                  photoLength: requestData.photoFileUrl?.length || 0,
+                  photoPreview: requestData.photoFileUrl ? requestData.photoFileUrl.substring(0, 50) : null
+                })
               }
             }
             
