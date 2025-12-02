@@ -66,24 +66,38 @@ export async function middleware(request: NextRequest) {
       isValidToken = !!payload
       if (payload) {
         tokenPayload = payload
-        console.log(`✅ Valid token detected for ${pathname}, user: ${payload.username}, IP: ${ip}`)
+        console.log(`✅ Valid token detected for ${pathname}, user: ${payload.username}, IP: ${ip}, userId: ${payload.userId}`)
       } else {
-        console.log(`⚠️  Invalid token for ${pathname}, IP: ${ip}`)
+        console.log(`⚠️  Invalid token (verifyToken returned null) for ${pathname}, IP: ${ip}, token: ${token.substring(0, 30)}...`)
       }
     } catch (error) {
-      console.log(`⚠️  Token verification error for ${pathname}, IP: ${ip}:`, error)
+      console.log(`⚠️  Token verification error (exception) for ${pathname}, IP: ${ip}:`, error)
       isValidToken = false
     }
+  } else {
+    console.log(`⚠️  No token cookie found for ${pathname}, IP: ${ip}`)
   }
   
   // Не блокируем публичные маршруты и страницы (login должен быть доступен всегда)
   // Также не блокируем если есть валидный токен (пользователь уже авторизован)
-  if (!isInternalRequest && !isPublicRoute && !isPublicPage && !pathname.startsWith('/api/geolocation') && !isValidToken && isIPBlocked(ip)) {
-    console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname} (no valid token)`)
+  const shouldCheckIPBlock = !isInternalRequest && !isPublicRoute && !isPublicPage && !pathname.startsWith('/api/geolocation') && !isValidToken
+  const isIPCurrentlyBlocked = isIPBlocked(ip)
+  
+  if (pathname === '/dashboard') {
+    console.log(`🔍 IP Block Check: shouldCheck=${shouldCheckIPBlock}, isBlocked=${isIPCurrentlyBlocked}, isValidToken=${isValidToken}, isInternal=${isInternalRequest}, isPublicRoute=${isPublicRoute}, isPublicPage=${isPublicPage}`)
+  }
+  
+  if (shouldCheckIPBlock && isIPCurrentlyBlocked) {
+    console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname} (no valid token, IP is blocked)`)
     return NextResponse.json(
       { error: 'Forbidden', message: 'Access denied' },
       { status: 403 }
     )
+  }
+  
+  // Если токен валиден, но IP был заблокирован - разблокируем его (пользователь авторизован)
+  if (isValidToken && isIPCurrentlyBlocked && pathname === '/dashboard') {
+    console.log(`✅ Valid token found, but IP ${ip} was blocked. User is authenticated, allowing access.`)
   }
 
   // 2. Защита API endpoints (пропускаем публичные API)
