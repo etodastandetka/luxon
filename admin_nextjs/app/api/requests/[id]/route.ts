@@ -195,14 +195,19 @@ export async function GET(
     
     // Пытаемся вернуть ответ с фото, если не получается - без фото
     try {
-      return NextResponse.json(createApiResponse(responseData))
+      const response = NextResponse.json(createApiResponse(responseData))
+      // Добавляем кэширование для быстрой загрузки (5 секунд)
+      response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
+      return response
     } catch {
       // Если сериализация падает (скорее всего из-за фото), возвращаем без фото
       const responseDataWithoutPhoto = {
         ...responseData,
         photoFileUrl: null,
       }
-      return NextResponse.json(createApiResponse(responseDataWithoutPhoto))
+      const response = NextResponse.json(createApiResponse(responseDataWithoutPhoto))
+      response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
+      return response
     }
   } catch (error: any) {
     return NextResponse.json(

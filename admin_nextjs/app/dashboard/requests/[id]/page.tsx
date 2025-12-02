@@ -53,7 +53,7 @@ export default function RequestDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [request, setRequest] = useState<RequestDetail | null>(null)
-  const [loading, setLoading] = useState(false) // Начинаем с false - показываем скелетон сразу
+  const [loading, setLoading] = useState(true) // Начинаем с true - показываем скелетон сразу
   const [searchAmount, setSearchAmount] = useState('')
   const [exactAmount, setExactAmount] = useState(false)
   const [processedOnly, setProcessedOnly] = useState(false)
@@ -68,7 +68,10 @@ export default function RequestDetailPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<'completed' | 'approved' | 'rejected' | null>(null)
   const [photoLoading, setPhotoLoading] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+  const [imageLoading, setImageLoading] = useState(true)
   const isMountedRef = useRef(true)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     isMountedRef.current = true
@@ -86,17 +89,19 @@ export default function RequestDetailPage() {
       }
 
       const abortController = new AbortController()
-      let intervalId: NodeJS.Timeout | null = null
 
       // Загружаем данные сразу, без показа индикатора загрузки
       const fetchRequest = async (showLoading = true) => {
+        // Если это первая загрузка, не показываем loading - показываем скелетон сразу
+        if (!showLoading) {
+          // Для автообновления не меняем состояние loading
+        }
         
         try {
-          // Используем кэширование для более быстрой загрузки
+          // Используем кэш для быстрой загрузки
           const response = await fetch(`/api/requests/${requestId}`, {
             signal: abortController.signal,
-            cache: showLoading ? 'no-store' : 'default', // При первой загрузке не кэшируем, при автообновлении используем кэш
-            next: { revalidate: 0 }, // Отключаем кэширование для свежих данных
+            cache: 'default', // Используем кэш браузера для мгновенной загрузки
           })
           
           if (abortController.signal.aborted || !isMountedRef.current) return
@@ -118,78 +123,40 @@ export default function RequestDetailPage() {
           if (data.success && isMountedRef.current) {
             const requestData = data.data
             
-            // Устанавливаем данные сразу - все данные уже загружены в одном запросе
+            // Устанавливаем данные СРАЗУ - это критично для мгновенного отображения
             setRequest(requestData)
             
-            // Убираем loading после установки данных
-            if (showLoading) {
-              setLoading(false)
-            }
+            // Убираем loading СРАЗУ после установки данных (не ждем фото)
+            setLoading(false)
             
-            // Если фото нет в основном ответе, загружаем его через отдельный endpoint
+            // Загружаем фото асинхронно в фоне (не блокируем отображение страницы)
             if (!requestData.photoFileUrl) {
-              console.log('📸 [Request Detail] Фото нет в основном ответе, загружаем через отдельный endpoint')
               setPhotoLoading(true)
+              // Загружаем фото через отдельный endpoint в фоне
               fetch(`/api/requests/${requestId}/photo`)
                 .then(res => {
-                  if (!res.ok) {
-                    console.warn(`⚠️ [Request Detail] Photo API вернул статус ${res.status}`)
-                    return { success: false }
-                  }
+                  if (!res.ok) return { success: false }
                   return res.json()
                 })
                 .then(photoData => {
-                  console.log('📸 [Request Detail] Ответ от photo API:', {
-                    success: photoData.success,
-                    hasPhoto: !!photoData.data?.photoFileUrl,
-                    photoLength: photoData.data?.photoFileUrl?.length || 0
-                  })
                   if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
                     setRequest(prev => prev ? {
                       ...prev,
                       photoFileUrl: photoData.data.photoFileUrl
                     } : null)
-                    console.log('✅ [Request Detail] Фото успешно загружено и установлено')
-                  } else {
-                    console.warn('⚠️ [Request Detail] Фото не найдено в ответе photo API')
+                    setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
                   }
                   setPhotoLoading(false)
                 })
-                .catch((error) => {
-                  console.error('❌ [Request Detail] Ошибка при загрузке фото:', error)
+                .catch(() => {
                   setPhotoLoading(false)
                 })
             } else {
-              console.log('✅ [Request Detail] Фото есть в основном ответе:', {
-                hasPhoto: !!requestData.photoFileUrl,
-                photoLength: requestData.photoFileUrl?.length || 0,
-                photoPreview: requestData.photoFileUrl?.substring(0, 50) + '...'
-              })
               setPhotoLoading(false)
+              setImageLoading(true) // Фото есть, но еще загружается
             }
             
-            // Обновляем интервал автообновления в зависимости от статуса
-            if (requestData.status === 'pending') {
-              // Для pending заявок обновляем чаще
-              if (intervalId) {
-                clearInterval(intervalId)
-                intervalId = setInterval(() => {
-                  if (!document.hidden) {
-                    fetchRequest(false)
-                  }
-                }, 5000)
-              }
-            } else {
-              // Для остальных - реже
-              if (intervalId) {
-                clearInterval(intervalId)
-                intervalId = setInterval(() => {
-                  if (!document.hidden) {
-                    fetchRequest(false)
-                  }
-                }, 15000)
-              }
-            }
+            // Интервал автообновления управляется в основном useEffect
             
             // Загружаем фото профиля асинхронно в фоне (не блокируем отображение страницы)
             if (requestData.userId) {
@@ -242,8 +209,16 @@ export default function RequestDetailPage() {
             }
           } else {
             console.error('❌ Failed to fetch request:', data.error)
-            // Если заявка не найдена, сбрасываем loading
-            if (showLoading) {
+            // Если заявка не найдена, показываем лоадер, затем простой экран
+            if (showLoading && response.status === 404) {
+              setNotFound(true)
+              // Показываем лоадер еще немного, затем переключаемся на простой экран
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  setLoading(false)
+                }
+              }, 500)
+            } else if (showLoading) {
               setLoading(false)
             }
           }
@@ -252,7 +227,7 @@ export default function RequestDetailPage() {
             return // Запрос был отменен, игнорируем ошибку
           }
           console.error('❌ Failed to fetch request:', error)
-          // При ошибке тоже сбрасываем loading
+          // При ошибке сбрасываем loading
           if (isMountedRef.current && !abortController.signal.aborted && showLoading) {
             setLoading(false)
           }
@@ -287,72 +262,18 @@ export default function RequestDetailPage() {
       // Фото чека теперь загружается вместе с основными данными (оптимизация)
       // Отдельный запрос больше не нужен
       
-      // Загружаем дополнительные данные (matchingPayments, casinoTransactions, userNote) в фоне
-      const fetchAdditionalData = async (requestId: number, userId: string, amount: string | null, accountId: string | null, bookmaker: string | null) => {
-        try {
-          const requestAmountInt = amount ? Math.floor(parseFloat(amount)) : null
-          
-          // Загружаем все дополнительные данные параллельно через отдельный API endpoint
-          const additionalDataRes = await fetch(`/api/requests/${requestId}/additional`, {
-            cache: 'default',
-          }).catch(() => null)
-          
-          if (!isMountedRef.current || !additionalDataRes || !additionalDataRes.ok) return
-          
-          const data = await additionalDataRes.json()
-          
-          // Убираем проверку на request - обновляем состояние напрямую
-          if (data.success && data.data && isMountedRef.current) {
-            setRequest(prev => {
-              if (!prev) return null
-              return {
-                ...prev,
-                matchingPayments: data.data.matchingPayments || [],
-                casinoTransactions: data.data.casinoTransactions || [],
-                userNote: data.data.userNote || null,
-              }
-            })
-          }
-        } catch (error) {
-          console.error('Failed to fetch additional data:', error)
-        }
-      }
+            // Дополнительные данные уже загружаются в основном API endpoint, отдельный запрос не нужен
     
-    // Загружаем данные сразу
+    // Загружаем данные сразу - скелетон уже показывается
+    // Не устанавливаем loading в false сразу, чтобы скелетон показывался до загрузки данных
     fetchRequest(true)
     
-    // Автоматическое обновление: чаще для pending заявок (5 сек), реже для остальных (15 сек)
-    // Начинаем с 5 секунд (предполагаем что заявка pending), интервал обновится после первой загрузки
-    let currentInterval = 5000
-    
-    const createInterval = () => {
-      if (intervalId) {
-        clearInterval(intervalId)
+    // Создаем начальный интервал (будет обновлен после загрузки данных)
+    intervalRef.current = setInterval(() => {
+      if (!document.hidden && isMountedRef.current) {
+        fetchRequest(false)
       }
-      intervalId = setInterval(() => {
-        if (!document.hidden) {
-          fetchRequest(false)
-        }
-      }, currentInterval)
-    }
-    
-    // Создаем интервал
-    createInterval()
-    
-    // Обновляем интервал после загрузки данных
-    const updateInterval = () => {
-      if (request?.status === 'pending') {
-        currentInterval = 5000
-      } else {
-        currentInterval = 15000
-      }
-      createInterval()
-    }
-    
-    // Вызываем обновление интервала после первой загрузки
-    setTimeout(() => {
-      updateInterval()
-    }, 100)
+    }, 5000)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {
@@ -382,8 +303,9 @@ export default function RequestDetailPage() {
     
       return () => {
       abortController.abort()
-      if (intervalId) {
-        clearInterval(intervalId)
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
@@ -391,6 +313,46 @@ export default function RequestDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]) // request?.status обновляется внутри fetchRequest, не нужно в зависимостях
+
+  // Обновляем интервал автообновления в зависимости от статуса заявки
+  useEffect(() => {
+    if (!request) return
+
+    // Очищаем предыдущий интервал
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+
+    // Определяем интервал на основе статуса
+    const interval = request.status === 'pending' ? 5000 : 15000
+
+    // Создаем новый интервал
+    intervalRef.current = setInterval(() => {
+      if (!document.hidden && isMountedRef.current) {
+        const requestId = Array.isArray(params.id) ? params.id[0] : params.id
+        if (requestId) {
+          fetch(`/api/requests/${requestId}`, {
+            cache: 'no-store',
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success && isMountedRef.current) {
+                setRequest(data.data)
+              }
+            })
+            .catch(() => {})
+        }
+      }
+    }, interval)
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+  }, [request?.status, params.id])
 
   // Закрываем меню при клике вне его
   useEffect(() => {
@@ -927,29 +889,66 @@ export default function RequestDetailPage() {
     setSearchId('')
   }
 
-  // Показываем лоадер во время загрузки
-  if (loading && !request) {
+  // Показываем скелетон сразу для мгновенного отображения
+  if (loading || !request) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-white text-sm">Загрузка...</p>
+      <div className="py-4">
+        {/* Скелетон хедера */}
+        <div className="flex items-center mb-4 px-4">
+          <div className="flex items-center space-x-2 flex-1 bg-gray-800 rounded-xl px-3 py-2 border border-gray-700 animate-pulse">
+            <div className="w-6 h-6 bg-gray-700 rounded"></div>
+            <div className="w-10 h-10 bg-gray-700 rounded-full"></div>
+            <div className="flex-1">
+              <div className="h-4 bg-gray-700 rounded w-24 mb-1"></div>
+              <div className="h-3 bg-gray-700 rounded w-16"></div>
+            </div>
+            <div className="w-8 h-8 bg-gray-700 rounded"></div>
+            <div className="w-8 h-8 bg-gray-700 rounded"></div>
+          </div>
+        </div>
+
+        {/* Скелетон мини описания */}
+        <div className="mx-4 mb-4 bg-gray-800 rounded-xl p-3 border border-gray-700 animate-pulse">
+          <div className="flex items-center justify-between mb-2">
+            <div className="h-6 bg-gray-700 rounded w-32"></div>
+            <div className="h-5 bg-gray-700 rounded-full w-20"></div>
+          </div>
+          <div className="h-3 bg-gray-700 rounded w-40 mb-1.5"></div>
+          <div className="flex items-center justify-between">
+            <div className="h-3 bg-gray-700 rounded w-20"></div>
+            <div className="h-6 bg-gray-700 rounded w-24"></div>
+          </div>
+        </div>
+
+        {/* Скелетон фото */}
+        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700 animate-pulse">
+          <div className="h-4 bg-gray-700 rounded w-32 mb-3"></div>
+          <div className="w-full h-48 bg-gray-700 rounded-lg"></div>
+        </div>
+
+        {/* Скелетон информации */}
+        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700 animate-pulse">
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex justify-between items-center">
+                <div className="h-4 bg-gray-700 rounded w-24"></div>
+                <div className="h-4 bg-gray-700 rounded w-32"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
-  // Показываем "Заявка не найдена" только если загрузка завершена и заявки нет
-  if (!request && !loading) {
+  // Если заявка не найдена после загрузки, показываем простой экран
+  if (notFound) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-24 h-24 bg-red-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-          <svg className="w-16 h-16 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </div>
-        <p className="text-white text-lg font-medium">Заявка не найдена</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+        <p className="text-white text-lg font-medium mb-6">Заявка не найдена</p>
         <button
           onClick={() => router.back()}
-          className="mt-4 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+          className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium"
         >
           Назад
         </button>
@@ -968,23 +967,7 @@ export default function RequestDetailPage() {
 
   return (
     <div className="py-4">
-      {/* Показываем "Заявка не найдена" только если загрузка завершена */}
-      {!request && !loading ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-24 h-24 bg-red-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-            <svg className="w-16 h-16 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <p className="text-white text-lg font-medium">Заявка не найдена</p>
-          <button
-            onClick={() => router.back()}
-            className="mt-4 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
-          >
-            Назад
-          </button>
-        </div>
-      ) : request ? (
+      {request && (
         <>
       {/* Хедер с навигацией */}
       <div className="flex items-center mb-4 px-4">
@@ -1154,9 +1137,18 @@ export default function RequestDetailPage() {
           <h3 className="text-base font-semibold text-white mb-3">
             {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
           </h3>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-            <span className="ml-3 text-gray-400">Загрузка фото...</span>
+          <div className="relative w-full flex justify-center items-center bg-gray-900 rounded-lg overflow-hidden" style={{ minHeight: '200px' }}>
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-0 w-16 h-16 border-4 border-green-500/20 rounded-full"></div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <p className="text-sm text-gray-400 font-medium">Загрузка фото...</p>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </div>
           </div>
         </div>
       ) : request.photoFileUrl ? (
@@ -1172,14 +1164,32 @@ export default function RequestDetailPage() {
               setPhotoZoom(1)
             }}
           >
+            {/* Красивый лоадер пока фото загружается */}
+            {imageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm z-10 photo-loader">
+                <div className="flex flex-col items-center justify-center space-y-3">
+                  <div className="relative">
+                    <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 w-12 h-12 border-4 border-green-500/30 rounded-full animate-ping"></div>
+                  </div>
+                  <p className="text-xs text-gray-400 font-medium">Загрузка изображения...</p>
+                </div>
+              </div>
+            )}
             <img
               src={request.photoFileUrl}
               alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-              className="w-full h-auto max-h-[600px] rounded-lg object-contain"
+              className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
               style={{ display: 'block' }}
               loading="lazy"
               onError={(e) => {
                 console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
+                setImageLoading(false)
+                // Скрываем лоадер при ошибке
+                const loader = document.querySelector('.photo-loader')
+                if (loader) {
+                  (loader as HTMLElement).style.display = 'none'
+                }
                 // Показываем сообщение об ошибке
                 const target = e.target as HTMLImageElement
                 target.style.display = 'none'
@@ -1188,8 +1198,20 @@ export default function RequestDetailPage() {
                   parent.innerHTML = '<div class="text-center py-8"><p class="text-red-400">Ошибка загрузки фото</p></div>'
                 }
               }}
-              onLoad={() => {
+              onLoad={(e) => {
                 console.log('✅ [Request Detail] Изображение успешно загружено')
+                setImageLoading(false)
+                // Скрываем лоадер после загрузки с плавной анимацией
+                const loader = document.querySelector('.photo-loader')
+                if (loader) {
+                  (loader as HTMLElement).style.transition = 'opacity 0.3s ease-out'
+                  ;(loader as HTMLElement).style.opacity = '0'
+                  setTimeout(() => {
+                    if (loader.parentElement) {
+                      loader.remove()
+                    }
+                  }, 300)
+                }
               }}
             />
           </div>
@@ -1586,7 +1608,7 @@ export default function RequestDetailPage() {
         )}
       </div>
         </>
-      ) : null}
+      )}
     </div>
   )
 }

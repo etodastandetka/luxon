@@ -110,28 +110,7 @@ export default function HistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
   
-  // Предзагружаем данные для всех табов в фоне для мгновенного переключения
-  useEffect(() => {
-    const prefetchTabs = ['all', 'deposit', 'withdraw', 'manual'] as const
-    prefetchTabs.forEach(tab => {
-      if (tab !== activeTab) {
-        const params = new URLSearchParams()
-        if (tab === 'manual') {
-          params.append('manual', 'true')
-        } else if (tab !== 'all') {
-          params.append('type', tab === 'deposit' ? 'deposit' : 'withdraw')
-        }
-        params.append('limit', limit.toString())
-        params.append('offset', '0')
-        
-        // Предзагружаем в фоне для кэша
-        fetch(`/api/transaction-history?${params.toString()}`, {
-          cache: 'default',
-          priority: 'low', // Низкий приоритет для фоновой загрузки
-        }).catch(() => {}) // Игнорируем ошибки предзагрузки
-      }
-    })
-  }, [activeTab, limit])
+  // Убрали предзагрузку всех табов - это вызывало 429 ошибки (Too Many Requests)
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {

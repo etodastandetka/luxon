@@ -158,31 +158,38 @@ export async function middleware(request: NextRequest) {
     
     // Более строгий rate limit для публичных API
     // Исключение: для /api/requests с валидным токеном используем более высокий лимит
+    // Исключение: для /api/transaction-history убираем rate limiting (внутренний админский эндпоинт)
     const isRequestsApi = pathname.startsWith('/api/requests')
+    const isTransactionHistory = pathname.startsWith('/api/transaction-history')
     const shouldUseAuthRateLimit = isRequestsApi && isValidToken
     
-    let rateLimitOptions
-    if (isInternalRequest) {
-      // Внутренние запросы - очень мягкий лимит
-      rateLimitOptions = { maxRequests: 1000, windowMs: 60 * 1000 }
-    } else if (shouldUseAuthRateLimit) {
-      // Аутентифицированные пользователи для /api/requests - более высокий лимит
-      rateLimitOptions = { maxRequests: 120, windowMs: 60 * 1000 }
-    } else if (isPublicApiRoute) {
-      // Публичные API - строгий лимит
-      rateLimitOptions = { maxRequests: 30, windowMs: 60 * 1000 }
+    // Пропускаем rate limiting для transaction-history (внутренний админский эндпоинт)
+    if (isTransactionHistory) {
+      // Пропускаем rate limiting для истории транзакций
     } else {
-      // Защищенные API
-      rateLimitOptions = { maxRequests: 100, windowMs: 60 * 1000 }
-    }
-    
-    const rateLimitResult = rateLimit(rateLimitOptions)(request)
-    if (rateLimitResult) {
-      // ОТКЛЮЧЕНО: Блокировка IP при превышении rate limit (убрана по запросу пользователя)
-      // if (rateLimitResult.status === 429 && !isInternalRequest) {
-      //   blockIP(ip, 24 * 60 * 60 * 1000)
-      // }
-      return rateLimitResult
+      let rateLimitOptions
+      if (isInternalRequest) {
+        // Внутренние запросы - очень мягкий лимит
+        rateLimitOptions = { maxRequests: 1000, windowMs: 60 * 1000 }
+      } else if (shouldUseAuthRateLimit) {
+        // Аутентифицированные пользователи для /api/requests - более высокий лимит
+        rateLimitOptions = { maxRequests: 120, windowMs: 60 * 1000 }
+      } else if (isPublicApiRoute) {
+        // Публичные API - строгий лимит
+        rateLimitOptions = { maxRequests: 30, windowMs: 60 * 1000 }
+      } else {
+        // Защищенные API
+        rateLimitOptions = { maxRequests: 100, windowMs: 60 * 1000 }
+      }
+      
+      const rateLimitResult = rateLimit(rateLimitOptions)(request)
+      if (rateLimitResult) {
+        // ОТКЛЮЧЕНО: Блокировка IP при превышении rate limit (убрана по запросу пользователя)
+        // if (rateLimitResult.status === 429 && !isInternalRequest) {
+        //   blockIP(ip, 24 * 60 * 60 * 1000)
+        // }
+        return rateLimitResult
+      }
     }
 
     // 4. CORS headers для публичных API
