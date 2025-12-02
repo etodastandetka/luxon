@@ -95,6 +95,7 @@ export default function RequestDetailPage() {
           const response = await fetch(`/api/requests/${requestId}`, {
             signal: abortController.signal,
             cache: showLoading ? 'no-store' : 'default', // При первой загрузке не кэшируем, при автообновлении используем кэш
+            next: { revalidate: 0 }, // Отключаем кэширование для свежих данных
           })
           
           if (abortController.signal.aborted || !isMountedRef.current) return
@@ -149,12 +150,10 @@ export default function RequestDetailPage() {
             
             // Загружаем фото профиля асинхронно в фоне (не блокируем отображение страницы)
             if (requestData.userId) {
-              // Загружаем фото профиля с задержкой, чтобы не замедлять основную загрузку
-              setTimeout(() => {
-                fetchProfilePhoto(requestData.userId).catch(err => {
-                  console.error('Failed to fetch profile photo:', err)
-                })
-              }, 200) // Задержка 200ms для приоритета основной загрузки
+              // Загружаем сразу, но не блокируем рендеринг
+              fetchProfilePhoto(requestData.userId).catch(err => {
+                console.error('Failed to fetch profile photo:', err)
+              })
             }
             
             // Проверяем автопополнение (привязанный платеж с совпадающей суммой)
@@ -164,8 +163,8 @@ export default function RequestDetailPage() {
                 requestData.status !== 'approved' &&
                 requestData.status !== 'rejected' &&
                 requestData.matchingPayments) {
-              // Выполняем проверку асинхронно после отображения страницы
-              setTimeout(() => {
+              // Выполняем проверку асинхронно после отображения страницы (убрали задержку для ускорения)
+              requestAnimationFrame(() => {
                 const linkedPayment = requestData.matchingPayments.find((p: MatchingPayment) => 
                   p.requestId === requestData.id && p.isProcessed
                 )
@@ -196,7 +195,7 @@ export default function RequestDetailPage() {
                     })
                   }
                 }
-              }, showLoading ? 500 : 0) // При первой загрузке ждем 500ms чтобы страница успела отобразиться
+              })
             }
           } else {
             console.error('❌ Failed to fetch request:', data.error)
@@ -242,32 +241,8 @@ export default function RequestDetailPage() {
         }
       }
       
-      // Загружаем фото чека отдельно (может быть большим)
-      const fetchPhotoFileUrl = async (requestId: number) => {
-        try {
-          const photoRes = await fetch(`/api/requests/${requestId}/photo`, {
-            cache: 'default',
-          }).catch(() => null)
-          
-          if (!isMountedRef.current || !photoRes || !photoRes.ok) return
-          
-          const data = await photoRes.json()
-          
-          // Убираем проверку на request - обновляем состояние напрямую
-          if (data.success && data.data && isMountedRef.current) {
-            setRequest(prev => {
-              if (!prev) return null
-              return {
-                ...prev,
-                photoFileUrl: data.data.photoFileUrl || null,
-                cryptoPayment: data.data.cryptoPayment || null,
-              }
-            })
-          }
-        } catch (error) {
-          console.error('Failed to fetch photo file URL:', error)
-        }
-      }
+      // Фото чека теперь загружается вместе с основными данными (оптимизация)
+      // Отдельный запрос больше не нужен
       
       // Загружаем дополнительные данные (matchingPayments, casinoTransactions, userNote) в фоне
       const fetchAdditionalData = async (requestId: number, userId: string, amount: string | null, accountId: string | null, bookmaker: string | null) => {

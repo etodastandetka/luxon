@@ -96,11 +96,10 @@ export async function GET(
 
     const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
     
-    // Загружаем все дополнительные данные параллельно с таймаутами для быстрой загрузки
+    // Загружаем все дополнительные данные параллельно БЕЗ таймаутов для максимальной скорости
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      // Входящие платежи (с таймаутом 200ms)
-      requestAmountInt ? Promise.race([
-        prisma.incomingPayment.findMany({
+      // Входящие платежи (убрали таймаут для ускорения)
+      requestAmountInt ? prisma.incomingPayment.findMany({
           where: {
             amount: {
               gte: requestAmountInt,
@@ -117,13 +116,10 @@ export async function GET(
             isProcessed: true,
             bank: true,
           },
-        }),
-        new Promise(resolve => setTimeout(() => resolve([]), 200))
-      ]) as Promise<any[]> : Promise.resolve([]),
+        }) : Promise.resolve([]),
       
-      // Транзакции казино (с таймаутом 200ms)
-      requestData.accountId && requestData.bookmaker ? Promise.race([
-        prisma.request.findMany({
+      // Транзакции казино (убрали таймаут для ускорения)
+      requestData.accountId && requestData.bookmaker ? prisma.request.findMany({
           where: {
             accountId: requestData.accountId,
             bookmaker: requestData.bookmaker,
@@ -143,18 +139,13 @@ export async function GET(
             bookmaker: true,
             accountId: true,
           },
-        }),
-        new Promise(resolve => setTimeout(() => resolve([]), 200))
-      ]) as Promise<any[]> : Promise.resolve([]),
+        }) : Promise.resolve([]),
       
-      // Заметка пользователя (с таймаутом 150ms)
-      Promise.race([
-        prisma.botUser.findUnique({
+      // Заметка пользователя (убрали таймаут для ускорения)
+      prisma.botUser.findUnique({
           where: { userId: requestData.userId },
           select: { note: true },
         }),
-        new Promise(resolve => setTimeout(() => resolve(null), 150))
-      ]) as Promise<any>,
     ])
 
     const matchingPayments = matchingPaymentsResult.map(p => ({
