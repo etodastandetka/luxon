@@ -128,20 +128,43 @@ export default function RequestDetailPage() {
             
             // Если фото нет в основном ответе, загружаем его через отдельный endpoint
             if (!requestData.photoFileUrl) {
+              console.log('📸 [Request Detail] Фото нет в основном ответе, загружаем через отдельный endpoint')
               setPhotoLoading(true)
               fetch(`/api/requests/${requestId}/photo`)
-                .then(res => res.json())
+                .then(res => {
+                  if (!res.ok) {
+                    console.warn(`⚠️ [Request Detail] Photo API вернул статус ${res.status}`)
+                    return { success: false }
+                  }
+                  return res.json()
+                })
                 .then(photoData => {
+                  console.log('📸 [Request Detail] Ответ от photo API:', {
+                    success: photoData.success,
+                    hasPhoto: !!photoData.data?.photoFileUrl,
+                    photoLength: photoData.data?.photoFileUrl?.length || 0
+                  })
                   if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
                     setRequest(prev => prev ? {
                       ...prev,
                       photoFileUrl: photoData.data.photoFileUrl
                     } : null)
+                    console.log('✅ [Request Detail] Фото успешно загружено и установлено')
+                  } else {
+                    console.warn('⚠️ [Request Detail] Фото не найдено в ответе photo API')
                   }
                   setPhotoLoading(false)
                 })
-                .catch(() => setPhotoLoading(false))
+                .catch((error) => {
+                  console.error('❌ [Request Detail] Ошибка при загрузке фото:', error)
+                  setPhotoLoading(false)
+                })
             } else {
+              console.log('✅ [Request Detail] Фото есть в основном ответе:', {
+                hasPhoto: !!requestData.photoFileUrl,
+                photoLength: requestData.photoFileUrl?.length || 0,
+                photoPreview: requestData.photoFileUrl?.substring(0, 50) + '...'
+              })
               setPhotoLoading(false)
             }
             
@@ -1126,7 +1149,17 @@ export default function RequestDetailPage() {
       </div>
 
       {/* Фото чека или QR-кода */}
-      {request.photoFileUrl && (
+      {photoLoading ? (
+        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
+          <h3 className="text-base font-semibold text-white mb-3">
+            {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+          </h3>
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+            <span className="ml-3 text-gray-400">Загрузка фото...</span>
+          </div>
+        </div>
+      ) : request.photoFileUrl ? (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-base font-semibold text-white mb-3">
             {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
@@ -1145,7 +1178,30 @@ export default function RequestDetailPage() {
               className="w-full h-auto max-h-[600px] rounded-lg object-contain"
               style={{ display: 'block' }}
               loading="lazy"
+              onError={(e) => {
+                console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
+                // Показываем сообщение об ошибке
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const parent = target.parentElement
+                if (parent) {
+                  parent.innerHTML = '<div class="text-center py-8"><p class="text-red-400">Ошибка загрузки фото</p></div>'
+                }
+              }}
+              onLoad={() => {
+                console.log('✅ [Request Detail] Изображение успешно загружено')
+              }}
             />
+          </div>
+        </div>
+      ) : (
+        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
+          <h3 className="text-base font-semibold text-white mb-3">
+            {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+          </h3>
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">Фото не загружено</p>
+            <p className="text-gray-500 text-xs mt-1">Пользователь не прикрепил фото</p>
           </div>
         </div>
       )}

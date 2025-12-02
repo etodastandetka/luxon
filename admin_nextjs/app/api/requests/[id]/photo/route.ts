@@ -116,8 +116,21 @@ export async function GET(
       id,
       hasPhoto: !!photoFileUrl,
       photoLength: photoFileUrl?.length || 0,
-      isBase64: photoFileUrl?.startsWith('data:image') || false
+      isBase64: photoFileUrl?.startsWith('data:image') || false,
+      photoPreview: photoFileUrl ? photoFileUrl.substring(0, 100) + '...' : null,
+      isNull: photoFileUrl === null,
+      isUndefined: photoFileUrl === undefined
     })
+    
+    // Если фото нет в базе данных, возвращаем явный ответ
+    if (!photoFileUrl) {
+      console.warn(`⚠️ [Photo API] Фото не найдено в БД для заявки ${id}`)
+      return NextResponse.json(
+        createApiResponse({
+          photoFileUrl: null,
+        }, 'Photo not found')
+      )
+    }
 
     return NextResponse.json(
       createApiResponse({
