@@ -49,7 +49,10 @@ export default function GeolocationPage() {
             router.refresh()
           } else {
             setStatus('denied')
-            setMessage(data.message || 'Сайт недоступен в вашем регионе')
+            // Показываем детальное сообщение с расстоянием
+            const distance = data.data?.distance ? ` (${parseFloat(data.data.distance).toFixed(0)}м от зоны)` : ''
+            const requiredRadius = data.data?.requiredRadius ? ` (требуется быть в пределах ${data.data.requiredRadius}м)` : ''
+            setMessage(data.message || `Сайт недоступен в вашем регионе${distance}${requiredRadius}`)
           }
         } catch (error) {
           setStatus('error')

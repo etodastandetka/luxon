@@ -114,23 +114,25 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 6. 🗺️ ГЕОЛОКАЦИОННАЯ ЗАЩИТА (для всех страниц кроме геолокации и API)
-  // Проверяем, прошла ли проверка геолокации
-  // Исключаем: API endpoints, страницу геолокации, статические файлы
-  const isGeolocationPage = pathname === '/geolocation'
-  const isApiRoute = pathname.startsWith('/api/')
-  const isStaticFile = pathname.startsWith('/_next/') || pathname.startsWith('/favicon')
-  
-  if (!isApiRoute && !isGeolocationPage && !isStaticFile) {
-    const geolocationVerified = request.cookies.get('geolocation_verified')?.value
-    
-    // Если геолокация не проверена, редиректим на страницу проверки
-    if (!geolocationVerified || geolocationVerified !== 'true') {
-      const geolocationUrl = new URL('/geolocation', request.url)
-      geolocationUrl.searchParams.set('return', pathname)
-      return NextResponse.redirect(geolocationUrl)
-    }
-  }
+         // 6. 🗺️ ГЕОЛОКАЦИОННАЯ ЗАЩИТА (для всех страниц кроме геолокации и API)
+         // Проверяем, прошла ли проверка геолокации
+         // Исключаем: API endpoints, страницу геолокации, статические файлы
+         // Можно отключить через .env: GEOLOCATION_ENABLED=false
+         const isGeolocationEnabled = process.env.GEOLOCATION_ENABLED !== 'false'
+         const isGeolocationPage = pathname === '/geolocation'
+         const isApiRoute = pathname.startsWith('/api/')
+         const isStaticFile = pathname.startsWith('/_next/') || pathname.startsWith('/favicon')
+         
+         if (isGeolocationEnabled && !isApiRoute && !isGeolocationPage && !isStaticFile) {
+           const geolocationVerified = request.cookies.get('geolocation_verified')?.value
+           
+           // Если геолокация не проверена, редиректим на страницу проверки
+           if (!geolocationVerified || geolocationVerified !== 'true') {
+             const geolocationUrl = new URL('/geolocation', request.url)
+             geolocationUrl.searchParams.set('return', pathname)
+             return NextResponse.redirect(geolocationUrl)
+           }
+         }
 
   // 7. Rate limiting для страниц (менее строгий)
   if (pathname.startsWith('/dashboard') || pathname === '/') {

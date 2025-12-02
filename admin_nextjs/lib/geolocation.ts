@@ -9,7 +9,7 @@ import { prisma } from './prisma'
 // Могут быть переопределены из БД или .env
 let ALLOWED_LATITUDE = parseFloat(process.env.ALLOWED_LATITUDE || '42.84877')
 let ALLOWED_LONGITUDE = parseFloat(process.env.ALLOWED_LONGITUDE || '74.57028')
-let ALLOWED_RADIUS_METERS = parseFloat(process.env.ALLOWED_RADIUS_METERS || '10') // 10 метров
+let ALLOWED_RADIUS_METERS = parseFloat(process.env.ALLOWED_RADIUS_METERS || '200') // 200 метров (учитываем погрешность GPS ~64м)
 
 // Кэш для координат из БД
 let coordinatesCache: {
@@ -91,6 +91,37 @@ export async function getAllowedCoordinates(): Promise<{
     }
   }
 
+  // Сначала проверяем .env переменные (они имеют приоритет)
+  if (process.env.ALLOWED_LATITUDE && process.env.ALLOWED_LONGITUDE) {
+    const envLat = parseFloat(process.env.ALLOWED_LATITUDE)
+    const envLon = parseFloat(process.env.ALLOWED_LONGITUDE)
+    const envRadius = process.env.ALLOWED_RADIUS_METERS 
+      ? parseFloat(process.env.ALLOWED_RADIUS_METERS) 
+      : ALLOWED_RADIUS_METERS
+
+    if (!isNaN(envLat) && !isNaN(envLon) && !isNaN(envRadius)) {
+      ALLOWED_LATITUDE = envLat
+      ALLOWED_LONGITUDE = envLon
+      ALLOWED_RADIUS_METERS = envRadius
+      
+      console.log(`📍 Геолокация из .env: ${ALLOWED_LATITUDE}, ${ALLOWED_LONGITUDE}, радиус: ${ALLOWED_RADIUS_METERS}м`)
+      
+      // Обновляем кэш
+      coordinatesCache = {
+        latitude: ALLOWED_LATITUDE,
+        longitude: ALLOWED_LONGITUDE,
+        radius: ALLOWED_RADIUS_METERS,
+        timestamp: Date.now(),
+      }
+      
+      return {
+        latitude: ALLOWED_LATITUDE,
+        longitude: ALLOWED_LONGITUDE,
+        radius: ALLOWED_RADIUS_METERS,
+      }
+    }
+  }
+
   try {
     // Пытаемся получить из БД
     const config = await prisma.botConfiguration.findUnique({
@@ -105,6 +136,8 @@ export async function getAllowedCoordinates(): Promise<{
           ALLOWED_LONGITUDE = parseFloat(data.longitude)
           ALLOWED_RADIUS_METERS = parseFloat(data.radius)
           
+          console.log(`📍 Геолокация из БД: ${ALLOWED_LATITUDE}, ${ALLOWED_LONGITUDE}, радиус: ${ALLOWED_RADIUS_METERS}м`)
+          
           // Обновляем кэш
           coordinatesCache = {
             latitude: ALLOWED_LATITUDE,
@@ -115,12 +148,15 @@ export async function getAllowedCoordinates(): Promise<{
         }
       } catch (e) {
         // Если не JSON, используем значения по умолчанию
+        console.warn('Failed to parse geolocation from DB:', e)
       }
     }
   } catch (error) {
     // Если ошибка БД, используем значения по умолчанию
     console.warn('Failed to load geolocation from DB, using defaults:', error)
   }
+
+  console.log(`📍 Геолокация (по умолчанию): ${ALLOWED_LATITUDE}, ${ALLOWED_LONGITUDE}, радиус: ${ALLOWED_RADIUS_METERS}м`)
 
   return {
     latitude: ALLOWED_LATITUDE,

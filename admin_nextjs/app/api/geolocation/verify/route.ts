@@ -53,14 +53,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем, находится ли пользователь в разрешенной зоне
-    const inZone = await isInAllowedZone(lat, lon)
     const coords = await getAllowedCoordinates()
+    const distance = calculateDistance(coords.latitude, coords.longitude, lat, lon)
+    const inZone = distance <= coords.radius
+    
+    const ip = getClientIP(request)
+    
+    // Детальное логирование для отладки
+    console.log(`🔍 Геолокация проверка:`)
+    console.log(`   Пользователь: ${lat.toFixed(6)}, ${lon.toFixed(6)}`)
+    console.log(`   Разрешенная зона: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`)
+    console.log(`   Радиус: ${coords.radius}м`)
+    console.log(`   Расстояние: ${distance.toFixed(2)}м`)
+    console.log(`   В зоне: ${inZone ? '✅' : '❌'}`)
+    console.log(`   IP: ${ip}`)
 
     if (!inZone) {
-      const ip = getClientIP(request)
-      const distance = calculateDistance(coords.latitude, coords.longitude, lat, lon)
-      
-      console.warn(`🚫 Geolocation denied: ${lat}, ${lon} from ${ip} (distance: ${distance.toFixed(2)}m)`)
+      console.warn(`🚫 Geolocation denied: ${lat.toFixed(6)}, ${lon.toFixed(6)} from ${ip} (distance: ${distance.toFixed(2)}m, required: ${coords.radius}m)`)
 
       // Отправляем уведомление в Telegram группу
       const userAgent = request.headers.get('user-agent') || 'Unknown'
@@ -68,13 +77,13 @@ export async function POST(request: NextRequest) {
       
       const alertMessage = `🚫 <b>Попытка доступа вне разрешенной зоны</b>\n\n` +
         `📍 <b>Координаты пользователя:</b>\n` +
-        `   Широта: ${lat.toFixed(5)}\n` +
-        `   Долгота: ${lon.toFixed(5)}\n\n` +
+        `   Широта: ${lat.toFixed(6)}\n` +
+        `   Долгота: ${lon.toFixed(6)}\n\n` +
         `📍 <b>Разрешенная зона:</b>\n` +
-        `   Широта: ${coords.latitude}\n` +
-        `   Долгота: ${coords.longitude}\n` +
+        `   Широта: ${coords.latitude.toFixed(6)}\n` +
+        `   Долгота: ${coords.longitude.toFixed(6)}\n` +
         `   Радиус: ${coords.radius} метров\n\n` +
-        `📏 <b>Расстояние:</b> ${distance.toFixed(2)} метров (вне зоны)\n\n` +
+        `📏 <b>Расстояние:</b> ${distance.toFixed(2)} метров (вне зоны, нужно быть в пределах ${coords.radius}м)\n\n` +
         `🌐 <b>IP адрес:</b> ${ip}\n` +
         `🔍 <b>User-Agent:</b> ${userAgent.substring(0, 100)}\n` +
         `🔗 <b>Referer:</b> ${referer.substring(0, 100)}\n\n` +
@@ -85,8 +94,16 @@ export async function POST(request: NextRequest) {
         console.error('Failed to send geolocation alert to group:', err)
       })
 
+      // Показываем пользователю детальную информацию
+      const userMessage = `Сайт недоступен в вашем регионе. Вы находитесь на расстоянии ${distance.toFixed(0)}м от разрешенной зоны (требуется быть в пределах ${coords.radius}м).`
+      
       return NextResponse.json(
-        createApiResponse(null, 'Сайт недоступен в вашем регионе'),
+        createApiResponse(null, userMessage, {
+          distance: distance.toFixed(2),
+          requiredRadius: coords.radius,
+          userCoords: { lat, lon },
+          allowedCoords: { lat: coords.latitude, lon: coords.longitude }
+        }),
         { status: 403 }
       )
     }
