@@ -10,8 +10,8 @@ import {
   setSoundsEnabled,
   initAudioContext,
   activateAudioContext
-} from '@/lib/sounds'
-import { initNotifications, showDepositNotification, showWithdrawNotification } from '@/lib/notifications'
+} from '../../../lib/sounds'
+import { initNotifications, showDepositNotification, showWithdrawNotification } from '../../../lib/notifications'
 
 interface Request {
   id: number
