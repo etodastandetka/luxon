@@ -132,28 +132,39 @@ export default function RequestDetailPage() {
             
             // Загружаем фото асинхронно в фоне (не блокируем отображение страницы)
             // Всегда загружаем фото отдельно для уменьшения размера основного ответа
+            // Используем requestIdleCallback для загрузки фото только когда браузер свободен
             setPhotoLoading(true)
-            // Загружаем фото через отдельный endpoint в фоне
-            fetch(`/api/requests/${requestId}/photo`, {
-              cache: 'default', // Используем кэш для быстрой загрузки
-            })
-              .then(res => {
-                if (!res.ok) return { success: false }
-                return res.json()
+            const loadPhoto = () => {
+              fetch(`/api/requests/${requestId}/photo`, {
+                cache: 'force-cache', // Агрессивное кэширование
+                priority: 'low', // Низкий приоритет - не блокирует другие запросы
               })
-              .then(photoData => {
-                if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
-                  setRequest(prev => prev ? {
-                    ...prev,
-                    photoFileUrl: photoData.data.photoFileUrl
-                  } : null)
-                  setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
-                }
-                setPhotoLoading(false)
-              })
-              .catch(() => {
-                setPhotoLoading(false)
-              })
+                .then(res => {
+                  if (!res.ok) return { success: false }
+                  return res.json()
+                })
+                .then(photoData => {
+                  if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
+                    setRequest(prev => prev ? {
+                      ...prev,
+                      photoFileUrl: photoData.data.photoFileUrl
+                    } : null)
+                    setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
+                  }
+                  setPhotoLoading(false)
+                })
+                .catch(() => {
+                  setPhotoLoading(false)
+                })
+            }
+            
+            // Загружаем фото только когда браузер свободен (не блокирует UI)
+            if ('requestIdleCallback' in window) {
+              requestIdleCallback(loadPhoto, { timeout: 2000 })
+            } else {
+              // Fallback для браузеров без requestIdleCallback
+              setTimeout(loadPhoto, 100)
+            }
             
             // Интервал автообновления управляется в основном useEffect
             
@@ -587,6 +598,7 @@ export default function RequestDetailPage() {
     return (
       <Link
         href={`/dashboard/requests/${transaction.id}`}
+        prefetch={false}
         className="block bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
       >
         <div className="flex items-center space-x-3">
@@ -980,6 +992,7 @@ export default function RequestDetailPage() {
           </button>
           <Link
             href={`/dashboard/users/${request?.userId || ''}`}
+            prefetch={false}
             className="flex items-center space-x-2 flex-1"
           >
             {profilePhotoUrl ? (
@@ -1012,6 +1025,7 @@ export default function RequestDetailPage() {
           <div className="flex items-center space-x-1">
             <Link
               href={`/dashboard/users/${request.userId}/chat`}
+              prefetch={false}
               className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
             >
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

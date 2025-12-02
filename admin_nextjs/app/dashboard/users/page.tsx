@@ -117,6 +117,7 @@ export default function UsersPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <Link
                     href={`/dashboard/users/${user.userId}`}
+                    prefetch={false}
                     className="text-primary-600 hover:text-primary-900"
                   >
                     Подробнее

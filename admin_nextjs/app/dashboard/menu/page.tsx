@@ -54,6 +54,7 @@ export default function MenuPage() {
             <li key={item.href}>
               <Link
                 href={item.href}
+                prefetch={false}
                 className="flex items-center px-4 py-4 hover:bg-gray-700 hover:bg-opacity-50 transition-colors"
               >
                 <span className="text-2xl mr-4">{item.icon}</span>

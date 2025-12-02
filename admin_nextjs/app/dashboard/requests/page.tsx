@@ -337,6 +337,7 @@ export default function RequestsPage() {
             <Link
               key={request.id}
               href={`/dashboard/requests/${request.id}`}
+              prefetch={false}
               className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm"
             >
               <div className="flex items-start justify-between">

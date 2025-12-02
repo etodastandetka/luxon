@@ -51,6 +51,13 @@ const nextConfig = {
   // Кеширование заголовков
   generateEtags: true,
   
+  // Отключаем автоматический prefetch для всех страниц (ускоряет загрузку)
+  experimental: {
+    // Отключаем автоматический prefetch для всех Link компонентов
+    // Страницы будут загружаться только при клике
+    optimizePackageImports: ['@/lib'],
+  },
+  
   env: {
     DATABASE_URL: process.env.DATABASE_URL,
     JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',

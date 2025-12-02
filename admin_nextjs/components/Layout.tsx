@@ -139,6 +139,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   className={`flex flex-col items-center justify-center px-2 py-2 rounded-xl transition-all duration-200 relative ${
                     active
                       ? 'text-green-500 bg-green-500 bg-opacity-20'

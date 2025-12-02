@@ -203,6 +203,7 @@ export default function ChatPage() {
         </button>
         <Link
           href={`/dashboard/users/${user.userId}`}
+          prefetch={false}
           className="flex items-center space-x-3 flex-1 ml-4"
         >
           {user.photoUrl ? (

@@ -254,6 +254,7 @@ export default function HistoryPage() {
     return (
       <Link
         href={`/dashboard/requests/${tx.id}`}
+        prefetch={false}
         className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm cursor-pointer"
       >
         <div className="flex items-start justify-between">
