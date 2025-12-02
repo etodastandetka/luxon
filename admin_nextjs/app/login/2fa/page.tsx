@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function TwoFactorPage() {
+function TwoFactorForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [code, setCode] = useState('')
@@ -129,6 +129,18 @@ export default function TwoFactorPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function TwoFactorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white">Загрузка...</div>
+      </div>
+    }>
+      <TwoFactorForm />
+    </Suspense>
   )
 }
 
