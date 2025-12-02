@@ -23,14 +23,18 @@ export function middleware(request: NextRequest) {
   // Определяем публичные маршруты (которые должны быть доступны даже при блокировке IP)
   const publicRoutes = ['/login', '/api/auth/login', '/api/auth/2fa']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+  
+  // Публичные страницы (не API)
+  const isPublicPage = pathname === '/login' || pathname === '/login/2fa' || pathname === '/geolocation'
 
   // 1. Проверка блокировки IP (пропускаем внутренние IP, геолокацию и публичные маршруты)
   const isInternalRequest = ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' ||
                             ip === '::ffff:127.0.0.1' || ip.startsWith('192.168.') || 
                             ip.startsWith('10.') || ip.startsWith('172.16.')
   
-  // Не блокируем публичные маршруты (login должен быть доступен всегда)
-  if (!isInternalRequest && !isPublicRoute && !pathname.startsWith('/api/geolocation') && isIPBlocked(ip)) {
+  // Не блокируем публичные маршруты и страницы (login должен быть доступен всегда)
+  // Также не блокируем если есть валидный токен (пользователь уже авторизован)
+  if (!isInternalRequest && !isPublicRoute && !isPublicPage && !pathname.startsWith('/api/geolocation') && !token && isIPBlocked(ip)) {
     console.warn(`🚫 Blocked IP attempt: ${ip} accessing ${pathname}`)
     return NextResponse.json(
       { error: 'Forbidden', message: 'Access denied' },
@@ -121,7 +125,7 @@ export function middleware(request: NextRequest) {
 
          // 6. 🗺️ ГЕОЛОКАЦИОННАЯ ЗАЩИТА (для всех страниц кроме геолокации и API)
          // Проверяем, прошла ли проверка геолокации
-         // Исключаем: API endpoints, страницу геолокации, статические файлы
+         // Исключаем: API endpoints, страницу геолокации, статические файлы, страницу 2FA
          // Можно отключить через .env: GEOLOCATION_ENABLED=false
          const geolocationEnvValue = process.env.GEOLOCATION_ENABLED
          // Проверяем явно: если переменная установлена в 'false' (строка), отключаем
@@ -129,15 +133,17 @@ export function middleware(request: NextRequest) {
          const isGeolocationEnabled = geolocationEnvValue !== 'false' && geolocationEnvValue !== '0'
          
          const isGeolocationPage = pathname === '/geolocation'
+         const is2FAPage = pathname === '/login/2fa'
          const isApiRoute = pathname.startsWith('/api/')
          const isStaticFile = pathname.startsWith('/_next/') || pathname.startsWith('/favicon')
          
          // Логируем только при первом запросе или если геолокация отключена (для отладки)
          if (pathname === '/dashboard' || pathname === '/') {
-           console.log(`🗺️  Геолокация: enabled=${isGeolocationEnabled}, env=${geolocationEnvValue || 'не установлено'}, path=${pathname}`)
+           console.log(`🗺️  Геолокация: enabled=${isGeolocationEnabled}, env=${geolocationEnvValue || 'не установлено'}, path=${pathname}, token=${token ? 'yes' : 'no'}`)
          }
          
-         if (isGeolocationEnabled && !isApiRoute && !isGeolocationPage && !isStaticFile) {
+         // Пропускаем проверку геолокации для страницы 2FA и если есть валидный токен (пользователь уже авторизован)
+         if (isGeolocationEnabled && !isApiRoute && !isGeolocationPage && !is2FAPage && !isStaticFile && !token) {
            const geolocationVerified = request.cookies.get('geolocation_verified')?.value
            
            // Если геолокация не проверена, редиректим на страницу проверки
