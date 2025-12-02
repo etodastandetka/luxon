@@ -166,6 +166,16 @@ export async function GET(
       ? null // Большие base64 фото загружаются через /api/requests/[id]/photo
       : requestData.photoFileUrl
     
+    console.log('📸 [Request API] Фото чека в ответе:', {
+      requestId: id,
+      hasPhoto: !!requestData.photoFileUrl,
+      photoLength: requestData.photoFileUrl?.length || 0,
+      isBase64: isBase64Photo,
+      isLarge: isBase64Photo && requestData.photoFileUrl && requestData.photoFileUrl.length > MAX_PHOTO_SIZE,
+      willIncludeInResponse: !!photoFileUrl,
+      photoPreview: photoFileUrl ? photoFileUrl.substring(0, 50) + '...' : null
+    })
+    
     const responseData = {
       ...requestData,
       userId: requestData.userId.toString(),
