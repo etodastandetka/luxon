@@ -201,11 +201,15 @@ export async function middleware(request: NextRequest) {
          }
          
          // Пропускаем проверку геолокации для страницы 2FA и если есть валидный токен (пользователь уже авторизован)
-         if (isGeolocationEnabled && !isApiRoute && !isGeolocationPage && !is2FAPage && !isStaticFile && !token) {
+         // ВАЖНО: используем isValidToken, а не просто token, чтобы пропустить авторизованных пользователей
+         if (isGeolocationEnabled && !isApiRoute && !isGeolocationPage && !is2FAPage && !isStaticFile && !isValidToken) {
            const geolocationVerified = request.cookies.get('geolocation_verified')?.value
            
            // Если геолокация не проверена, редиректим на страницу проверки
            if (!geolocationVerified || geolocationVerified !== 'true') {
+             if (pathname === '/dashboard') {
+               console.log(`🗺️  Geolocation check: redirecting to /geolocation (not verified), IP: ${ip}`)
+             }
              const geolocationUrl = new URL('/geolocation', request.url)
              geolocationUrl.searchParams.set('return', pathname)
              return NextResponse.redirect(geolocationUrl)
@@ -213,12 +217,23 @@ export async function middleware(request: NextRequest) {
          } else if (!isGeolocationEnabled && !isApiRoute && !isGeolocationPage && !isStaticFile) {
            // Если геолокация отключена, пропускаем проверку
            console.log(`✅ Геолокация отключена, пропускаем проверку для ${pathname}`)
+         } else if (isValidToken && pathname === '/dashboard') {
+           // Если токен валиден, пропускаем проверку геолокации
+           console.log(`✅ Valid token found, skipping geolocation check for ${pathname}, IP: ${ip}`)
          }
 
   // 7. Rate limiting для страниц (менее строгий)
   if (pathname.startsWith('/dashboard') || pathname === '/') {
+    // Детальное логирование для /dashboard
+    if (pathname === '/dashboard') {
+      console.log(`🔍 Dashboard access check: isValidToken=${isValidToken}, hasToken=${!!token}, IP=${ip}, isIPBlocked=${isIPBlocked(ip)}`)
+    }
+    
     const rateLimitResult = rateLimit({ maxRequests: 120, windowMs: 60 * 1000 })(request)
     if (rateLimitResult) {
+      if (pathname === '/dashboard') {
+        console.log(`⚠️  Rate limit exceeded for /dashboard, IP: ${ip}`)
+      }
       return rateLimitResult
     }
 
@@ -233,7 +248,7 @@ export async function middleware(request: NextRequest) {
     }
     
     // Токен уже проверен выше, просто логируем успех
-    console.log(`✅ Access granted to ${pathname}, IP: ${ip}`)
+    console.log(`✅ Access granted to ${pathname}, IP: ${ip}, user: ${tokenPayload?.username || 'unknown'}`)
   }
 
   // 8. Public routes (login, etc.) - isPublicRoute уже определен выше
