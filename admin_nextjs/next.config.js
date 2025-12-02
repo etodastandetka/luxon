@@ -58,31 +58,21 @@ const nextConfig = {
   },
 
   // Конфигурация webpack для правильного разрешения алиасов
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+  webpack: (config) => {
     const path = require('path')
+    const rootPath = path.resolve(__dirname)
     
-    // Убеждаемся, что resolve существует
+    // Явно настраиваем алиас @ - это критически важно для разрешения путей
     if (!config.resolve) {
       config.resolve = {}
     }
     
-    // Явно настраиваем алиас @ с полным путем
-    const rootPath = path.resolve(__dirname)
+    // Сохраняем существующие алиасы и добавляем наш
+    const existingAliases = config.resolve.alias || {}
     config.resolve.alias = {
-      ...(config.resolve.alias || {}),
+      ...existingAliases,
       '@': rootPath,
     }
-    
-    // Убеждаемся, что расширения файлов включены
-    if (!config.resolve.extensions) {
-      config.resolve.extensions = []
-    }
-    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.json']
-    extensions.forEach((ext) => {
-      if (!config.resolve.extensions.includes(ext)) {
-        config.resolve.extensions.push(ext)
-      }
-    })
     
     return config
   },
