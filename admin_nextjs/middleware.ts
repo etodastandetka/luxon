@@ -7,6 +7,7 @@ import {
   isIPBlocked,
   blockIP 
 } from './lib/security'
+import { verifyToken } from './lib/auth'
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value
@@ -171,12 +172,12 @@ export async function middleware(request: NextRequest) {
     
     // Проверяем валидность токена
     try {
-      const { verifyToken } = await import('./lib/auth')
       const payload = verifyToken(token)
       if (!payload) {
-        console.log(`⚠️  Invalid token for ${pathname}, redirecting to login. IP: ${ip}`)
+        console.log(`⚠️  Invalid token for ${pathname}, redirecting to login. IP: ${ip}, token: ${token.substring(0, 20)}...`)
         return NextResponse.redirect(new URL('/login', request.url))
       }
+      console.log(`✅ Valid token for ${pathname}, user: ${payload.username}, IP: ${ip}`)
     } catch (error) {
       console.log(`⚠️  Token verification error for ${pathname}, redirecting to login. IP: ${ip}`, error)
       return NextResponse.redirect(new URL('/login', request.url))

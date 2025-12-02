@@ -45,6 +45,7 @@ function TwoFactorForm() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Важно: включаем отправку cookie
         body: JSON.stringify({ userId, token: code }),
       })
 
@@ -57,8 +58,11 @@ function TwoFactorForm() {
       }
 
       // Cookie уже установлен сервером
+      // Добавляем небольшую задержку, чтобы cookie точно установился
+      // Затем используем window.location для полного перезагрузки страницы
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       // Используем window.location для полного перезагрузки страницы с новыми cookie
-      // Это гарантирует, что cookie будет доступен при следующем запросе
       window.location.href = '/dashboard'
     } catch (err: any) {
       setError(err.message || 'Verification failed')

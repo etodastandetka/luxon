@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       path: '/', // Важно: cookie должен быть доступен на всех путях
     })
 
-    console.log(`✅ 2FA verified for user ${user.id} (${user.username}), token set in cookie`)
+    console.log(`✅ 2FA verified for user ${user.id} (${user.username}), token set in cookie. Token preview: ${jwtToken.substring(0, 20)}...`)
 
     return response
   } catch (error: any) {

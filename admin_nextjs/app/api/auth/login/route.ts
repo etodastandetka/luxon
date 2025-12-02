@@ -72,7 +72,10 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/', // Важно: cookie должен быть доступен на всех путях
     })
+    
+    console.log(`✅ Login successful for user ${result.user.username}, token set in cookie`)
 
     return response
   } catch (error: any) {
