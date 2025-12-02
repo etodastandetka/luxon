@@ -56,10 +56,10 @@ function TwoFactorForm() {
         return
       }
 
-      // Cookie уже установлен сервером, просто переходим в дашборд
-      // После успешной проверки 2FA переходим в дашборд
-      router.push('/dashboard')
-      router.refresh()
+      // Cookie уже установлен сервером
+      // Используем window.location для полного перезагрузки страницы с новыми cookie
+      // Это гарантирует, что cookie будет доступен при следующем запросе
+      window.location.href = '/dashboard'
     } catch (err: any) {
       setError(err.message || 'Verification failed')
     } finally {

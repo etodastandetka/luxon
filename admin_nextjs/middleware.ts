@@ -165,6 +165,20 @@ export function middleware(request: NextRequest) {
     }
 
     if (!token) {
+      console.log(`⚠️  No token found for ${pathname}, redirecting to login. IP: ${ip}`)
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    
+    // Проверяем валидность токена
+    try {
+      const { verifyToken } = await import('./lib/auth')
+      const payload = verifyToken(token)
+      if (!payload) {
+        console.log(`⚠️  Invalid token for ${pathname}, redirecting to login. IP: ${ip}`)
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
+    } catch (error) {
+      console.log(`⚠️  Token verification error for ${pathname}, redirecting to login. IP: ${ip}`, error)
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }
