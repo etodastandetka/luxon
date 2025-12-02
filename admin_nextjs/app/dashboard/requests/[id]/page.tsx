@@ -1159,60 +1159,126 @@ export default function RequestDetailPage() {
                 setPhotoZoom(1)
               }}
             >
-              {request.photoFileUrl?.startsWith('data:image') ? (
-                // Если это base64, используем обычный img
-                <img
-                  src={request.photoFileUrl}
-                  alt="Фото чека об оплате"
-                  className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
-                  style={{ width: 'auto', height: 'auto' }}
-                  onLoad={() => {
-                    console.log('✅ [Photo] Фото успешно загружено (base64)')
-                  }}
-                  onError={(e) => {
-                    console.error('❌ [Photo] Ошибка загрузки фото чека (base64):', {
-                      error: e,
-                      photoUrl: request.photoFileUrl?.substring(0, 100),
-                      photoLength: request.photoFileUrl?.length
+              {(() => {
+                const photoUrl = request.photoFileUrl
+                if (!photoUrl) {
+                  return null
+                }
+                
+                const isBase64 = photoUrl.startsWith('data:image')
+                
+                // Проверяем валидность base64
+                if (isBase64) {
+                  // Проверяем, что base64 строка не повреждена
+                  const base64Match = photoUrl.match(/^data:image\/(\w+);base64,(.+)$/)
+                  if (!base64Match || !base64Match[2]) {
+                    console.error('❌ [Photo] Неверный формат base64:', {
+                      photoUrl: photoUrl.substring(0, 100),
+                      hasDataPrefix: photoUrl.startsWith('data:'),
+                      hasBase64: photoUrl.includes('base64,')
                     })
-                    const target = e.target as HTMLElement
-                    target.style.display = 'none'
-                    const parent = target.closest('.bg-gray-800')
-                    if (parent) {
-                      console.error('❌ [Photo] Скрываем блок с фото из-за ошибки загрузки')
-                      (parent as HTMLElement).style.display = 'none'
-                    }
-                  }}
-                />
-              ) : (
-                // Если это URL, используем Next.js Image
-                <Image
-                  src={request.photoFileUrl}
-                  alt="Фото чека об оплате"
-                  width={800}
-                  height={500}
-                  className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
-                  style={{ width: 'auto', height: 'auto' }}
-                  priority
-                  unoptimized
-                  onLoad={() => {
-                    console.log('✅ [Photo] Фото успешно загружено (URL)')
-                  }}
-                  onError={(e) => {
-                    console.error('❌ [Photo] Ошибка загрузки фото чека (URL):', {
-                      error: e,
-                      photoUrl: request.photoFileUrl
+                    return (
+                      <div className="p-4 bg-red-900/30 border border-red-500 rounded-lg">
+                        <p className="text-red-300 text-sm">⚠️ Ошибка: Неверный формат изображения</p>
+                        <p className="text-red-400 text-xs mt-1">Фото не может быть отображено</p>
+                      </div>
+                    )
+                  }
+                  
+                  // Проверяем длину base64 данных (слишком большие могут не загружаться)
+                  const base64Data = base64Match[2]
+                  if (base64Data.length > 10 * 1024 * 1024) { // Больше 10MB
+                    console.warn('⚠️ [Photo] Base64 изображение очень большое:', {
+                      size: `${(base64Data.length / 1024 / 1024).toFixed(2)}MB`,
+                      photoUrl: photoUrl.substring(0, 50)
                     })
-                    const target = e.target as HTMLElement
-                    target.style.display = 'none'
-                    const parent = target.closest('.bg-gray-800')
-                    if (parent) {
-                      console.error('❌ [Photo] Скрываем блок с фото из-за ошибки загрузки')
-                      (parent as HTMLElement).style.display = 'none'
-                    }
-                  }}
-                />
-              )}
+                  }
+                }
+                
+                return isBase64 ? (
+                  // Если это base64, используем обычный img
+                  <img
+                    src={photoUrl}
+                    alt="Фото чека об оплате"
+                    className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
+                    style={{ 
+                      width: 'auto', 
+                      height: 'auto',
+                      display: 'block' // Явно показываем изображение
+                    }}
+                    onLoad={() => {
+                      console.log('✅ [Photo] Фото успешно загружено (base64):', {
+                        photoLength: photoUrl.length,
+                        photoType: photoUrl.substring(0, 30)
+                      })
+                    }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      console.error('❌ [Photo] Ошибка загрузки фото чека (base64):', {
+                        error: e,
+                        photoUrl: photoUrl.substring(0, 100),
+                        photoLength: photoUrl.length,
+                        src: target.src?.substring(0, 100),
+                        naturalWidth: target.naturalWidth,
+                        naturalHeight: target.naturalHeight
+                      })
+                      
+                      // НЕ скрываем блок полностью - показываем сообщение об ошибке
+                      const parent = target.closest('.bg-gray-800')
+                      if (parent) {
+                        const errorDiv = document.createElement('div')
+                        errorDiv.className = 'p-4 bg-red-900/30 border border-red-500 rounded-lg'
+                        errorDiv.innerHTML = `
+                          <p class="text-red-300 text-sm">⚠️ Ошибка загрузки фото</p>
+                          <p class="text-red-400 text-xs mt-1">Попробуйте обновить страницу</p>
+                        `
+                        target.style.display = 'none'
+                        parent.appendChild(errorDiv)
+                      }
+                    }}
+                  />
+                ) : (
+                  // Если это URL, используем Next.js Image
+                  <Image
+                    src={photoUrl}
+                    alt="Фото чека об оплате"
+                    width={800}
+                    height={500}
+                    className="max-w-full max-h-[500px] rounded-lg border border-gray-600 object-contain"
+                    style={{ 
+                      width: 'auto', 
+                      height: 'auto',
+                      display: 'block' // Явно показываем изображение
+                    }}
+                    priority
+                    unoptimized
+                    onLoad={() => {
+                      console.log('✅ [Photo] Фото успешно загружено (URL):', {
+                        photoUrl: photoUrl
+                      })
+                    }}
+                    onError={(e) => {
+                      console.error('❌ [Photo] Ошибка загрузки фото чека (URL):', {
+                        error: e,
+                        photoUrl: photoUrl
+                      })
+                      // НЕ скрываем блок - показываем сообщение об ошибке
+                      const target = e.target as HTMLElement
+                      const parent = target.closest('.bg-gray-800')
+                      if (parent) {
+                        const errorDiv = document.createElement('div')
+                        errorDiv.className = 'p-4 bg-red-900/30 border border-red-500 rounded-lg'
+                        errorDiv.innerHTML = `
+                          <p class="text-red-300 text-sm">⚠️ Ошибка загрузки фото</p>
+                          <p class="text-red-400 text-xs mt-1">URL: ${photoUrl.substring(0, 50)}...</p>
+                        `
+                        target.style.display = 'none'
+                        parent.appendChild(errorDiv)
+                      }
+                    }}
+                  />
+                )
+              })()}
             </div>
           </div>
         )
@@ -1276,41 +1342,75 @@ export default function RequestDetailPage() {
                 setPhotoZoom(Math.max(0.5, Math.min(5, photoZoom + delta)))
               }}
             >
-              {request.photoFileUrl?.startsWith('data:image') ? (
-                // Если это base64, используем обычный img
-                <img
-                  src={request.photoFileUrl}
-                  alt="Фото чека об оплате (увеличенное)"
-                  className="rounded-lg shadow-2xl"
-                  style={{ 
-                    transform: `scale(${photoZoom})`,
-                    transformOrigin: 'center',
-                    transition: 'transform 0.1s ease-out',
-                    maxWidth: '90vw',
-                    maxHeight: '90vh',
-                    objectFit: 'contain'
-                  }}
-                />
-              ) : (
-                // Если это URL, используем Next.js Image
-                <Image
-                  src={request.photoFileUrl}
-                  alt="Фото чека об оплате (увеличенное)"
-                  width={1200}
-                  height={800}
-                  className="rounded-lg shadow-2xl"
-                  priority
-                  unoptimized
-                  style={{ 
-                    transform: `scale(${photoZoom})`,
-                    transformOrigin: 'center',
-                    transition: 'transform 0.1s ease-out',
-                    maxWidth: '90vw',
-                    maxHeight: '90vh',
-                    objectFit: 'contain'
-                  }}
-                />
-              )}
+              {(() => {
+                const photoUrl = request.photoFileUrl
+                if (!photoUrl) {
+                  return null
+                }
+                
+                const isBase64 = photoUrl.startsWith('data:image')
+                
+                if (isBase64) {
+                  // Проверяем валидность base64
+                  const base64Match = photoUrl.match(/^data:image\/(\w+);base64,(.+)$/)
+                  if (!base64Match || !base64Match[2]) {
+                    return (
+                      <div className="p-4 bg-red-900/30 border border-red-500 rounded-lg">
+                        <p className="text-red-300 text-sm">⚠️ Ошибка: Неверный формат изображения</p>
+                      </div>
+                    )
+                  }
+                  
+                  return (
+                    <img
+                      src={photoUrl}
+                      alt="Фото чека об оплате (увеличенное)"
+                      className="rounded-lg shadow-2xl"
+                      style={{ 
+                        transform: `scale(${photoZoom})`,
+                        transformOrigin: 'center',
+                        transition: 'transform 0.1s ease-out',
+                        maxWidth: '90vw',
+                        maxHeight: '90vh',
+                        objectFit: 'contain',
+                        display: 'block'
+                      }}
+                      onError={(e) => {
+                        console.error('❌ [Photo Modal] Ошибка загрузки фото (base64):', {
+                          photoLength: photoUrl.length,
+                          photoType: photoUrl.substring(0, 30)
+                        })
+                      }}
+                    />
+                  )
+                } else {
+                  return (
+                    <Image
+                      src={photoUrl}
+                      alt="Фото чека об оплате (увеличенное)"
+                      width={1200}
+                      height={800}
+                      className="rounded-lg shadow-2xl"
+                      priority
+                      unoptimized
+                      style={{ 
+                        transform: `scale(${photoZoom})`,
+                        transformOrigin: 'center',
+                        transition: 'transform 0.1s ease-out',
+                        maxWidth: '90vw',
+                        maxHeight: '90vh',
+                        objectFit: 'contain',
+                        display: 'block'
+                      }}
+                      onError={(e) => {
+                        console.error('❌ [Photo Modal] Ошибка загрузки фото (URL):', {
+                          photoUrl: photoUrl
+                        })
+                      }}
+                    />
+                  )
+                }
+              })()}
             </div>
           </div>
         </div>
