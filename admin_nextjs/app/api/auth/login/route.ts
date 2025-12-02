@@ -67,15 +67,19 @@ export async function POST(request: NextRequest) {
       createApiResponse({ user: result.user, message: 'Login successful' })
     )
 
+    // secure: true только если явно указано в .env или если HTTPS
+    const isSecure = process.env.COOKIE_SECURE === 'true' || 
+                     (process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:')
+    
     response.cookies.set('auth_token', result.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure, // Только для HTTPS или если явно указано
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/', // Важно: cookie должен быть доступен на всех путях
     })
     
-    console.log(`✅ Login successful for user ${result.user.username}, token set in cookie`)
+    console.log(`✅ Login successful for user ${result.user.username}, cookie set: secure=${isSecure}, protocol=${request.nextUrl.protocol}`)
 
     return response
   } catch (error: any) {

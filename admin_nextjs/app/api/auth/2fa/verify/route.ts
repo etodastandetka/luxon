@@ -106,13 +106,19 @@ export async function POST(request: NextRequest) {
     )
 
     // Устанавливаем cookie с правильными параметрами
+    // secure: true только если явно указано в .env или если HTTPS
+    const isSecure = process.env.COOKIE_SECURE === 'true' || 
+                     (process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:')
+    
     response.cookies.set('auth_token', jwtToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure, // Только для HTTPS или если явно указано
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/', // Важно: cookie должен быть доступен на всех путях
     })
+    
+    console.log(`✅ Cookie set: secure=${isSecure}, protocol=${request.nextUrl.protocol}, token=${jwtToken.substring(0, 20)}...`)
 
     console.log(`✅ 2FA verified for user ${user.id} (${user.username}), token set in cookie. Token preview: ${jwtToken.substring(0, 20)}...`)
 
