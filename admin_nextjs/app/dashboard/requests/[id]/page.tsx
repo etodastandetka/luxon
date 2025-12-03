@@ -73,6 +73,22 @@ export default function RequestDetailPage() {
   const isMountedRef = useRef(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Вспомогательная функция для обновления заявки с сохранением photoFileUrl
+  const updateRequestPreservingPhoto = useCallback((newRequestData: RequestDetail | ((prev: RequestDetail | null) => RequestDetail | null)) => {
+    setRequest(prev => {
+      const newRequest = typeof newRequestData === 'function' ? newRequestData(prev) : newRequestData
+      if (!prev || !newRequest) return newRequest
+      
+      // Сохраняем существующий photoFileUrl, если новый null или undefined
+      // (API всегда возвращает null для фото, оно загружается отдельно)
+      if (prev.photoFileUrl && (!newRequest.photoFileUrl || newRequest.photoFileUrl === null)) {
+        return { ...newRequest, photoFileUrl: prev.photoFileUrl }
+      }
+      
+      return newRequest
+    })
+  }, [])
+
   useEffect(() => {
     isMountedRef.current = true
     
@@ -125,7 +141,7 @@ export default function RequestDetailPage() {
             const requestData = data.data
             
             // Устанавливаем данные СРАЗУ - это критично для мгновенного отображения
-            setRequest(requestData)
+            updateRequestPreservingPhoto(requestData)
             
             // Убираем loading СРАЗУ после установки данных (не ждем фото)
               setLoading(false)
@@ -345,7 +361,7 @@ export default function RequestDetailPage() {
           .then(res => res.json())
           .then(data => {
             if (data.success && isMountedRef.current) {
-              setRequest(data.data)
+              updateRequestPreservingPhoto(data.data)
             }
           })
           .catch(() => {})
@@ -654,7 +670,7 @@ export default function RequestDetailPage() {
 
       if (data.success) {
         // Проверяем, что компонент все еще смонтирован перед обновлением
-        setRequest(prevRequest => prevRequest ? { ...prevRequest, ...data.data } : data.data)
+        updateRequestPreservingPhoto(prevRequest => prevRequest ? { ...prevRequest, ...data.data } : data.data)
         setShowMenu(false)
         
         // Уведомляем другие вкладки об обновлении
@@ -694,7 +710,7 @@ export default function RequestDetailPage() {
                 if (fetchResponse.ok) {
                   const fetchData = await fetchResponse.json()
                   if (fetchData.success) {
-                    setRequest(fetchData.data)
+                    updateRequestPreservingPhoto(fetchData.data)
                     // Если заявка уже подтверждена автоматически (сумма совпала), перенаправляем на дашборд
                     if (fetchData.data.status === 'completed' || fetchData.data.status === 'approved') {
                       setSelectedPaymentId(null)
@@ -757,7 +773,7 @@ export default function RequestDetailPage() {
               console.log('✅ Deposit successful, updating request from API response:', depositData.data.request)
               
               // Обновляем заявку с данными из ответа API (уже содержит обновленный статус)
-              setRequest(depositData.data.request)
+              updateRequestPreservingPhoto(depositData.data.request)
               
               // Перезагружаем данные для получения актуального состояния (включая связанные платежи)
               setTimeout(async () => {
@@ -773,7 +789,7 @@ export default function RequestDetailPage() {
                 const refreshData = await refreshResponse.json()
                 if (refreshData.success && isMountedRef.current) {
                   console.log('✅ Request refreshed after deposit:', refreshData.data)
-                  setRequest(refreshData.data)
+                  updateRequestPreservingPhoto(refreshData.data)
                 }
               }, 500)
               
@@ -802,7 +818,7 @@ export default function RequestDetailPage() {
                 
                 const refreshData = await refreshResponse.json()
                 if (refreshData.success && isMountedRef.current) {
-                  setRequest(refreshData.data)
+                  updateRequestPreservingPhoto(refreshData.data)
                 }
               }, 500)
               
@@ -843,7 +859,7 @@ export default function RequestDetailPage() {
         if (data.success) {
           // Обновляем заявку с новым статусом
           const updatedRequest = { ...request, ...data.data, status: newStatus }
-          setRequest(updatedRequest)
+          updateRequestPreservingPhoto(updatedRequest)
           
           // Перезагружаем данные для получения актуального состояния
           setTimeout(async () => {
@@ -858,7 +874,7 @@ export default function RequestDetailPage() {
             
             const refreshData = await refreshResponse.json()
             if (refreshData.success && isMountedRef.current) {
-              setRequest(refreshData.data)
+              updateRequestPreservingPhoto(refreshData.data)
             }
           }, 500)
           
