@@ -72,6 +72,8 @@ export default function RequestDetailPage() {
   const [imageLoading, setImageLoading] = useState(true)
   const isMountedRef = useRef(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const photoLoadedRef = useRef(false) // Флаг, что фото уже загружено для текущей заявки
+  const currentRequestIdRef = useRef<string | null>(null) // ID текущей заявки
 
   // Вспомогательная функция для обновления заявки с сохранением photoFileUrl
   const updateRequestPreservingPhoto = useCallback((newRequestData: RequestDetail | ((prev: RequestDetail | null) => RequestDetail | null)) => {
@@ -79,8 +81,14 @@ export default function RequestDetailPage() {
       const newRequest = typeof newRequestData === 'function' ? newRequestData(prev) : newRequestData
       if (!prev || !newRequest) return newRequest
       
+      // КРИТИЧНО: Если фото уже загружено, ВСЕГДА сохраняем его и НИКОГДА не меняем
+      // API всегда возвращает null для фото, оно загружается отдельно только один раз
+      if (prev.photoFileUrl && photoLoadedRef.current) {
+        // Всегда сохраняем старое фото, даже если пришло новое
+        return { ...newRequest, photoFileUrl: prev.photoFileUrl }
+      }
+      
       // Сохраняем существующий photoFileUrl, если новый null или undefined
-      // (API всегда возвращает null для фото, оно загружается отдельно)
       if (prev.photoFileUrl && (!newRequest.photoFileUrl || newRequest.photoFileUrl === null)) {
         return { ...newRequest, photoFileUrl: prev.photoFileUrl }
       }
@@ -102,6 +110,12 @@ export default function RequestDetailPage() {
       if (!requestId) {
         setLoading(false)
         return
+      }
+
+      // Если заявка изменилась, сбрасываем флаг загрузки фото
+      if (currentRequestIdRef.current !== requestId) {
+        photoLoadedRef.current = false
+        currentRequestIdRef.current = requestId
       }
 
       const abortController = new AbortController()
@@ -146,35 +160,50 @@ export default function RequestDetailPage() {
             // Убираем loading СРАЗУ после установки данных (не ждем фото)
               setLoading(false)
             
-            // Загружаем фото асинхронно в фоне (не блокируем отображение страницы)
-            // Всегда загружаем фото отдельно для уменьшения размера основного ответа
-            setPhotoLoading(true)
-            // Загружаем фото с небольшой задержкой, чтобы не блокировать основной контент
-            setTimeout(() => {
-              if (!isMountedRef.current) return
-              
-              fetch(`/api/requests/${requestId}/photo`, {
-                cache: 'default',
-                priority: 'low', // Низкий приоритет - не блокирует другие запросы
-              })
-                .then(res => {
-                  if (!res.ok) return { success: false }
-                  return res.json()
+            // Загружаем фото ТОЛЬКО один раз при первой загрузке заявки
+            // При автообновлениях (showLoading = false) не загружаем фото повторно
+            if (showLoading && !photoLoadedRef.current) {
+              setPhotoLoading(true)
+              // Загружаем фото с небольшой задержкой, чтобы не блокировать основной контент
+              setTimeout(() => {
+                if (!isMountedRef.current || photoLoadedRef.current) return
+                
+                fetch(`/api/requests/${requestId}/photo`, {
+                  cache: 'default',
+                  priority: 'low', // Низкий приоритет - не блокирует другие запросы
                 })
-                .then(photoData => {
-                  if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
-                    setRequest(prev => prev ? {
-                      ...prev,
-                      photoFileUrl: photoData.data.photoFileUrl
-                    } : null)
-                    setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
-                  }
-                  setPhotoLoading(false)
-                })
-                .catch(() => {
-                  setPhotoLoading(false)
-                })
-            }, 50) // Небольшая задержка для приоритизации основного контента
+                  .then(res => {
+                    if (!res.ok) return { success: false }
+                    return res.json()
+                  })
+                  .then(photoData => {
+                    // Проверяем еще раз, что фото не загружено (защита от дублирования)
+                    if (photoLoadedRef.current) {
+                      setPhotoLoading(false)
+                      return
+                    }
+                    
+                    if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
+                      setRequest(prev => {
+                        if (!prev) return null
+                        // Если фото уже есть, не меняем его
+                        if (prev.photoFileUrl) return prev
+                        
+                        photoLoadedRef.current = true // Отмечаем, что фото загружено
+                        return {
+                          ...prev,
+                          photoFileUrl: photoData.data.photoFileUrl
+                        }
+                      })
+                      setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
+                    }
+                    setPhotoLoading(false)
+                  })
+                  .catch(() => {
+                    setPhotoLoading(false)
+                  })
+              }, 50) // Небольшая задержка для приоритизации основного контента
+            }
             
             // Интервал автообновления управляется в основном useEffect
             
