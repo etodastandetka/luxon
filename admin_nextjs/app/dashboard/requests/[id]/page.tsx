@@ -98,11 +98,11 @@ export default function RequestDetailPage() {
         }
         
         try {
-          // Используем кэш для быстрой загрузки
+          // Используем кэш для быстрой загрузки, но с перевалидацией для свежих данных
           const response = await fetch(`/api/requests/${requestId}`, {
             signal: abortController.signal,
-            cache: 'force-cache', // Агрессивное кэширование для мгновенной загрузки
-            next: { revalidate: 3 }, // Перевалидируем каждые 3 секунды
+            cache: 'default', // Используем стандартное кэширование браузера
+            next: { revalidate: 2 }, // Перевалидируем каждые 2 секунды для свежих данных
           })
           
           if (abortController.signal.aborted || !isMountedRef.current) return
@@ -128,15 +128,17 @@ export default function RequestDetailPage() {
             setRequest(requestData)
             
             // Убираем loading СРАЗУ после установки данных (не ждем фото)
-            setLoading(false)
+              setLoading(false)
             
             // Загружаем фото асинхронно в фоне (не блокируем отображение страницы)
             // Всегда загружаем фото отдельно для уменьшения размера основного ответа
-            // Используем requestIdleCallback для загрузки фото только когда браузер свободен
             setPhotoLoading(true)
-            const loadPhoto = () => {
+            // Загружаем фото с небольшой задержкой, чтобы не блокировать основной контент
+            setTimeout(() => {
+              if (!isMountedRef.current) return
+              
               fetch(`/api/requests/${requestId}/photo`, {
-                cache: 'force-cache', // Агрессивное кэширование
+                cache: 'default',
                 priority: 'low', // Низкий приоритет - не блокирует другие запросы
               })
                 .then(res => {
@@ -156,35 +158,31 @@ export default function RequestDetailPage() {
                 .catch(() => {
                   setPhotoLoading(false)
                 })
-            }
-            
-            // Загружаем фото только когда браузер свободен (не блокирует UI)
-            if ('requestIdleCallback' in window) {
-              requestIdleCallback(loadPhoto, { timeout: 2000 })
-            } else {
-              // Fallback для браузеров без requestIdleCallback
-              setTimeout(loadPhoto, 100)
-            }
+            }, 50) // Небольшая задержка для приоритизации основного контента
             
             // Интервал автообновления управляется в основном useEffect
             
-            // Загружаем фото профиля асинхронно в фоне (не блокируем отображение страницы)
+            // Загружаем фото профиля асинхронно в фоне с задержкой (не блокируем отображение страницы)
             if (requestData.userId) {
-              // Загружаем сразу, но не блокируем рендеринг
+              setTimeout(() => {
+                if (isMountedRef.current) {
               fetchProfilePhoto(requestData.userId).catch(err => {
                 console.error('Failed to fetch profile photo:', err)
               })
+                }
+              }, 200) // Задержка для приоритизации основного контента
             }
             
             // Проверяем автопополнение (привязанный платеж с совпадающей суммой)
             // Делаем это в фоне после отображения страницы, чтобы не замедлять загрузку
             if (requestData.requestType === 'deposit' && 
-                requestData.status !== 'completed' && 
-                requestData.status !== 'approved' &&
-                requestData.status !== 'rejected' &&
-                requestData.matchingPayments) {
-              // Выполняем проверку асинхронно после отображения страницы (убрали задержку для ускорения)
-              requestAnimationFrame(() => {
+                requestData.status === 'pending' &&
+                requestData.matchingPayments && 
+                requestData.matchingPayments.length > 0) {
+              // Выполняем проверку асинхронно после отображения страницы
+              setTimeout(() => {
+                if (!isMountedRef.current) return
+                
                 const linkedPayment = requestData.matchingPayments.find((p: MatchingPayment) => 
                   p.requestId === requestData.id && p.isProcessed
                 )
@@ -215,7 +213,7 @@ export default function RequestDetailPage() {
                     })
                   }
                 }
-              })
+              }, 300) // Задержка для приоритизации основного контента
             }
           } else {
             console.error('❌ Failed to fetch request:', data.error)
@@ -281,8 +279,8 @@ export default function RequestDetailPage() {
     // Создаем начальный интервал (будет обновлен после загрузки данных)
     intervalRef.current = setInterval(() => {
       if (!document.hidden && isMountedRef.current) {
-        fetchRequest(false)
-      }
+          fetchRequest(false)
+        }
     }, 5000)
     
     // Обновление при фокусе страницы
@@ -1166,18 +1164,18 @@ export default function RequestDetailPage() {
           </div>
         </div>
       ) : request.photoFileUrl ? (
-        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
-          <h3 className="text-base font-semibold text-white mb-3">
-            {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-          </h3>
-          <div 
+          <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
+            <h3 className="text-base font-semibold text-white mb-3">
+              {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+            </h3>
+            <div 
             className="relative w-full flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity bg-gray-900 rounded-lg overflow-hidden" 
             style={{ minHeight: '200px' }}
-            onClick={() => {
-              setShowPhotoModal(true)
-              setPhotoZoom(1)
-            }}
-          >
+              onClick={() => {
+                setShowPhotoModal(true)
+                setPhotoZoom(1)
+              }}
+            >
             {/* Красивый лоадер пока фото загружается */}
             {imageLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm z-10 photo-loader">
@@ -1185,7 +1183,7 @@ export default function RequestDetailPage() {
                   <div className="relative">
                     <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
                     <div className="absolute inset-0 w-12 h-12 border-4 border-green-500/30 rounded-full animate-ping"></div>
-                  </div>
+                      </div>
                   <p className="text-xs text-gray-400 font-medium">Загрузка изображения...</p>
                 </div>
               </div>
@@ -1199,7 +1197,7 @@ export default function RequestDetailPage() {
               style={{ display: 'block' }}
               loading="lazy"
               unoptimized={request.photoFileUrl?.startsWith('data:')}
-              onError={(e) => {
+                    onError={(e) => {
                 console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
                 setImageLoading(false)
                 // Скрываем лоадер при ошибке
@@ -1208,8 +1206,8 @@ export default function RequestDetailPage() {
                   (loader as HTMLElement).style.display = 'none'
                 }
                 // Показываем сообщение об ошибке
-                const target = e.target as HTMLImageElement
-                target.style.display = 'none'
+                      const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
                 const parent = target.parentElement
                 if (parent) {
                   parent.innerHTML = '<div class="text-center py-8"><p class="text-red-400">Ошибка загрузки фото</p></div>'
@@ -1228,11 +1226,11 @@ export default function RequestDetailPage() {
                       loader.remove()
                     }
                   }, 300)
-                }
-              }}
-            />
+                      }
+                    }}
+                  />
+            </div>
           </div>
-        </div>
       ) : (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-base font-semibold text-white mb-3">
@@ -1251,23 +1249,23 @@ export default function RequestDetailPage() {
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
           onClick={() => setShowPhotoModal(false)}
         >
-          <button
-            onClick={() => setShowPhotoModal(false)}
-            className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-2 transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          
-          <Image
+            <button
+              onClick={() => setShowPhotoModal(false)}
+              className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-2 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+                    <Image
             src={request.photoFileUrl}
             alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-            width={1200}
+                      width={1200}
             height={1200}
             className="max-w-full max-h-full object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
-            unoptimized
+                      unoptimized
           />
         </div>
       )}

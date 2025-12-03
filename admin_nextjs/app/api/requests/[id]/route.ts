@@ -97,19 +97,25 @@ export async function GET(
       )
     }
 
+    // Оптимизация: загружаем дополнительные данные только если они действительно нужны
+    // Для завершенных заявок не загружаем matchingPayments и casinoTransactions
+    const isPendingDeposit = requestData.status === 'pending' && requestData.requestType === 'deposit'
     const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
     
-    // Загружаем дополнительные данные параллельно, но только если они нужны
-    // Оптимизация: загружаем только для pending заявок или если явно запрошено
-    const needsAdditionalData = requestData.status === 'pending' || requestData.requestType === 'deposit'
-    
+    // Загружаем только критичные данные в основном запросе
+    // Остальное загружаем асинхронно через отдельные endpoints если нужно
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      // Matching payments - только для pending депозитов
-      (needsAdditionalData && requestAmountInt) ? prisma.incomingPayment.findMany({
+      // Matching payments - ТОЛЬКО для pending депозитов с суммой
+      (isPendingDeposit && requestAmountInt) ? prisma.incomingPayment.findMany({
           where: {
             amount: {
               gte: requestAmountInt,
               lt: requestAmountInt + 1,
+            },
+            // Оптимизация: только необработанные платежи за последние 10 минут
+            isProcessed: false,
+            paymentDate: {
+              gte: new Date(Date.now() - 10 * 60 * 1000), // Последние 10 минут
             },
           },
           orderBy: { paymentDate: 'desc' },
@@ -124,11 +130,14 @@ export async function GET(
           },
         }) : Promise.resolve([]),
       
-      // Casino transactions - только если есть accountId
-      (requestData.accountId && requestData.bookmaker) ? prisma.request.findMany({
+      // Casino transactions - только для pending заявок или если явно нужны
+      // Для завершенных заявок не загружаем - это экономит время
+      (requestData.status === 'pending' && requestData.accountId && requestData.bookmaker) ? prisma.request.findMany({
           where: {
             accountId: requestData.accountId,
             bookmaker: requestData.bookmaker,
+            // Исключаем текущую заявку
+            id: { not: requestData.id },
           },
           orderBy: { createdAt: 'desc' },
           take: 3, // Только первые 3 для ускорения
@@ -147,7 +156,7 @@ export async function GET(
           },
         }) : Promise.resolve([]),
       
-      // User note - загружаем всегда, но это быстрый запрос
+      // User note - загружаем всегда, но это быстрый запрос с индексом
       prisma.botUser.findUnique({
           where: { userId: requestData.userId },
           select: { note: true },
@@ -185,8 +194,10 @@ export async function GET(
     }
     
     const response = NextResponse.json(createApiResponse(responseData))
-    // Добавляем кэширование для быстрой загрузки (5 секунд)
-    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
+    // Добавляем кэширование для быстрой загрузки
+    // Для pending заявок кэш короче (2 сек), для остальных дольше (10 сек)
+    const cacheTime = requestData.status === 'pending' ? 2 : 10
+    response.headers.set('Cache-Control', `public, s-maxage=${cacheTime}, stale-while-revalidate=${cacheTime * 2}`)
     return response
   } catch (error: any) {
     return NextResponse.json(
