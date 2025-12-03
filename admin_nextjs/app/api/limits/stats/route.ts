@@ -4,6 +4,15 @@ import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 
 export const dynamic = 'force-dynamic'
 
+interface PlatformStats {
+  key: string
+  name: string
+  depositsSum: number
+  depositsCount: number
+  withdrawalsSum: number
+  withdrawalsCount: number
+}
+
 export async function GET(request: NextRequest) {
   try {
     requireAuth(request)
@@ -143,7 +152,6 @@ export async function GET(request: NextRequest) {
           AND created_at <= ${chartEndDate}::timestamp
         GROUP BY DATE(created_at)
         ORDER BY date DESC
-        LIMIT 30
       `,
       prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
         SELECT 
@@ -156,7 +164,6 @@ export async function GET(request: NextRequest) {
           AND created_at <= ${chartEndDate}::timestamp
         GROUP BY DATE(created_at)
         ORDER BY date DESC
-        LIMIT 30
       `,
     ])
 
