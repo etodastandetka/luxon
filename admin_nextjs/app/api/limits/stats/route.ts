@@ -15,11 +15,22 @@ interface PlatformStats {
 
 export async function GET(request: NextRequest) {
   try {
-    requireAuth(request)
+    // Проверяем авторизацию
+    try {
+      requireAuth(request)
+    } catch (authError: any) {
+      console.error('❌ [Limits Stats] Auth error:', authError)
+      return NextResponse.json(
+        createApiResponse(null, authError.message || 'Unauthorized'),
+        { status: 401 }
+      )
+    }
 
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start')
     const endDate = searchParams.get('end')
+    
+    console.log('📊 [Limits Stats] Fetching stats:', { startDate, endDate })
 
     // По умолчанию показываем статистику за все время
     // Если выбран период - показываем за период
@@ -280,6 +291,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Один запрос для всех платформ - значительно быстрее
+    // Используем подзапрос для правильной группировки по алиасу
     const platformStatsQuery = await prisma.$queryRawUnsafe<Array<{
       platform_key: string;
       deposits_count: bigint;
@@ -288,24 +300,32 @@ export async function GET(request: NextRequest) {
       withdrawals_sum: string | null;
     }>>(`
       SELECT 
-        CASE 
-          WHEN bookmaker ILIKE '%1xbet%' OR bookmaker ILIKE '%xbet%' THEN '1xbet'
-          WHEN bookmaker ILIKE '%1win%' OR bookmaker ILIKE '%onewin%' THEN '1win'
-          WHEN bookmaker ILIKE '%melbet%' THEN 'melbet'
-          WHEN bookmaker ILIKE '%mostbet%' THEN 'mostbet'
-          WHEN bookmaker ILIKE '%winwin%' OR bookmaker ILIKE '%win win%' THEN 'winwin'
-          WHEN bookmaker ILIKE '%888%' OR bookmaker ILIKE '%888starz%' THEN '888starz'
-          ELSE NULL
-        END as platform_key,
+        platform_key,
         SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as deposits_count,
         COALESCE(SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed') THEN amount ELSE 0 END), 0)::text as deposits_sum,
         SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as withdrawals_count,
         COALESCE(SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN amount ELSE 0 END), 0)::text as withdrawals_sum
-      FROM requests
-      WHERE bookmaker IS NOT NULL
-        ${dateCondition}
+      FROM (
+        SELECT 
+          CASE 
+            WHEN bookmaker ILIKE '%1xbet%' OR bookmaker ILIKE '%xbet%' THEN '1xbet'
+            WHEN bookmaker ILIKE '%1win%' OR bookmaker ILIKE '%onewin%' THEN '1win'
+            WHEN bookmaker ILIKE '%melbet%' THEN 'melbet'
+            WHEN bookmaker ILIKE '%mostbet%' THEN 'mostbet'
+            WHEN bookmaker ILIKE '%winwin%' OR bookmaker ILIKE '%win win%' THEN 'winwin'
+            WHEN bookmaker ILIKE '%888%' OR bookmaker ILIKE '%888starz%' THEN '888starz'
+            ELSE NULL
+          END as platform_key,
+          request_type,
+          status,
+          amount,
+          created_at
+        FROM requests
+        WHERE bookmaker IS NOT NULL
+          ${dateCondition}
+      ) as platform_requests
+      WHERE platform_key IS NOT NULL
       GROUP BY platform_key
-      HAVING platform_key IS NOT NULL
     `, ...dateParams)
     
     // Преобразуем результаты в нужный формат
