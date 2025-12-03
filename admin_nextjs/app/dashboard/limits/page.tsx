@@ -39,7 +39,7 @@ export default function LimitsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [stats, setStats] = useState<LimitsStats | null>(null)
-  const [loading, setLoading] = useState(false) // Начинаем с false - показываем скелетон сразу
+  const [loading, setLoading] = useState(true) // Начинаем с true - показываем скелетон сразу
   const [showCalendar, setShowCalendar] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -64,12 +64,16 @@ export default function LimitsPage() {
       if (end) params.append('end', end)
 
       const response = await fetch(`/api/limits/stats?${params.toString()}`, {
-        cache: 'force-cache', // Агрессивное кэширование для быстрой загрузки
-        next: { revalidate: 10 }, // Перевалидируем каждые 10 секунд
+        cache: 'no-store', // Не кэшируем для получения свежих данных
       })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
       const data = await response.json()
 
-      if (data.success) {
+      if (data.success && data.data) {
         setStats(data.data)
         
         // Устанавливаем значение дат
@@ -82,6 +86,8 @@ export default function LimitsPage() {
         } else {
           setSelectedDates([])
         }
+      } else {
+        console.error('Failed to fetch limits stats: API returned error', data)
       }
     } catch (error) {
       console.error('Failed to fetch limits stats:', error)
