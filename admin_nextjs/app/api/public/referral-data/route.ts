@@ -22,12 +22,23 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   try {
-    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
-    const protectionResult = protectAPI(request)
-    if (protectionResult) {
-      // Добавляем CORS заголовки к ответу защиты
-      protectionResult.headers.set('Access-Control-Allow-Origin', '*')
-      return protectionResult
+    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА (но разрешаем Telegram WebApp)
+    // Для публичного API referral-data ослабляем защиту, т.к. запросы идут из Telegram WebApp
+    const userAgent = request.headers.get('user-agent') || ''
+    const isTelegramWebApp = userAgent.includes('Telegram') || request.headers.get('x-telegram-bot-api-secret-token')
+    
+    // Если это не Telegram WebApp, применяем защиту
+    if (!isTelegramWebApp) {
+      const protectionResult = protectAPI(request)
+      if (protectionResult) {
+        // Добавляем CORS заголовки к ответу защиты
+        protectionResult.headers.set('Access-Control-Allow-Origin', '*')
+        console.log('🚫 [Referral Data API] Запрос заблокирован защитой:', {
+          userAgent,
+          ip: getClientIP(request)
+        })
+        return protectionResult
+      }
     }
 
     // Rate limiting (строгий для публичного endpoint)
@@ -45,7 +56,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     let userId = searchParams.get('user_id')
     
-    console.log('📋 [Referral Data API] Запрос данных рефералов:', { userId, ip: getClientIP(request) })
+    const clientIP = getClientIP(request)
+    
+    console.log('📋 [Referral Data API] Запрос данных рефералов:', { 
+      userId, 
+      ip: clientIP,
+      userAgent: userAgent.substring(0, 100), // Первые 100 символов
+      url: request.url
+    })
     
     if (!userId) {
       console.log('❌ [Referral Data API] User ID не предоставлен')
