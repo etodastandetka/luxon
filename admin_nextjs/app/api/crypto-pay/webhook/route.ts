@@ -32,7 +32,7 @@ interface WebhookUpdate {
 }
 
 export async function POST(request: NextRequest) {
-d   try {
+  try {
     // 🛡️ Rate limiting для webhook (строгий, т.к. это внешний endpoint)
     const rateLimitResult = rateLimit({ 
       maxRequests: 100, 
