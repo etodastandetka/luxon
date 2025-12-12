@@ -36,13 +36,8 @@ export default function ReferralPage() {
   }
 
   useEffect(() => {
-    // Ждем инициализации Telegram WebApp перед загрузкой данных
-    const initTimer = setTimeout(() => {
-      console.log('⏰ Запуск загрузки данных рефералов после инициализации Telegram WebApp')
-      loadReferralData()
-    }, 500) // Небольшая задержка для инициализации Telegram WebApp
-    
-    return () => clearTimeout(initTimer)
+    // Загружаем данные сразу, без задержки
+    loadReferralData()
   }, [])
 
   const loadReferralData = async () => {
@@ -53,22 +48,15 @@ export default function ReferralPage() {
       // Получаем ID пользователя из Telegram WebApp
       const tg = (window as any).Telegram?.WebApp
       
-      console.log('=== DEBUG: Telegram WebApp Data ===')
-      console.log('Telegram object exists:', !!tg)
-      console.log('Telegram object:', tg)
-      console.log('initDataUnsafe:', tg?.initDataUnsafe)
-      console.log('initData:', tg?.initData)
-      console.log('user:', tg?.initDataUnsafe?.user)
-      console.log('user.id:', tg?.initDataUnsafe?.user?.id)
-      console.log('WebApp ready:', tg?.isReady)
-      console.log('WebApp version:', tg?.version)
-      console.log('WebApp platform:', tg?.platform)
-      console.log('=====================================')
+      // Минимальное логирование только для отладки
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Telegram WebApp:', !!tg, 'User ID:', tg?.initDataUnsafe?.user?.id)
+      }
       
-      // Если Telegram WebApp еще не инициализирован, ждем
+      // Если Telegram WebApp еще не инициализирован, ждем короткое время
       if (!tg) {
         console.warn('⚠️ Telegram WebApp не доступен, ждем инициализации...')
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 200)) // Уменьшено с 1000 до 200ms
         const tgRetry = (window as any).Telegram?.WebApp
         if (!tgRetry) {
           throw new Error('Telegram WebApp не инициализирован. Откройте приложение через Telegram бота.')
@@ -79,24 +67,18 @@ export default function ReferralPage() {
       if (tg?.initDataUnsafe?.user?.id) {
         userId = String(tg.initDataUnsafe.user.id)
         setIsFromBot(true)
-        console.log('✅ User ID from initDataUnsafe:', userId)
-        console.log('Full user data:', tg.initDataUnsafe.user)
       } else if (tg?.initData) {
         // Парсим initData если он есть (правильный способ)
         try {
-          console.log('Parsing initData:', tg.initData)
           const params = new URLSearchParams(tg.initData)
           const userParam = params.get('user')
-          console.log('User param from initData:', userParam)
           if (userParam) {
             const userData = JSON.parse(decodeURIComponent(userParam))
             userId = String(userData.id)
             setIsFromBot(true)
-            console.log('✅ User ID from initData:', userId)
-            console.log('Full user data from initData:', userData)
           }
         } catch (e) {
-          console.log('❌ Error parsing initData:', e)
+          // Тихая ошибка парсинга
         }
       }
       
@@ -126,41 +108,15 @@ export default function ReferralPage() {
       // Загружаем данные рефералов с API
       const apiUrl = getApiBase()
       const apiEndpoint = `${apiUrl}/api/public/referral-data?user_id=${userId}`
-      console.log('🔄 Загрузка данных рефералов:', { 
-        userId, 
-        apiUrl, 
-        apiEndpoint,
-        timestamp: new Date().toISOString()
-      })
       
       try {
-        console.log('📤 Отправка запроса к API:', {
-          url: apiEndpoint,
-          method: 'GET',
-          timestamp: new Date().toISOString()
-        })
-        
         const data = await safeFetchJson<any>(apiEndpoint, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
-          timeout: 15000, // 15 секунд таймаут
-          retries: 2, // 2 попытки при ошибке
-        })
-        
-        console.log('📋 Ответ API реферальных данных:', {
-          data,
-          dataType: typeof data,
-          isArray: Array.isArray(data),
-          keys: data ? Object.keys(data) : [],
-          hasSuccess: 'success' in (data || {}),
-          successValue: data?.success,
-          hasEarned: 'earned' in (data || {}),
-          earnedValue: data?.earned,
-          hasTotalReferrals: 'total_referrals' in (data || {}),
-          totalReferralsValue: data?.total_referrals,
-          fullData: JSON.stringify(data).substring(0, 500) // Первые 500 символов для отладки
+          timeout: 8000, // 8 секунд таймаут (быстрее)
+          retries: 1, // 1 попытка (быстрее)
         })
         
         // Проверяем, что данные успешно получены
