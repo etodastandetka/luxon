@@ -1365,7 +1365,7 @@ export default function RequestDetailPage() {
                 <p className="text-sm text-gray-400">Совпадений не найдено</p>
               ) : (
                 <>
-                  <div className="space-y-1.5 pr-1 max-h-96 overflow-y-auto">
+                  <div className="space-y-1.5 pr-1 max-h-[380px] overflow-y-auto">
                     {limitedPayments.map((payment: MatchingPayment) => {
                       const isAttached = payment.requestId === request.id && payment.isProcessed
                       const isAutoCompleted = request.status === 'autodeposit_success' || request.status === 'auto_completed'
