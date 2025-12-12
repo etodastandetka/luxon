@@ -420,16 +420,12 @@ export default function HistoryPage(){
                 <div className="flex justify-between items-start">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center space-x-2">
-                      {bankIcon ? (
-                        bankIcon.image ? (
-                          <img 
-                            src={bankIcon.image} 
-                            alt={bankIcon.name}
-                            className="w-8 h-8 object-contain rounded flex-shrink-0"
-                          />
-                        ) : (
-                          <span className="text-xl flex-shrink-0">{bankIcon.emoji}</span>
-                        )
+                      {bankIcon && bankIcon.image ? (
+                        <img 
+                          src={bankIcon.image} 
+                          alt={bankIcon.name}
+                          className="w-8 h-8 object-contain rounded flex-shrink-0"
+                        />
                       ) : (
                         <div className={`w-2 h-2 rounded-full ${
                           transaction.type === 'deposit' ? 'bg-green-400' : 'bg-red-400'

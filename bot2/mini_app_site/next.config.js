@@ -34,7 +34,7 @@ const nextConfig = {
   
   // Production оптимизации
   ...(process.env.NODE_ENV === 'production' && {
-    output: 'standalone', // Standalone режим для меньшего размера
+    // output: 'standalone', // Отключено из-за проблем с копированием файлов
     productionBrowserSourceMaps: false, // Отключаем source maps в production
   }),
   
