@@ -55,22 +55,118 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     let userId = searchParams.get('user_id')
+    const topOnly = searchParams.get('top_only') === 'true'
     
     const clientIP = getClientIP(request)
     
     console.log('📋 [Referral Data API] Запрос данных рефералов:', { 
       userId, 
+      topOnly,
       ip: clientIP,
       userAgent: userAgent.substring(0, 100), // Первые 100 символов
       url: request.url
     })
     
-    if (!userId) {
+    // Если запрашивается только топ, пропускаем проверку user_id
+    if (!topOnly && !userId) {
       console.log('❌ [Referral Data API] User ID не предоставлен')
       const response = NextResponse.json({
         success: false,
         error: 'User ID is required'
       }, { status: 400 })
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
+    }
+    
+    // Если только топ, возвращаем только топ игроков
+    if (topOnly) {
+      // Получаем топ-5 реферов через агрегацию
+      const topReferrersRaw = await prisma.$queryRaw<Array<{
+        referrer_id: bigint,
+        total_deposits: number,
+        referral_count: bigint
+      }>>`
+        SELECT 
+          br.referrer_id,
+          COALESCE(SUM(r.amount), 0) as total_deposits,
+          COUNT(DISTINCT br.referred_id) as referral_count
+        FROM "BotReferral" br
+        LEFT JOIN "Request" r ON r.user_id = br.referred_id 
+          AND r.request_type = 'deposit'
+          AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
+          AND r.amount > 0
+        GROUP BY br.referrer_id
+        ORDER BY total_deposits DESC
+        LIMIT 5
+      `
+      
+      // Получаем данные пользователей для топ-5
+      const topReferrerIds = topReferrersRaw.map(r => r.referrer_id)
+      const topReferrerUsers = await prisma.botUser.findMany({
+        where: {
+          userId: { in: topReferrerIds }
+        },
+        select: {
+          userId: true,
+          username: true,
+          firstName: true
+        }
+      })
+      
+      const userMap = new Map(topReferrerUsers.map(u => [u.userId.toString(), u]))
+      
+      const prizeDistribution = [10000, 5000, 2500, 1500, 1000]
+      
+      const topReferrers = topReferrersRaw.map((ref, index) => {
+        const user = userMap.get(ref.referrer_id.toString())
+        const displayName = user?.username 
+          ? `@${user.username}` 
+          : user?.firstName 
+            ? user.firstName 
+            : `Игрок #${ref.referrer_id}`
+        
+        return {
+          id: ref.referrer_id.toString(),
+          username: displayName,
+          total_deposits: parseFloat(ref.total_deposits.toString()),
+          referral_count: parseInt(ref.referral_count.toString()),
+          rank: index + 1,
+          prize: prizeDistribution[index] || 0
+        }
+      })
+      
+      // Рассчитываем дату следующей выплаты
+      const now = new Date()
+      const currentDay = now.getDate()
+      let nextPayoutDate: Date
+      
+      if (currentDay < 21) {
+        nextPayoutDate = new Date(now.getFullYear(), now.getMonth(), 21)
+      } else {
+        nextPayoutDate = new Date(now.getFullYear(), now.getMonth() + 1, 21)
+      }
+      
+      const monthNames = [
+        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+      ]
+      const nextPayoutDateFormatted = `${nextPayoutDate.getDate()} ${monthNames[nextPayoutDate.getMonth()]}`
+      
+      const response = NextResponse.json({
+        success: true,
+        top_players: topReferrers,
+        settings: {
+          referral_percentage: 5,
+          min_payout: 100,
+          first_place_prize: prizeDistribution[0],
+          second_place_prize: prizeDistribution[1],
+          third_place_prize: prizeDistribution[2],
+          fourth_place_prize: prizeDistribution[3],
+          fifth_place_prize: prizeDistribution[4],
+          total_prize_pool: 20000,
+          next_payout_date: nextPayoutDateFormatted
+        }
+      })
       response.headers.set('Access-Control-Allow-Origin', '*')
       return response
     }

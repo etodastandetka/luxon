@@ -37,8 +37,25 @@ export default function ReferralPage() {
 
   useEffect(() => {
     // Загружаем данные сразу, без задержки
-    loadReferralData()
-  }, [])
+    // Используем функцию напрямую, чтобы избежать проблем с зависимостями
+    let mounted = true
+    
+    const loadData = async () => {
+      try {
+        await loadReferralData()
+      } catch (error) {
+        if (mounted) {
+          console.error('Error loading referral data:', error)
+        }
+      }
+    }
+    
+    loadData()
+    
+    return () => {
+      mounted = false
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadReferralData = async () => {
     setLoading(true)
@@ -82,13 +99,16 @@ export default function ReferralPage() {
         }
       }
       
-      // Если не из бота, показываем ошибку вместо использования тестового ID
-      // API требует валидный Telegram user_id (только цифры)
+      // Если не из бота, не показываем ошибку в консоли (это нормально для браузера)
+      // Просто не загружаем данные и не показываем топ
       if (!userId) {
-        console.error('❌ Not opened from Telegram bot, user ID not found')
         setIsFromBot(false)
-        setError('Не удалось определить ID пользователя. Откройте приложение через Telegram бота.')
+        setError(null) // Не показываем ошибку, просто не загружаем данные
+        setTopPlayers([]) // Не показываем топ
+        setUserRank(0)
         setLoading(false)
+        // Генерируем реферальную ссылку-заглушку
+        setReferralLink('https://t.me/lux_on_bot')
         return
       }
       
@@ -502,7 +522,7 @@ export default function ReferralPage() {
         </section>
       )}
 
-      {/* Топ игроков */}
+      {/* Топ игроков - показываем всегда, даже если не из бота */}
       <section className="card space-y-4">
         <div className="flex items-center space-x-2">
           <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
