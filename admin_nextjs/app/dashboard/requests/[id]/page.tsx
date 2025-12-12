@@ -1429,9 +1429,9 @@ export default function RequestDetailPage() {
                       )
                     })}
                   </div>
-                  {filteredPayments.length > 3 && (
+                  {filteredPayments.length > 5 && (
                     <p className="text-[11px] text-gray-500 mt-2">
-                      Показаны первые 3 из {filteredPayments.length} совпадений
+                      Найдено {filteredPayments.length} платежей. Прокрутите вниз, чтобы увидеть все.
                     </p>
                   )}
                 </>

@@ -110,7 +110,7 @@ export async function GET(
       // Matching payments - для pending депозитов с суммой
       // Показываем ВСЕ платежи с той же целой частью суммы (независимо от копеек)
       // Показываем и обработанные, и необработанные
-      // Увеличиваем время до 1 часа для поиска платежей
+      // Показываем за ВСЕ время (без ограничения по дате)
       (isPendingDeposit && requestAmountInt) ? prisma.incomingPayment.findMany({
           where: {
             amount: {
@@ -119,13 +119,11 @@ export async function GET(
             },
             // Показываем все платежи (и обработанные, и необработанные)
             // Убрали фильтр isProcessed: false
-            paymentDate: {
-              gte: new Date(Date.now() - 60 * 60 * 1000), // Последний час
-            },
+            // Убрали ограничение по paymentDate - показываем за все время
           },
           orderBy: { paymentDate: 'desc' },
-          // Увеличиваем лимит до 20 платежей
-          take: 20,
+          // Увеличиваем лимит до 100 платежей
+          take: 100,
           select: {
             id: true,
             amount: true,
