@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
-import { getApiBase } from '../../utils/fetch'
+import { getApiBase, safeFetchJson } from '../../utils/fetch'
 
 export default function ReferralPage() {
   const [referralLink, setReferralLink] = useState('')
   const [earned, setEarned] = useState(0)
   const [referralCount, setReferralCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [topPlayers, setTopPlayers] = useState([])
   const [userRank, setUserRank] = useState(0)
   const [isFromBot, setIsFromBot] = useState(true)
@@ -35,26 +36,48 @@ export default function ReferralPage() {
   }
 
   useEffect(() => {
-    loadReferralData()
+    // Ждем инициализации Telegram WebApp перед загрузкой данных
+    const initTimer = setTimeout(() => {
+      console.log('⏰ Запуск загрузки данных рефералов после инициализации Telegram WebApp')
+      loadReferralData()
+    }, 500) // Небольшая задержка для инициализации Telegram WebApp
+    
+    return () => clearTimeout(initTimer)
   }, [])
 
   const loadReferralData = async () => {
     setLoading(true)
+    setError(null)
+    let userId: string | null = null
     try {
       // Получаем ID пользователя из Telegram WebApp
       const tg = (window as any).Telegram?.WebApp
-      let userId = null
       
       console.log('=== DEBUG: Telegram WebApp Data ===')
+      console.log('Telegram object exists:', !!tg)
       console.log('Telegram object:', tg)
       console.log('initDataUnsafe:', tg?.initDataUnsafe)
       console.log('initData:', tg?.initData)
       console.log('user:', tg?.initDataUnsafe?.user)
+      console.log('user.id:', tg?.initDataUnsafe?.user?.id)
+      console.log('WebApp ready:', tg?.isReady)
+      console.log('WebApp version:', tg?.version)
+      console.log('WebApp platform:', tg?.platform)
       console.log('=====================================')
+      
+      // Если Telegram WebApp еще не инициализирован, ждем
+      if (!tg) {
+        console.warn('⚠️ Telegram WebApp не доступен, ждем инициализации...')
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        const tgRetry = (window as any).Telegram?.WebApp
+        if (!tgRetry) {
+          throw new Error('Telegram WebApp не инициализирован. Откройте приложение через Telegram бота.')
+        }
+      }
       
       // Правильный способ получения user ID из Telegram WebApp
       if (tg?.initDataUnsafe?.user?.id) {
-        userId = tg.initDataUnsafe.user.id
+        userId = String(tg.initDataUnsafe.user.id)
         setIsFromBot(true)
         console.log('✅ User ID from initDataUnsafe:', userId)
         console.log('Full user data:', tg.initDataUnsafe.user)
@@ -67,7 +90,7 @@ export default function ReferralPage() {
           console.log('User param from initData:', userParam)
           if (userParam) {
             const userData = JSON.parse(decodeURIComponent(userParam))
-            userId = userData.id
+            userId = String(userData.id)
             setIsFromBot(true)
             console.log('✅ User ID from initData:', userId)
             console.log('Full user data from initData:', userData)
@@ -77,11 +100,22 @@ export default function ReferralPage() {
         }
       }
       
-      // Если не из бота, используем тестовый ID
+      // Если не из бота, показываем ошибку вместо использования тестового ID
+      // API требует валидный Telegram user_id (только цифры)
       if (!userId) {
-        console.log('❌ Not opened from Telegram bot, using test user ID')
-        userId = 'test_user_123'
+        console.error('❌ Not opened from Telegram bot, user ID not found')
         setIsFromBot(false)
+        setError('Не удалось определить ID пользователя. Откройте приложение через Telegram бота.')
+        setLoading(false)
+        return
+      }
+      
+      // Проверяем, что user_id состоит только из цифр (требование API)
+      if (!/^\d+$/.test(String(userId))) {
+        console.error('❌ Invalid user ID format:', userId)
+        setError('Неверный формат ID пользователя. Откройте приложение через Telegram бота.')
+        setLoading(false)
+        return
       }
 
       // Генерируем реферальную ссылку с правильным именем бота
@@ -91,44 +125,184 @@ export default function ReferralPage() {
 
       // Загружаем данные рефералов с API
       const apiUrl = getApiBase()
-      console.log('🔄 Загрузка данных рефералов:', { userId, apiUrl: `${apiUrl}/api/public/referral-data?user_id=${userId}` })
+      const apiEndpoint = `${apiUrl}/api/public/referral-data?user_id=${userId}`
+      console.log('🔄 Загрузка данных рефералов:', { 
+        userId, 
+        apiUrl, 
+        apiEndpoint,
+        timestamp: new Date().toISOString()
+      })
       
-      const response = await fetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`)
-      const data = await response.json()
-      
-      console.log('📋 Ответ API реферальных данных:', data)
-      
-      if (data.success) {
-        setEarned(data.earned || 0)
-        setAvailableBalance(data.available_balance || 0)
-        setHasPendingWithdrawal(data.has_pending_withdrawal || false)
-        // Используем total_referrals (общее количество) вместо referral_count (только активные)
-        setReferralCount(data.total_referrals || data.referral_count || 0)
-        setTopPlayers(data.top_players || [])
-        setUserRank(data.user_rank || 0)
+      try {
+        console.log('📤 Отправка запроса к API:', {
+          url: apiEndpoint,
+          method: 'GET',
+          timestamp: new Date().toISOString()
+        })
         
-        // Обновляем настройки рефералов, если они есть
-        if (data.settings) {
-          setReferralSettings({
-            referral_percentage: data.settings.referral_percentage || 5,
-            min_payout: data.settings.min_payout || 100,
-            first_place_prize: data.settings.first_place_prize || 10000,
-            second_place_prize: data.settings.second_place_prize || 5000,
-            third_place_prize: data.settings.third_place_prize || 2500,
-            fourth_place_prize: data.settings.fourth_place_prize || 1500,
-            fifth_place_prize: data.settings.fifth_place_prize || 1000,
-            total_prize_pool: data.settings.total_prize_pool || 20000,
-            next_payout_date: data.settings.next_payout_date || '1 ноября'
+        const data = await safeFetchJson<any>(apiEndpoint, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 15000, // 15 секунд таймаут
+          retries: 2, // 2 попытки при ошибке
+        })
+        
+        console.log('📋 Ответ API реферальных данных:', {
+          data,
+          dataType: typeof data,
+          isArray: Array.isArray(data),
+          keys: data ? Object.keys(data) : [],
+          hasSuccess: 'success' in (data || {}),
+          successValue: data?.success,
+          hasEarned: 'earned' in (data || {}),
+          earnedValue: data?.earned,
+          hasTotalReferrals: 'total_referrals' in (data || {}),
+          totalReferralsValue: data?.total_referrals,
+          fullData: JSON.stringify(data).substring(0, 500) // Первые 500 символов для отладки
+        })
+        
+        // Проверяем, что данные успешно получены
+        // API всегда возвращает success: true при успешном запросе, даже если данных нет
+        if (data && data.success === true) {
+          // Обрабатываем данные, даже если они нулевые (это нормально для нового пользователя)
+          setEarned(typeof data.earned === 'number' ? data.earned : 0)
+          setAvailableBalance(typeof data.available_balance === 'number' ? data.available_balance : 0)
+          setHasPendingWithdrawal(Boolean(data.has_pending_withdrawal))
+          // Используем total_referrals (общее количество) вместо referral_count (только активные)
+          setReferralCount(typeof data.total_referrals === 'number' ? data.total_referrals : (typeof data.referral_count === 'number' ? data.referral_count : 0))
+          setTopPlayers(Array.isArray(data.top_players) ? data.top_players : [])
+          setUserRank(typeof data.user_rank === 'number' ? data.user_rank : (data.user_rank === null ? 0 : 0))
+          
+          // Обновляем настройки рефералов, если они есть
+          if (data.settings) {
+            setReferralSettings({
+              referral_percentage: data.settings.referral_percentage || 5,
+              min_payout: data.settings.min_payout || 100,
+              first_place_prize: data.settings.first_place_prize || 10000,
+              second_place_prize: data.settings.second_place_prize || 5000,
+              third_place_prize: data.settings.third_place_prize || 2500,
+              fourth_place_prize: data.settings.fourth_place_prize || 1500,
+              fifth_place_prize: data.settings.fifth_place_prize || 1000,
+              total_prize_pool: data.settings.total_prize_pool || 20000,
+              next_payout_date: data.settings.next_payout_date || '1 ноября'
+            })
+          } else {
+            // Если настроек нет, используем значения по умолчанию
+            console.log('⚠️ Настройки рефералов не получены, используем значения по умолчанию')
+          }
+          setError(null)
+          console.log('✅ Данные рефералов успешно загружены:', {
+            earned: data.earned,
+            total_referrals: data.total_referrals,
+            referral_count: data.referral_count,
+            top_players_count: Array.isArray(data.top_players) ? data.top_players.length : 0
           })
+        } else if (data && data.success === false) {
+          // Если API вернул явную ошибку
+          const errorMessage = data?.error || 'Не удалось загрузить данные реферальной программы'
+          console.error('❌ API вернул ошибку:', errorMessage, 'Полные данные:', data)
+          setError(errorMessage)
+          setTopPlayers([])
+          setUserRank(0)
+        } else {
+          // Если данные не в ожидаемом формате, но есть поля earned или total_referrals, все равно обрабатываем
+          if (data && (data.earned !== undefined || data.total_referrals !== undefined)) {
+            console.warn('⚠️ API вернул данные без success флага, но обрабатываем их:', data)
+            setEarned(typeof data.earned === 'number' ? data.earned : 0)
+            setAvailableBalance(typeof data.available_balance === 'number' ? data.available_balance : 0)
+            setHasPendingWithdrawal(Boolean(data.has_pending_withdrawal))
+            setReferralCount(typeof data.total_referrals === 'number' ? data.total_referrals : (typeof data.referral_count === 'number' ? data.referral_count : 0))
+            setTopPlayers(Array.isArray(data.top_players) ? data.top_players : [])
+            setUserRank(typeof data.user_rank === 'number' ? data.user_rank : 0)
+            setError(null)
+          } else {
+            // Если данные действительно не в ожидаемом формате
+            console.error('❌ Неожиданный формат ответа API:', data)
+            setError('Сервер вернул данные в неожиданном формате')
+            setTopPlayers([])
+            setUserRank(0)
+          }
         }
-      } else {
-        // Если нет данных, показываем пустой список
+      } catch (fetchError: any) {
+        console.error('❌ Ошибка при загрузке данных рефералов:', {
+          error: fetchError,
+          errorName: fetchError?.name,
+          message: fetchError?.message,
+          status: fetchError?.status,
+          statusText: fetchError?.statusText,
+          data: fetchError?.data,
+          stack: fetchError?.stack,
+          apiEndpoint,
+          userId,
+          apiUrl,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent
+        })
+        
+        // Дополнительная диагностика для сетевых ошибок
+        if (fetchError?.message?.includes('Failed to fetch') || 
+            fetchError?.message?.includes('NetworkError') ||
+            fetchError?.name === 'TypeError') {
+          console.error('🌐 Сетевая ошибка обнаружена. Проверьте:')
+          console.error('  1. Доступность API:', apiEndpoint)
+          console.error('  2. CORS настройки на сервере')
+          console.error('  3. Интернет соединение')
+          
+          // Пробуем простой fetch для диагностики
+          try {
+            console.log('🔍 Диагностика: пробуем простой fetch...')
+            const testResponse = await fetch(apiEndpoint, {
+              method: 'GET',
+              mode: 'cors',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            })
+            console.log('🔍 Диагностика: статус ответа:', testResponse.status, testResponse.statusText)
+            const testText = await testResponse.text()
+            console.log('🔍 Диагностика: первые 200 символов ответа:', testText.substring(0, 200))
+          } catch (diagError: any) {
+            console.error('🔍 Диагностика: ошибка простого fetch:', diagError)
+          }
+        }
+        let errorMessage = 'Ошибка подключения к серверу. Проверьте интернет-соединение.'
+        
+        // Более детальные сообщения об ошибках
+        if (fetchError?.message) {
+          if (fetchError.message.includes('таймаут') || fetchError.message.includes('timeout')) {
+            errorMessage = 'Превышено время ожидания ответа от сервера. Попробуйте позже.'
+          } else if (fetchError.message.includes('интернет') || fetchError.message.includes('network')) {
+            errorMessage = 'Нет подключения к интернету. Проверьте соединение и попробуйте снова.'
+          } else if (fetchError.message.includes('CORS') || fetchError.message.includes('cors')) {
+            errorMessage = 'Ошибка CORS. Проверьте настройки сервера.'
+          } else if (fetchError.status === 429) {
+            errorMessage = 'Слишком много запросов. Пожалуйста, подождите немного и попробуйте снова.'
+          } else if (fetchError.status === 403) {
+            errorMessage = 'Доступ запрещен. Проверьте настройки сервера.'
+          } else if (fetchError.status === 404) {
+            errorMessage = 'API endpoint не найден. Проверьте настройки сервера.'
+          } else if (fetchError.status === 500) {
+            errorMessage = 'Ошибка на сервере. Попробуйте позже.'
+          } else {
+            errorMessage = fetchError.message || `Ошибка ${fetchError.status || 'неизвестная'}`
+          }
+        }
+        
+        setError(errorMessage)
         setTopPlayers([])
         setUserRank(0)
       }
-    } catch (error) {
-      console.error('Error loading referral data:', error)
-      // При ошибке показываем пустой список
+    } catch (error: any) {
+      console.error('❌ Общая ошибка при загрузке данных рефералов:', {
+        error,
+        message: error?.message,
+        stack: error?.stack,
+        userId,
+        timestamp: new Date().toISOString()
+      })
+      setError(error?.message || 'Произошла ошибка при загрузке данных')
       setTopPlayers([])
       setUserRank(0)
     } finally {
@@ -242,6 +416,40 @@ export default function ReferralPage() {
           </div>
           <div className="text-white/80 text-sm mt-1">
             Для полной функциональности откройте приложение через Telegram бота
+          </div>
+        </div>
+      )}
+
+      {/* Сообщение об ошибке */}
+      {error && (
+        <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-red-400 font-semibold text-sm">Ошибка загрузки данных</div>
+            </div>
+            <button
+              onClick={loadReferralData}
+              className="text-red-400 hover:text-red-300 text-sm underline"
+            >
+              Повторить
+            </button>
+          </div>
+          <div className="text-white/80 text-sm mt-1">{error}</div>
+        </div>
+      )}
+
+      {/* Индикатор загрузки */}
+      {loading && (
+        <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 mb-4">
+          <div className="flex items-center space-x-2">
+            <svg className="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div className="text-blue-400 font-semibold text-sm">Загрузка данных...</div>
           </div>
         </div>
       )}

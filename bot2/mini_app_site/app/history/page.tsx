@@ -308,21 +308,35 @@ export default function HistoryPage(){
   const getBankIcon = (bankCode: string) => {
     if (!bankCode) return null
     
-    // Маппинг кодов банков из API в коды для иконок
-    const bankMapping: Record<string, { image?: string; emoji?: string; name: string }> = {
-      'kompanion': { image: '/images/companion.png', name: 'Компаньон' },
-      'demirbank': { image: '/images/demirbank.jpg', name: 'DemirBank' },
-      'demir': { image: '/images/demirbank.jpg', name: 'DemirBank' },
-      'omoney': { image: '/images/omoney.jpg', name: 'O!Money' },
-      'odengi': { image: '/images/omoney.jpg', name: 'O!Money' },
-      'balance': { image: '/images/balance.jpg', name: 'Balance.kg' },
-      'bakai': { image: '/images/bakai.jpg', name: 'Bakai' },
-      'megapay': { image: '/images/megapay.jpg', name: 'MegaPay' },
-      'mbank': { image: '/images/mbank.png', name: 'MBank' },
+    const normalized = bankCode.toLowerCase()
+    
+    // Маппинг банков на изображения (используем includes для гибкости)
+    if (normalized.includes('companion') || normalized.includes('kompanion')) {
+      return { image: '/images/companion.png', name: 'Компаньон' }
+    }
+    if (normalized.includes('demirbank') || normalized.includes('demir')) {
+      return { image: '/images/demirbank.jpg', name: 'DemirBank' }
+    }
+    if (normalized.includes('omoney') || normalized.includes('o!money') || normalized.includes('odengi')) {
+      return { image: '/images/omoney.jpg', name: 'O!Money' }
+    }
+    if (normalized.includes('balance')) {
+      return { image: '/images/balance.jpg', name: 'Balance.kg' }
+    }
+    if (normalized.includes('bakai')) {
+      return { image: '/images/bakai.jpg', name: 'Bakai' }
+    }
+    if (normalized.includes('megapay')) {
+      return { image: '/images/megapay.jpg', name: 'MegaPay' }
+    }
+    if (normalized.includes('mbank')) {
+      return { image: '/images/mbank.png', name: 'MBank' }
+    }
+    if (normalized.includes('optima')) {
+      return { image: '/images/optima.jpg', name: 'Optima' }
     }
     
-    const bank = bankMapping[bankCode.toLowerCase()]
-    return bank || null
+    return null
   }
 
   return (
