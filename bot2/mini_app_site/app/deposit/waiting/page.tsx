@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
-import PageTransition from '../../../components/PageTransition'
 import { getApiBase } from '../../../utils/fetch'
 
 export default function DepositWaitingPage() {
@@ -11,7 +10,6 @@ export default function DepositWaitingPage() {
   const { language } = useLanguage()
   const [status, setStatus] = useState<'waiting' | 'success' | 'error'>('waiting')
   const [requestId, setRequestId] = useState<string | null>(null)
-  const [showConfetti, setShowConfetti] = useState(false)
   const [rejectionReason, setRejectionReason] = useState<string | null>(null)
   const [requestAmount, setRequestAmount] = useState<string | null>(null)
 
@@ -181,7 +179,6 @@ export default function DepositWaitingPage() {
         if (isAutoDeposit || isManualCompleted) {
           console.log('Payment successful! Setting status to success')
           setStatus('success')
-          setShowConfetti(true)
           
           // Очищаем localStorage
           localStorage.removeItem('deposit_transaction_id')
@@ -235,257 +232,108 @@ export default function DepositWaitingPage() {
     window.open(supportLink, '_blank')
   }
 
-  // Конфетти анимация
-  useEffect(() => {
-    if (showConfetti) {
-      createConfetti()
-    }
-  }, [showConfetti])
-
-  const createConfetti = () => {
-    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
-    const confettiCount = 100
-
-    for (let i = 0; i < confettiCount; i++) {
-      setTimeout(() => {
-        const confetti = document.createElement('div')
-        confetti.style.position = 'fixed'
-        confetti.style.left = Math.random() * 100 + '%'
-        confetti.style.top = '-10px'
-        confetti.style.width = Math.random() * 10 + 5 + 'px'
-        confetti.style.height = confetti.style.width
-        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)]
-        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0'
-        confetti.style.opacity = '1'
-        confetti.style.zIndex = '9999'
-        confetti.style.pointerEvents = 'none'
-        confetti.style.transform = `rotate(${Math.random() * 360}deg)`
-        
-        document.body.appendChild(confetti)
-
-        const animation = confetti.animate([
-          { 
-            transform: `translateY(0) rotate(${Math.random() * 360}deg)`,
-            opacity: 1
-          },
-          { 
-            transform: `translateY(${window.innerHeight + 100}px) rotate(${Math.random() * 720}deg)`,
-            opacity: 0
-          }
-        ], {
-          duration: Math.random() * 2000 + 2000,
-          easing: 'cubic-bezier(0.5, 0, 0.5, 1)'
-        })
-
-        animation.onfinish = () => {
-          confetti.remove()
-        }
-      }, i * 20)
-    }
-  }
-
   return (
-    <PageTransition direction="forward">
-      <div className="h-screen overflow-hidden flex flex-col items-center justify-center p-4">
-        <FixedHeaderControls />
+    <div className="h-screen overflow-hidden flex flex-col items-center justify-center p-4">
+      <FixedHeaderControls />
 
-        {status === 'waiting' && (
-          <div className="text-center space-y-6 max-w-md">
-            {/* Анимация загрузки */}
-            <div className="relative">
-              <div className="w-32 h-32 mx-auto border-8 border-green-500/30 border-t-green-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg className="w-16 h-16 text-green-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+      {status === 'waiting' && (
+        <div className="text-center space-y-4 max-w-md">
+          {/* Простая иконка загрузки */}
+          <div className="w-16 h-16 mx-auto border-4 border-green-500/30 border-t-green-500 rounded-full animate-spin"></div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-white">{t.waiting}</h1>
+            <p className="text-white/70">{t.checking}</p>
+          </div>
+        </div>
+      )}
+
+      {status === 'success' && (
+        <div className="text-center space-y-4 max-w-md">
+          {/* Простая иконка успеха */}
+          <div className="w-20 h-20 mx-auto bg-green-500 rounded-full flex items-center justify-center">
+            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-green-400">{t.success}</h1>
+            <p className="text-white">{t.successMessage}</p>
+          </div>
+
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors"
+          >
+            {t.backHome}
+          </button>
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div className="text-center space-y-4 max-w-md px-4">
+          {/* Простая иконка отклонения */}
+          <div className="w-20 h-20 mx-auto bg-red-500/20 rounded-full flex items-center justify-center border-2 border-red-500/50">
+            <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <h1 className="text-2xl font-bold text-red-400">{t.error}</h1>
+              <p className="text-white/80 mt-2">{t.errorMessage}</p>
+            </div>
+
+            {requestAmount && (
+              <div className="bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20">
+                <p className="text-white/70 text-sm mb-2">{t.checkAmount}</p>
+                <p className="text-white text-lg">Сумма заявки: <span className="font-bold text-green-400">{requestAmount} сом</span></p>
+              </div>
+            )}
+
+            {/* Мини FAQ */}
+            <div className="bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20 text-left">
+              <h3 className="text-white font-semibold mb-3 text-lg">{t.questions}</h3>
+              <div className="space-y-3">
+                <div className="text-sm">
+                  <p className="text-green-400 font-medium mb-1">• {t.faq1}</p>
+                  <p className="text-white/60 text-xs">{t.faq1Desc}</p>
+                </div>
+                <div className="text-sm">
+                  <p className="text-green-400 font-medium mb-1">• {t.faq2}</p>
+                  <p className="text-white/60 text-xs">{t.faq2Desc}</p>
+                </div>
+                <div className="text-sm">
+                  <p className="text-green-400 font-medium mb-1">• {t.faq3}</p>
+                  <p className="text-white/60 text-xs">{t.faq3Desc}</p>
+                </div>
+                <div className="text-sm">
+                  <p className="text-green-400 font-medium mb-1">• {t.faq4}</p>
+                  <p className="text-white/60 text-xs">{t.faq4Desc}</p>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold text-white">{t.waiting}</h1>
-              <p className="text-white/70 text-lg">{t.checking}</p>
-            </div>
+            {rejectionReason && (
+              <div className="bg-red-900/30 rounded-xl p-4 border border-red-500/30">
+                <p className="text-red-300 font-semibold mb-2 text-sm">{t.rejectionReason}</p>
+                <p className="text-white/80 text-sm">{rejectionReason}</p>
+              </div>
+            )}
 
-            {/* Пульсирующие точки */}
-            <div className="flex justify-center space-x-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            <div className="pt-2">
+              <button
+                onClick={handleCheckPayment}
+                className="w-full px-6 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20"
+              >
+                {t.checkPayment}
+              </button>
             </div>
           </div>
-        )}
-
-        {status === 'success' && (
-          <div className="text-center space-y-6 max-w-md animate-fade-in">
-            {/* Иконка успеха */}
-            <div className="relative">
-              <div className="w-32 h-32 mx-auto bg-green-500 rounded-full flex items-center justify-center animate-scale-in">
-                <svg className="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              {/* Взрыв хлопушек */}
-              {showConfetti && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ width: '200px', height: '200px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
-                  {[...Array(30)].map((_, i) => {
-                    const angle = (i * 360) / 30
-                    const distance = 60 + Math.random() * 40
-                    const color = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#fbbf24'][Math.floor(Math.random() * 7)]
-                    const radian = (angle * Math.PI) / 180
-                    const x = Math.cos(radian) * distance
-                    const y = Math.sin(radian) * distance
-                    return (
-                      <div
-                        key={i}
-                        className="absolute"
-                        style={{
-                          left: '50%',
-                          top: '50%',
-                          width: '8px',
-                          height: '8px',
-                          backgroundColor: color,
-                          borderRadius: Math.random() > 0.5 ? '50%' : '0',
-                          transform: `translate(-50%, -50%)`,
-                          animation: `explode-${i} 1.5s ease-out forwards`,
-                          animationDelay: `${i * 0.03}s`
-                        }}
-                      />
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h1 className="text-4xl font-bold text-green-400 animate-bounce">{t.success}</h1>
-              <p className="text-white text-xl">{t.successMessage}</p>
-            </div>
-
-            <button
-              onClick={() => router.push('/')}
-              className="px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors"
-            >
-              {t.backHome}
-            </button>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="text-center space-y-6 max-w-md animate-fade-in px-4">
-            {/* Иконка отклонения */}
-            <div className="relative">
-              <div className="w-24 h-24 mx-auto bg-red-500/20 rounded-full flex items-center justify-center animate-scale-in border-2 border-red-500/50">
-                <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h1 className="text-3xl font-bold text-red-400">{t.error}</h1>
-                <p className="text-white/80 text-lg mt-2">{t.errorMessage}</p>
-              </div>
-
-              {requestAmount && (
-                <div className="bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20">
-                  <p className="text-white/70 text-sm mb-2">{t.checkAmount}</p>
-                  <p className="text-white text-lg">Сумма заявки: <span className="font-bold text-green-400">{requestAmount} сом</span></p>
-                </div>
-              )}
-
-              {/* Мини FAQ */}
-              <div className="bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20 text-left">
-                <h3 className="text-white font-semibold mb-3 text-lg">{t.questions}</h3>
-                <div className="space-y-3">
-                  <div className="text-sm">
-                    <p className="text-green-400 font-medium mb-1">• {t.faq1}</p>
-                    <p className="text-white/60 text-xs">{t.faq1Desc}</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-green-400 font-medium mb-1">• {t.faq2}</p>
-                    <p className="text-white/60 text-xs">{t.faq2Desc}</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-green-400 font-medium mb-1">• {t.faq3}</p>
-                    <p className="text-white/60 text-xs">{t.faq3Desc}</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-green-400 font-medium mb-1">• {t.faq4}</p>
-                    <p className="text-white/60 text-xs">{t.faq4Desc}</p>
-                  </div>
-                </div>
-              </div>
-
-              {rejectionReason && (
-                <div className="bg-red-900/30 rounded-xl p-4 border border-red-500/30">
-                  <p className="text-red-300 font-semibold mb-2 text-sm">{t.rejectionReason}</p>
-                  <p className="text-white/80 text-sm">{rejectionReason}</p>
-                </div>
-              )}
-
-              <div className="pt-2">
-                <button
-                  onClick={handleCheckPayment}
-                  className="w-full px-6 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20"
-                >
-                  {t.checkPayment}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CSS для анимаций */}
-        <style jsx global>{`
-          @keyframes fade-in {
-            from {
-              opacity: 0;
-              transform: scale(0.9);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
-          }
-
-          @keyframes scale-in {
-            from {
-              transform: scale(0);
-            }
-            to {
-              transform: scale(1);
-            }
-          }
-
-          ${[...Array(30)].map((_, i) => {
-            const angle = (i * 360) / 30
-            const distance = 60 + (i % 3) * 20
-            const radian = (angle * Math.PI) / 180
-            const x = Math.cos(radian) * distance
-            const y = Math.sin(radian) * distance
-            return `
-            @keyframes explode-${i} {
-              0% {
-                opacity: 1;
-                transform: translate(-50%, -50%) translateX(0) translateY(0) scale(1) rotate(0deg);
-              }
-              100% {
-                opacity: 0;
-                transform: translate(-50%, -50%) translateX(${x}px) translateY(${y}px) scale(0) rotate(360deg);
-              }
-            }`
-          }).join('')}
-
-          .animate-fade-in {
-            animation: fade-in 0.5s ease-out;
-          }
-
-          .animate-scale-in {
-            animation: scale-in 0.5s ease-out;
-          }
-        `}</style>
-      </div>
-    </PageTransition>
+        </div>
+      )}
+    </div>
   )
 }

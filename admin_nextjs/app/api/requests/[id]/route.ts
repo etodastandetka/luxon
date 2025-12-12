@@ -42,12 +42,14 @@ async function sendTelegramNotification(userId: bigint, message: string) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const id = parseInt(params.id)
+    // Обработка Next.js 15+ где params может быть Promise
+    const resolvedParams = params instanceof Promise ? await params : params
+    const id = parseInt(resolvedParams.id)
     
-    if (isNaN(id)) {
+    if (isNaN(id) || id <= 0) {
       return NextResponse.json(
         createApiResponse(null, 'Invalid request ID'),
         { status: 400 }
@@ -200,21 +202,45 @@ export async function GET(
     response.headers.set('Cache-Control', `public, s-maxage=${cacheTime}, stale-while-revalidate=${cacheTime * 2}`)
     return response
   } catch (error: any) {
+    console.error('❌ [GET /api/requests/[id]] Error:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name
+    })
+    
+    // Более детальная обработка ошибок
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        createApiResponse(null, 'Unauthorized'),
+        { status: 401 }
+      )
+    }
+    
+    // Ошибки базы данных
+    if (error.code === 'P2002' || error.code?.startsWith('P')) {
+      return NextResponse.json(
+        createApiResponse(null, 'Database error'),
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to fetch request'),
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
+      { status: 500 }
     )
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authUser = requireAuth(request)
 
-    const id = parseInt(params.id)
+    // Обработка Next.js 15+ где params может быть Promise
+    const resolvedParams = params instanceof Promise ? await params : params
+    const id = parseInt(resolvedParams.id)
     const body = await request.json()
 
     const updateData: any = {}
