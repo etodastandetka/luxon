@@ -488,8 +488,8 @@ export default function RequestDetailPage() {
     })
   }, [request?.matchingPayments, searchAmount, exactAmount, processedOnly])
 
-  // Показываем не больше 3 платежей
-  const limitedPayments = useMemo(() => filteredPayments.slice(0, 3), [filteredPayments])
+  // Показываем все платежи (убрали ограничение)
+  const limitedPayments = useMemo(() => filteredPayments, [filteredPayments])
 
   // Функции форматирования (должны быть определены до requestComputed)
   const copyToClipboard = useCallback((text: string) => {
@@ -1365,11 +1365,16 @@ export default function RequestDetailPage() {
                 <p className="text-sm text-gray-400">Совпадений не найдено</p>
               ) : (
                 <>
-                  <div className="space-y-1.5 pr-1">
+                  <div className="space-y-1.5 pr-1 max-h-96 overflow-y-auto">
                     {limitedPayments.map((payment: MatchingPayment) => {
                       const isAttached = payment.requestId === request.id && payment.isProcessed
                       const isAutoCompleted = request.status === 'autodeposit_success' || request.status === 'auto_completed'
-                      const isDisabled = isAutoCompleted || isAttached || (payment.isProcessed && payment.requestId !== null && payment.requestId !== request.id)
+                      // Платеж обработан (серый) если: привязан к этой заявке И обработан, ИЛИ обработан и привязан к другой заявке
+                      const isProcessed = payment.isProcessed
+                      const isProcessedForThisRequest = payment.requestId === request.id && payment.isProcessed
+                      const isProcessedForOtherRequest = payment.isProcessed && payment.requestId !== null && payment.requestId !== request.id
+                      // Отключаем выбор если: автопополнение сработало, ИЛИ платеж уже обработан (для этой или другой заявки)
+                      const isDisabled = isAutoCompleted || isProcessedForThisRequest || isProcessedForOtherRequest
                       const isSelected = selectedPaymentId === payment.id
                       
                       return (
@@ -1377,7 +1382,7 @@ export default function RequestDetailPage() {
                           key={payment.id}
                           className={`bg-gray-900 rounded-lg p-2.5 border transition-colors ${
                             isDisabled 
-                              ? 'border-gray-700 opacity-50 cursor-not-allowed' 
+                              ? 'border-gray-700 opacity-60 cursor-not-allowed' 
                               : isSelected
                                 ? 'border-green-500 bg-green-900/20'
                                 : 'border-gray-700 hover:border-gray-600 cursor-pointer'
@@ -1385,7 +1390,8 @@ export default function RequestDetailPage() {
                           onClick={() => !isDisabled && setSelectedPaymentId(isSelected ? null : payment.id)}
                         >
                           <div className="flex items-center space-x-2">
-                            <div className={`w-1 h-10 rounded-full ${isDisabled ? 'bg-gray-600' : 'bg-green-500'}`}></div>
+                            {/* Серый для обработанных, зеленый для необработанных */}
+                            <div className={`w-1 h-10 rounded-full ${isProcessed ? 'bg-gray-600' : 'bg-green-500'}`}></div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-2">
                                 <p className="text-sm font-medium text-white truncate">Перевод по QR</p>
@@ -1408,7 +1414,8 @@ export default function RequestDetailPage() {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2 flex-shrink-0">
-                              <p className={`text-base font-bold ${isDisabled ? 'text-gray-500' : 'text-green-500'}`}>
+                              {/* Серый текст для обработанных, зеленый для необработанных */}
+                              <p className={`text-base font-bold ${isProcessed ? 'text-gray-500' : 'text-green-500'}`}>
                                 +{parseFloat(payment.amount).toFixed(2).replace('.', ',')}
                               </p>
                               {isSelected && !isDisabled && (

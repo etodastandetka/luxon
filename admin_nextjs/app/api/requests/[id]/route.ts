@@ -107,21 +107,25 @@ export async function GET(
     // Загружаем только критичные данные в основном запросе
     // Остальное загружаем асинхронно через отдельные endpoints если нужно
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      // Matching payments - ТОЛЬКО для pending депозитов с суммой
+      // Matching payments - для pending депозитов с суммой
+      // Показываем ВСЕ платежи с той же целой частью суммы (независимо от копеек)
+      // Показываем и обработанные, и необработанные
+      // Увеличиваем время до 1 часа для поиска платежей
       (isPendingDeposit && requestAmountInt) ? prisma.incomingPayment.findMany({
           where: {
             amount: {
               gte: requestAmountInt,
               lt: requestAmountInt + 1,
             },
-            // Оптимизация: только необработанные платежи за последние 10 минут
-            isProcessed: false,
+            // Показываем все платежи (и обработанные, и необработанные)
+            // Убрали фильтр isProcessed: false
             paymentDate: {
-              gte: new Date(Date.now() - 10 * 60 * 1000), // Последние 10 минут
+              gte: new Date(Date.now() - 60 * 60 * 1000), // Последний час
             },
           },
           orderBy: { paymentDate: 'desc' },
-          take: 3, // Только первые 3 для ускорения
+          // Увеличиваем лимит до 20 платежей
+          take: 20,
           select: {
             id: true,
             amount: true,
