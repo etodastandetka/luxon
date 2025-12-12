@@ -44,7 +44,12 @@ export async function POST(request: NextRequest) {
       return rateLimitResult
     }
 
-    const body = await request.json()
+    // CRITICAL: Read raw body text FIRST for signature verification
+    // According to Crypto Pay API docs, signature must be verified against unparsed JSON string
+    const rawBodyText = await request.text()
+    
+    // Parse body for processing
+    const body = JSON.parse(rawBodyText)
     const signature = request.headers.get('crypto-pay-api-signature')
 
     if (!signature) {
@@ -52,9 +57,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
     }
 
-    // Verify webhook signature
+    // Verify webhook signature using RAW body text (not parsed/stringified)
     const token = process.env.CRYPTO_PAY_API_TOKEN || '483674:AADGGvOSSrOaWDtd2baJuAN2ePJDVpnYief'
-    const isValid = verifyWebhookSignature(token, body, signature)
+    const isValid = verifyWebhookSignature(token, rawBodyText, signature)
 
     if (!isValid) {
       console.error(`🚫 Invalid webhook signature from ${getClientIP(request)}`)

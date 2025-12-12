@@ -209,12 +209,16 @@ export async function getExchangeRates(): Promise<ExchangeRate[]> {
 
 /**
  * Verify webhook signature
+ * @param token - Crypto Pay API token
+ * @param body - Raw request body as string (unparsed JSON) OR parsed object (for backward compatibility)
+ * @param signature - Signature from crypto-pay-api-signature header
  */
-export function verifyWebhookSignature(token: string, body: any, signature: string): boolean {
+export function verifyWebhookSignature(token: string, body: string | any, signature: string): boolean {
   try {
     // Создаем секретный ключ из токена (SHA256 хеш токена)
     const secretBuffer = createHash('sha256').update(token).digest()
-    const checkString = JSON.stringify(body)
+    // Use raw string if provided, otherwise stringify (for backward compatibility)
+    const checkString = typeof body === 'string' ? body : JSON.stringify(body)
     // Используем Buffer напрямую для HMAC
     const hmac = createHmac('sha256', secretBuffer as any).update(checkString).digest('hex')
     return hmac === signature

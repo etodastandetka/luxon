@@ -24,7 +24,11 @@ export async function GET(request: NextRequest) {
   try {
     // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
     const protectionResult = protectAPI(request)
-    if (protectionResult) return protectionResult
+    if (protectionResult) {
+      // Добавляем CORS заголовки к ответу защиты
+      protectionResult.headers.set('Access-Control-Allow-Origin', '*')
+      return protectionResult
+    }
 
     // Rate limiting (строгий для публичного endpoint)
     const rateLimitResult = rateLimit({ 
@@ -32,7 +36,11 @@ export async function GET(request: NextRequest) {
       windowMs: 60 * 1000,
       keyGenerator: (req) => `referral_data:${getClientIP(req)}`
     })(request)
-    if (rateLimitResult) return rateLimitResult
+    if (rateLimitResult) {
+      // Добавляем CORS заголовки к ответу rate limiting
+      rateLimitResult.headers.set('Access-Control-Allow-Origin', '*')
+      return rateLimitResult
+    }
 
     const { searchParams } = new URL(request.url)
     let userId = searchParams.get('user_id')
@@ -41,37 +49,45 @@ export async function GET(request: NextRequest) {
     
     if (!userId) {
       console.log('❌ [Referral Data API] User ID не предоставлен')
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: false,
         error: 'User ID is required'
       }, { status: 400 })
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
     }
 
     // 🛡️ Валидация и очистка
     if (containsSQLInjection(userId)) {
       console.warn(`🚫 SQL injection attempt from ${getClientIP(request)}`)
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: false,
         error: 'Invalid input'
       }, { status: 400 })
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
     }
 
     userId = sanitizeInput(userId) as string
 
     // Telegram user_id должен состоять только из цифр
     if (!/^\d+$/.test(userId)) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: false,
         error: 'Invalid user ID format'
       }, { status: 400 })
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
     }
 
     // Ограничение длины
     if (userId.length > 20) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: false,
         error: 'User ID too long'
       }, { status: 400 })
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      return response
     }
     
     const userIdBigInt = BigInt(userId)

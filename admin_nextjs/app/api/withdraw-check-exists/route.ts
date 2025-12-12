@@ -79,9 +79,9 @@ export async function GET(request: NextRequest) {
 
       if (!config) {
         config = {
-          api_key: process.env.MOSTBET_API_KEY || 'api-key:62e9da4c-52e3-4d0f-b579-c9e7805f711d',
-          secret: process.env.MOSTBET_SECRET || '94f63f7e-b7ff-4ef9-bccc-d05efa22301d',
-          cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C131864',
+          api_key: process.env.MOSTBET_API_KEY || 'api-key:1b896249-f0dc-45ff-826e-4175c72d1e0e',
+          secret: process.env.MOSTBET_SECRET || '73353b6b-868e-4561-9128-dce1c91bd24e',
+          cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C92905',
         }
       }
 

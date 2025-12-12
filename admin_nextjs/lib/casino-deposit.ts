@@ -311,7 +311,7 @@ export async function depositMostbetAPI(
       brandId: 1, // Всегда 1 для Mostbet согласно документации
       playerId: String(userId), // ID игрока в казино
       amount: amount,
-      currency: 'KGS', // Можно изменить на RUB если нужно
+      currency: 'RUB', // Валюта согласно документации (RUB для российских рублей)
     }
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
     // Используем JSON.stringify с replacer для удаления пробелов (как в Python json.dumps(..., separators=(',', ':')))
