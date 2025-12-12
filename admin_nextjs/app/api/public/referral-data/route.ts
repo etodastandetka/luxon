@@ -80,38 +80,44 @@ export async function GET(request: NextRequest) {
     
     // Если только топ, возвращаем только топ игроков
     if (topOnly) {
-      // Получаем топ-5 реферов через агрегацию
-      const topReferrersRaw = await prisma.$queryRaw<Array<{
-        referrer_id: bigint,
-        total_deposits: number,
-        referral_count: bigint
-      }>>`
-        SELECT 
-          br.referrer_id,
-          COALESCE(SUM(r.amount), 0) as total_deposits,
-          COUNT(DISTINCT br.referred_id) as referral_count
-        FROM "BotReferral" br
-        LEFT JOIN "Request" r ON r.user_id = br.referred_id 
-          AND r.request_type = 'deposit'
-          AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
-          AND r.amount > 0
-        GROUP BY br.referrer_id
-        ORDER BY total_deposits DESC
-        LIMIT 5
-      `
-      
-      // Получаем данные пользователей для топ-5
-      const topReferrerIds = topReferrersRaw.map(r => r.referrer_id)
-      const topReferrerUsers = await prisma.botUser.findMany({
-        where: {
-          userId: { in: topReferrerIds }
-        },
-        select: {
-          userId: true,
-          username: true,
-          firstName: true
-        }
-      })
+      try {
+        // Получаем топ-5 реферов через агрегацию
+        const topReferrersRaw = await prisma.$queryRaw<Array<{
+          referrer_id: bigint,
+          total_deposits: number | bigint,
+          referral_count: bigint
+        }>>`
+          SELECT 
+            br.referrer_id,
+            COALESCE(SUM(r.amount), 0)::numeric as total_deposits,
+            COUNT(DISTINCT br.referred_id) as referral_count
+          FROM "BotReferral" br
+          LEFT JOIN "Request" r ON r.user_id = br.referred_id 
+            AND r.request_type = 'deposit'
+            AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
+            AND r.amount > 0
+          GROUP BY br.referrer_id
+          ORDER BY total_deposits DESC
+          LIMIT 5
+        `
+        
+        // Получаем данные пользователей для топ-5
+        const topReferrerIds = topReferrersRaw.length > 0 
+          ? topReferrersRaw.map(r => r.referrer_id)
+          : []
+        
+        const topReferrerUsers = topReferrerIds.length > 0
+          ? await prisma.botUser.findMany({
+              where: {
+                userId: { in: topReferrerIds }
+              },
+              select: {
+                userId: true,
+                username: true,
+                firstName: true
+              }
+            })
+          : []
       
       const userMap = new Map(topReferrerUsers.map(u => [u.userId.toString(), u]))
       
@@ -169,6 +175,27 @@ export async function GET(request: NextRequest) {
       })
       response.headers.set('Access-Control-Allow-Origin', '*')
       return response
+      } catch (error: any) {
+        console.error('❌ [Referral Data API] Ошибка при загрузке топа:', error)
+        // Возвращаем пустой топ вместо ошибки
+        const response = NextResponse.json({
+          success: true,
+          top_players: [],
+          settings: {
+            referral_percentage: 5,
+            min_payout: 100,
+            first_place_prize: 10000,
+            second_place_prize: 5000,
+            third_place_prize: 2500,
+            fourth_place_prize: 1500,
+            fifth_place_prize: 1000,
+            total_prize_pool: 20000,
+            next_payout_date: '1 ноября'
+          }
+        })
+        response.headers.set('Access-Control-Allow-Origin', '*')
+        return response
+      }
     }
 
     // 🛡️ Валидация и очистка
@@ -457,10 +484,16 @@ export async function GET(request: NextRequest) {
     return response
     
   } catch (error: any) {
-    console.error('Referral data API error:', error)
+    console.error('❌ [Referral Data API] Критическая ошибка:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name
+    })
+    
+    // Возвращаем более информативную ошибку
     const errorResponse = NextResponse.json({
       success: false,
-      error: error.message || 'Failed to fetch referral data'
+      error: error.message || 'Ошибка на сервере. Попробуйте позже.'
     }, { status: 500 })
     errorResponse.headers.set('Access-Control-Allow-Origin', '*')
     return errorResponse
