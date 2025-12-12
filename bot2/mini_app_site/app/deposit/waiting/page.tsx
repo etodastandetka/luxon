@@ -233,103 +233,109 @@ export default function DepositWaitingPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col items-center justify-center p-4">
+    <div className="h-screen overflow-hidden flex flex-col p-2">
       <FixedHeaderControls />
 
       {status === 'waiting' && (
-        <div className="text-center space-y-4 max-w-md">
-          {/* Простая иконка загрузки */}
-          <div className="w-16 h-16 mx-auto border-4 border-green-500/30 border-t-green-500 rounded-full animate-spin"></div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-3 max-w-md">
+            {/* Простая иконка загрузки */}
+            <div className="w-16 h-16 mx-auto border-4 border-green-500/30 border-t-green-500 rounded-full animate-spin"></div>
 
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-white">{t.waiting}</h1>
-            <p className="text-white/70">{t.checking}</p>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold text-white">{t.waiting}</h1>
+              <p className="text-white/70 text-sm">{t.checking}</p>
+            </div>
           </div>
         </div>
       )}
 
       {status === 'success' && (
-        <div className="text-center space-y-4 max-w-md">
-          {/* Простая иконка успеха */}
-          <div className="w-20 h-20 mx-auto bg-green-500 rounded-full flex items-center justify-center">
-            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-3 max-w-md">
+            {/* Простая иконка успеха */}
+            <div className="w-16 h-16 mx-auto bg-green-500 rounded-full flex items-center justify-center">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
 
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-green-400">{t.success}</h1>
-            <p className="text-white">{t.successMessage}</p>
-          </div>
+            <div className="space-y-1">
+              <h1 className="text-xl font-bold text-green-400">{t.success}</h1>
+              <p className="text-white text-sm">{t.successMessage}</p>
+            </div>
 
-          <button
-            onClick={() => router.push('/')}
-            className="px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors"
-          >
-            {t.backHome}
-          </button>
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors text-sm"
+            >
+              {t.backHome}
+            </button>
+          </div>
         </div>
       )}
 
       {status === 'error' && (
-        <div className="text-center space-y-4 max-w-md px-4">
-          {/* Простая иконка отклонения */}
-          <div className="w-20 h-20 mx-auto bg-red-500/20 rounded-full flex items-center justify-center border-2 border-red-500/50">
-            <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <h1 className="text-2xl font-bold text-red-400">{t.error}</h1>
-              <p className="text-white/80 mt-2">{t.errorMessage}</p>
+        <div className="flex-1 overflow-y-auto">
+          <div className="text-center space-y-2 max-w-md mx-auto px-2 py-2">
+            {/* Простая иконка отклонения */}
+            <div className="w-14 h-14 mx-auto bg-red-500/20 rounded-full flex items-center justify-center border-2 border-red-500/50">
+              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </div>
 
-            {requestAmount && (
-              <div className="bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20">
-                <p className="text-white/70 text-sm mb-2">{t.checkAmount}</p>
-                <p className="text-white text-lg">Сумма заявки: <span className="font-bold text-green-400">{requestAmount} сом</span></p>
+            <div className="space-y-2">
+              <div>
+                <h1 className="text-lg font-bold text-red-400">{t.error}</h1>
+                <p className="text-white/80 text-xs mt-1">{t.errorMessage}</p>
               </div>
-            )}
 
-            {/* Мини FAQ */}
-            <div className="bg-black/40 backdrop-blur rounded-xl p-4 border border-white/20 text-left">
-              <h3 className="text-white font-semibold mb-3 text-lg">{t.questions}</h3>
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <p className="text-green-400 font-medium mb-1">• {t.faq1}</p>
-                  <p className="text-white/60 text-xs">{t.faq1Desc}</p>
+              {requestAmount && (
+                <div className="bg-black/40 backdrop-blur rounded-lg p-2 border border-white/20">
+                  <p className="text-white/70 text-xs mb-1">{t.checkAmount}</p>
+                  <p className="text-white text-sm">Сумма: <span className="font-bold text-green-400">{requestAmount} сом</span></p>
                 </div>
-                <div className="text-sm">
-                  <p className="text-green-400 font-medium mb-1">• {t.faq2}</p>
-                  <p className="text-white/60 text-xs">{t.faq2Desc}</p>
-                </div>
-                <div className="text-sm">
-                  <p className="text-green-400 font-medium mb-1">• {t.faq3}</p>
-                  <p className="text-white/60 text-xs">{t.faq3Desc}</p>
-                </div>
-                <div className="text-sm">
-                  <p className="text-green-400 font-medium mb-1">• {t.faq4}</p>
-                  <p className="text-white/60 text-xs">{t.faq4Desc}</p>
+              )}
+
+              {/* Компактный FAQ */}
+              <div className="bg-black/40 backdrop-blur rounded-lg p-2 border border-white/20 text-left">
+                <h3 className="text-white font-semibold mb-1.5 text-xs">{t.questions}</h3>
+                <div className="space-y-1.5">
+                  <div className="text-xs">
+                    <p className="text-green-400 font-medium">• {t.faq1}</p>
+                    <p className="text-white/50 text-[10px] leading-tight">{t.faq1Desc}</p>
+                  </div>
+                  <div className="text-xs">
+                    <p className="text-green-400 font-medium">• {t.faq2}</p>
+                    <p className="text-white/50 text-[10px] leading-tight">{t.faq2Desc}</p>
+                  </div>
+                  <div className="text-xs">
+                    <p className="text-green-400 font-medium">• {t.faq3}</p>
+                    <p className="text-white/50 text-[10px] leading-tight">{t.faq3Desc}</p>
+                  </div>
+                  <div className="text-xs">
+                    <p className="text-green-400 font-medium">• {t.faq4}</p>
+                    <p className="text-white/50 text-[10px] leading-tight">{t.faq4Desc}</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {rejectionReason && (
-              <div className="bg-red-900/30 rounded-xl p-4 border border-red-500/30">
-                <p className="text-red-300 font-semibold mb-2 text-sm">{t.rejectionReason}</p>
-                <p className="text-white/80 text-sm">{rejectionReason}</p>
+              {rejectionReason && (
+                <div className="bg-red-900/30 rounded-lg p-2 border border-red-500/30">
+                  <p className="text-red-300 font-semibold mb-1 text-xs">{t.rejectionReason}</p>
+                  <p className="text-white/80 text-[10px] leading-tight">{rejectionReason}</p>
+                </div>
+              )}
+
+              <div className="pt-1">
+                <button
+                  onClick={handleCheckPayment}
+                  className="w-full px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors text-sm"
+                >
+                  {t.checkPayment}
+                </button>
               </div>
-            )}
-
-            <div className="pt-2">
-              <button
-                onClick={handleCheckPayment}
-                className="w-full px-6 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20"
-              >
-                {t.checkPayment}
-              </button>
             </div>
           </div>
         </div>
