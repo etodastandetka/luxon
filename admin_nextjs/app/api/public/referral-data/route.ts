@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 🛡️ Валидация и очистка
-    if (containsSQLInjection(userId)) {
+    if (userId && containsSQLInjection(userId)) {
       console.warn(`🚫 SQL injection attempt from ${getClientIP(request)}`)
       const response = NextResponse.json({
         success: false,
@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
       return response
     }
 
-    userId = sanitizeInput(userId) as string
+    userId = sanitizeInput(userId || '') as string
 
     // Telegram user_id должен состоять только из цифр
     if (!/^\d+$/.test(userId)) {
