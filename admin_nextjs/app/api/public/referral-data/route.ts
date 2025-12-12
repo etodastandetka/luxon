@@ -347,8 +347,8 @@ export async function GET(request: NextRequest) {
           br.referrer_id,
           COALESCE(SUM(r.amount), 0) as total_deposits,
           ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(r.amount), 0) DESC) as rank
-        FROM "BotReferral" br
-        LEFT JOIN "Request" r ON r.user_id = br.referred_id 
+        FROM "referrals" br
+        LEFT JOIN "requests" r ON r.user_id = br.referred_id 
           AND r.request_type = 'deposit'
           AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
           AND r.amount > 0
