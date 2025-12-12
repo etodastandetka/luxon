@@ -99,15 +99,46 @@ export default function ReferralPage() {
         }
       }
       
-      // Если не из бота, не показываем ошибку в консоли (это нормально для браузера)
-      // Просто не загружаем данные и не показываем топ
+      // Если не из бота, все равно загружаем топ (но не личные данные)
       if (!userId) {
         setIsFromBot(false)
-        setError(null) // Не показываем ошибку, просто не загружаем данные
-        setTopPlayers([]) // Не показываем топ
-        setUserRank(0)
+        setError(null)
+        // Загружаем только топ игроков (без user_id)
+        const apiUrl = getApiBase()
+        const apiEndpoint = `${apiUrl}/api/public/referral-data?top_only=true`
+        
+        try {
+          const data = await safeFetchJson<any>(apiEndpoint, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            timeout: 8000,
+            retries: 1,
+          })
+          
+          if (data && data.success === true && Array.isArray(data.top_players)) {
+            setTopPlayers(data.top_players)
+            if (data.settings) {
+              setReferralSettings({
+                referral_percentage: data.settings.referral_percentage || 5,
+                min_payout: data.settings.min_payout || 100,
+                first_place_prize: data.settings.first_place_prize || 10000,
+                second_place_prize: data.settings.second_place_prize || 5000,
+                third_place_prize: data.settings.third_place_prize || 2500,
+                fourth_place_prize: data.settings.fourth_place_prize || 1500,
+                fifth_place_prize: data.settings.fifth_place_prize || 1000,
+                total_prize_pool: data.settings.total_prize_pool || 20000,
+                next_payout_date: data.settings.next_payout_date || '1 ноября'
+              })
+            }
+          }
+        } catch (e) {
+          // Тихая ошибка - просто не показываем топ
+          console.warn('Не удалось загрузить топ игроков:', e)
+        }
+        
         setLoading(false)
-        // Генерируем реферальную ссылку-заглушку
         setReferralLink('https://t.me/lux_on_bot')
         return
       }
