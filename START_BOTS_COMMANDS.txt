@@ -1,0 +1,68 @@
+# Команды для запуска всех ботов
+# Скопируйте и выполните на сервере
+
+# ============================================
+# 1. ОБНОВЛЕНИЕ КОДА (если нужно)
+# ============================================
+
+cd /var/www/luxon
+git pull origin main
+
+# ============================================
+# 2. ЗАПУСК БОТОВ ИЗ bot_simple
+# ============================================
+
+cd /var/www/luxon/bot_simple
+
+# Проверка виртуального окружения
+if [ ! -d "venv" ]; then
+    echo "Создание виртуального окружения..."
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+else
+    source venv/bin/activate
+    pip install -r requirements.txt
+fi
+
+# Запуск через PM2
+pm2 start ecosystem.config.js
+
+# ============================================
+# 3. ЗАПУСК БОТА 1XBET (если есть)
+# ============================================
+
+cd /var/www/luxon/bot_1xbet
+
+# Проверка виртуального окружения
+if [ ! -d "venv" ]; then
+    echo "Создание виртуального окружения для bot_1xbet..."
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+else
+    source venv/bin/activate
+    pip install -r requirements.txt
+fi
+
+# Запуск бота 1xbet через PM2
+pm2 start venv/bin/python --name "luxon-bot-1xbet" -- bot.py
+
+# ============================================
+# 4. СОХРАНЕНИЕ PM2
+# ============================================
+
+pm2 save
+
+# ============================================
+# 5. ПРОВЕРКА СТАТУСА
+# ============================================
+
+pm2 status
+pm2 logs
+
+# Готово! Боты запущены:
+# - luxon-bot (основной бот)
+# - operator_bot (бот оператора)
+# - luxon-bot-1xbet (бот 1xbet)
+

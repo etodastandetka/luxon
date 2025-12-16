@@ -1,0 +1,67 @@
+# Переменные окружения
+.env
+
+# История новостей
+news_history.json
+
+# Сгенерированные изображения
+images/*.png
+images/*.jpg
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Виртуальное окружение
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

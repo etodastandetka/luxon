@@ -1,0 +1,54 @@
+# Готовые команды - просто скопируйте и выполните на сервере
+
+# ============================================
+# 1. НАСТРОЙКА NGINX
+# ============================================
+
+sudo cp /var/www/luxon/nginx-configs/japar.click.conf /etc/nginx/sites-available/japar.click
+sudo cp /var/www/luxon/nginx-configs/luxon.dad.conf /etc/nginx/sites-available/luxon.dad
+
+sudo ln -sf /etc/nginx/sites-available/japar.click /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/luxon.dad /etc/nginx/sites-enabled/
+
+sudo nginx -t
+sudo systemctl reload nginx
+
+# ============================================
+# 2. АДМИНКА - УСТАНОВКА И СБОРКА
+# ============================================
+
+cd /var/www/luxon/admin_nextjs
+npm install
+npm run build
+
+# ============================================
+# 3. КЛИЕНТСКИЙ САЙТ - УСТАНОВКА И СБОРКА
+# ============================================
+
+cd /var/www/luxon/bot2/mini_app_site
+npm install
+npm run build
+
+# ============================================
+# 4. ЗАПУСК ЧЕРЕЗ PM2
+# ============================================
+
+cd /var/www/luxon/admin_nextjs
+pm2 start ecosystem.config.js
+
+cd /var/www/luxon/bot2/mini_app_site
+pm2 start ecosystem.config.js
+
+pm2 save
+
+# ============================================
+# 5. ПРОВЕРКА
+# ============================================
+
+pm2 status
+pm2 logs
+
+# Готово! Сайты доступны:
+# - https://japar.click
+# - https://luxon.dad
+

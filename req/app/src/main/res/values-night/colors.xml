@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark Theme Colors -->
+    <color name="background_light">#121212</color>
+    <color name="card_background_light">#1E1E1E</color>
+    <color name="text_primary_light">#FFFFFF</color>
+    <color name="text_secondary_light">#B3FFFFFF</color>
+    <color name="text_hint_light">#808080</color>
+    <color name="divider_light">#333333</color>
+    <color name="toolbar_background">#2196F3</color>
+    
+    <!-- Dark Theme Colors (same for dark theme) -->
+    <color name="background_dark">#121212</color>
+    <color name="card_background_dark">#1E1E1E</color>
+    <color name="text_primary_dark">#FFFFFF</color>
+    <color name="text_secondary_dark">#B3FFFFFF</color>
+    <color name="text_hint_dark">#808080</color>
+    <color name="divider_dark">#333333</color>
+    
+    <!-- Common Colors -->
+    <color name="primary">#2196F3</color>
+    <color name="primary_dark">#1976D2</color>
+    <color name="accent">#4CAF50</color>
+    <color name="amount_positive">#4CAF50</color>
+    <color name="amount_background">#1B5E20</color>
+</resources>
+

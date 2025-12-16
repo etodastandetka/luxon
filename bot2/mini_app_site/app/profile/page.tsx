@@ -1,0 +1,263 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { TelegramUser, getTelegramUser, getTelegramUserId } from '../../utils/telegram'
+import { getApiBase } from '../../utils/fetch'
+import { useLanguage } from '../../components/LanguageContext'
+import FixedHeaderControls from '../../components/FixedHeaderControls'
+import { PremiumIcon, TransactionDepositIcon, TransactionWithdrawIcon, BackIcon } from '../../components/Icons'
+
+interface UserStats {
+  totalDeposits: number
+  totalWithdraws: number
+  totalDepositAmount: number
+  totalWithdrawAmount: number
+  recentTransactions: any[]
+}
+
+export default function ProfilePage() {
+  const [user, setUser] = useState<TelegramUser | null>(null)
+  const [stats, setStats] = useState<UserStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const { language } = useLanguage()
+
+  useEffect(() => {
+    const loadUserData = () => {
+      const telegramUser = getTelegramUser()
+      if (telegramUser) {
+        setUser(telegramUser)
+        loadStats(telegramUser.id)
+      } else {
+        setLoading(false)
+      }
+    }
+
+    loadUserData()
+  }, [])
+
+  const loadStats = async (userId: number) => {
+    try {
+      const apiUrl = getApiBase()
+      const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}`)
+      const data = await response.json()
+      
+      const transactions = data.data?.transactions || data.transactions || []
+      
+      const userStats: UserStats = {
+        totalDeposits: transactions.filter((t: any) => t.type === 'deposit').length,
+        totalWithdraws: transactions.filter((t: any) => t.type === 'withdraw').length,
+        totalDepositAmount: transactions
+          .filter((t: any) => t.type === 'deposit')
+          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
+        totalWithdrawAmount: transactions
+          .filter((t: any) => t.type === 'withdraw')
+          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
+        recentTransactions: transactions.slice(0, 5)
+      }
+      
+      setStats(userStats)
+    } catch (error) {
+      console.error('Error loading stats:', error)
+      setStats({
+        totalDeposits: 0,
+        totalWithdraws: 0,
+        totalDepositAmount: 0,
+        totalWithdrawAmount: 0,
+        recentTransactions: []
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const translations = {
+    ru: {
+      title: 'Профиль',
+      deposits: 'Пополнений',
+      withdraws: 'Выводов',
+      totalDeposited: 'Всего пополнено',
+      totalWithdrawn: 'Всего выведено',
+      recentTransactions: 'Последние операции',
+      viewAll: 'Посмотреть все',
+      back: 'Назад'
+    },
+    en: {
+      title: 'Profile',
+      deposits: 'Deposits',
+      withdraws: 'Withdrawals',
+      totalDeposited: 'Total Deposited',
+      totalWithdrawn: 'Total Withdrawn',
+      recentTransactions: 'Recent Transactions',
+      viewAll: 'View All',
+      back: 'Back'
+    }
+  }
+
+  const t = translations[language as keyof typeof translations] || translations.ru
+
+  if (loading) {
+    return (
+      <main className="space-y-6">
+        <FixedHeaderControls />
+        <div className="card text-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <div className="text-white/70">Загрузка...</div>
+        </div>
+      </main>
+    )
+  }
+
+  if (!user) {
+    return (
+      <main className="space-y-6">
+        <FixedHeaderControls />
+        <div className="card text-center py-8">
+          <p className="text-white/70">Пользователь не найден</p>
+          <button
+            onClick={() => router.push('/')}
+            className="mt-4 btn btn-primary"
+          >
+            {t.back}
+          </button>
+        </div>
+      </main>
+    )
+  }
+
+  const avatarUrl = user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name + (user.last_name || ''))}&background=22c55e&color=fff&size=256`
+
+  return (
+    <main className="space-y-6" style={{ paddingBottom: '100px' }}>
+      <FixedHeaderControls />
+      
+      {/* Заголовок */}
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-white pr-20">{t.title}</h1>
+      </div>
+
+      {/* Профиль пользователя */}
+      <div className="card p-6 profile-header-3d">
+        <div className="flex flex-col items-center space-y-4">
+          {/* Аватарка */}
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden profile-avatar-3d">
+              {user.photo_url ? (
+                <img 
+                  src={avatarUrl} 
+                  alt={user.first_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-4xl font-bold text-white">
+                  {user.first_name?.[0]?.toUpperCase() || 'U'}
+                </span>
+              )}
+            </div>
+            {user.is_premium && (
+              <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
+                <PremiumIcon className="w-5 h-5 text-yellow-900" />
+              </div>
+            )}
+          </div>
+
+          {/* Имя и username */}
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-white">
+              {user.first_name} {user.last_name || ''}
+            </h2>
+            {user.username && (
+              <p className="text-white/60 mt-1">@{user.username}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Статистика */}
+      {stats && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card p-4 text-center stat-card-3d">
+              <div className="text-3xl font-bold text-green-400 mb-1">{stats.totalDeposits}</div>
+              <div className="text-sm text-white/70">{t.deposits}</div>
+              <div className="text-xs text-white/50 mt-1">
+                {stats.totalDepositAmount.toLocaleString('ru-RU')} сом
+              </div>
+            </div>
+            <div className="card p-4 text-center stat-card-3d">
+              <div className="text-3xl font-bold text-blue-400 mb-1">{stats.totalWithdraws}</div>
+              <div className="text-sm text-white/70">{t.withdraws}</div>
+              <div className="text-xs text-white/50 mt-1">
+                {stats.totalWithdrawAmount.toLocaleString('ru-RU')} сом
+              </div>
+            </div>
+          </div>
+
+          {/* Последние операции */}
+          {stats.recentTransactions.length > 0 && (
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">{t.recentTransactions}</h3>
+                <a 
+                  href="/history"
+                  className="text-sm text-green-400 hover:text-green-300"
+                >
+                  {t.viewAll} →
+                </a>
+              </div>
+              <div className="space-y-2">
+                {stats.recentTransactions.map((transaction: any) => (
+                  <div 
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        transaction.type === 'deposit' ? 'bg-green-500/20' : 'bg-blue-500/20'
+                      }`}>
+                        {transaction.type === 'deposit' ? (
+                          <TransactionDepositIcon className="w-5 h-5 text-green-400" />
+                        ) : (
+                          <TransactionWithdrawIcon className="w-5 h-5 text-blue-400" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-white font-medium">
+                          {transaction.type === 'deposit' ? 'Пополнение' : 'Вывод'}
+                        </div>
+                        <div className="text-xs text-white/50">
+                          {new Date(transaction.date).toLocaleDateString('ru-RU')}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-bold ${
+                        transaction.type === 'deposit' ? 'text-green-400' : 'text-blue-400'
+                      }`}>
+                        {transaction.type === 'deposit' ? '+' : '-'}{transaction.amount.toLocaleString('ru-RU')} сом
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Кнопка назад */}
+      <div className="text-center">
+        <button
+          onClick={() => router.push('/')}
+          className="btn btn-ghost flex items-center justify-center gap-2"
+        >
+          <BackIcon className="w-5 h-5" />
+          {t.back}
+        </button>
+      </div>
+    </main>
+  )
+}
+

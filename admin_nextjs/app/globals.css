@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 16, 28, 20;
+  --background-end-rgb: 20, 32, 24;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+/* Мобильный контейнер */
+.mobile-container {
+  max-width: 414px;
+  margin: 0 auto;
+  height: 100vh;
+  background: transparent;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Кастомный скроллбар */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 197, 94, 0.3);
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 94, 0.5);
+}
+
+/* Скрытие скроллбара */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE и Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari и Opera */
+}
+
+/* Для Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 197, 94, 0.3) transparent;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
