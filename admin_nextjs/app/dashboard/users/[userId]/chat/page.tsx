@@ -100,13 +100,18 @@ export default function ChatPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Проверяем тип файла (фото или видео)
-    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+    // Разрешаем фото, видео, аудио и документы
+    if (
+      file.type.startsWith('image/') ||
+      file.type.startsWith('video/') ||
+      file.type.startsWith('audio/') ||
+      file.type.startsWith('application/')
+    ) {
       setSelectedFile(file)
       const url = URL.createObjectURL(file)
       setPreviewUrl(url)
     } else {
-      alert('Пожалуйста, выберите фото или видео')
+      alert('Пожалуйста, выберите фото, видео, аудио или документ')
     }
   }
 
@@ -272,7 +277,25 @@ export default function ChatPage() {
                         controls 
                         className="w-full max-h-64 rounded-lg"
                       />
-                    ) : null}
+                    ) : message.messageType === 'audio' || message.messageType === 'voice' ? (
+                      <audio
+                        src={message.mediaUrl}
+                        controls
+                        className="w-full"
+                      />
+                    ) : (
+                      <a
+                        href={message.mediaUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center space-x-2 text-sm underline"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
+                        </svg>
+                        <span>Файл</span>
+                      </a>
+                    )}
                   </div>
                 )}
                 {message.messageText && (
@@ -333,7 +356,7 @@ export default function ChatPage() {
           <input
             type="file"
             ref={fileInputRef}
-            accept="image/*,video/*"
+            accept="image/*,video/*,audio/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={handleFileSelect}
             className="hidden"
           />

@@ -70,33 +70,40 @@ export async function POST(
     let telegramMessageId: bigint
 
     if (file) {
-      // Отправляем медиа (фото или видео)
+      // Определяем тип файла
       const isVideo = fileType?.startsWith('video/')
       const isPhoto = fileType?.startsWith('image/')
-
-      if (!isPhoto && !isVideo) {
-        return NextResponse.json(
-          createApiResponse(null, 'File must be an image or video'),
-          { status: 400 }
-        )
-      }
+      const isAudio = fileType?.startsWith('audio/')
+      // Для document все остальное (pdf, doc, etc.)
+      const isDocument = !isPhoto && !isVideo && !isAudio
 
       // Конвертируем файл в Blob для отправки
       const arrayBuffer = await file.arrayBuffer()
-      const blob = new Blob([arrayBuffer], { type: fileType || (isPhoto ? 'image/jpeg' : 'video/mp4') })
+      const blob = new Blob([arrayBuffer], { type: fileType || 'application/octet-stream' })
 
       // Создаем FormData для Telegram API
-      // В Node.js 18+ глобальный FormData должен работать с fetch
       const telegramFormData = new FormData()
       telegramFormData.append('chat_id', userId.toString())
       if (message?.trim()) {
+        // caption поддерживается photo/video/audio/document
         telegramFormData.append('caption', message)
       }
-      telegramFormData.append(isPhoto ? 'photo' : 'video', blob, file.name)
 
-      const apiEndpoint = isPhoto 
-        ? `https://api.telegram.org/bot${botToken}/sendPhoto`
-        : `https://api.telegram.org/bot${botToken}/sendVideo`
+      let apiEndpoint = `https://api.telegram.org/bot${botToken}/sendMessage`
+      if (isPhoto) {
+        telegramFormData.append('photo', blob, file.name)
+        apiEndpoint = `https://api.telegram.org/bot${botToken}/sendPhoto`
+      } else if (isVideo) {
+        telegramFormData.append('video', blob, file.name)
+        apiEndpoint = `https://api.telegram.org/bot${botToken}/sendVideo`
+      } else if (isAudio) {
+        // Для голосовых/аудио
+        telegramFormData.append('audio', blob, file.name)
+        apiEndpoint = `https://api.telegram.org/bot${botToken}/sendAudio`
+      } else if (isDocument) {
+        telegramFormData.append('document', blob, file.name)
+        apiEndpoint = `https://api.telegram.org/bot${botToken}/sendDocument`
+      }
 
       const telegramResponse = await fetch(apiEndpoint, {
         method: 'POST',
@@ -112,11 +119,18 @@ export async function POST(
         )
       }
 
-      messageType = isPhoto ? 'photo' : 'video'
+      if (isPhoto) messageType = 'photo'
+      else if (isVideo) messageType = 'video'
+      else if (isAudio) messageType = 'audio'
+      else messageType = 'document'
       telegramMessageId = BigInt(telegramData.result.message_id)
       
       // Получаем URL медиа из ответа Telegram
-      const media = telegramData.result.photo?.[telegramData.result.photo.length - 1] || telegramData.result.video
+      const media =
+        telegramData.result.photo?.[telegramData.result.photo.length - 1] ||
+        telegramData.result.video ||
+        telegramData.result.audio ||
+        telegramData.result.document
       if (media?.file_id) {
         // Получаем путь к файлу
         const getFileUrl = `https://api.telegram.org/bot${botToken}/getFile?file_id=${media.file_id}`
