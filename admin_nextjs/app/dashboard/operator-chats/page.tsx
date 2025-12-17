@@ -30,7 +30,7 @@ export default function OperatorChatsPage() {
 
   const loadThreads = useCallback(async () => {
     try {
-      const res = await fetch(`/api/chat/threads?channel=${channel}`, { cache: 'no-store' })
+      const res = await fetch(`/api/operator-chat/threads`, { cache: 'no-store' })
       const data = await res.json()
       if (data.success && data.data?.threads) {
         setThreads(data.data.threads)

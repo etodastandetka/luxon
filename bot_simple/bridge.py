@@ -7,7 +7,8 @@ Pyrogram bridge for user-account chat delivery.
   - текст -> /api/users/{userId}/chat/ingest (JSON)
   - медиа -> /api/users/{userId}/chat/ingest-upload (multipart)
 - Забирает исходящие из админки (outbox) и отправляет пользователю через аккаунт:
-  - poll /api/chat/outbox, send через Pyrogram, ack через /api/chat/outbox/ack
+  - если BRIDGE_MODE=operator -> /api/operator-chat/outbox + ack
+  - иначе -> /api/chat/outbox + ack
 
 Переменные окружения:
   API_ID           — Telegram api_id
@@ -15,6 +16,7 @@ Pyrogram bridge for user-account chat delivery.
   SESSION_STRING   — session_string личного аккаунта (export_session_string)
   API_BASE         — базовый URL админки, например https://japar.click
   OUTBOX_POLL_SEC  — интервал опроса аутбокса (сек), по умолчанию 2
+  BRIDGE_MODE      — bot | operator (default bot)
 """
 import asyncio
 import mimetypes
@@ -32,7 +34,7 @@ API_HASH = os.environ.get("API_HASH", "")
 SESSION_STRING = os.environ.get("SESSION_STRING", "")
 API_BASE = os.environ.get("API_BASE", "https://japar.click").rstrip("/")
 OUTBOX_POLL_SEC = float(os.environ.get("OUTBOX_POLL_SEC", "2"))
-BRIDGE_CHANNEL = os.environ.get("BRIDGE_CHANNEL", "bot")
+BRIDGE_MODE = os.environ.get("BRIDGE_MODE", "bot")  # bot | operator
 
 if not (API_ID and API_HASH and SESSION_STRING and API_BASE):
     raise RuntimeError("Set API_ID, API_HASH, SESSION_STRING, API_BASE env vars")
@@ -53,7 +55,11 @@ async def send_ingest_text(user_id: int, text: str, telegram_message_id: int):
         "message_type": "text",
         "telegram_message_id": telegram_message_id,
     }
-    url = f"{API_BASE}/api/users/{user_id}/chat/ingest?channel={BRIDGE_CHANNEL}"
+    url = (
+        f"{API_BASE}/api/users/{user_id}/chat/ingest"
+        if BRIDGE_MODE == "bot"
+        else f"{API_BASE}/api/operator-chat/ingest-upload/{user_id}"  # ingest-upload expects multipart; for text оставим ingest
+    )
     r = await http.post(url, json=payload)
     if r.status_code >= 400:
         print(f"[ingest] failed {r.status_code}: {r.text[:200]}")
@@ -66,7 +72,11 @@ async def send_ingest_upload(
     mime: Optional[str],
     telegram_message_id: int,
 ):
-    url = f"{API_BASE}/api/users/{user_id}/chat/ingest-upload?channel={BRIDGE_CHANNEL}"
+    url = (
+        f"{API_BASE}/api/users/{user_id}/chat/ingest-upload"
+        if BRIDGE_MODE == "bot"
+        else f"{API_BASE}/api/operator-chat/ingest-upload/{user_id}"
+    )
     filename = os.path.basename(file_path)
     mime_type = mime or (mimetypes.guess_type(filename)[0] or "application/octet-stream")
     files = {"file": (filename, open(file_path, "rb"), mime_type)}
@@ -124,7 +134,12 @@ async def handle_incoming(_: Client, msg: Message):
 async def poll_outbox():
     while True:
         try:
-            r = await http.get(f"{API_BASE}/api/chat/outbox?limit=50&channel={BRIDGE_CHANNEL}")
+            outboxUrl = (
+                f"{API_BASE}/api/chat/outbox?limit=50&channel=bot"
+                if BRIDGE_MODE == "bot"
+                else f"{API_BASE}/api/operator-chat/outbox?limit=50"
+            )
+            r = await http.get(outboxUrl)
             if r.status_code != 200:
                 print(f"[outbox] http {r.status_code}: {r.text[:200]}")
                 await asyncio.sleep(OUTBOX_POLL_SEC)
@@ -174,7 +189,12 @@ async def poll_outbox():
                     )
 
             if ack_list:
-                ack_resp = await http.post(f"{API_BASE}/api/chat/outbox/ack", json={"messages": ack_list})
+                ackUrl = (
+                    f"{API_BASE}/api/chat/outbox/ack"
+                    if BRIDGE_MODE == "bot"
+                    else f"{API_BASE}/api/operator-chat/outbox/ack"
+                )
+                ack_resp = await http.post(ackUrl, json={"messages": ack_list})
                 if ack_resp.status_code >= 400:
                     print(f"[ack] failed {ack_resp.status_code}: {ack_resp.text[:200]}")
         except Exception as e:

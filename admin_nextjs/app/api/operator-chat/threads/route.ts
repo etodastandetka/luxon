@@ -6,17 +6,11 @@ export async function GET(request: NextRequest) {
   try {
     requireAuth(request)
 
-    const { searchParams } = new URL(request.url)
-    const channel = searchParams.get('channel') || 'bot'
-
-    // Получаем последние сообщения (достаточно 400 для уникальных чатов)
-    const messages = await prisma.chatMessage.findMany({
-      where: { channel },
+    const messages = await prisma.operatorMessage.findMany({
       orderBy: { createdAt: 'desc' },
       take: 400,
     })
 
-    // Собираем последние сообщения по userId
     const latestByUser = new Map<bigint, (typeof messages)[number]>()
     for (const msg of messages) {
       if (!latestByUser.has(msg.userId)) {
@@ -44,14 +38,13 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Сортируем по дате
     threads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return NextResponse.json(createApiResponse({ threads }))
   } catch (error: any) {
-    console.error('Chat threads API error:', error)
+    console.error('Operator threads API error:', error)
     return NextResponse.json(
-      createApiResponse(null, error.message || 'Failed to fetch chat threads'),
+      createApiResponse(null, error.message || 'Failed to fetch operator chat threads'),
       { status: 500 }
     )
   }

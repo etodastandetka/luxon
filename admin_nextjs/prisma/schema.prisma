@@ -307,6 +307,22 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+// Operator Messages (отдельный канал через операторский аккаунт)
+model OperatorMessage {
+  id                Int      @id @default(autoincrement())
+  userId            BigInt   @map("user_id") @db.BigInt
+  messageText       String?  @map("message_text") @db.Text
+  messageType       String   @default("text") @map("message_type") @db.VarChar(20)
+  mediaUrl          String?  @map("media_url") @db.Text
+  direction         String   @default("in") @db.VarChar(10) // 'in' - от пользователя, 'out' - от оператора
+  telegramMessageId BigInt?  @map("telegram_message_id") @db.BigInt
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([direction, telegramMessageId])
+  @@map("operator_messages")
+}
+
 // Broadcast Messages
 model BroadcastMessage {
   id        Int       @id @default(autoincrement())

@@ -45,7 +45,9 @@ export default function ChatPage() {
   const fetchChatData = useCallback(async () => {
     try {
       const [chatRes, userRes, photoRes] = await Promise.all([
-        fetch(`/api/users/${params.userId}/chat?channel=${channel}`),
+        channel === 'operator'
+          ? fetch(`/api/operator-chat/history/${params.userId}`)
+          : fetch(`/api/users/${params.userId}/chat?channel=${channel}`),
         fetch(`/api/users/${params.userId}`),
         fetch(`/api/users/${params.userId}/profile-photo`)
       ])
@@ -142,10 +144,15 @@ export default function ChatPage() {
         formData.append('fileType', selectedFile.type)
       }
 
-      const response = await fetch(`/api/users/${params.userId}/send-message?channel=${channel}`, {
-        method: 'POST',
-        body: formData,
-      })
+      const response = await fetch(
+        channel === 'operator'
+          ? `/api/operator-chat/send/${params.userId}`
+          : `/api/users/${params.userId}/send-message?channel=${channel}`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      )
 
       const data = await response.json()
 
