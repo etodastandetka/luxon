@@ -169,11 +169,17 @@ body::before {
   @apply w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-accent/60;
   background-color: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  caret-color: #fff;
 }
 
 .input:focus {
   border-color: var(--tg-theme-button-color);
   box-shadow: 0 0 0 2px rgba(36, 129, 204, 0.2);
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .label { @apply text-xs text-white/60 mb-1; }
