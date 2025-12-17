@@ -1,17 +1,28 @@
 "use client"
 import { useEffect, useState, useMemo } from 'react'
-import AnimatedHeader from '../components/AnimatedHeader'
+import dynamic from 'next/dynamic'
 import LoadingScreen from '../components/LoadingScreen'
 import ServiceStatus from '../components/ServiceStatus'
 import FixedHeaderControls from '../components/FixedHeaderControls'
-import VideoModal from '../components/VideoModal'
-import UserProfile from '../components/UserProfile'
 import { useLanguage } from '../components/LanguageContext'
 import { useBotSettings } from '../components/SettingsLoader'
-import { initTelegramWebApp, getTelegramUser, syncWithBot, TelegramUser, getTelegramUserId } from '../utils/telegram'
+import { initTelegramWebApp, syncWithBot, TelegramUser, getTelegramUserId } from '../utils/telegram'
 import { getApiBase } from '../utils/fetch'
 import { ReferralIcon, HistoryIcon, InstructionIcon, SupportIcon } from '../components/Icons'
-import BannerCarousel from '../components/BannerCarousel'
+
+const BannerCarousel = dynamic(() => import('../components/BannerCarousel'), {
+  ssr: false,
+  loading: () => <div className="card h-[180px] animate-pulse" />
+})
+
+const VideoModal = dynamic(() => import('../components/VideoModal'), {
+  ssr: false
+})
+
+const UserProfile = dynamic(() => import('../components/UserProfile'), {
+  ssr: false,
+  loading: () => <div className="card h-24 animate-pulse" />
+})
 
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
@@ -24,7 +35,7 @@ export default function HomePage() {
   const [withdrawVideoUrl, setWithdrawVideoUrl] = useState<string>('')
   const [userStats, setUserStats] = useState<{deposits: number, withdraws: number} | null>(null)
   const { language } = useLanguage()
-  const { settings, loading: settingsLoading, error: settingsError } = useBotSettings()
+  const { loading: settingsLoading } = useBotSettings()
 
   // Приветствие по времени суток
   const greeting = useMemo(() => {
@@ -40,52 +51,155 @@ export default function HomePage() {
     }
   }, [language])
 
-  // Загружаем статистику пользователя
+  // Загружаем статистику пользователя (с кешем и без блока основного потока)
   useEffect(() => {
+    if (!user) return
+
+    const userId = getTelegramUserId()
+    if (!userId) return
+
+    let cancelled = false
+    const CACHE_TTL = 5 * 60 * 1000 // 5 минут
+    const cacheKey = `user_stats_${userId}`
+
+    const applyStats = (stats: { deposits: number; withdraws: number }) => {
+      if (!cancelled) {
+        setUserStats(stats)
+      }
+    }
+
+    // Быстрый ответ из кеша с коротким TTL
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedRaw = sessionStorage.getItem(cacheKey)
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw) as { stats: { deposits: number; withdraws: number }; ts: number }
+          if (Date.now() - cached.ts < CACHE_TTL) {
+            applyStats(cached.stats)
+          }
+        }
+      } catch {
+        // игнорируем проблемы чтения кеша
+      }
+    }
+
     const loadUserStats = async () => {
       try {
-        const userId = getTelegramUserId()
-        if (!userId) return
-
         const apiUrl = getApiBase()
-        const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}`)
+        const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}`, {
+          cache: 'no-store'
+        })
         const data = await response.json()
-        
+
         const transactions = data.data?.transactions || data.transactions || []
-        setUserStats({
+        const stats = {
           deposits: transactions.filter((t: any) => t.type === 'deposit').length,
           withdraws: transactions.filter((t: any) => t.type === 'withdraw').length
-        })
+        }
+
+        applyStats(stats)
+
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ stats, ts: Date.now() }))
+          } catch {
+            // молча игнорируем quota errors
+          }
+        }
       } catch (error) {
         console.error('Error loading user stats:', error)
       }
     }
 
-    if (user) {
-      loadUserStats()
+    // Откладываем запрос до idle, чтобы не блокировать рендер
+    if (typeof window !== 'undefined') {
+      const idleCb = (window as any).requestIdleCallback as
+        | ((cb: () => void, opts?: { timeout: number }) => number)
+        | undefined
+      if (idleCb) {
+        const id = idleCb(() => loadUserStats(), { timeout: 1200 })
+        return () => {
+          cancelled = true
+          const cancelIdle = (window as any).cancelIdleCallback as ((handle: number) => void) | undefined
+          if (cancelIdle && id) {
+            cancelIdle(id)
+          }
+        }
+      }
+    }
+
+    const timeoutId = setTimeout(loadUserStats, 400)
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
     }
   }, [user])
 
-  // Загружаем видео URL из API
+  // Загружаем видео URL из API (кешируем чтобы не дергать на каждый заход)
   useEffect(() => {
+    let cancelled = false
+    const CACHE_TTL = 10 * 60 * 1000 // 10 минут
+    const cacheKey = 'video_instructions_cache_v1'
+
+    const applyVideos = (deposit: string, withdraw: string) => {
+      if (!cancelled) {
+        setDepositVideoUrl(deposit)
+        setWithdrawVideoUrl(withdraw)
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedRaw = sessionStorage.getItem(cacheKey)
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw) as { deposit: string; withdraw: string; ts: number }
+          if (Date.now() - cached.ts < CACHE_TTL) {
+            applyVideos(
+              cached.deposit || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
+              cached.withdraw || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'
+            )
+            return
+          }
+        }
+      } catch {
+        // ignore cache read errors
+      }
+    }
+
     const fetchVideoUrls = async () => {
       try {
         const response = await fetch('/api/video-instructions', { cache: 'no-store' })
         const data = await response.json()
         
         if (data.success && data.data) {
-          setDepositVideoUrl(data.data.deposit_video_url || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
-          setWithdrawVideoUrl(data.data.withdraw_video_url || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
+          const deposit = data.data.deposit_video_url || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view'
+          const withdraw = data.data.withdraw_video_url || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'
+          applyVideos(deposit, withdraw)
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.setItem(cacheKey, JSON.stringify({ deposit, withdraw, ts: Date.now() }))
+            } catch {
+              // ignore quota errors
+            }
+          }
+          return
         }
       } catch (error) {
         console.error('Failed to fetch video instructions:', error)
-        // Используем значения по умолчанию при ошибке
-        setDepositVideoUrl('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
-        setWithdrawVideoUrl('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
       }
+
+      // Фоллбек
+      applyVideos(
+        'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
+        'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'
+      )
     }
     
     fetchVideoUrls()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -148,13 +262,13 @@ export default function HomePage() {
       }
     }, 50)
 
-    // Максимальное время загрузки - 1.5 секунды (уменьшено для быстрого отклика)
+    // Максимальное время загрузки - 1 секунда (быстрее реакция)
     timeoutId = setTimeout(() => {
       console.log('⏰ Таймаут загрузки, принудительно завершаем')
       if (checkInterval) clearInterval(checkInterval)
       if (progressInterval) clearInterval(progressInterval)
       finishLoading()
-    }, 1500)
+    }, 1000)
 
     // Проверяем сразу при монтировании
     if (checkReady()) {

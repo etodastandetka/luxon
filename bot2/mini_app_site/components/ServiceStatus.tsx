@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
-import { getApiBase } from '../utils/fetch'
+import { useBotSettings } from './SettingsLoader'
 
 interface ServiceStatusProps {
   service: 'deposits' | 'withdrawals' | 'casinos'
@@ -9,45 +8,23 @@ interface ServiceStatusProps {
 }
 
 export default function ServiceStatus({ service, children }: ServiceStatusProps) {
-  const [isEnabled, setIsEnabled] = useState(true)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { settings, loading, error } = useBotSettings()
 
-  useEffect(() => {
-    const checkServiceStatus = async () => {
-      try {
-        const apiUrl = getApiBase()
-        const response = await fetch(`${apiUrl}/api/public/payment-settings`)
-        if (response.ok) {
-          const data = await response.json()
-          
-          // Админ-панель возвращает данные напрямую
-          const settings = data
+  const resolveServiceEnabled = () => {
+    const s = settings as any
+    if (!s) return true
 
-          if (service === 'deposits') {
-            setIsEnabled(settings.deposits?.enabled ?? settings.deposits_enabled ?? true)
-          } else if (service === 'withdrawals') {
-            setIsEnabled(settings.withdrawals?.enabled ?? settings.withdrawals_enabled ?? true)
-          } else if (service === 'casinos') {
-            // Проверяем, есть ли включенные казино
-            const enabledSites = settings.enabled_deposit_banks || []
-            setIsEnabled(enabledSites.length > 0)
-          }
-        } else {
-          setError('Failed to load service status')
-        }
-      } catch (err) {
-        setError('Failed to load service status')
-        console.error('Error checking service status:', err)
-      } finally {
-        setIsLoading(false)
-      }
+    if (service === 'deposits') {
+      return s.deposits?.enabled ?? s.deposits_enabled ?? true
     }
+    if (service === 'withdrawals') {
+      return s.withdrawals?.enabled ?? s.withdrawals_enabled ?? true
+    }
+    const enabledSites = s.enabled_deposit_banks || []
+    return Array.isArray(enabledSites) ? enabledSites.length > 0 : true
+  }
 
-    checkServiceStatus()
-  }, [service])
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="card text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto mb-2"></div>
@@ -56,7 +33,7 @@ export default function ServiceStatus({ service, children }: ServiceStatusProps)
     )
   }
 
-  if (error) {
+  if (error && !settings) {
     return (
       <div className="card text-center bg-red-900/20 border-red-500">
         <p className="text-red-400">Ошибка загрузки настроек</p>
@@ -64,7 +41,7 @@ export default function ServiceStatus({ service, children }: ServiceStatusProps)
     )
   }
 
-  if (!isEnabled) {
+  if (!resolveServiceEnabled()) {
     const messages = {
       deposits: 'Пополнение временно недоступно',
       withdrawals: 'Вывод временно недоступен',

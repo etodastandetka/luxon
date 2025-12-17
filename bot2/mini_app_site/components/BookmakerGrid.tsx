@@ -118,12 +118,13 @@ function BookmakerGrid({
                   src={b.logo} 
                   alt={b.name}
                   fill
-                  priority={true} // Всегда приоритетная загрузка для быстрого отображения
-                  loading="eager" // Всегда eager для немедленной загрузки
-                  sizes={bookmakers.length === 1 ? "100vw" : "(max-width: 768px) 50vw, 25vw"} // Оптимизация размеров
-                  quality={80} // Немного снижаем качество для скорости
+                  priority={bookmakers.length === 1} // приоритет только если один элемент на экране
+                  loading={bookmakers.length === 1 ? 'eager' : 'lazy'} // ленивое для сетки
+                  sizes={bookmakers.length === 1 ? "100vw" : "(max-width: 768px) 50vw, 33vw"} // быстрее за счет меньшего таргета
+                  quality={bookmakers.length === 1 ? 85 : 70} // ниже качество для сетки
                   className={b.key === '1xbet' ? "object-cover transform scale-150" : "object-cover"}
-                  unoptimized={false} // Используем оптимизацию Next.js
+                  placeholder="empty"
+                  unoptimized={false} // оставляем оптимизацию Next.js
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-black/30">

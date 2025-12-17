@@ -1,6 +1,43 @@
 import crypto from 'crypto'
 import { MobCashClient } from './mob-cash-api'
 
+const debug = process.env.NODE_ENV !== 'production'
+
+const calcCache = new Map<string, string>()
+
+const getCached = (key: string, factory: () => string) => {
+  if (calcCache.has(key)) return calcCache.get(key)!
+  const value = factory()
+  calcCache.set(key, value)
+  return value
+}
+
+const fetchWithTimeout = async (
+  url: string,
+  init: RequestInit,
+  timeoutMs = 8_000
+): Promise<Response> => {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+const readTextWithTimeout = async (
+  response: Response,
+  timeoutMs = 5_000
+): Promise<string> => {
+  return Promise.race([
+    response.text(),
+    new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error('Response body timeout')), timeoutMs)
+    ),
+  ])
+}
+
 // Конфигурация API казино
 interface CasinoConfig {
   hash?: string
@@ -88,6 +125,14 @@ export async function depositCashdeskAPI(
   amount: number,
   config: CasinoConfig
 ): Promise<{ success: boolean; message: string; data?: any }> {
+  let cleared = false
+  if (!userId || String(userId).trim() === '') {
+    return { success: false, message: 'Missing userId' }
+  }
+  if (amount <= 0) {
+    return { success: false, message: 'Amount must be greater than 0' }
+  }
+
   const baseUrl = 'https://partners.servcul.com/CashdeskBotAPI/'
   const normalizedBookmaker = bookmaker.toLowerCase()
   const isMelbet = normalizedBookmaker.includes('melbet')
@@ -118,25 +163,40 @@ export async function depositCashdeskAPI(
     // Преобразуем userId в строку перед toLowerCase, так как для чисел toLowerCase не работает
     const userIdStr = String(userId)
     const userIdForApi = (isMelbet || isWinwin) ? userIdStr.toLowerCase() : userIdStr
-    const confirm = generateConfirm(userIdForApi, hash, isMelbet)
+    const confirm = getCached(
+      `confirm:${userIdForApi}:${hash}:${isMelbet}`,
+      () => generateConfirm(userIdForApi, hash, isMelbet)
+    )
     // Для подписи: для Melbet используем userId (оригинальный, но функция сама сделает lowercase)
     // Для Winwin в подписи используем userIdForApi (в нижнем регистре), так как в URL тоже используется lowercase
     // В строке подписи используется userid с маленькой буквы согласно примеру в документации (пункт 3.5)
-    const sign = isMelbet
-      ? generateSignForDepositMelbet(userIdStr, amount, hash, cashierpass, cashdeskid)
-      : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
-    
+    const sign = getCached(
+      `sign:${bookmaker}:${userIdForApi}:${amount}:${hash}:${cashdeskid}`,
+      () =>
+        isMelbet
+          ? generateSignForDepositMelbet(userIdStr, amount, hash, cashierpass, cashdeskid)
+          : generateSignForDeposit1xbet(userIdForApi, amount, hash, cashierpass, cashdeskid)
+    )
+
     // Дополнительное логирование для отладки
-    console.log(`[Cashdesk Deposit] Signature calculation details:`)
-    console.log(`  - userId (original): ${userId} (type: ${typeof userId})`)
-    console.log(`  - userIdStr (string): ${userIdStr}`)
-    console.log(`  - userIdForApi (for URL and confirm): ${userIdForApi}`)
-    console.log(`  - userId used in signature: ${isMelbet ? userIdStr : userIdForApi}`)
-    console.log(`  - Step 1 string would be: hash=${hash}&lng=ru&userid=${isMelbet ? userIdStr.toLowerCase() : userIdForApi}`)
-    console.log(`  - Step 2 string would be: summa=${amount}&cashierpass=${cashierpass}&cashdeskid=${cashdeskid}`)
-    console.log(`  - Hash: ${hash.substring(0, 20)}...`)
-    console.log(`  - Cashierpass: ${cashierpass.substring(0, 5)}...`)
-    console.log(`  - Cashdeskid: ${cashdeskid}`)
+    if (debug) {
+      console.log(`[Cashdesk Deposit] Signature calculation details:`)
+      console.log(`  - userId (original): ${userId} (type: ${typeof userId})`)
+      console.log(`  - userIdStr (string): ${userIdStr}`)
+      console.log(`  - userIdForApi (for URL and confirm): ${userIdForApi}`)
+      console.log(`  - userId used in signature: ${isMelbet ? userIdStr : userIdForApi}`)
+      console.log(
+        `  - Step 1 string would be: hash=${hash}&lng=ru&userid=${
+          isMelbet ? userIdStr.toLowerCase() : userIdForApi
+        }`
+      )
+      console.log(
+        `  - Step 2 string would be: summa=${amount}&cashierpass=${cashierpass}&cashdeskid=${cashdeskid}`
+      )
+      console.log(`  - Hash: ${hash.substring(0, 20)}...`)
+      console.log(`  - Cashierpass: ${cashierpass.substring(0, 5)}...`)
+      console.log(`  - Cashdeskid: ${cashdeskid}`)
+    }
 
     const url = `${baseUrl}Deposit/${userIdForApi}/Add`
     const authHeader = generateBasicAuth(login, cashierpass)
@@ -149,13 +209,17 @@ export async function depositCashdeskAPI(
       confirm: confirm,
     }
 
-    console.log(`[Cashdesk Deposit] URL: ${url}`)
-    console.log(`[Cashdesk Deposit] Request body:`, requestBody)
-    console.log(`[Cashdesk Deposit] Sign: ${sign}`)
-    console.log(`[Cashdesk Deposit] Confirm: ${confirm}`)
-    console.log(`[Cashdesk Deposit] Authorization header: ${authHeader.substring(0, 20)}...`)
-    console.log(`[Cashdesk Deposit] UserId for API: ${userIdForApi}, Original userId: ${userId}`)
-    console.log(`[Cashdesk Deposit] Bookmaker flags: isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`)
+    if (debug) {
+      console.log(`[Cashdesk Deposit] URL: ${url}`)
+      console.log(`[Cashdesk Deposit] Request body:`, requestBody)
+      console.log(`[Cashdesk Deposit] Sign: ${sign}`)
+      console.log(`[Cashdesk Deposit] Confirm: ${confirm}`)
+      console.log(`[Cashdesk Deposit] Authorization header: ${authHeader.substring(0, 20)}...`)
+      console.log(`[Cashdesk Deposit] UserId for API: ${userIdForApi}, Original userId: ${userId}`)
+      console.log(
+        `[Cashdesk Deposit] Bookmaker flags: isMelbet=${isMelbet}, isWinwin=${isWinwin}, is888starz=${is888starz}`
+      )
+    }
 
     // Для Winwin и Melbet не требуется Basic Auth (как в Python скриптах)
     // Для 1xbet и 888starz используется Basic Auth
@@ -167,9 +231,9 @@ export async function depositCashdeskAPI(
     // Для 1xbet и 888starz используем Basic Auth, для Winwin и Melbet - без него
     if (!isMelbet && !isWinwin) {
       headers['Authorization'] = authHeader
-      console.log(`[Cashdesk Deposit] Using Basic Auth for ${bookmaker}`)
+      if (debug) console.log(`[Cashdesk Deposit] Using Basic Auth for ${bookmaker}`)
     } else {
-      console.log(`[Cashdesk Deposit] NOT using Basic Auth for ${bookmaker} (Winwin/Melbet)`)
+      if (debug) console.log(`[Cashdesk Deposit] NOT using Basic Auth for ${bookmaker} (Winwin/Melbet)`)
     }
 
     const maxAttempts = 3
@@ -177,11 +241,15 @@ export async function depositCashdeskAPI(
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       let response: Response
       try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(requestBody),
-        })
+        response = await fetchWithTimeout(
+          url,
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(requestBody),
+          },
+          8_000
+        )
       } catch (error: any) {
         if (attempt < maxAttempts) {
           console.warn(`[Cashdesk Deposit] Network error on attempt ${attempt}: ${error?.message || error}. Retrying...`)
@@ -191,7 +259,7 @@ export async function depositCashdeskAPI(
         throw error
       }
 
-      const responseText = await response.text()
+      const responseText = await readTextWithTimeout(response, 5_000)
       let data: any
       try {
         data = JSON.parse(responseText)
@@ -254,6 +322,11 @@ export async function depositCashdeskAPI(
       success: false,
       message: error.message || 'Failed to deposit balance',
     }
+  } finally {
+    if (!cleared) {
+      calcCache.clear()
+      cleared = true
+    }
   }
 }
 
@@ -263,6 +336,14 @@ export async function depositMostbetAPI(
   amount: number,
   config: CasinoConfig
 ): Promise<{ success: boolean; message: string; data?: any }> {
+  let cleared = false
+  if (!userId || String(userId).trim() === '') {
+    return { success: false, message: 'Missing userId' }
+  }
+  if (amount <= 0) {
+    return { success: false, message: 'Amount must be greater than 0' }
+  }
+
   const baseUrl = 'https://apimb.com'
 
   // Проверяем, что все обязательные поля заполнены и не пустые
@@ -356,25 +437,34 @@ export async function depositMostbetAPI(
       console.error(`❌ SHA3-256 not available: ${e.message}`)
       console.error(`❌ Mostbet API requires SHA3-256. Please use Node.js 18+ or install crypto-js library.`)
       // Не используем SHA256 fallback - это не будет работать с реальным API
-      throw new Error('SHA3-256 is required for Mostbet API but not available')
+      return {
+        success: false,
+        message: 'SHA3-256 is required for Mostbet API but not available',
+      }
     }
 
-    console.log(`[Mostbet Deposit] URL: ${url}, Path for signature: ${path}, Request body:`, requestBodyData)
+    if (debug) {
+      console.log(`[Mostbet Deposit] URL: ${url}, Path for signature: ${path}, Request body:`, requestBodyData)
+    }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'X-Api-Key': apiKeyFormatted,
-        'X-Timestamp': timestamp,
-        'X-Signature': signature,
-        'X-Project': 'MBC',
-        'Content-Type': 'application/json',
-        'Accept': '*/*',
+    const response = await fetchWithTimeout(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': apiKeyFormatted,
+          'X-Timestamp': timestamp,
+          'X-Signature': signature,
+          'X-Project': 'MBC',
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: requestBody,
       },
-      body: requestBody,
-    })
+      10_000
+    )
 
-    const responseText = await response.text()
+    const responseText = await readTextWithTimeout(response, 6_000)
     let data: any
     try {
       data = JSON.parse(responseText)
@@ -422,6 +512,11 @@ export async function depositMostbetAPI(
       success: false,
       message: error.message || 'Failed to deposit balance',
     }
+  } finally {
+    if (!cleared) {
+      calcCache.clear()
+      cleared = true
+    }
   }
 }
 
@@ -431,6 +526,13 @@ export async function depositMobCashAPI(
   amount: number,
   config: MobCashConfig
 ): Promise<{ success: boolean; message: string; data?: any }> {
+  if (!payerID || String(payerID).trim() === '') {
+    return { success: false, message: 'Missing payerID' }
+  }
+  if (amount <= 0) {
+    return { success: false, message: 'Amount must be greater than 0' }
+  }
+
   // Проверяем, что все обязательные поля заполнены
   if (!config.login || !config.password || !config.cashdesk_id ||
       config.login.trim() === '' || config.password.trim() === '' ||
@@ -448,8 +550,21 @@ export async function depositMobCashAPI(
     // Создаем клиент mob-cash
     const client = new MobCashClient(config)
 
-    // Выполняем пополнение (внутри метода deposit уже вызывается checkPayerNickname)
-    const result = await client.deposit(payerID, amount)
+    const attempts = 3
+    let result: any = null
+    for (let i = 1; i <= attempts; i++) {
+      try {
+        result = await client.deposit(payerID, amount)
+        break
+      } catch (err: any) {
+        if (i === attempts) throw err
+        console.warn(`[MobCash Deposit] Retry ${i}/${attempts - 1} after error: ${err?.message || err}`)
+        await new Promise((resolve) => setTimeout(resolve, i * 700))
+      }
+    }
+    if (!result) {
+      return { success: false, message: 'No response from MobCash API' }
+    }
 
     console.log(`[MobCash Deposit] Result:`, result)
 
@@ -473,6 +588,13 @@ export async function deposit1winAPI(
   amount: number,
   config: CasinoConfig
 ): Promise<{ success: boolean; message: string; data?: any }> {
+  if (!userId || String(userId).trim() === '') {
+    return { success: false, message: 'Missing userId' }
+  }
+  if (amount <= 0) {
+    return { success: false, message: 'Amount must be greater than 0' }
+  }
+
   const baseUrl = 'https://api.1win.win/v1/client'
 
   // Проверяем, что все обязательные поля заполнены
@@ -495,20 +617,40 @@ export async function deposit1winAPI(
       amount: amount,
     }
 
-    console.log(`[1win Deposit] URL: ${url}`)
-    console.log(`[1win Deposit] Request body:`, requestBody)
-    console.log(`[1win Deposit] API Key: ${apiKey.substring(0, 20)}...`)
+    if (debug) {
+      console.log(`[1win Deposit] URL: ${url}`)
+      console.log(`[1win Deposit] Request body:`, requestBody)
+      console.log(`[1win Deposit] API Key: ${apiKey.substring(0, 20)}...`)
+    }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': apiKey,
-      },
-      body: JSON.stringify(requestBody),
-    })
+    const attempts = 3
+    let response: Response | null = null
+    for (let i = 1; i <= attempts; i++) {
+      try {
+        response = await fetchWithTimeout(
+          url,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-KEY': apiKey,
+            },
+            body: JSON.stringify(requestBody),
+          },
+          8_000
+        )
+        break
+      } catch (err: any) {
+        if (i === attempts) throw err
+        console.warn(`[1win Deposit] Retry ${i}/${attempts - 1} after error: ${err?.message || err}`)
+        await new Promise((resolve) => setTimeout(resolve, i * 700))
+      }
+    }
+    if (!response) {
+      return { success: false, message: 'No response from 1win API' }
+    }
 
-    const responseText = await response.text()
+    const responseText = await readTextWithTimeout(response, 6_000)
     let data: any
     try {
       data = JSON.parse(responseText)
