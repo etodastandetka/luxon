@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -26,6 +26,8 @@ interface UserInfo {
 export default function ChatPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const channel = searchParams?.get('channel') || 'bot'
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [user, setUser] = useState<UserInfo | null>(null)
   const [newMessage, setNewMessage] = useState('')
@@ -43,7 +45,7 @@ export default function ChatPage() {
   const fetchChatData = useCallback(async () => {
     try {
       const [chatRes, userRes, photoRes] = await Promise.all([
-        fetch(`/api/users/${params.userId}/chat`),
+        fetch(`/api/users/${params.userId}/chat?channel=${channel}`),
         fetch(`/api/users/${params.userId}`),
         fetch(`/api/users/${params.userId}/profile-photo`)
       ])
@@ -76,7 +78,7 @@ export default function ChatPage() {
     } finally {
       setLoading(false)
     }
-  }, [params.userId])
+  }, [params.userId, channel])
 
   useEffect(() => {
     if (params.userId) {
@@ -140,7 +142,7 @@ export default function ChatPage() {
         formData.append('fileType', selectedFile.type)
       }
 
-      const response = await fetch(`/api/users/${params.userId}/send-message`, {
+      const response = await fetch(`/api/users/${params.userId}/send-message?channel=${channel}`, {
         method: 'POST',
         body: formData,
       })

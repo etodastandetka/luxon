@@ -299,9 +299,11 @@ model ChatMessage {
   mediaUrl          String?  @map("media_url") @db.Text
   direction         String   @default("in") @db.VarChar(10) // 'in' - от пользователя, 'out' - от админа
   telegramMessageId BigInt?  @map("telegram_message_id") @db.BigInt
+  channel           String   @default("bot") @db.VarChar(20) // bot | operator
   createdAt         DateTime @default(now()) @map("created_at")
 
   @@index([userId, createdAt])
+  @@index([channel, userId, createdAt])
   @@map("chat_messages")
 }
 

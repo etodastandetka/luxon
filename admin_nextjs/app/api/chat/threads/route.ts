@@ -6,8 +6,12 @@ export async function GET(request: NextRequest) {
   try {
     requireAuth(request)
 
+    const { searchParams } = new URL(request.url)
+    const channel = searchParams.get('channel') || 'bot'
+
     // Получаем последние сообщения (достаточно 400 для уникальных чатов)
     const messages = await prisma.chatMessage.findMany({
+      where: { channel },
       orderBy: { createdAt: 'desc' },
       take: 400,
     })

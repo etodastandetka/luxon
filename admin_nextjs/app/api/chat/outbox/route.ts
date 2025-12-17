@@ -6,12 +6,15 @@ export async function GET(request: NextRequest) {
   try {
     requireAuth(request)
 
-    const limit = Number(new URL(request.url).searchParams.get('limit') || 50)
+    const { searchParams } = new URL(request.url)
+    const limit = Number(searchParams.get('limit') || 50)
+    const channel = searchParams.get('channel') || 'bot'
 
     const messages = await prisma.chatMessage.findMany({
       where: {
         direction: 'out',
         telegramMessageId: null,
+        channel,
       },
       orderBy: { createdAt: 'asc' },
       take: Math.min(Math.max(limit, 1), 200),

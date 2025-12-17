@@ -23,10 +23,10 @@ const typeLabel: Record<string, string> = {
   text: '',
 }
 
-export default function ChatsPage() {
+export default function OperatorChatsPage() {
   const [threads, setThreads] = useState<ThreadItem[]>([])
   const [loading, setLoading] = useState(true)
-  const channel = 'bot'
+  const channel = 'operator'
 
   const loadThreads = useCallback(async () => {
     try {
@@ -36,7 +36,7 @@ export default function ChatsPage() {
         setThreads(data.data.threads)
       }
     } catch (error) {
-      console.error('Failed to load threads:', error)
+      console.error('Failed to load operator threads:', error)
     } finally {
       setLoading(false)
     }
@@ -54,7 +54,7 @@ export default function ChatsPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-white">Чаты</h1>
+        <h1 className="text-xl font-semibold text-white">Чаты (оператор)</h1>
         <button
           onClick={loadThreads}
           className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm hover:bg-green-500"

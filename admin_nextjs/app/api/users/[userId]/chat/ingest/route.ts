@@ -17,6 +17,9 @@ export async function POST(
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const channel = searchParams.get('channel') || 'bot'
+
     const body = await request.json()
     const {
       message_text,
@@ -84,6 +87,7 @@ export async function POST(
         direction: 'in', // Входящее от пользователя
         telegramMessageId: telegram_message_id ? BigInt(telegram_message_id) : null,
         mediaUrl: finalMediaUrl || null,
+        channel,
       },
     })
 

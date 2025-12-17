@@ -118,6 +118,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </svg>
       )
     },
+    { 
+      href: '/dashboard/operator-chats', 
+      label: 'ОПЕРАТОР', 
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2h-2m-2-12H7a2 2 0 00-2 2v8a2 2 0 002 2h8m0-12V6a2 2 0 00-2-2H7a2 2 0 00-2 2v2" />
+        </svg>
+      )
+    },
   ]
 
   const isActive = (href: string) => {

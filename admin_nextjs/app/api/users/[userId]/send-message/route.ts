@@ -35,6 +35,8 @@ export async function POST(
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const channel = searchParams.get('channel') || 'bot'
     const isBridgeMode = process.env.CHAT_BRIDGE_MODE === 'true'
 
     // Проверяем, есть ли файл в запросе (FormData)
@@ -209,6 +211,7 @@ export async function POST(
         direction: 'out', // Сообщение от админа к пользователю
         telegramMessageId,
         mediaUrl,
+        channel,
       },
     })
 

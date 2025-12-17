@@ -38,6 +38,8 @@ export async function POST(
     }
 
     const contentType = request.headers.get('content-type') || ''
+    const { searchParams } = new URL(request.url)
+    const channel = searchParams.get('channel') || 'bot'
     if (!contentType.includes('multipart/form-data')) {
       return NextResponse.json(
         { success: false, error: 'multipart/form-data required' },
@@ -66,6 +68,7 @@ export async function POST(
         direction: 'in',
         telegramMessageId: null,
         mediaUrl: saved.url,
+        channel,
       },
     })
 
