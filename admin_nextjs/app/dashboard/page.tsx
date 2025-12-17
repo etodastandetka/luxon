@@ -375,7 +375,7 @@ export default function DashboardPage() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [fetchRequests, activeTab]) // Добавляем activeTab в зависимости для пересоздания интервала
+  }, [fetchRequests, activeTab, searchParams]) // Добавляем activeTab и searchParams для пересоздания интервала
 
   const getTypeLabel = (type: string) => {
     return type === 'deposit' ? 'Пополнение' : 'Вывод'

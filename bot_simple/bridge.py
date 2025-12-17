@@ -58,7 +58,7 @@ async def send_ingest_text(user_id: int, text: str, telegram_message_id: int):
     url = (
         f"{API_BASE}/api/users/{user_id}/chat/ingest"
         if BRIDGE_MODE == "bot"
-        else f"{API_BASE}/api/operator-chat/ingest-upload/{user_id}"  # ingest-upload expects multipart; for text оставим ingest
+        else f"{API_BASE}/api/operator-chat/ingest/{user_id}"
     )
     r = await http.post(url, json=payload)
     if r.status_code >= 400:
