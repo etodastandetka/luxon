@@ -60,8 +60,6 @@ export async function GET(request: NextRequest) {
 
     // Для Mostbet можем проверить наличие выводов
     if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
-      console.log(`[Withdraw Check Exists] Mostbet detected, loading configuration...`)
-      
       const setting = await prisma.botConfiguration.findFirst({
         where: { key: 'mostbet_api_config' },
       })
@@ -76,12 +74,6 @@ export async function GET(request: NextRequest) {
             secret: settingConfig.secret,
             cashpoint_id: String(settingConfig.cashpoint_id),
           }
-          console.log(`[Withdraw Check Exists] Mostbet config loaded from database:`, {
-            hasApiKey: !!config.api_key,
-            hasSecret: !!config.secret,
-            cashpointId: config.cashpoint_id,
-            apiKeyPrefix: config.api_key?.substring(0, 20) + '...',
-          })
         }
       }
 
@@ -91,32 +83,11 @@ export async function GET(request: NextRequest) {
           secret: process.env.MOSTBET_SECRET || '73353b6b-868e-4561-9128-dce1c91bd24e',
           cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C92905',
         }
-        console.log(`[Withdraw Check Exists] Mostbet config loaded from environment:`, {
-          hasApiKey: !!config.api_key,
-          hasSecret: !!config.secret,
-          cashpointId: config.cashpoint_id,
-          apiKeyPrefix: config.api_key?.substring(0, 20) + '...',
-        })
       }
-
-      console.log(`[Withdraw Check Exists] Calling checkWithdrawsExistMostbet:`, {
-        playerId,
-        hasConfig: !!config,
-      })
 
       const result = await checkWithdrawsExistMostbet(playerId, config)
 
-      console.log(`[Withdraw Check Exists] checkWithdrawsExistMostbet result:`, {
-        success: result.success,
-        hasWithdrawals: result.hasWithdrawals,
-        message: result.message,
-      })
-
       if (!result.success) {
-        console.error(`[Withdraw Check Exists] checkWithdrawsExistMostbet failed:`, {
-          message: result.message,
-          playerId,
-        })
         return NextResponse.json(
           createApiResponse(null, result.message || 'Failed to check withdrawals'),
           { 

@@ -14,3 +14,4 @@ fi
 source "$VENV_DIR/bin/activate"
 python3 "$SCRIPT_DIR/manage_admins.py" "$@"
 
+
