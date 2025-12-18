@@ -468,18 +468,36 @@ export async function checkWithdrawAmountMostbet(
     
     // Возвращаем сумму подтвержденного вывода
     // Сумма должна быть из списка заявок (withdrawal.amount), так как в ответе confirmation может не быть amount
-    const amount = withdrawal.amount || confirmData.amount
+    // Согласно документации API, в списке заявок поле amount - это число с плавающей запятой
+    let amount: number | undefined
     
-    if (!amount || amount <= 0) {
+    // Сначала пытаемся получить сумму из списка заявок (это основной источник)
+    if (withdrawal.amount !== undefined && withdrawal.amount !== null) {
+      amount = parseFloat(String(withdrawal.amount))
+    } 
+    // Если нет в списке, пытаемся из ответа подтверждения
+    else if (confirmData.amount !== undefined && confirmData.amount !== null) {
+      amount = parseFloat(String(confirmData.amount))
+    }
+    
+    // Проверяем, что сумма валидна
+    if (amount === undefined || amount === null || isNaN(amount) || amount <= 0) {
+      console.error(`[Mostbet Withdraw Check] Invalid amount:`, {
+        withdrawalAmount: withdrawal.amount,
+        confirmAmount: confirmData.amount,
+        parsedAmount: amount,
+        withdrawal: withdrawal,
+        confirmData: confirmData
+      })
       return {
         success: false,
-        message: 'Amount not found in withdrawal data',
+        message: 'Amount not found or invalid in withdrawal data',
       }
     }
 
     return {
       success: true,
-      amount: parseFloat(String(amount)),
+      amount: amount,
       transactionId: withdrawal.transactionId || confirmData.transactionId,
       message: `Withdrawal confirmed. Status: ${confirmData.status || 'NEW'}`,
     }
