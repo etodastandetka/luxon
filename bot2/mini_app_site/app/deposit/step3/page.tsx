@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import QuickAmounts from '../../../components/QuickAmounts'
-import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 import { validateCryptoAmount, formatUsd, formatKgs, usdToKgs, clearExchangeRateCache } from '../../../utils/crypto-pay'
 
@@ -11,9 +10,7 @@ export default function DepositStep3() {
   const [amount, setAmount] = useState('')
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
   const [convertedAmount, setConvertedAmount] = useState<string>('')
-  const [loadingRate, setLoadingRate] = useState(false)
   const [bookmaker, setBookmaker] = useState<string>('')
-  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -53,7 +50,6 @@ export default function DepositStep3() {
       if (paymentType === 'crypto' && amount) {
         const numAmount = parseFloat(amount)
         if (!isNaN(numAmount) && numAmount > 0) {
-          setLoadingRate(true)
           try {
             console.log('🔄 Fetching exchange rate for USD -> KGS conversion...')
             const amountInKgs = await usdToKgs(numAmount)
@@ -67,8 +63,6 @@ export default function DepositStep3() {
             if (error.message) {
               console.warn('Exchange rate error:', error.message)
             }
-          } finally {
-            setLoadingRate(false)
           }
         } else {
           setConvertedAmount('')
@@ -87,15 +81,11 @@ export default function DepositStep3() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     const numAmount = parseFloat(amount)
     if (!amount.trim() || isNaN(numAmount) || numAmount <= 0) {
       alert(paymentType === 'crypto' ? 'Введите корректную сумму в долларах' : 'Введите корректную сумму')
       return
     }
-    
-    setIsNavigating(true)
     
     try {
       if (paymentType === 'crypto') {
@@ -148,15 +138,7 @@ export default function DepositStep3() {
   }
 
   const handleBack = () => {
-    // Анимация выхода
-    if (typeof window !== 'undefined' && (window as any).pageTransitionExit) {
-      (window as any).pageTransitionExit()
-      setTimeout(() => {
-        router.push('/deposit/step2')
-      }, 250)
-    } else {
-      router.push('/deposit/step2')
-    }
+    router.push('/deposit/step2')
   }
 
   const getTranslations = () => {
@@ -213,89 +195,83 @@ export default function DepositStep3() {
   const t = getTranslations()
 
   return (
-    <PageTransition direction="backward">
-      <main className="space-y-4">
-        <FixedHeaderControls />
-        <div className="fade-in pr-24">
-          <h1 className="text-xl font-bold">{t.title}</h1>
+    <main className="space-y-4">
+      <FixedHeaderControls />
+      <div className="pr-24">
+        <h1 className="text-xl font-bold">{t.title}</h1>
+      </div>
+      
+      <div className="card space-y-4">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold">{t.subtitle}</h2>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="bg-accent h-2 rounded-full transition-all duration-500" style={{width: '75%'}}></div>
+          </div>
+          <p className="text-sm text-white/70 mt-1">Шаг 3 из 3</p>
         </div>
         
-        <div className="card space-y-4 slide-in-left delay-100">
-          <div className="text-center">
-            <h2 className="text-lg font-semibold">{t.subtitle}</h2>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div className="bg-accent h-2 rounded-full transition-all duration-500" style={{width: '75%'}}></div>
-            </div>
-            <p className="text-sm text-white/70 mt-1">Шаг 3 из 3</p>
-          </div>
-          
-          <p className="text-white/80 text-center slide-in-right delay-200">{t.instruction}</p>
-          
-          <div className="space-y-3 scale-in delay-300">
-            <div>
-              <label className="label">{t.subtitle}</label>
-              <input 
-                className="input w-full"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder={t.placeholder}
-                min={paymentType === 'crypto' ? '1' : getMinDeposit().toString()}
-                max={paymentType === 'crypto' ? '1000' : '100000'}
-                step="0.01"
-                style={{'MozAppearance': 'textfield'}}
-              />
-              <style jsx>{`
-                input[type="number"]::-webkit-outer-spin-button,
-                input[type="number"]::-webkit-inner-spin-button {
-                  -webkit-appearance: none;
-                  margin: 0;
-                }
-                input[type="number"] {
-                  -moz-appearance: textfield;
-                }
-              `}</style>
-              <p className="text-sm text-white/70 mt-1">{t.limits}</p>
-              
-              {/* Показываем конвертированную сумму для крипты */}
-              {paymentType === 'crypto' && amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (
-                <div className="mt-2 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
-                  {loadingRate ? (
-                    <p className="text-sm text-white/70">Загрузка курса...</p>
-                  ) : convertedAmount ? (
-                    <p className="text-sm text-white">
-                      {t.convertedLabel}: <span className="font-semibold">{formatKgs(convertedAmount)}</span>
-                    </p>
-                  ) : null}
-                </div>
-              )}
-            </div>
-            
-            <QuickAmounts 
-              onPick={(value) => setAmount(value.toString())} 
-              selected={amount} 
-              currency={paymentType === 'crypto' ? 'usd' : 'kgs'}
+        <p className="text-white/80 text-center">{t.instruction}</p>
+        
+        <div className="space-y-3">
+          <div>
+            <label className="label">{t.subtitle}</label>
+            <input 
+              className="input w-full"
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={t.placeholder}
+              min={paymentType === 'crypto' ? '1' : getMinDeposit().toString()}
+              max={paymentType === 'crypto' ? '1000' : '100000'}
+              step="0.01"
+              style={{'MozAppearance': 'textfield'}}
             />
+            <style jsx>{`
+              input[type="number"]::-webkit-outer-spin-button,
+              input[type="number"]::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+              }
+              input[type="number"] {
+                -moz-appearance: textfield;
+              }
+            `}</style>
+            <p className="text-sm text-white/70 mt-1">{t.limits}</p>
+            
+            {/* Показываем конвертированную сумму для крипты */}
+            {paymentType === 'crypto' && amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && convertedAmount && (
+              <div className="mt-2 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                <p className="text-sm text-white">
+                  {t.convertedLabel}: <span className="font-semibold">{formatKgs(convertedAmount)}</span>
+                </p>
+              </div>
+            )}
           </div>
           
-          <div className="flex gap-2 slide-in-right delay-400">
-            <button 
-              className="btn btn-ghost flex-1"
-              onClick={handleBack}
-            >
-              {t.back}
-            </button>
-            <button 
-              className="btn btn-primary flex-1"
-              onClick={handleNext}
-              disabled={!amount.trim() || isNavigating || loadingRate}
-            >
-              {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
-            </button>
-          </div>
+          <QuickAmounts 
+            onPick={(value) => setAmount(value.toString())} 
+            selected={amount} 
+            currency={paymentType === 'crypto' ? 'usd' : 'kgs'}
+          />
         </div>
-      </main>
-    </PageTransition>
+        
+        <div className="flex gap-2">
+          <button 
+            className="btn btn-ghost flex-1"
+            onClick={handleBack}
+          >
+            {t.back}
+          </button>
+          <button 
+            className="btn btn-primary flex-1"
+            onClick={handleNext}
+            disabled={!amount.trim()}
+          >
+            {t.next}
+          </button>
+        </div>
+      </div>
+    </main>
   )
 }
 

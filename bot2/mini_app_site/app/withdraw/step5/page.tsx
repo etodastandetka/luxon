@@ -9,8 +9,7 @@ import { safeFetch, getApiBase } from '../../../utils/fetch'
 export default function WithdrawStep5() {
   const [siteCode, setSiteCode] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState<number | null>(null)
-  const [checking, setChecking] = useState(false)
-  const [checkingExists, setCheckingExists] = useState(true)
+  const [checkingExists, setCheckingExists] = useState(false)
   const [hasWithdrawals, setHasWithdrawals] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [bookmaker, setBookmaker] = useState('')
@@ -109,12 +108,7 @@ export default function WithdrawStep5() {
       setAutoSubmitAttempted(false)
       setAutoSubmitSuccess(false)
       setAutoSubmitFailed(false)
-      // Задержка для debounce - ждем пока пользователь закончит ввод
-      const timer = setTimeout(() => {
-        processWithdraw(bookmaker, userId)
-      }, 500)
-      
-      return () => clearTimeout(timer)
+      processWithdraw(bookmaker, userId)
     } else {
       setWithdrawAmount(null)
       setError(null)
@@ -130,7 +124,6 @@ export default function WithdrawStep5() {
       return
     }
 
-    setChecking(true)
     setError(null)
     
     try {
@@ -264,7 +257,6 @@ export default function WithdrawStep5() {
           console.log('[Withdraw Step5] ✅ Amount is valid, clearing error and setting amount')
           
           // ВАЖНО: Сначала очищаем ошибку, потом устанавливаем сумму
-          // Используем setTimeout для гарантии, что состояние обновится
           setError(null)
           setWithdrawAmount(amount)
           
@@ -304,8 +296,8 @@ export default function WithdrawStep5() {
           // Ждем немного, чтобы состояние обновилось, затем автоматически отправляем заявку
           if (!autoSubmitAttempted) {
             setAutoSubmitAttempted(true)
-            console.log('[Withdraw Step5] 🚀 Автоматическая отправка заявки через 1 секунду...')
-            setTimeout(async () => {
+            console.log('[Withdraw Step5] 🚀 Автоматическая отправка заявки...')
+            (async () => {
               // Проверяем, что все данные есть
               const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
               const savedBank = localStorage.getItem('withdraw_bank')
@@ -328,7 +320,7 @@ export default function WithdrawStep5() {
                 })
                 setAutoSubmitAttempted(false) // Разрешаем попробовать еще раз
               }
-            }, 1000) // Задержка 1 секунда для обновления состояния
+            })() // Задержка 1 секунда для обновления состояния
           }
         } else {
           // Если success: true, но нет amount, проверяем message
@@ -392,8 +384,6 @@ export default function WithdrawStep5() {
       }
       
       setError(errorMessage)
-    } finally {
-      setChecking(false)
     }
   }
 
@@ -1084,13 +1074,6 @@ export default function WithdrawStep5() {
         )}
         
         <div className="space-y-3">
-          {checkingExists && (
-            <div className="p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
-              <p className="text-sm text-blue-300 font-semibold">
-                🔍 Проверка наличия вывода...
-              </p>
-            </div>
-          )}
           
           {hasWithdrawals === false && (
             <div className="p-4 bg-red-900/30 border border-red-500 rounded-lg">
@@ -1106,7 +1089,7 @@ export default function WithdrawStep5() {
             </div>
           )}
           
-          {hasWithdrawals !== false && !checkingExists && (
+          {hasWithdrawals !== false && (
             <>
               <div>
                 <label className="label">{t.subtitle}</label>
@@ -1116,7 +1099,7 @@ export default function WithdrawStep5() {
                   value={siteCode}
                   onChange={(e) => setSiteCode(e.target.value)}
                   placeholder={t.placeholder}
-                  disabled={checking || checkingExists}
+                  disabled={false}
                 />
               </div>
               
@@ -1132,7 +1115,7 @@ export default function WithdrawStep5() {
               )}
               
               {/* КРИТИЧНО: Показываем успех ПЕРВЫМ, если сумма извлечена - это приоритетнее ошибки */}
-              {withdrawAmount !== null && withdrawAmount > 0 && !checking && (
+              {withdrawAmount !== null && withdrawAmount > 0 && (
                 <>
                   <div className="mt-3 p-4 bg-green-900/30 border border-green-500 rounded-lg space-y-2">
                     <div className="flex items-center gap-2">
@@ -1149,16 +1132,6 @@ export default function WithdrawStep5() {
                         </span>
                       </div>
                     </div>
-                    {isSubmitting && !autoSubmitSuccess && (
-                      <div className="pt-2 border-t border-green-500/30 mt-2">
-                        <div className="flex items-center gap-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400"></div>
-                          <p className="text-xs text-green-200">
-                            🚀 Автоматически отправляем заявку...
-                          </p>
-                        </div>
-                      </div>
-                    )}
                     {autoSubmitFailed && (
                       <div className="pt-2 border-t border-yellow-500/30 mt-2">
                         <p className="text-xs text-yellow-200">
@@ -1201,7 +1174,7 @@ export default function WithdrawStep5() {
               )}
               
               {/* Показываем ошибку ТОЛЬКО если сумма НЕ извлечена И есть ошибка */}
-              {error && hasWithdrawals === true && (withdrawAmount === null || withdrawAmount === 0) && !checking && (
+              {error && hasWithdrawals === true && (withdrawAmount === null || withdrawAmount === 0) && (
                 <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
                   <p className="text-sm text-red-300 font-semibold">
                     ❌ Ошибка вывода
@@ -1231,9 +1204,9 @@ export default function WithdrawStep5() {
             <button 
               className="btn btn-primary"
               onClick={handleSubmit}
-              disabled={!siteCode.trim() || !withdrawAmount || checking || checkingExists || hasWithdrawals === false || isSubmitting || (autoSubmitAttempted && !autoSubmitFailed)}
+              disabled={!siteCode.trim() || !withdrawAmount || hasWithdrawals === false || isSubmitting || (autoSubmitAttempted && !autoSubmitFailed)}
             >
-              {isSubmitting ? '⏳ Отправка заявки...' : checking || checkingExists ? 'Обработка...' : hasWithdrawals === false ? 'Вывод не найден' : (autoSubmitAttempted && !autoSubmitFailed) ? 'Автоматическая отправка...' : t.submit}
+              {isSubmitting ? '⏳ Отправка заявки...' : hasWithdrawals === false ? 'Вывод не найден' : (autoSubmitAttempted && !autoSubmitFailed) ? 'Автоматическая отправка...' : t.submit}
             </button>
           )}
         </div>

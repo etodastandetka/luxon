@@ -9,7 +9,6 @@ import { getApiBase } from '../../../utils/fetch'
 export default function WithdrawStep1() {
   const [bank, setBank] = useState('')
   const [enabledBanks, setEnabledBanks] = useState<string[]>([])
-  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -68,14 +67,10 @@ export default function WithdrawStep1() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     if (!bank) {
       alert('Выберите банк')
       return
     }
-    
-    setIsNavigating(true)
     
     // Сохраняем выбор
     localStorage.setItem('withdraw_bank', bank)
@@ -151,9 +146,9 @@ export default function WithdrawStep1() {
           <button 
             className="btn btn-primary flex-1"
             onClick={handleNext}
-            disabled={!bank || isNavigating}
+            disabled={!bank}
           >
-            {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
+            {t.next}
           </button>
         </div>
       </div>

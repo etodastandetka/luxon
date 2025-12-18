@@ -6,7 +6,6 @@ import { useLanguage } from '../../../components/LanguageContext'
 
 export default function WithdrawStep4() {
   const [userId, setUserId] = useState('')
-  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -50,19 +49,14 @@ export default function WithdrawStep4() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     if (!userId.trim() || !userId.match(/^\d+$/)) {
       alert('Введите корректный ID (только цифры)')
       return
     }
     
-    setIsNavigating(true)
-    
     // Получаем выбранное казино
     const bookmaker = localStorage.getItem('withdraw_bookmaker')
     if (!bookmaker) {
-      setIsNavigating(false)
       alert('Ошибка: не выбрано казино')
       router.push('/withdraw/step0')
       return
@@ -167,9 +161,9 @@ export default function WithdrawStep4() {
           <button 
             className="btn btn-primary flex-1"
             onClick={handleNext}
-            disabled={!userId.trim() || isNavigating}
+            disabled={!userId.trim()}
           >
-            {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
+            {t.next}
           </button>
         </div>
       </div>

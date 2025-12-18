@@ -6,7 +6,6 @@ import { useLanguage } from '../../../components/LanguageContext'
 
 export default function WithdrawStep3() {
   const [phone, setPhone] = useState('+996')
-  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -50,8 +49,6 @@ export default function WithdrawStep3() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     // Убираем все кроме цифр для сохранения
     const cleanPhone = phone.replace(/[^\d]/g, '')
     // Проверяем что номер полный (996 + минимум 9 цифр номера = минимум 12 цифр)
@@ -59,8 +56,6 @@ export default function WithdrawStep3() {
       alert('Введите корректный номер телефона')
       return
     }
-    
-    setIsNavigating(true)
     
     // Сохраняем данные (только цифры)
     localStorage.setItem('withdraw_phone', cleanPhone)
@@ -151,9 +146,9 @@ export default function WithdrawStep3() {
           <button 
             className="btn btn-primary flex-1"
             onClick={handleNext}
-            disabled={phone.length < 12 || isNavigating}
+            disabled={phone.length < 12}
           >
-            {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
+            {t.next}
           </button>
         </div>
       </div>

@@ -7,7 +7,6 @@ import { useLanguage } from '../../../components/LanguageContext'
 export default function WithdrawStep2() {
   const [qrPhoto, setQrPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [isNavigating, setIsNavigating] = useState(false)
   const router = useRouter()
   const { language } = useLanguage()
 
@@ -54,14 +53,10 @@ export default function WithdrawStep2() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     if (!qrPhoto) {
       alert('Загрузите фото QR-кода')
       return
     }
-    
-    setIsNavigating(true)
     
     // Проверяем, что base64 уже сохранен в localStorage
     const savedPhoto = localStorage.getItem('withdraw_qr_photo')
@@ -69,7 +64,6 @@ export default function WithdrawStep2() {
       // Проверяем доступность FileReader
       if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
         console.error('❌ FileReader недоступен в этом окружении')
-        setIsNavigating(false)
         alert('Ошибка: FileReader недоступен. Пожалуйста, используйте другой браузер или обновите страницу.')
         return
       }
@@ -82,13 +76,11 @@ export default function WithdrawStep2() {
           localStorage.setItem('withdraw_qr_photo', base64)
           router.push('/withdraw/step3')
         } else {
-          setIsNavigating(false)
           alert('Ошибка при загрузке фото. Попробуйте еще раз.')
         }
       }
       reader.onerror = (error: ProgressEvent<FileReader>) => {
         console.error('❌ Ошибка при чтении файла:', error)
-        setIsNavigating(false)
         alert('Ошибка при загрузке фото. Попробуйте еще раз.')
       }
       reader.readAsDataURL(qrPhoto)
@@ -227,9 +219,9 @@ export default function WithdrawStep2() {
           <button 
             className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-green-500 disabled:hover:to-green-600"
             onClick={handleNext}
-            disabled={!qrPhoto || isNavigating}
+            disabled={!qrPhoto}
           >
-            {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
+            {t.next}
           </button>
         </div>
       </div>

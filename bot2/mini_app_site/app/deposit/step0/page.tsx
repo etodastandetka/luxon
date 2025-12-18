@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
-import PageTransition from '../../../components/PageTransition'
 import VideoModal from '../../../components/VideoModal'
 import { useLanguage } from '../../../components/LanguageContext'
 
@@ -10,7 +9,6 @@ export default function DepositStep0() {
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [depositVideoUrl, setDepositVideoUrl] = useState<string>('')
-  const [isNavigating, setIsNavigating] = useState(false)
 
   // Загружаем видео URL из API
   useEffect(() => {
@@ -97,14 +95,10 @@ export default function DepositStep0() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     if (!paymentType) {
       alert('Выберите способ оплаты')
       return
     }
-
-    setIsNavigating(true)
     
     // Сохраняем тип оплаты
     localStorage.setItem('deposit_payment_type', paymentType)
@@ -118,14 +112,13 @@ export default function DepositStep0() {
   }
 
   return (
-    <PageTransition direction="backward">
-      <main className="space-y-4">
-        <FixedHeaderControls />
-        <div className="fade-in pr-24">
-          <h1 className="text-xl font-bold">{t.title}</h1>
-        </div>
-        
-        <div className="card space-y-4 slide-in-left delay-100">
+    <main className="space-y-4">
+      <FixedHeaderControls />
+      <div className="pr-24">
+        <h1 className="text-xl font-bold">{t.title}</h1>
+      </div>
+      
+      <div className="card space-y-4">
           <div className="text-center">
             <h2 className="text-lg font-semibold">{t.subtitle}</h2>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
@@ -209,32 +202,31 @@ export default function DepositStep0() {
             </div>
           </button>
 
-          <div className="flex gap-2 slide-in-right delay-200">
-            <button 
-              className="btn btn-ghost flex-1"
-              onClick={handleBack}
-            >
-              {t.back}
-            </button>
-            <button 
-              className="btn btn-primary flex-1"
-              onClick={handleNext}
-              disabled={!paymentType || isNavigating}
-            >
-              {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
-            </button>
-          </div>
+        <div className="flex gap-2">
+          <button 
+            className="btn btn-ghost flex-1"
+            onClick={handleBack}
+          >
+            {t.back}
+          </button>
+          <button 
+            className="btn btn-primary flex-1"
+            onClick={handleNext}
+            disabled={!paymentType}
+          >
+            {t.next}
+          </button>
         </div>
+      </div>
 
-        {/* Модальное окно с видео */}
-        <VideoModal
-          isOpen={isVideoModalOpen}
-          onClose={() => setIsVideoModalOpen(false)}
-          videoSrc={depositVideoUrl || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view'}
-          title={t.howToDeposit}
-        />
-      </main>
-    </PageTransition>
+      {/* Модальное окно с видео */}
+      <VideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        videoSrc={depositVideoUrl || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view'}
+        title={t.howToDeposit}
+      />
+    </main>
   )
 }
 

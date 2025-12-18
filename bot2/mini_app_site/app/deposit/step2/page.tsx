@@ -2,12 +2,10 @@
 import { useState, useEffect } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
-import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 
 export default function DepositStep2() {
   const [userId, setUserId] = useState('')
-  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -49,19 +47,14 @@ export default function DepositStep2() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     if (!userId.trim() || !userId.match(/^\d+$/)) {
       alert('Введите корректный ID (только цифры)')
       return
     }
     
-    setIsNavigating(true)
-    
     // Получаем выбранное казино
     const bookmaker = localStorage.getItem('deposit_bookmaker')
     if (!bookmaker) {
-      setIsNavigating(false)
       alert('Ошибка: не выбрано казино')
       router.push('/deposit/step0')
       return
@@ -85,15 +78,7 @@ export default function DepositStep2() {
   }
 
   const handleBack = () => {
-    // Анимация выхода
-    if (typeof window !== 'undefined' && (window as any).pageTransitionExit) {
-      (window as any).pageTransitionExit()
-      setTimeout(() => {
-        router.push('/deposit/step1')
-      }, 250)
-    } else {
-      router.push('/deposit/step1')
-    }
+    router.push('/deposit/step1')
   }
 
   const translations = {
@@ -134,54 +119,52 @@ export default function DepositStep2() {
   const t = translations[language as keyof typeof translations] || translations.ru
 
   return (
-    <PageTransition direction="backward">
-      <main className="space-y-4">
-        <FixedHeaderControls />
-        <div className="fade-in pr-20">
-          <h1 className="text-xl font-bold">{t.title}</h1>
+    <main className="space-y-4">
+      <FixedHeaderControls />
+      <div className="pr-20">
+        <h1 className="text-xl font-bold">{t.title}</h1>
+      </div>
+      
+      <div className="card space-y-4">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold">{t.subtitle}</h2>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="bg-accent h-2 rounded-full transition-all duration-500" style={{width: '50%'}}></div>
+          </div>
+          <p className="text-sm text-white/70 mt-1">Шаг 2 из 3</p>
         </div>
         
-        <div className="card space-y-4 slide-in-left delay-100">
-          <div className="text-center">
-            <h2 className="text-lg font-semibold">{t.subtitle}</h2>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div className="bg-accent h-2 rounded-full transition-all duration-500" style={{width: '50%'}}></div>
-            </div>
-            <p className="text-sm text-white/70 mt-1">Шаг 2 из 3</p>
-          </div>
-          
-          <p className="text-white/80 text-center slide-in-right delay-200">{t.instruction}</p>
-          
-          <div className="space-y-3 scale-in delay-300">
-            <div>
-              <label className="label">{t.subtitle}</label>
-              <input 
-                className="input w-full"
-                type="text"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder={t.placeholder}
-              />
-            </div>
-          </div>
-          
-          <div className="flex gap-2 slide-in-right delay-400">
-            <button 
-              className="btn btn-ghost flex-1"
-              onClick={handleBack}
-            >
-              {t.back}
-            </button>
-            <button 
-              className="btn btn-primary flex-1"
-              onClick={handleNext}
-              disabled={!userId.trim() || isNavigating}
-            >
-              {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
-            </button>
+        <p className="text-white/80 text-center">{t.instruction}</p>
+        
+        <div className="space-y-3">
+          <div>
+            <label className="label">{t.subtitle}</label>
+            <input 
+              className="input w-full"
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder={t.placeholder}
+            />
           </div>
         </div>
-      </main>
-    </PageTransition>
+        
+        <div className="flex gap-2">
+          <button 
+            className="btn btn-ghost flex-1"
+            onClick={handleBack}
+          >
+            {t.back}
+          </button>
+          <button 
+            className="btn btn-primary flex-1"
+            onClick={handleNext}
+            disabled={!userId.trim()}
+          >
+            {t.next}
+          </button>
+        </div>
+      </div>
+    </main>
   )
 }

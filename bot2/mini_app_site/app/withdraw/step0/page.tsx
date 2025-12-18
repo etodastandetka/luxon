@@ -13,11 +13,9 @@ export default function WithdrawStep0() {
   const { language } = useLanguage()
   const [bookmaker, setBookmaker] = useState<string>('')
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
-  const [loadingSettings, setLoadingSettings] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [withdrawVideoUrl, setWithdrawVideoUrl] = useState<string>('')
-  const [isNavigating, setIsNavigating] = useState(false)
 
   const translations = {
     ru: {
@@ -79,8 +77,6 @@ export default function WithdrawStep0() {
         }
       } catch (error) {
         console.error('Ошибка загрузки настроек:', error)
-      } finally {
-        setLoadingSettings(false)
       }
     }
     checkSettings()
@@ -127,15 +123,11 @@ export default function WithdrawStep0() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     console.log('Current bookmaker:', bookmaker)
     if (!bookmaker) {
       alert('Выберите букмекера')
       return
     }
-    
-    setIsNavigating(true)
     
     // Сохраняем выбор букмекера
     localStorage.setItem('withdraw_bookmaker', bookmaker)
@@ -145,110 +137,83 @@ export default function WithdrawStep0() {
   }
 
   const handleBack = () => {
-    // Анимация выхода
-    if (typeof window !== 'undefined' && (window as any).pageTransitionExit) {
-      (window as any).pageTransitionExit()
-      setTimeout(() => {
-        router.push('/')
-      }, 250)
-    } else {
-      router.push('/')
-    }
-  }
-
-  // Если выводы отключены, показываем технические работы
-  if (loadingSettings) {
-    return (
-      <PageTransition direction="backward">
-        <main className="space-y-4">
-          <FixedHeaderControls />
-          <h1 className="text-xl font-bold fade-in pr-20">Вывод средств</h1>
-          <div className="card text-center">
-            <div className="text-white/70">Загрузка...</div>
-          </div>
-        </main>
-      </PageTransition>
-    )
+    router.push('/')
   }
 
   if (!withdrawalsEnabled) {
     return (
-      <PageTransition direction="backward">
-        <main className="space-y-4">
-          <FixedHeaderControls />
-          <h1 className="text-xl font-bold fade-in pr-20">Вывод средств</h1>
-          <div className="card text-center bg-orange-900/20 border-orange-500">
-            <div className="text-orange-300 text-lg font-semibold mb-2">
-              🔧 Технические работы
-            </div>
-            <div className="text-white/70 mb-4">
-              Вывод средств временно недоступен. Попробуйте позже.
-            </div>
-            <button
-              onClick={() => router.push('/')}
-              className="btn btn-ghost"
-            >
-              ← Назад
-            </button>
+      <main className="space-y-4">
+        <FixedHeaderControls />
+        <h1 className="text-xl font-bold pr-20">Вывод средств</h1>
+        <div className="card text-center bg-orange-900/20 border-orange-500">
+          <div className="text-orange-300 text-lg font-semibold mb-2">
+            🔧 Технические работы
           </div>
-        </main>
-      </PageTransition>
+          <div className="text-white/70 mb-4">
+            Вывод средств временно недоступен. Попробуйте позже.
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="btn btn-ghost"
+          >
+            ← Назад
+          </button>
+        </div>
+      </main>
     )
   }
 
   return (
-    <PageTransition direction="backward">
-      <main className="space-y-4">
-        <FixedHeaderControls />
-        <h1 className="text-xl font-bold fade-in">Вывод средств</h1>
-        
-        <section className="card space-y-3 slide-in-left delay-100">
-          <div className="label">{t.selectBookmaker}</div>
-          <BookmakerGrid 
-            value={bookmaker} 
-            onChange={handleBookmakerChange}
-            disabledCasinos={disabledCasinos}
-          />
-        </section>
-
-        {/* Кнопка "Как вывести" */}
-        <button
-          onClick={() => setIsVideoModalOpen(true)}
-          className="w-full card btn btn-ghost p-4 border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors"
-        >
-          <div className="flex items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="font-semibold">{t.watchVideo}</span>
-          </div>
-        </button>
-
-        <div className="flex gap-3">
-          <button 
-            className="btn btn-ghost flex-1 slide-in-left delay-200" 
-            onClick={handleBack}
-          >
-            {t.back}
-          </button>
-          <button 
-            className="btn btn-primary flex-1 slide-in-right delay-200" 
-            onClick={handleNext}
-            disabled={!bookmaker || isNavigating}
-          >
-            {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
-          </button>
-        </div>
-
-        {/* Модальное окно с видео */}
-        <VideoModal
-          isOpen={isVideoModalOpen}
-          onClose={() => setIsVideoModalOpen(false)}
-          videoSrc={withdrawVideoUrl || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'}
-          title={t.howToWithdraw}
+    <main className="space-y-4">
+      <FixedHeaderControls />
+      <h1 className="text-xl font-bold">Вывод средств</h1>
+      
+      <section className="card space-y-3">
+        <div className="label">{t.selectBookmaker}</div>
+        <BookmakerGrid 
+          value={bookmaker} 
+          onChange={handleBookmakerChange}
+          disabledCasinos={disabledCasinos}
         />
-      </main>
-    </PageTransition>
+      </section>
+
+      {/* Кнопка "Как вывести" */}
+      <button
+        onClick={() => setIsVideoModalOpen(true)}
+        className="w-full card btn btn-ghost p-4 border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="font-semibold">{t.watchVideo}</span>
+        </div>
+      </button>
+
+      <div className="flex gap-3">
+        <button 
+          className="btn btn-ghost flex-1" 
+          onClick={handleBack}
+        >
+          {t.back}
+        </button>
+        <button 
+          className="btn btn-primary flex-1" 
+          onClick={handleNext}
+          disabled={!bookmaker}
+        >
+          {t.next}
+        </button>
+      </div>
+
+      {/* Модальное окно с видео */}
+      <VideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        videoSrc={withdrawVideoUrl || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'}
+        title={t.howToWithdraw}
+      />
+    </main>
   )
 }

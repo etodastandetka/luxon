@@ -10,9 +10,7 @@ import { getApiBase } from '../../../utils/fetch'
 export default function DepositStep1() {
   const [bookmaker, setBookmaker] = useState('')
   const [depositsEnabled, setDepositsEnabled] = useState(true)
-  const [loadingSettings, setLoadingSettings] = useState(false) // Не блокируем UI, но отслеживаем загрузку
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
-  const [isNavigating, setIsNavigating] = useState(false)
   const { language } = useLanguage()
   const router = useRouter()
 
@@ -28,20 +26,12 @@ export default function DepositStep1() {
       return
     }
     
-    // Загружаем настройки в фоне, не блокируя отображение страницы
-    setLoadingSettings(true)
     async function checkSettings() {
       try {
         const base = getApiBase()
-        // Добавляем таймаут для запроса (3 секунды)
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 3000)
-        
         const res = await fetch(`${base}/api/public/payment-settings`, { 
-          cache: 'no-store',
-          signal: controller.signal
+          cache: 'no-store'
         })
-        clearTimeout(timeoutId)
         
         const data = await res.json()
         if (data && data.deposits) {
@@ -59,13 +49,11 @@ export default function DepositStep1() {
           setDisabledCasinos(disabled)
         }
       } catch (error) {
-        // Если ошибка или таймаут - продолжаем работу с дефолтными настройками
+        // Если ошибка - продолжаем работу с дефолтными настройками
         console.error('Ошибка загрузки настроек:', error)
         // По умолчанию депозиты включены, все казино доступны
         setDepositsEnabled(true)
         setDisabledCasinos([])
-      } finally {
-        setLoadingSettings(false)
       }
     }
     // Загружаем настройки асинхронно, не блокируя UI
@@ -78,14 +66,10 @@ export default function DepositStep1() {
       e.stopPropagation()
     }
     
-    if (isNavigating) return
-    
     if (!bookmaker) {
       alert('Выберите букмекера')
       return
     }
-    
-    setIsNavigating(true)
     
     // Сохраняем выбор
     localStorage.setItem('deposit_bookmaker', bookmaker)
@@ -165,7 +149,7 @@ export default function DepositStep1() {
           <h1 className="text-xl font-bold">{t.title}</h1>
         </div>
         
-        <div className="card space-y-4 slide-in-left delay-100">
+        <div className="card space-y-4">
           <div className="text-center">
             <h2 className="text-lg font-semibold">{t.subtitle}</h2>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
@@ -180,7 +164,7 @@ export default function DepositStep1() {
             disabledCasinos={disabledCasinos}
           />
           
-          <div className="flex gap-2 slide-in-right delay-200">
+          <div className="flex gap-2">
             <button 
               className="btn btn-ghost flex-1"
               onClick={handleBack}
@@ -190,9 +174,9 @@ export default function DepositStep1() {
             <button 
               className="btn btn-primary flex-1"
               onClick={handleNext}
-              disabled={!bookmaker || isNavigating}
+              disabled={!bookmaker}
             >
-              {isNavigating ? (language === 'ru' ? 'Загрузка...' : 'Loading...') : t.next}
+              {t.next}
             </button>
           </div>
         </div>
