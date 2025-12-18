@@ -352,19 +352,19 @@ def main():
 Примеры использования:
 
   # Создать админа
-  python manage_admins.py create admin1 password123 admin1@example.com
+  python3 manage_admins.py create admin1 password123 admin1@example.com
 
   # Создать супер-админа
-  python manage_admins.py create admin2 password456 --super
+  python3 manage_admins.py create admin2 password456 --super
 
   # Удалить админа
-  python manage_admins.py delete admin1
+  python3 manage_admins.py delete admin1
 
   # Показать список админов
-  python manage_admins.py list
+  python3 manage_admins.py list
 
   # Получить QR-код для 2FA
-  python manage_admins.py 2fa admin1
+  python3 manage_admins.py 2fa admin1
         """
     )
     

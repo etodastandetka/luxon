@@ -34,43 +34,48 @@ DB_PASSWORD=your_password
 
 ## Использование
 
+**Важно:** На Linux серверах используйте `python3` вместо `python`:
+```bash
+python3 scripts/manage_admins.py <command>
+```
+
 ### Создание админа
 
 ```bash
 # Обычный админ
-python scripts/manage_admins.py create username password email@example.com
+python3 scripts/manage_admins.py create username password email@example.com
 
 # Супер-админ
-python scripts/manage_admins.py create username password email@example.com --super
+python3 scripts/manage_admins.py create username password email@example.com --super
 
 # Без email
-python scripts/manage_admins.py create username password
+python3 scripts/manage_admins.py create username password
 ```
 
 Примеры:
 ```bash
-python scripts/manage_admins.py create admin1 password123 admin1@luxon.com
-python scripts/manage_admins.py create superadmin secret456 --super
+python3 scripts/manage_admins.py create admin1 password123 admin1@luxon.com
+python3 scripts/manage_admins.py create superadmin secret456 --super
 ```
 
 ### Удаление админа
 
 ```bash
-python scripts/manage_admins.py delete username
+python3 scripts/manage_admins.py delete username
 
 # Без подтверждения
-python scripts/manage_admins.py delete username --yes
+python3 scripts/manage_admins.py delete username --yes
 ```
 
 Пример:
 ```bash
-python scripts/manage_admins.py delete admin1
+python3 scripts/manage_admins.py delete admin1
 ```
 
 ### Просмотр списка админов
 
 ```bash
-python scripts/manage_admins.py list
+python3 scripts/manage_admins.py list
 ```
 
 Выводит таблицу со всеми админами:
@@ -85,7 +90,7 @@ python scripts/manage_admins.py list
 ### Получение QR-кода для 2FA
 
 ```bash
-python scripts/manage_admins.py 2fa username
+python3 scripts/manage_admins.py 2fa username
 ```
 
 Эта команда:
@@ -105,7 +110,7 @@ python scripts/manage_admins.py 2fa admin1
 ## Структура команд
 
 ```
-manage_admins.py <command> [arguments] [options]
+python3 manage_admins.py <command> [arguments] [options]
 
 Команды:
   create    Создать нового админа
@@ -120,10 +125,10 @@ manage_admins.py <command> [arguments] [options]
 
 ```bash
 # Создаем админа
-python scripts/manage_admins.py create newadmin password123 newadmin@luxon.com
+python3 scripts/manage_admins.py create newadmin password123 newadmin@luxon.com
 
 # Генерируем QR-код для 2FA
-python scripts/manage_admins.py 2fa newadmin
+python3 scripts/manage_admins.py 2fa newadmin
 
 # Админ сканирует QR-код в приложении-аутентификаторе
 # Затем подтверждает 2FA через веб-интерфейс
@@ -132,13 +137,13 @@ python scripts/manage_admins.py 2fa newadmin
 ### 2. Просмотр всех админов
 
 ```bash
-python scripts/manage_admins.py list
+python3 scripts/manage_admins.py list
 ```
 
 ### 3. Удаление неактивного админа
 
 ```bash
-python scripts/manage_admins.py delete oldadmin
+python3 scripts/manage_admins.py delete oldadmin
 ```
 
 ## Безопасность
@@ -171,4 +176,6 @@ pip install qrcode-terminal
 ```bash
 pip install -r scripts/requirements-admin.txt
 ```
+
+
 
