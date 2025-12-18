@@ -136,7 +136,19 @@ export default function WithdrawStep5() {
     try {
       const base = getApiBase()
       
-      console.log('🔄 Проверка кода вывода:', { bookmaker, userId, codeLength: siteCode.trim().length })
+      const requestBody = {
+        bookmaker: bookmaker,
+        playerId: userId,
+        code: siteCode.trim(),
+      }
+      
+      console.log('🔄 Проверка кода вывода:', { 
+        bookmaker, 
+        userId, 
+        codeLength: siteCode.trim().length,
+        requestBody,
+        apiUrl: `${base}/api/withdraw-check`
+      })
       
       // Только проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
       // Вывод будет выполнен на странице подтверждения
@@ -145,11 +157,7 @@ export default function WithdrawStep5() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          bookmaker: bookmaker,
-          playerId: userId,
-          code: siteCode.trim(),
-        }),
+        body: JSON.stringify(requestBody),
         timeout: 30000,
         retries: 2,
         retryDelay: 1000
@@ -158,7 +166,8 @@ export default function WithdrawStep5() {
       console.log('📥 Ответ от сервера:', {
         status: response.status,
         statusText: response.statusText,
-        ok: response.ok
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
       })
 
       if (!response.ok) {
@@ -166,9 +175,22 @@ export default function WithdrawStep5() {
         console.error('❌ Ошибка ответа сервера:', {
           status: response.status,
           statusText: response.statusText,
-          errorText
+          errorText: errorText.substring(0, 1000), // Первые 1000 символов
+          requestBody,
         })
-        throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`)
+        
+        // Пытаемся распарсить ошибку как JSON
+        let errorData: any = null
+        try {
+          if (errorText) {
+            errorData = JSON.parse(errorText)
+          }
+        } catch (e) {
+          // Не JSON
+        }
+        
+        const errorMessage = errorData?.error || errorData?.message || errorData?.data?.error || errorData?.data?.message || `Ошибка сервера: ${response.status} ${response.statusText}`
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()

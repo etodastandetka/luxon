@@ -179,7 +179,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (botRequest && botRequest.status === 'pending') {
+    const canAutoProcess = botRequest && ['pending', 'manual', 'awaiting_manual', 'deferred'].includes(botRequest.status)
+
+    if (canAutoProcess) {
         // Получаем сумму в USDT из invoice
         const amountUsdt = parseFloat(invoice.paid_amount || invoice.amount)
         
@@ -244,16 +246,16 @@ export async function POST(request: NextRequest) {
           } catch (error) {
             console.error('❌ Error converting USDT to KGS:', error)
             // Если не удалось получить курс, используем сумму из заявки (она уже в сомах)
-            amountInKgs = botRequest.amount ? parseFloat(botRequest.amount.toString()) : 0
+            amountInKgs = botRequest ? (botRequest.amount ? parseFloat(botRequest.amount.toString()) : 0) : 0
             console.warn('⚠️ Using amount from request as fallback:', amountInKgs)
           }
         }
 
         console.log('🔄 Processing auto-deposit for crypto payment:', {
-          request_id: botRequest.id,
-          bookmaker: botRequest.bookmaker,
-          accountId: botRequest.accountId,
-          userId: botRequest.userId.toString(),
+          request_id: botRequest?.id,
+          bookmaker: botRequest?.bookmaker,
+          accountId: botRequest?.accountId,
+          userId: botRequest?.userId?.toString(),
           amount_usdt: amountUsdt,
           amount_usd: amountUsd,
           amount_kgs: amountInKgs
@@ -266,23 +268,29 @@ export async function POST(request: NextRequest) {
           amount_usdt: amountUsdt
         }) : null
 
-        await prisma.request.update({
-          where: { id: botRequest.id },
-          data: {
-            status: 'auto_completed',
-            paymentMethod: 'crypto',
-            cryptoPaymentId: cryptoPayment.id,
-            amount: amountInKgs, // Обновляем сумму в сомах (для пополнения в казино)
-            statusDetail: statusDetailData, // Сохраняем обе суммы
-            processedBy: 'автопополнение' as any, // Автопополнение через криптоплатеж
-          }
-        })
+        if (botRequest) {
+          await prisma.request.update({
+            where: { id: botRequest.id },
+            data: {
+              status: 'auto_completed',
+              paymentMethod: 'crypto',
+              cryptoPaymentId: cryptoPayment.id,
+              amount: amountInKgs, // Обновляем сумму в сомах (для пополнения в казино)
+              statusDetail: statusDetailData, // Сохраняем обе суммы
+              processedBy: 'автопополнение' as any, // Автопополнение через криптоплатеж
+              processedAt: new Date(),
+              updatedAt: new Date(),
+            }
+          })
+        }
 
         // Выполняем автоматическое пополнение в сомах МГНОВЕННО
-        const bookmaker = botRequest.bookmaker || ''
-        const accountId = botRequest.accountId || botRequest.userId.toString()
+        const bookmaker = botRequest ? botRequest.bookmaker || '' : ''
+        const accountId = botRequest ? (botRequest.accountId || botRequest.userId.toString()) : ''
 
-        console.log(`💸 [Crypto Auto-Deposit] Processing instantly: Request ${botRequest.id}, ${bookmaker}, Account ${accountId}, Amount ${amountInKgs} KGS`)
+        console.log(
+          `💸 [Crypto Auto-Deposit] Processing instantly: Request ${botRequest ? botRequest.id : 'n/a'}, ${bookmaker}, Account ${accountId}, Amount ${amountInKgs} KGS`
+        )
 
         try {
           // Сразу пополняем баланс (самое важное - делаем мгновенно)
@@ -290,7 +298,7 @@ export async function POST(request: NextRequest) {
             bookmaker,
             accountId,
             amountInKgs,
-            botRequest.id
+            botRequest?.id
           )
           
           if (!depositResult.success) {
@@ -298,30 +306,34 @@ export async function POST(request: NextRequest) {
           }
           
           // После успешного пополнения - обновляем статус заявки
-          await prisma.request.update({
-            where: { id: botRequest.id },
-            data: {
-              status: 'autodeposit_success',
-              statusDetail: null,
-              processedBy: 'автопополнение' as any,
-              processedAt: new Date(),
-              updatedAt: new Date()
-            }
-          })
+          if (botRequest) {
+            await prisma.request.update({
+              where: { id: botRequest.id },
+              data: {
+                status: 'autodeposit_success',
+                statusDetail: null,
+                processedBy: 'автопополнение' as any,
+                processedAt: new Date(),
+                updatedAt: new Date()
+              }
+            })
+          }
 
-          console.log(`✅ [Crypto Auto-Deposit] SUCCESS: Request ${botRequest.id} → autodeposit_success`)
+          console.log(`✅ [Crypto Auto-Deposit] SUCCESS: Request ${botRequest ? botRequest.id : 'n/a'} → autodeposit_success`)
         } catch (error: any) {
-          console.error(`❌ [Crypto Auto-Deposit] FAILED for request ${botRequest.id}:`, error.message)
+          console.error(`❌ [Crypto Auto-Deposit] FAILED for request ${botRequest ? botRequest.id : 'n/a'}:`, error.message)
           
           // Обновляем статус заявки для ручной проверки
-          await prisma.request.update({
-            where: { id: botRequest.id },
-            data: {
-              status: 'auto_completed',
-              statusDetail: `crypto_auto_deposit_failed: ${error.message}`,
-              updatedAt: new Date()
-            }
-          })
+          if (botRequest) {
+            await prisma.request.update({
+              where: { id: botRequest.id },
+              data: {
+                status: 'auto_completed',
+                statusDetail: `crypto_auto_deposit_failed: ${error.message}`,
+                updatedAt: new Date()
+              }
+            })
+          }
         }
     } else if (botRequest) {
       console.log('ℹ️ Request already processed:', {

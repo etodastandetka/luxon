@@ -41,3 +41,4 @@ export async function fetchVideoInstructions(): Promise<VideoInstructions> {
   return data?.data ?? {}
 }
 
+

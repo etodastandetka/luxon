@@ -3,3 +3,4 @@ export const formatAmount = (amount?: number, currency = '₽') => {
   return `${Number(amount).toLocaleString('ru-RU')} ${currency}`
 }
 
+
