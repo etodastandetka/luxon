@@ -290,11 +290,17 @@ export async function checkWithdrawsExistMostbet(
       cashpointIdForUrl = numericMatch[0]
     }
 
-    const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/list/page?page=1&size=10&searchString=${playerId}`
+    // ВАЖНО: Для подписи PATH должен быть БЕЗ query параметров, REQUEST_BODY для GET - пустая строка
+    const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/list/page`
+    const listQueryParams = `?page=1&size=10&searchString=${playerId}`
+    const listUrl = `${baseUrl}${listPath}${listQueryParams}`
+    
+    // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
+    // Для GET запросов REQUEST_BODY - пустая строка
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
     const listSignature = crypto.createHmac('sha3-256', config.secret!).update(listString).digest('hex')
 
-    const listResponse = await fetch(`${baseUrl}${listPath}`, {
+    const listResponse = await fetch(listUrl, {
       method: 'GET',
       headers: {
         'X-Timestamp': timestamp,
@@ -367,11 +373,17 @@ export async function checkWithdrawAmountMostbet(
     }
 
     // Сначала получаем список запросов на вывод
-    const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/list/page?page=1&size=10&searchString=${playerId}`
+    // ВАЖНО: Для подписи PATH должен быть БЕЗ query параметров, REQUEST_BODY для GET - пустая строка
+    const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/list/page`
+    const listQueryParams = `?page=1&size=10&searchString=${playerId}`
+    const listUrl = `${baseUrl}${listPath}${listQueryParams}`
+    
+    // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
+    // Для GET запросов REQUEST_BODY - пустая строка
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
     const listSignature = crypto.createHmac('sha3-256', config.secret!).update(listString).digest('hex')
 
-    const listResponse = await fetch(`${baseUrl}${listPath}`, {
+    const listResponse = await fetch(listUrl, {
       method: 'GET',
       headers: {
         'X-Timestamp': timestamp,
@@ -402,6 +414,7 @@ export async function checkWithdrawAmountMostbet(
     }
 
     // Подтверждаем вывод кодом, чтобы получить сумму
+    // ВАЖНО: Используем тот же timestamp для подписи и заголовка
     const confirmPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/confirmation`
     const confirmBody = {
       code: code,
@@ -409,6 +422,9 @@ export async function checkWithdrawAmountMostbet(
     }
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
     const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
+    
+    // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
+    // Используем тот же timestamp, что и для заголовка X-Timestamp
     const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${timestamp}`
     const confirmSignature = crypto.createHmac('sha3-256', config.secret!).update(confirmString).digest('hex')
 
@@ -428,19 +444,44 @@ export async function checkWithdrawAmountMostbet(
     const confirmData = await confirmResponse.json()
     console.log(`[Mostbet Withdraw Check] Confirm response:`, confirmData)
 
-    if (!confirmResponse.ok || confirmData.status === 'NEW_ERROR' || confirmData.status === 'PROCESSING_ERROR') {
+    // Проверяем статус ответа согласно документации
+    if (!confirmResponse.ok) {
       return {
         success: false,
-        message: confirmData.message || 'Invalid code or withdrawal not found',
+        message: confirmData.message || confirmData.code || 'Invalid code or withdrawal not found',
       }
     }
 
+    // Проверяем статусы транзакции согласно документации
+    // NEW_ERROR, PROCESSING_ERROR, CANCELED, EXPIRED - это ошибки
+    const errorStatuses = ['NEW_ERROR', 'PROCESSING_ERROR', 'CANCELED', 'EXPIRED']
+    if (confirmData.status && errorStatuses.includes(confirmData.status)) {
+      return {
+        success: false,
+        message: confirmData.message || `Transaction status: ${confirmData.status}`,
+      }
+    }
+
+    // Успешные статусы: NEW, ACCEPTED, PROCESSING, COMPLETED
+    // COMPLETED означает что транзакция завершена успешно
+    // NEW/ACCEPTED/PROCESSING означает что транзакция в процессе
+    
     // Возвращаем сумму подтвержденного вывода
+    // Сумма должна быть из списка заявок (withdrawal.amount), так как в ответе confirmation может не быть amount
+    const amount = withdrawal.amount || confirmData.amount
+    
+    if (!amount || amount <= 0) {
+      return {
+        success: false,
+        message: 'Amount not found in withdrawal data',
+      }
+    }
+
     return {
       success: true,
-      amount: withdrawal.amount || confirmData.amount,
+      amount: parseFloat(String(amount)),
       transactionId: withdrawal.transactionId || confirmData.transactionId,
-      message: 'Withdrawal confirmed',
+      message: `Withdrawal confirmed. Status: ${confirmData.status || 'NEW'}`,
     }
   } catch (error: any) {
     console.error(`[Mostbet Withdraw Check] Error:`, error)
