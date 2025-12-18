@@ -5,6 +5,40 @@
 import crypto from 'crypto'
 import { MobCashClient } from './mob-cash-api'
 
+// Функции для работы с таймаутами (как в пополнении)
+const fetchWithTimeout = async (
+  url: string,
+  init: RequestInit,
+  timeoutMs = 10_000
+): Promise<Response> => {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+const readTextWithTimeout = async (
+  response: Response,
+  timeoutMs = 6_000
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Read timeout')), timeoutMs)
+    response.text().then(
+      (text) => {
+        clearTimeout(timeout)
+        resolve(text)
+      },
+      (error) => {
+        clearTimeout(timeout)
+        reject(error)
+      }
+    )
+  })
+}
+
 // Конфигурация API казино
 interface CasinoConfig {
   hash?: string
@@ -326,13 +360,29 @@ export async function checkWithdrawsExistMostbet(
       },
     })
 
-    const listData = await listResponse.json()
+    // Используем readTextWithTimeout как в пополнении
+    const listResponseText = await readTextWithTimeout(listResponse, 6_000)
+    let listData: any
+    try {
+      listData = JSON.parse(listResponseText)
+    } catch (e) {
+      console.error(`[Mostbet Check Withdrawals] Failed to parse list response:`, {
+        status: listResponse.status,
+        statusText: listResponse.statusText,
+        body: listResponseText.substring(0, 500)
+      })
+      return {
+        success: false,
+        hasWithdrawals: false,
+        message: `API error: ${listResponse.status} ${listResponse.statusText}`,
+      }
+    }
     
     if (!listResponse.ok) {
       return {
         success: false,
         hasWithdrawals: false,
-        message: listData.message || 'Failed to check withdrawals',
+        message: listData.message || listData.code || `API error: ${listResponse.status} ${listResponse.statusText}`,
       }
     }
 
@@ -437,25 +487,31 @@ export async function checkWithdrawAmountMostbet(
     
     console.log(`[Mostbet Withdraw Check] List signature:`, listSignature.substring(0, 20) + '...')
 
-    const listResponse = await fetch(listUrl, {
-      method: 'GET',
-      headers: {
-        'X-Timestamp': timestamp,
-        'X-Signature': listSignature,
-        'X-Api-Key': apiKeyFormatted,
-        'Accept': '*/*',
+    // Используем fetchWithTimeout и правильный порядок заголовков (как в пополнении)
+    const listResponse = await fetchWithTimeout(
+      listUrl,
+      {
+        method: 'GET',
+        headers: {
+          'X-Api-Key': apiKeyFormatted,
+          'X-Timestamp': timestamp,
+          'X-Signature': listSignature,
+          'Accept': '*/*',
+        },
       },
-    })
+      10_000
+    )
 
+    // Используем readTextWithTimeout как в пополнении
+    const listResponseText = await readTextWithTimeout(listResponse, 6_000)
     let listData: any
     try {
-      listData = await listResponse.json()
+      listData = JSON.parse(listResponseText)
     } catch (e) {
-      const text = await listResponse.text()
       console.error(`[Mostbet Withdraw Check] Failed to parse list response:`, {
         status: listResponse.status,
         statusText: listResponse.statusText,
-        body: text.substring(0, 500)
+        body: listResponseText.substring(0, 500)
       })
       return {
         success: false,
@@ -572,21 +628,25 @@ export async function checkWithdrawAmountMostbet(
     
     console.log(`[Mostbet Withdraw Check] Generated signature:`, confirmSignature.substring(0, 20) + '...')
 
-    // ВАЖНО: Согласно коду пополнения, используется тот же JSON без пробелов и для подписи, и для отправки
-    // В пополнении: body: requestBody (где requestBody = JSON.stringify(...).replace(/\s+/g, ''))
-    // Поэтому используем confirmBodyString и для отправки тоже
-    const confirmResponse = await fetch(`${baseUrl}${confirmPath}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Timestamp': confirmTimestamp, // Используем новый timestamp
-        'X-Signature': confirmSignature,
-        'X-Api-Key': apiKeyFormatted,
-        'X-Project': 'MBC', // Обязательно согласно документации
-        'Accept': '*/*',
+    // ВАЖНО: Используем тот же подход, что и в пополнении - fetchWithTimeout и тот же порядок заголовков
+    // В пополнении порядок: X-Api-Key, X-Timestamp, X-Signature, X-Project, Content-Type, Accept
+    // И используется JSON без пробелов для отправки (как requestBody в пополнении)
+    const confirmResponse = await fetchWithTimeout(
+      `${baseUrl}${confirmPath}`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': apiKeyFormatted,
+          'X-Timestamp': confirmTimestamp, // Используем новый timestamp
+          'X-Signature': confirmSignature,
+          'X-Project': 'MBC', // Обязательно согласно документации
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: confirmBodyString, // Используем JSON без пробелов, как в пополнении
       },
-      body: confirmBodyString, // Используем JSON без пробелов, как в пополнении
-    })
+      10_000
+    )
     
     console.log(`[Mostbet Withdraw Check] Confirm request:`, {
       path: confirmPath,
@@ -596,15 +656,16 @@ export async function checkWithdrawAmountMostbet(
       signature: confirmSignature.substring(0, 20) + '...',
     })
 
+    // Используем readTextWithTimeout как в пополнении
+    const confirmResponseText = await readTextWithTimeout(confirmResponse, 6_000)
     let confirmData: any
     try {
-      confirmData = await confirmResponse.json()
+      confirmData = JSON.parse(confirmResponseText)
     } catch (e) {
-      const text = await confirmResponse.text()
       console.error(`[Mostbet Withdraw Check] Failed to parse confirm response:`, {
         status: confirmResponse.status,
         statusText: confirmResponse.statusText,
-        body: text.substring(0, 500)
+        body: confirmResponseText.substring(0, 500)
       })
       return {
         success: false,
