@@ -406,6 +406,15 @@ export async function checkWithdrawAmountMostbet(
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Для GET запросов REQUEST_BODY - пустая строка
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
+    
+    console.log(`[Mostbet Withdraw Check] List signature string:`, {
+      apiKey: apiKeyFormatted,
+      path: listPath,
+      body: '(empty for GET)',
+      timestamp: timestamp,
+      fullString: listString.substring(0, 100) + '...',
+    })
+    
     const listHmac = crypto.createHmac('sha3-256', config.secret)
     if (!listHmac) {
       return {
@@ -414,6 +423,8 @@ export async function checkWithdrawAmountMostbet(
       }
     }
     const listSignature = listHmac.update(listString).digest('hex')
+    
+    console.log(`[Mostbet Withdraw Check] List signature:`, listSignature.substring(0, 20) + '...')
 
     const listResponse = await fetch(listUrl, {
       method: 'GET',
@@ -497,7 +508,8 @@ export async function checkWithdrawAmountMostbet(
       transactionId: transactionIdNum,
     }
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
-    const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
+    // ВАЖНО: Используем JSON.stringify с параметрами для гарантированного порядка полей
+    const confirmBodyString = JSON.stringify(confirmBody, null, 0).replace(/\s+/g, '')
     
     // Проверяем наличие secret перед созданием подписи
     if (!config.secret || config.secret.trim() === '') {
@@ -510,6 +522,15 @@ export async function checkWithdrawAmountMostbet(
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Используем НОВЫЙ timestamp для подтверждения
     const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${confirmTimestamp}`
+    
+    console.log(`[Mostbet Withdraw Check] Signature string components:`, {
+      apiKey: apiKeyFormatted,
+      path: confirmPath,
+      body: confirmBodyString,
+      timestamp: confirmTimestamp,
+      fullString: confirmString.substring(0, 100) + '...',
+    })
+    
     const confirmHmac = crypto.createHmac('sha3-256', config.secret)
     if (!confirmHmac) {
       return {
@@ -518,6 +539,8 @@ export async function checkWithdrawAmountMostbet(
       }
     }
     const confirmSignature = confirmHmac.update(confirmString).digest('hex')
+    
+    console.log(`[Mostbet Withdraw Check] Generated signature:`, confirmSignature.substring(0, 20) + '...')
 
     const confirmResponse = await fetch(`${baseUrl}${confirmPath}`, {
       method: 'POST',
