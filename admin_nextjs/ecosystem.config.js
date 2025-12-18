@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'luxon-admin',
       cwd: '/var/www/luxon/admin_nextjs',
-      script: 'node_modules/.bin/next',
-      args: 'start -p 3001',
+      script: 'node',
+      args: '.next/standalone/server.js',
       interpreter: 'none',
       env: {
         NODE_ENV: 'production',
