@@ -524,13 +524,20 @@ export async function checkWithdrawAmountMostbet(
       }
     }
     
+    // ВАЖНО: Порядок полей важен! Согласно документации: сначала code, потом transactionId
     const confirmBody = {
       code: String(code),
       transactionId: transactionIdNum,
     }
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
-    // ВАЖНО: Используем JSON.stringify с параметрами для гарантированного порядка полей
-    const confirmBodyString = JSON.stringify(confirmBody, null, 0).replace(/\s+/g, '')
+    // Используем JSON.stringify без параметров форматирования, затем удаляем все пробелы
+    const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
+    
+    console.log(`[Mostbet Withdraw Check] Confirm body:`, {
+      original: confirmBody,
+      stringified: JSON.stringify(confirmBody),
+      withoutSpaces: confirmBodyString,
+    })
     
     // Проверяем наличие secret перед созданием подписи
     if (!config.secret || config.secret.trim() === '') {
