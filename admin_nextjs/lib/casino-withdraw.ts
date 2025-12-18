@@ -344,25 +344,62 @@ export async function checkWithdrawsExistMostbet(
     const requestBody = '' // Для GET запросов REQUEST_BODY - пустая строка
     const listString = `${apiKeyFormatted}${listPath}${requestBody}${timestamp}`
     
-    console.log(`[Mostbet Check Withdrawals] Signature string components:`, {
-      apiKey: apiKeyFormatted.substring(0, 30) + '...',
+    console.log(`[Mostbet Check Withdrawals] 🔍 DETAILED SIGNATURE DEBUG:`, {
+      apiKeyFull: apiKeyFormatted,
+      apiKeyLength: apiKeyFormatted.length,
       path: listPath,
+      pathLength: listPath.length,
       requestBody: requestBody || '(empty)',
+      requestBodyLength: requestBody.length,
       timestamp: timestamp,
+      timestampLength: timestamp.length,
+      fullString: listString,
       fullStringLength: listString.length,
+      secretPrefix: config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING',
+      secretLength: config.secret ? config.secret.length : 0,
     })
     
-    const listHmac = crypto.createHmac('sha3-256', config.secret)
-    if (!listHmac) {
+    // Используем SHA3-256 согласно документации Mostbet API
+    // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
+    let listSignature: string
+    try {
+      // Пробуем разные варианты названия алгоритма (как в пополнении)
+      const algorithms = ['sha3-256', 'SHA3-256', 'sha3_256']
+      let listHmac: any = null
+      
+      for (const algo of algorithms) {
+        try {
+          listHmac = crypto.createHmac(algo, config.secret)
+          break
+        } catch (e) {
+          // Пробуем следующий вариант
+          continue
+        }
+      }
+      
+      if (!listHmac) {
+        throw new Error('SHA3-256 not supported')
+      }
+      
+      listSignature = listHmac.update(listString).digest('hex')
+      console.log(`[Mostbet Check Withdrawals] Using SHA3-256 for signature`)
+    } catch (e: any) {
+      console.error(`❌ SHA3-256 not available: ${e.message}`)
       return {
         success: false,
         hasWithdrawals: false,
-        message: 'Failed to create HMAC (sha3-256 may not be supported)',
+        message: 'SHA3-256 is required for Mostbet API but not available',
       }
     }
-    const listSignature = listHmac.update(listString).digest('hex')
     
-    console.log(`[Mostbet Check Withdrawals] Generated signature:`, listSignature.substring(0, 20) + '...')
+    console.log(`[Mostbet Check Withdrawals] ✅ Generated signature:`, listSignature)
+    console.log(`[Mostbet Check Withdrawals] 📤 Request URL:`, listUrl)
+    console.log(`[Mostbet Check Withdrawals] 📤 Request headers:`, {
+      'X-Timestamp': timestamp,
+      'X-Signature': listSignature,
+      'X-Api-Key': apiKeyFormatted,
+      'Accept': '*/*',
+    })
 
     const listResponse = await fetchWithTimeout(
       listUrl,
@@ -627,24 +664,64 @@ export async function checkWithdrawAmountMostbet(
     // Используем НОВЫЙ timestamp для подтверждения
     const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${confirmTimestamp}`
     
-    console.log(`[Mostbet Withdraw Check] Signature string components:`, {
-      apiKey: apiKeyFormatted,
+    console.log(`[Mostbet Withdraw Check] 🔍 DETAILED CONFIRM SIGNATURE DEBUG:`, {
+      apiKeyFull: apiKeyFormatted,
+      apiKeyLength: apiKeyFormatted.length,
       path: confirmPath,
+      pathLength: confirmPath.length,
       body: confirmBodyString,
+      bodyLength: confirmBodyString.length,
       timestamp: confirmTimestamp,
-      fullString: confirmString.substring(0, 100) + '...',
+      timestampLength: confirmTimestamp.length,
+      fullString: confirmString,
+      fullStringLength: confirmString.length,
+      secretPrefix: config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING',
+      secretLength: config.secret ? config.secret.length : 0,
     })
     
-    const confirmHmac = crypto.createHmac('sha3-256', config.secret)
-    if (!confirmHmac) {
+    // Используем SHA3-256 согласно документации Mostbet API
+    // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
+    let confirmSignature: string
+    try {
+      // Пробуем разные варианты названия алгоритма (как в пополнении)
+      const algorithms = ['sha3-256', 'SHA3-256', 'sha3_256']
+      let confirmHmac: any = null
+      
+      for (const algo of algorithms) {
+        try {
+          confirmHmac = crypto.createHmac(algo, config.secret)
+          break
+        } catch (e) {
+          // Пробуем следующий вариант
+          continue
+        }
+      }
+      
+      if (!confirmHmac) {
+        throw new Error('SHA3-256 not supported')
+      }
+      
+      confirmSignature = confirmHmac.update(confirmString).digest('hex')
+      console.log(`[Mostbet Withdraw Check] Using SHA3-256 for confirm signature`)
+    } catch (e: any) {
+      console.error(`❌ SHA3-256 not available: ${e.message}`)
       return {
         success: false,
-        message: 'Failed to create HMAC (sha3-256 may not be supported)',
+        message: 'SHA3-256 is required for Mostbet API but not available',
       }
     }
-    const confirmSignature = confirmHmac.update(confirmString).digest('hex')
     
-    console.log(`[Mostbet Withdraw Check] Generated signature:`, confirmSignature.substring(0, 20) + '...')
+    console.log(`[Mostbet Withdraw Check] ✅ Generated confirm signature:`, confirmSignature)
+    console.log(`[Mostbet Withdraw Check] 📤 Confirm URL:`, `${baseUrl}${confirmPath}`)
+    console.log(`[Mostbet Withdraw Check] 📤 Confirm headers:`, {
+      'Content-Type': 'application/json',
+      'X-Timestamp': confirmTimestamp,
+      'X-Signature': confirmSignature,
+      'X-Api-Key': apiKeyFormatted,
+      'X-Project': 'MBC',
+      'Accept': '*/*',
+    })
+    console.log(`[Mostbet Withdraw Check] 📤 Confirm body:`, confirmBodyString)
 
     // ВАЖНО: Используем тот же подход, что и в пополнении - fetchWithTimeout и тот же порядок заголовков
     // В пополнении порядок: X-Api-Key, X-Timestamp, X-Signature, X-Project, Content-Type, Accept
