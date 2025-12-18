@@ -468,11 +468,33 @@ export async function checkWithdrawAmountMostbet(
     }
 
     // Подтверждаем вывод кодом, чтобы получить сумму
-    // ВАЖНО: Используем тот же timestamp для подписи и заголовка
+    // ВАЖНО: Для каждого запроса нужен СВОЙ timestamp (согласно документации)
+    const confirmNow = new Date()
+    const confirmYear = confirmNow.getUTCFullYear()
+    const confirmMonth = String(confirmNow.getUTCMonth() + 1).padStart(2, '0')
+    const confirmDay = String(confirmNow.getUTCDate()).padStart(2, '0')
+    const confirmHours = String(confirmNow.getUTCHours()).padStart(2, '0')
+    const confirmMinutes = String(confirmNow.getUTCMinutes()).padStart(2, '0')
+    const confirmSeconds = String(confirmNow.getUTCSeconds()).padStart(2, '0')
+    const confirmTimestamp = `${confirmYear}-${confirmMonth}-${confirmDay} ${confirmHours}:${confirmMinutes}:${confirmSeconds}`
+    
     const confirmPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/confirmation`
+    
+    // ВАЖНО: transactionId должен быть числом согласно документации
+    const transactionIdNum = typeof withdrawal.transactionId === 'number' 
+      ? withdrawal.transactionId 
+      : parseInt(String(withdrawal.transactionId))
+    
+    if (isNaN(transactionIdNum)) {
+      return {
+        success: false,
+        message: `Invalid transactionId: ${withdrawal.transactionId}`,
+      }
+    }
+    
     const confirmBody = {
-      code: code,
-      transactionId: withdrawal.transactionId,
+      code: String(code),
+      transactionId: transactionIdNum,
     }
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
     const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
@@ -486,8 +508,8 @@ export async function checkWithdrawAmountMostbet(
     }
     
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
-    // Используем тот же timestamp, что и для заголовка X-Timestamp
-    const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${timestamp}`
+    // Используем НОВЫЙ timestamp для подтверждения
+    const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${confirmTimestamp}`
     const confirmHmac = crypto.createHmac('sha3-256', config.secret)
     if (!confirmHmac) {
       return {
@@ -501,13 +523,21 @@ export async function checkWithdrawAmountMostbet(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Timestamp': timestamp,
+        'X-Timestamp': confirmTimestamp, // Используем новый timestamp
         'X-Signature': confirmSignature,
         'X-Api-Key': apiKeyFormatted,
-        'X-Project': 'MBC',
+        'X-Project': 'MBC', // Обязательно согласно документации
         'Accept': '*/*',
       },
       body: confirmBodyString,
+    })
+    
+    console.log(`[Mostbet Withdraw Check] Confirm request:`, {
+      path: confirmPath,
+      body: confirmBody,
+      bodyString: confirmBodyString,
+      timestamp: confirmTimestamp,
+      signature: confirmSignature.substring(0, 20) + '...',
     })
 
     let confirmData: any
