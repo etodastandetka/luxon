@@ -367,6 +367,7 @@ export async function checkWithdrawAmountMostbet(
     const cashpointId = String(config.cashpoint_id)
     
     // Получаем timestamp в UTC в формате YYYY-MM-DD HH:MM:SS (UTC+0)
+    // Согласно документации: "Дату и время необходимо передавать для часового пояса UTC+0"
     const now = new Date()
     const year = now.getUTCFullYear()
     const month = String(now.getUTCMonth() + 1).padStart(2, '0')
@@ -375,6 +376,16 @@ export async function checkWithdrawAmountMostbet(
     const minutes = String(now.getUTCMinutes()).padStart(2, '0')
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    
+    // Проверяем, что timestamp в правильном формате UTC+0
+    console.log(`[Mostbet Withdraw Check] List Timestamp (UTC+0):`, {
+      timestamp,
+      localTime: now.toISOString(),
+      utcTime: now.toUTCString(),
+      utcHours: now.getUTCHours(),
+      localHours: now.getHours(),
+      timezoneOffset: now.getTimezoneOffset(),
+    })
 
     // API key может быть с префиксом или без
     const apiKey = config.api_key!
@@ -480,6 +491,7 @@ export async function checkWithdrawAmountMostbet(
 
     // Подтверждаем вывод кодом, чтобы получить сумму
     // ВАЖНО: Для каждого запроса нужен СВОЙ timestamp (согласно документации)
+    // Согласно документации: "Дату и время необходимо передавать для часового пояса UTC+0"
     const confirmNow = new Date()
     const confirmYear = confirmNow.getUTCFullYear()
     const confirmMonth = String(confirmNow.getUTCMonth() + 1).padStart(2, '0')
@@ -488,6 +500,15 @@ export async function checkWithdrawAmountMostbet(
     const confirmMinutes = String(confirmNow.getUTCMinutes()).padStart(2, '0')
     const confirmSeconds = String(confirmNow.getUTCSeconds()).padStart(2, '0')
     const confirmTimestamp = `${confirmYear}-${confirmMonth}-${confirmDay} ${confirmHours}:${confirmMinutes}:${confirmSeconds}`
+    
+    // Проверяем, что timestamp в правильном формате UTC+0
+    console.log(`[Mostbet Withdraw Check] Confirm Timestamp (UTC+0):`, {
+      timestamp: confirmTimestamp,
+      localTime: confirmNow.toISOString(),
+      utcTime: confirmNow.toUTCString(),
+      utcHours: confirmNow.getUTCHours(),
+      localHours: confirmNow.getHours(),
+    })
     
     const confirmPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/confirmation`
     
