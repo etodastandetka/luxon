@@ -299,6 +299,15 @@ export async function checkWithdrawsExistMostbet(
   config: CasinoConfig
 ): Promise<{ success: boolean; hasWithdrawals: boolean; message?: string }> {
   try {
+    console.log(`[Mostbet Check Withdrawals] 🚀 FUNCTION CALLED - playerId: ${playerId}`)
+    console.log(`[Mostbet Check Withdrawals] Config:`, {
+      hasApiKey: !!config.api_key,
+      hasSecret: !!config.secret,
+      cashpointId: config.cashpoint_id,
+      apiKeyPrefix: config.api_key?.substring(0, 20) + '...',
+      secretPrefix: config.secret?.substring(0, 10) + '...',
+    })
+    
     const baseUrl = 'https://apimb.com'
     const cashpointId = String(config.cashpoint_id)
     
