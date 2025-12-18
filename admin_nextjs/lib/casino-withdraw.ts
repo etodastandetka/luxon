@@ -339,8 +339,19 @@ export async function checkWithdrawsExistMostbet(
     }
     
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
-    // Для GET запросов REQUEST_BODY - пустая строка
-    const listString = `${apiKeyFormatted}${listPath}${timestamp}`
+    // Для GET запросов REQUEST_BODY - пустая строка, но она должна быть явно указана в формуле
+    // Согласно документации: конкатенируем без разделителей: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
+    const requestBody = '' // Для GET запросов REQUEST_BODY - пустая строка
+    const listString = `${apiKeyFormatted}${listPath}${requestBody}${timestamp}`
+    
+    console.log(`[Mostbet Check Withdrawals] Signature string components:`, {
+      apiKey: apiKeyFormatted.substring(0, 30) + '...',
+      path: listPath,
+      requestBody: requestBody || '(empty)',
+      timestamp: timestamp,
+      fullStringLength: listString.length,
+    })
+    
     const listHmac = crypto.createHmac('sha3-256', config.secret)
     if (!listHmac) {
       return {
@@ -350,15 +361,22 @@ export async function checkWithdrawsExistMostbet(
       }
     }
     const listSignature = listHmac.update(listString).digest('hex')
+    
+    console.log(`[Mostbet Check Withdrawals] Generated signature:`, listSignature.substring(0, 20) + '...')
 
-    const listResponse = await fetch(listUrl, {
-      method: 'GET',
-      headers: {
-        'X-Timestamp': timestamp,
-        'X-Signature': listSignature,
-        'X-Api-Key': apiKeyFormatted,
+    const listResponse = await fetchWithTimeout(
+      listUrl,
+      {
+        method: 'GET',
+        headers: {
+          'X-Timestamp': timestamp,
+          'X-Signature': listSignature,
+          'X-Api-Key': apiKeyFormatted,
+          'Accept': '*/*',
+        },
       },
-    })
+      10_000 // Таймаут 10 секунд
+    )
 
     // Используем readTextWithTimeout как в пополнении
     const listResponseText = await readTextWithTimeout(listResponse, 6_000)
