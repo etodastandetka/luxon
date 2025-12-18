@@ -529,14 +529,16 @@ export async function checkWithdrawAmountMostbet(
       code: String(code),
       transactionId: transactionIdNum,
     }
-    // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
-    // Используем JSON.stringify без параметров форматирования, затем удаляем все пробелы
+    // ВАЖНО: Согласно коду пополнения, используется JSON без пробелов и для подписи, и для отправки
+    // В пополнении: body: requestBody (где requestBody = JSON.stringify(...).replace(/\s+/g, ''))
+    // Поэтому используем тот же подход - JSON без пробелов
     const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
     
     console.log(`[Mostbet Withdraw Check] Confirm body:`, {
       original: confirmBody,
       stringified: JSON.stringify(confirmBody),
       withoutSpaces: confirmBodyString,
+      note: 'Using JSON without spaces for both signature and request body (same as deposit)',
     })
     
     // Проверяем наличие secret перед созданием подписи
@@ -570,8 +572,9 @@ export async function checkWithdrawAmountMostbet(
     
     console.log(`[Mostbet Withdraw Check] Generated signature:`, confirmSignature.substring(0, 20) + '...')
 
-    // ВАЖНО: Для подписи используется JSON без пробелов (confirmBodyString)
-    // Для отправки используется обычный JSON (JSON.stringify(confirmBody))
+    // ВАЖНО: Согласно коду пополнения, используется тот же JSON без пробелов и для подписи, и для отправки
+    // В пополнении: body: requestBody (где requestBody = JSON.stringify(...).replace(/\s+/g, ''))
+    // Поэтому используем confirmBodyString и для отправки тоже
     const confirmResponse = await fetch(`${baseUrl}${confirmPath}`, {
       method: 'POST',
       headers: {
@@ -582,7 +585,7 @@ export async function checkWithdrawAmountMostbet(
         'X-Project': 'MBC', // Обязательно согласно документации
         'Accept': '*/*',
       },
-      body: JSON.stringify(confirmBody), // Используем обычный JSON для отправки, не confirmBodyString
+      body: confirmBodyString, // Используем JSON без пробелов, как в пополнении
     })
     
     console.log(`[Mostbet Withdraw Check] Confirm request:`, {
