@@ -295,10 +295,27 @@ export async function checkWithdrawsExistMostbet(
     const listQueryParams = `?page=1&size=10&searchString=${playerId}`
     const listUrl = `${baseUrl}${listPath}${listQueryParams}`
     
+    // Проверяем наличие secret перед созданием подписи
+    if (!config.secret || config.secret.trim() === '') {
+      return {
+        success: false,
+        hasWithdrawals: false,
+        message: 'Mostbet API secret is missing or empty',
+      }
+    }
+    
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Для GET запросов REQUEST_BODY - пустая строка
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
-    const listSignature = crypto.createHmac('sha3-256', config.secret!).update(listString).digest('hex')
+    const listHmac = crypto.createHmac('sha3-256', config.secret)
+    if (!listHmac) {
+      return {
+        success: false,
+        hasWithdrawals: false,
+        message: 'Failed to create HMAC (sha3-256 may not be supported)',
+      }
+    }
+    const listSignature = listHmac.update(listString).digest('hex')
 
     const listResponse = await fetch(listUrl, {
       method: 'GET',
@@ -378,10 +395,25 @@ export async function checkWithdrawAmountMostbet(
     const listQueryParams = `?page=1&size=10&searchString=${playerId}`
     const listUrl = `${baseUrl}${listPath}${listQueryParams}`
     
+    // Проверяем наличие secret перед созданием подписи
+    if (!config.secret || config.secret.trim() === '') {
+      return {
+        success: false,
+        message: 'Mostbet API secret is missing or empty',
+      }
+    }
+    
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Для GET запросов REQUEST_BODY - пустая строка
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
-    const listSignature = crypto.createHmac('sha3-256', config.secret!).update(listString).digest('hex')
+    const listHmac = crypto.createHmac('sha3-256', config.secret)
+    if (!listHmac) {
+      return {
+        success: false,
+        message: 'Failed to create HMAC (sha3-256 may not be supported)',
+      }
+    }
+    const listSignature = listHmac.update(listString).digest('hex')
 
     const listResponse = await fetch(listUrl, {
       method: 'GET',
@@ -423,10 +455,25 @@ export async function checkWithdrawAmountMostbet(
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
     const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
     
+    // Проверяем наличие secret перед созданием подписи
+    if (!config.secret || config.secret.trim() === '') {
+      return {
+        success: false,
+        message: 'Mostbet API secret is missing or empty',
+      }
+    }
+    
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Используем тот же timestamp, что и для заголовка X-Timestamp
     const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${timestamp}`
-    const confirmSignature = crypto.createHmac('sha3-256', config.secret!).update(confirmString).digest('hex')
+    const confirmHmac = crypto.createHmac('sha3-256', config.secret)
+    if (!confirmHmac) {
+      return {
+        success: false,
+        message: 'Failed to create HMAC (sha3-256 may not be supported)',
+      }
+    }
+    const confirmSignature = confirmHmac.update(confirmString).digest('hex')
 
     const confirmResponse = await fetch(`${baseUrl}${confirmPath}`, {
       method: 'POST',
