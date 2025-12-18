@@ -442,7 +442,24 @@ export async function checkWithdrawsExistMostbet(
       }
     }
     
+    console.log(`[Mostbet Check Withdrawals] 📥 Response status: ${listResponse.status}`, {
+      ok: listResponse.ok,
+      statusText: listResponse.statusText,
+      data: listData,
+    })
+    
     if (!listResponse.ok) {
+      console.error(`[Mostbet Check Withdrawals] ❌ API Error Response:`, {
+        status: listResponse.status,
+        statusText: listResponse.statusText,
+        responseData: listData,
+        requestUrl: listUrl,
+        requestHeaders: {
+          'X-Timestamp': timestamp,
+          'X-Signature': listSignature?.substring(0, 20) + '...',
+          'X-Api-Key': apiKeyFormatted?.substring(0, 30) + '...',
+        },
+      })
       return {
         success: false,
         hasWithdrawals: false,
