@@ -459,6 +459,16 @@ export async function checkWithdrawsExistMostbet(
           'X-Signature': listSignature?.substring(0, 20) + '...',
           'X-Api-Key': apiKeyFormatted?.substring(0, 30) + '...',
         },
+        // Дублируем детальную информацию для диагностики
+        signatureComponents: {
+          apiKeyFull: apiKeyFormatted,
+          path: listPath,
+          requestBody: requestBody || '(empty)',
+          timestamp: timestamp,
+          fullString: listString,
+          secretPrefix: config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING',
+        },
+        generatedSignature: listSignature,
       })
       return {
         success: false,
