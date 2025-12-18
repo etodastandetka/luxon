@@ -353,20 +353,13 @@ export async function checkWithdrawsExistMostbet(
     const requestBody = '' // Для GET запросов REQUEST_BODY - пустая строка
     const listString = `${apiKeyFormatted}${listPath}${requestBody}${timestamp}`
     
-    console.log(`[Mostbet Check Withdrawals] 🔍 DETAILED SIGNATURE DEBUG:`, {
-      apiKeyFull: apiKeyFormatted,
-      apiKeyLength: apiKeyFormatted.length,
-      path: listPath,
-      pathLength: listPath.length,
-      requestBody: requestBody || '(empty)',
-      requestBodyLength: requestBody.length,
-      timestamp: timestamp,
-      timestampLength: timestamp.length,
-      fullString: listString,
-      fullStringLength: listString.length,
-      secretPrefix: config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING',
-      secretLength: config.secret ? config.secret.length : 0,
-    })
+    console.log(`[Mostbet Check Withdrawals] 🔍 DETAILED SIGNATURE DEBUG:`)
+    console.log(`  API Key: ${apiKeyFormatted} (length: ${apiKeyFormatted.length})`)
+    console.log(`  Path: ${listPath} (length: ${listPath.length})`)
+    console.log(`  Request Body: "${requestBody}" (length: ${requestBody.length})`)
+    console.log(`  Timestamp: ${timestamp} (length: ${timestamp.length})`)
+    console.log(`  Full String: ${listString} (length: ${listString.length})`)
+    console.log(`  Secret: ${config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING'} (length: ${config.secret ? config.secret.length : 0})`)
     
     // Используем SHA3-256 согласно документации Mostbet API
     // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
@@ -449,27 +442,18 @@ export async function checkWithdrawsExistMostbet(
     })
     
     if (!listResponse.ok) {
-      console.error(`[Mostbet Check Withdrawals] ❌ API Error Response:`, {
-        status: listResponse.status,
-        statusText: listResponse.statusText,
-        responseData: listData,
-        requestUrl: listUrl,
-        requestHeaders: {
-          'X-Timestamp': timestamp,
-          'X-Signature': listSignature?.substring(0, 20) + '...',
-          'X-Api-Key': apiKeyFormatted?.substring(0, 30) + '...',
-        },
-        // Дублируем детальную информацию для диагностики
-        signatureComponents: {
-          apiKeyFull: apiKeyFormatted,
-          path: listPath,
-          requestBody: requestBody || '(empty)',
-          timestamp: timestamp,
-          fullString: listString,
-          secretPrefix: config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING',
-        },
-        generatedSignature: listSignature,
-      })
+      console.error(`[Mostbet Check Withdrawals] ❌ API Error Response:`)
+      console.error(`  Status: ${listResponse.status} ${listResponse.statusText}`)
+      console.error(`  Response:`, JSON.stringify(listData, null, 2))
+      console.error(`  Request URL: ${listUrl}`)
+      console.error(`  Signature Components:`)
+      console.error(`    API Key: ${apiKeyFormatted}`)
+      console.error(`    Path: ${listPath}`)
+      console.error(`    Request Body: "${requestBody}"`)
+      console.error(`    Timestamp: ${timestamp}`)
+      console.error(`    Full String: ${listString}`)
+      console.error(`    Generated Signature: ${listSignature}`)
+      console.error(`    Secret: ${config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING'}`)
       return {
         success: false,
         hasWithdrawals: false,
@@ -561,20 +545,13 @@ export async function checkWithdrawAmountMostbet(
     const requestBody = '' // Для GET запросов REQUEST_BODY - пустая строка
     const listString = `${apiKeyFormatted}${listPath}${requestBody}${timestamp}`
     
-    console.log(`[Mostbet Withdraw Check] 🔍 DETAILED LIST SIGNATURE DEBUG:`, {
-      apiKeyFull: apiKeyFormatted,
-      apiKeyLength: apiKeyFormatted.length,
-      path: listPath,
-      pathLength: listPath.length,
-      requestBody: requestBody || '(empty)',
-      requestBodyLength: requestBody.length,
-      timestamp: timestamp,
-      timestampLength: timestamp.length,
-      fullString: listString,
-      fullStringLength: listString.length,
-      secretPrefix: config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING',
-      secretLength: config.secret ? config.secret.length : 0,
-    })
+    console.log(`[Mostbet Withdraw Check] 🔍 DETAILED LIST SIGNATURE DEBUG:`)
+    console.log(`  API Key: ${apiKeyFormatted} (length: ${apiKeyFormatted.length})`)
+    console.log(`  Path: ${listPath} (length: ${listPath.length})`)
+    console.log(`  Request Body: "${requestBody}" (length: ${requestBody.length})`)
+    console.log(`  Timestamp: ${timestamp} (length: ${timestamp.length})`)
+    console.log(`  Full String: ${listString} (length: ${listString.length})`)
+    console.log(`  Secret: ${config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING'} (length: ${config.secret ? config.secret.length : 0})`)
     
     // Используем SHA3-256 согласно документации Mostbet API
     // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
@@ -654,6 +631,18 @@ export async function checkWithdrawAmountMostbet(
     console.log(`[Mostbet Withdraw Check] List response status: ${listResponse.status}`, listData)
 
     if (!listResponse.ok) {
+      console.error(`[Mostbet Withdraw Check] ❌ LIST API Error Response:`)
+      console.error(`  Status: ${listResponse.status} ${listResponse.statusText}`)
+      console.error(`  Response:`, JSON.stringify(listData, null, 2))
+      console.error(`  Request URL: ${listUrl}`)
+      console.error(`  Signature Components:`)
+      console.error(`    API Key: ${apiKeyFormatted}`)
+      console.error(`    Path: ${listPath}`)
+      console.error(`    Request Body: "${requestBody}"`)
+      console.error(`    Timestamp: ${timestamp}`)
+      console.error(`    Full String: ${listString}`)
+      console.error(`    Generated Signature: ${listSignature}`)
+      console.error(`    Secret: ${config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING'}`)
       return {
         success: false,
         message: listData.message || listData.code || `API error: ${listResponse.status} ${listResponse.statusText}`,
