@@ -55,7 +55,49 @@ export async function POST(request: NextRequest) {
       return response
     }
 
-    const body = await request.json()
+    // Проверяем Content-Type
+    const contentType = request.headers.get('content-type') || ''
+    console.log(`[Withdraw Check] Content-Type: ${contentType}`)
+    
+    // Парсим тело запроса с обработкой ошибок
+    let body: any
+    try {
+      if (!contentType.includes('application/json')) {
+        console.error(`[Withdraw Check] Invalid Content-Type: ${contentType}, expected application/json`)
+        return NextResponse.json(
+          createApiResponse(null, 'Content-Type must be application/json'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+      
+      body = await request.json()
+      console.log(`[Withdraw Check] Request body parsed successfully:`, {
+        hasBookmaker: !!body.bookmaker,
+        hasPlayerId: !!body.playerId,
+        hasCode: !!body.code,
+        codeLength: body.code?.length,
+      })
+    } catch (error: any) {
+      console.error(`[Withdraw Check] Failed to parse request body:`, {
+        error: error.message,
+        contentType,
+        errorName: error.name,
+      })
+      return NextResponse.json(
+        createApiResponse(null, `Invalid JSON body: ${error.message}`),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
 
     // 🛡️ Валидация и очистка входных данных
     const sanitizedBody = sanitizeInput(body)
