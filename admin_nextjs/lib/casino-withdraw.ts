@@ -434,9 +434,21 @@ export async function checkWithdrawAmountMostbet(
   code: string,
   config: CasinoConfig
 ): Promise<{ success: boolean; amount?: number; transactionId?: number; message?: string }> {
+  const apiKey = config.api_key
+  const secret = config.secret
+  const cashpointId = config.cashpoint_id
+
+  if (!apiKey || !secret || !cashpointId ||
+      apiKey.trim() === '' || secret.trim() === '' || 
+      String(cashpointId).trim() === '' || String(cashpointId).trim() === '0') {
+    return {
+      success: false,
+      message: 'Missing required Mostbet API credentials',
+    }
+  }
+
   try {
     const baseUrl = 'https://apimb.com'
-    const cashpointId = String(config.cashpoint_id)
     
     // Получаем timestamp в UTC в формате YYYY-MM-DD HH:MM:SS (UTC+0)
     // Согласно документации: "Дату и время необходимо передавать для часового пояса UTC+0"
@@ -449,24 +461,12 @@ export async function checkWithdrawAmountMostbet(
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
     
-    // Проверяем, что timestamp в правильном формате UTC+0
-    console.log(`[Mostbet Withdraw Check] List Timestamp (UTC+0):`, {
-      timestamp,
-      localTime: now.toISOString(),
-      utcTime: now.toUTCString(),
-      utcHours: now.getUTCHours(),
-      localHours: now.getHours(),
-      timezoneOffset: now.getTimezoneOffset(),
-    })
-
-    // API key может быть с префиксом или без
-    const apiKey = config.api_key!
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
       ? apiKey
       : `api-key:${apiKey}`
 
     // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
-    let cashpointIdForUrl = cashpointId
+    let cashpointIdForUrl = String(cashpointId)
     const numericMatch = cashpointIdForUrl.match(/\d+/)
     if (numericMatch) {
       cashpointIdForUrl = numericMatch[0]
@@ -478,42 +478,22 @@ export async function checkWithdrawAmountMostbet(
     const listQueryParams = `?page=1&size=10&searchString=${playerId}`
     const listUrl = `${baseUrl}${listPath}${listQueryParams}`
     
-    // Проверяем наличие secret перед созданием подписи
-    if (!config.secret || config.secret.trim() === '') {
-      return {
-        success: false,
-        message: 'Mostbet API secret is missing or empty',
-      }
-    }
-    
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
-    // Для GET запросов REQUEST_BODY - пустая строка, но она должна быть явно указана в формуле
-    // Согласно документации: конкатенируем без разделителей: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
-    const requestBody = '' // Для GET запросов REQUEST_BODY - пустая строка
+    // Для GET запросов REQUEST_BODY - пустая строка
+    const requestBody = ''
     const listString = `${apiKeyFormatted}${listPath}${requestBody}${timestamp}`
     
-    console.log(`[Mostbet Withdraw Check] 🔍 DETAILED LIST SIGNATURE DEBUG:`)
-    console.log(`  API Key: ${apiKeyFormatted} (length: ${apiKeyFormatted.length})`)
-    console.log(`  Path: ${listPath} (length: ${listPath.length})`)
-    console.log(`  Request Body: "${requestBody}" (length: ${requestBody.length})`)
-    console.log(`  Timestamp: ${timestamp} (length: ${timestamp.length})`)
-    console.log(`  Full String: ${listString} (length: ${listString.length})`)
-    console.log(`  Secret: ${config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING'} (length: ${config.secret ? config.secret.length : 0})`)
-    
     // Используем SHA3-256 согласно документации Mostbet API
-    // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
     let listSignature: string
     try {
-      // Пробуем разные варианты названия алгоритма (как в пополнении)
       const algorithms = ['sha3-256', 'SHA3-256', 'sha3_256']
       let listHmac: any = null
       
       for (const algo of algorithms) {
         try {
-          listHmac = crypto.createHmac(algo, config.secret)
+          listHmac = crypto.createHmac(algo, secret)
           break
         } catch (e) {
-          // Пробуем следующий вариант
           continue
         }
       }
@@ -523,27 +503,13 @@ export async function checkWithdrawAmountMostbet(
       }
       
       listSignature = listHmac.update(listString).digest('hex')
-      console.log(`[Mostbet Withdraw Check] Using SHA3-256 for list signature`)
     } catch (e: any) {
-      console.error(`❌ SHA3-256 not available: ${e.message}`)
       return {
         success: false,
         message: 'SHA3-256 is required for Mostbet API but not available',
       }
     }
-    
-    console.log(`[Mostbet Withdraw Check] ✅ Generated list signature:`, listSignature)
-    console.log(`[Mostbet Withdraw Check] 📤 List URL:`, listUrl)
-    console.log(`[Mostbet Withdraw Check] 📤 List headers:`, {
-      'X-Timestamp': timestamp,
-      'X-Signature': listSignature,
-      'X-Api-Key': apiKeyFormatted,
-      'Accept': '*/*',
-    })
-    
-    console.log(`[Mostbet Withdraw Check] List signature:`, listSignature.substring(0, 20) + '...')
 
-    // Используем fetchWithTimeout и правильный порядок заголовков (как в пополнении)
     const listResponse = await fetchWithTimeout(
       listUrl,
       {
@@ -552,44 +518,23 @@ export async function checkWithdrawAmountMostbet(
           'X-Api-Key': apiKeyFormatted,
           'X-Timestamp': timestamp,
           'X-Signature': listSignature,
-          'Accept': '*/*',
         },
       },
       10_000
     )
 
-    // Используем readTextWithTimeout как в пополнении
     const listResponseText = await readTextWithTimeout(listResponse, 6_000)
     let listData: any
     try {
       listData = JSON.parse(listResponseText)
     } catch (e) {
-      console.error(`[Mostbet Withdraw Check] Failed to parse list response:`, {
-        status: listResponse.status,
-        statusText: listResponse.statusText,
-        body: listResponseText.substring(0, 500)
-      })
       return {
         success: false,
         message: `API error: ${listResponse.status} ${listResponse.statusText}`,
       }
     }
     
-    console.log(`[Mostbet Withdraw Check] List response status: ${listResponse.status}`, listData)
-
     if (!listResponse.ok) {
-      console.error(`[Mostbet Withdraw Check] ❌ LIST API Error Response:`)
-      console.error(`  Status: ${listResponse.status} ${listResponse.statusText}`)
-      console.error(`  Response:`, JSON.stringify(listData, null, 2))
-      console.error(`  Request URL: ${listUrl}`)
-      console.error(`  Signature Components:`)
-      console.error(`    API Key: ${apiKeyFormatted}`)
-      console.error(`    Path: ${listPath}`)
-      console.error(`    Request Body: "${requestBody}"`)
-      console.error(`    Timestamp: ${timestamp}`)
-      console.error(`    Full String: ${listString}`)
-      console.error(`    Generated Signature: ${listSignature}`)
-      console.error(`    Secret: ${config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING'}`)
       return {
         success: false,
         message: listData.message || listData.code || `API error: ${listResponse.status} ${listResponse.statusText}`,
@@ -625,14 +570,6 @@ export async function checkWithdrawAmountMostbet(
     const confirmSeconds = String(confirmNow.getUTCSeconds()).padStart(2, '0')
     const confirmTimestamp = `${confirmYear}-${confirmMonth}-${confirmDay} ${confirmHours}:${confirmMinutes}:${confirmSeconds}`
     
-    // Проверяем, что timestamp в правильном формате UTC+0
-    console.log(`[Mostbet Withdraw Check] Confirm Timestamp (UTC+0):`, {
-      timestamp: confirmTimestamp,
-      localTime: confirmNow.toISOString(),
-      utcTime: confirmNow.toUTCString(),
-      utcHours: confirmNow.getUTCHours(),
-      localHours: confirmNow.getHours(),
-    })
     
     const confirmPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/confirmation`
     
@@ -655,15 +592,8 @@ export async function checkWithdrawAmountMostbet(
     }
     // ВАЖНО: Согласно коду пополнения, используется JSON без пробелов и для подписи, и для отправки
     // В пополнении: body: requestBody (где requestBody = JSON.stringify(...).replace(/\s+/g, ''))
-    // Поэтому используем тот же подход - JSON без пробелов
-    const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
-    
-    console.log(`[Mostbet Withdraw Check] Confirm body:`, {
-      original: confirmBody,
-      stringified: JSON.stringify(confirmBody),
-      withoutSpaces: confirmBodyString,
-      note: 'Using JSON without spaces for both signature and request body (same as deposit)',
-    })
+        // Поэтому используем тот же подход - JSON без пробелов
+        const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
     
     // Проверяем наличие secret перед созданием подписи
     if (!config.secret || config.secret.trim() === '') {
@@ -677,35 +607,17 @@ export async function checkWithdrawAmountMostbet(
     // Используем НОВЫЙ timestamp для подтверждения
     const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${confirmTimestamp}`
     
-    console.log(`[Mostbet Withdraw Check] 🔍 DETAILED CONFIRM SIGNATURE DEBUG:`, {
-      apiKeyFull: apiKeyFormatted,
-      apiKeyLength: apiKeyFormatted.length,
-      path: confirmPath,
-      pathLength: confirmPath.length,
-      body: confirmBodyString,
-      bodyLength: confirmBodyString.length,
-      timestamp: confirmTimestamp,
-      timestampLength: confirmTimestamp.length,
-      fullString: confirmString,
-      fullStringLength: confirmString.length,
-      secretPrefix: config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING',
-      secretLength: config.secret ? config.secret.length : 0,
-    })
-    
     // Используем SHA3-256 согласно документации Mostbet API
-    // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
     let confirmSignature: string
     try {
-      // Пробуем разные варианты названия алгоритма (как в пополнении)
       const algorithms = ['sha3-256', 'SHA3-256', 'sha3_256']
       let confirmHmac: any = null
       
       for (const algo of algorithms) {
         try {
-          confirmHmac = crypto.createHmac(algo, config.secret)
+          confirmHmac = crypto.createHmac(algo, secret)
           break
         } catch (e) {
-          // Пробуем следующий вариант
           continue
         }
       }
@@ -715,83 +627,42 @@ export async function checkWithdrawAmountMostbet(
       }
       
       confirmSignature = confirmHmac.update(confirmString).digest('hex')
-      console.log(`[Mostbet Withdraw Check] Using SHA3-256 for confirm signature`)
     } catch (e: any) {
-      console.error(`❌ SHA3-256 not available: ${e.message}`)
       return {
         success: false,
         message: 'SHA3-256 is required for Mostbet API but not available',
       }
     }
-    
-    console.log(`[Mostbet Withdraw Check] ✅ Generated confirm signature:`, confirmSignature)
-    console.log(`[Mostbet Withdraw Check] 📤 Confirm URL:`, `${baseUrl}${confirmPath}`)
-    console.log(`[Mostbet Withdraw Check] 📤 Confirm headers:`, {
-      'Content-Type': 'application/json',
-      'X-Timestamp': confirmTimestamp,
-      'X-Signature': confirmSignature,
-      'X-Api-Key': apiKeyFormatted,
-      'X-Project': 'MBC',
-      'Accept': '*/*',
-    })
-    console.log(`[Mostbet Withdraw Check] 📤 Confirm body:`, confirmBodyString)
 
-    // ВАЖНО: Используем тот же подход, что и в пополнении - fetchWithTimeout и тот же порядок заголовков
-    // В пополнении порядок: X-Api-Key, X-Timestamp, X-Signature, X-Project, Content-Type, Accept
-    // И используется JSON без пробелов для отправки (как requestBody в пополнении)
     const confirmResponse = await fetchWithTimeout(
       `${baseUrl}${confirmPath}`,
       {
         method: 'POST',
         headers: {
           'X-Api-Key': apiKeyFormatted,
-          'X-Timestamp': confirmTimestamp, // Используем новый timestamp
+          'X-Timestamp': confirmTimestamp,
           'X-Signature': confirmSignature,
-          'X-Project': 'MBC', // Обязательно согласно документации
+          'X-Project': 'MBC',
           'Content-Type': 'application/json',
-          'Accept': '*/*',
         },
-        body: confirmBodyString, // Используем JSON без пробелов, как в пополнении
+        body: confirmBodyString,
       },
       10_000
     )
-    
-    console.log(`[Mostbet Withdraw Check] Confirm request:`, {
-      path: confirmPath,
-      body: confirmBody,
-      bodyString: confirmBodyString,
-      timestamp: confirmTimestamp,
-      signature: confirmSignature.substring(0, 20) + '...',
-    })
 
-    // Используем readTextWithTimeout как в пополнении
     const confirmResponseText = await readTextWithTimeout(confirmResponse, 6_000)
     let confirmData: any
     try {
       confirmData = JSON.parse(confirmResponseText)
     } catch (e) {
-      console.error(`[Mostbet Withdraw Check] Failed to parse confirm response:`, {
-        status: confirmResponse.status,
-        statusText: confirmResponse.statusText,
-        body: confirmResponseText.substring(0, 500)
-      })
       return {
         success: false,
         message: `API error: ${confirmResponse.status} ${confirmResponse.statusText}`,
       }
     }
     
-    console.log(`[Mostbet Withdraw Check] Confirm response status: ${confirmResponse.status}`, confirmData)
-
-    // Проверяем статус ответа согласно документации
     if (!confirmResponse.ok) {
       const errorMessage = confirmData.message || confirmData.code || `API error: ${confirmResponse.status} ${confirmResponse.statusText}`
-      console.error(`[Mostbet Withdraw Check] Confirm failed:`, {
-        status: confirmResponse.status,
-        statusText: confirmResponse.statusText,
-        error: errorMessage,
-        confirmData
-      })
       return {
         success: false,
         message: errorMessage,
@@ -828,13 +699,6 @@ export async function checkWithdrawAmountMostbet(
     
     // Проверяем, что сумма валидна
     if (amount === undefined || amount === null || isNaN(amount) || amount <= 0) {
-      console.error(`[Mostbet Withdraw Check] Invalid amount:`, {
-        withdrawalAmount: withdrawal.amount,
-        confirmAmount: confirmData.amount,
-        parsedAmount: amount,
-        withdrawal: withdrawal,
-        confirmData: confirmData
-      })
       return {
         success: false,
         message: 'Amount not found or invalid in withdrawal data',
@@ -848,10 +712,9 @@ export async function checkWithdrawAmountMostbet(
       message: `Withdrawal confirmed. Status: ${confirmData.status || 'NEW'}`,
     }
   } catch (error: any) {
-    console.error(`[Mostbet Withdraw Check] Error:`, error)
     return {
       success: false,
-      message: `Error checking withdrawal: ${error.message}`,
+      message: error.message || 'Unknown error',
     }
   }
 }
