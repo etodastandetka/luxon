@@ -378,6 +378,7 @@ export async function checkWithdrawsExistMostbet(
       'X-Api-Key': apiKeyFormatted,
       'X-Timestamp': timestamp,
       'X-Signature': listSignature,
+      'X-Project': 'MBC',
     }
 
     const listResponse = await fetchWithTimeout(
@@ -518,6 +519,7 @@ export async function checkWithdrawAmountMostbet(
           'X-Api-Key': apiKeyFormatted,
           'X-Timestamp': timestamp,
           'X-Signature': listSignature,
+          'X-Project': 'MBC',
         },
       },
       10_000
