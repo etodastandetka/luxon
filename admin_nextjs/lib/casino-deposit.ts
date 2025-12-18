@@ -408,6 +408,15 @@ export async function depositMostbetAPI(
     // Согласно документации: конкатенируем без разделителей
     const signatureString = `${apiKeyFormatted}${path}${requestBody}${timestamp}`
     
+    if (debug) {
+      console.log(`[Mostbet Deposit] 🔍 SIGNATURE DEBUG:`)
+      console.log(`  API Key: ${apiKeyFormatted} (length: ${apiKeyFormatted.length})`)
+      console.log(`  Path: ${path} (length: ${path.length})`)
+      console.log(`  Request Body: "${requestBody}" (length: ${requestBody.length})`)
+      console.log(`  Timestamp: ${timestamp} (length: ${timestamp.length})`)
+      console.log(`  Full String: ${signatureString} (length: ${signatureString.length})`)
+    }
+    
     // Используем SHA3-256 согласно документации Mostbet API
     // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
     let signature: string

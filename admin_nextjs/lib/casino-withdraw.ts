@@ -298,18 +298,22 @@ export async function checkWithdrawsExistMostbet(
   playerId: string,
   config: CasinoConfig
 ): Promise<{ success: boolean; hasWithdrawals: boolean; message?: string }> {
+  const apiKey = config.api_key
+  const secret = config.secret
+  const cashpointId = config.cashpoint_id
+
+  if (!apiKey || !secret || !cashpointId ||
+      apiKey.trim() === '' || secret.trim() === '' || 
+      String(cashpointId).trim() === '' || String(cashpointId).trim() === '0') {
+    return {
+      success: false,
+      hasWithdrawals: false,
+      message: 'Missing required Mostbet API credentials',
+    }
+  }
+
   try {
-    console.log(`[Mostbet Check Withdrawals] 🚀 FUNCTION CALLED - playerId: ${playerId}`)
-    console.log(`[Mostbet Check Withdrawals] Config:`, {
-      hasApiKey: !!config.api_key,
-      hasSecret: !!config.secret,
-      cashpointId: config.cashpoint_id,
-      apiKeyPrefix: config.api_key?.substring(0, 20) + '...',
-      secretPrefix: config.secret?.substring(0, 10) + '...',
-    })
-    
     const baseUrl = 'https://apimb.com'
-    const cashpointId = String(config.cashpoint_id)
     
     // Получаем timestamp в UTC в формате YYYY-MM-DD HH:MM:SS (UTC+0)
     const now = new Date()
@@ -321,13 +325,12 @@ export async function checkWithdrawsExistMostbet(
     const seconds = String(now.getUTCSeconds()).padStart(2, '0')
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
-    const apiKey = config.api_key!
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
       ? apiKey
       : `api-key:${apiKey}`
 
     // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
-    let cashpointIdForUrl = cashpointId
+    let cashpointIdForUrl = String(cashpointId)
     const numericMatch = cashpointIdForUrl.match(/\d+/)
     if (numericMatch) {
       cashpointIdForUrl = numericMatch[0]
@@ -338,43 +341,22 @@ export async function checkWithdrawsExistMostbet(
     const listQueryParams = `?page=1&size=10&searchString=${playerId}`
     const listUrl = `${baseUrl}${listPath}${listQueryParams}`
     
-    // Проверяем наличие secret перед созданием подписи
-    if (!config.secret || config.secret.trim() === '') {
-      return {
-        success: false,
-        hasWithdrawals: false,
-        message: 'Mostbet API secret is missing or empty',
-      }
-    }
-    
     // Формируем строку для подписи: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
-    // Для GET запросов REQUEST_BODY - пустая строка, но она должна быть явно указана в формуле
-    // Согласно документации: конкатенируем без разделителей: <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
-    const requestBody = '' // Для GET запросов REQUEST_BODY - пустая строка
+    // Для GET запросов REQUEST_BODY - пустая строка
+    const requestBody = ''
     const listString = `${apiKeyFormatted}${listPath}${requestBody}${timestamp}`
     
-    console.log(`[Mostbet Check Withdrawals] 🔍 DETAILED SIGNATURE DEBUG:`)
-    console.log(`  API Key: ${apiKeyFormatted} (length: ${apiKeyFormatted.length})`)
-    console.log(`  Path: ${listPath} (length: ${listPath.length})`)
-    console.log(`  Request Body: "${requestBody}" (length: ${requestBody.length})`)
-    console.log(`  Timestamp: ${timestamp} (length: ${timestamp.length})`)
-    console.log(`  Full String: ${listString} (length: ${listString.length})`)
-    console.log(`  Secret: ${config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING'} (length: ${config.secret ? config.secret.length : 0})`)
-    
     // Используем SHA3-256 согласно документации Mostbet API
-    // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
     let listSignature: string
     try {
-      // Пробуем разные варианты названия алгоритма (как в пополнении)
       const algorithms = ['sha3-256', 'SHA3-256', 'sha3_256']
       let listHmac: any = null
       
       for (const algo of algorithms) {
         try {
-          listHmac = crypto.createHmac(algo, config.secret)
+          listHmac = crypto.createHmac(algo, secret)
           break
         } catch (e) {
-          // Пробуем следующий вариант
           continue
         }
       }
@@ -384,9 +366,7 @@ export async function checkWithdrawsExistMostbet(
       }
       
       listSignature = listHmac.update(listString).digest('hex')
-      console.log(`[Mostbet Check Withdrawals] Using SHA3-256 for signature`)
     } catch (e: any) {
-      console.error(`❌ SHA3-256 not available: ${e.message}`)
       return {
         success: false,
         hasWithdrawals: false,
@@ -394,40 +374,26 @@ export async function checkWithdrawsExistMostbet(
       }
     }
     
-    console.log(`[Mostbet Check Withdrawals] ✅ Generated signature:`, listSignature)
-    console.log(`[Mostbet Check Withdrawals] 📤 Request URL:`, listUrl)
-    console.log(`[Mostbet Check Withdrawals] 📤 Request headers:`, {
+    const listHeaders = {
+      'X-Api-Key': apiKeyFormatted,
       'X-Timestamp': timestamp,
       'X-Signature': listSignature,
-      'X-Api-Key': apiKeyFormatted,
-      'Accept': '*/*',
-    })
+    }
 
     const listResponse = await fetchWithTimeout(
       listUrl,
       {
         method: 'GET',
-        headers: {
-          'X-Timestamp': timestamp,
-          'X-Signature': listSignature,
-          'X-Api-Key': apiKeyFormatted,
-          'Accept': '*/*',
-        },
+        headers: listHeaders,
       },
-      10_000 // Таймаут 10 секунд
+      10_000
     )
 
-    // Используем readTextWithTimeout как в пополнении
     const listResponseText = await readTextWithTimeout(listResponse, 6_000)
     let listData: any
     try {
       listData = JSON.parse(listResponseText)
     } catch (e) {
-      console.error(`[Mostbet Check Withdrawals] Failed to parse list response:`, {
-        status: listResponse.status,
-        statusText: listResponse.statusText,
-        body: listResponseText.substring(0, 500)
-      })
       return {
         success: false,
         hasWithdrawals: false,
@@ -435,25 +401,7 @@ export async function checkWithdrawsExistMostbet(
       }
     }
     
-    console.log(`[Mostbet Check Withdrawals] 📥 Response status: ${listResponse.status}`, {
-      ok: listResponse.ok,
-      statusText: listResponse.statusText,
-      data: listData,
-    })
-    
     if (!listResponse.ok) {
-      console.error(`[Mostbet Check Withdrawals] ❌ API Error Response:`)
-      console.error(`  Status: ${listResponse.status} ${listResponse.statusText}`)
-      console.error(`  Response:`, JSON.stringify(listData, null, 2))
-      console.error(`  Request URL: ${listUrl}`)
-      console.error(`  Signature Components:`)
-      console.error(`    API Key: ${apiKeyFormatted}`)
-      console.error(`    Path: ${listPath}`)
-      console.error(`    Request Body: "${requestBody}"`)
-      console.error(`    Timestamp: ${timestamp}`)
-      console.error(`    Full String: ${listString}`)
-      console.error(`    Generated Signature: ${listSignature}`)
-      console.error(`    Secret: ${config.secret ? config.secret.substring(0, 10) + '...' : 'MISSING'}`)
       return {
         success: false,
         hasWithdrawals: false,
@@ -470,11 +418,10 @@ export async function checkWithdrawsExistMostbet(
       message: hasWithdrawals ? 'Withdrawals found' : 'No withdrawals found for this player',
     }
   } catch (error: any) {
-    console.error(`[Mostbet Check Withdrawals] Error:`, error)
     return {
       success: false,
       hasWithdrawals: false,
-      message: `Error: ${error.message}`,
+      message: error.message || 'Unknown error',
     }
   }
 }
