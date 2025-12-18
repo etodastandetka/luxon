@@ -84,19 +84,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       )
     },
     { 
-      href: '/dashboard/limits', 
-      label: 'ЛИМИТЫ', 
+      href: '/dashboard/operator-chats', 
+      label: 'ОПЕРАТОР', 
       icon: (
-        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-          <circle cx="6" cy="6" r="2" fill="currentColor"/>
-          <line x1="6" y1="10" x2="6" y2="18" stroke="currentColor" strokeWidth="2"/>
-          <circle cx="6" cy="18" r="2" fill="currentColor"/>
-          <circle cx="12" cy="6" r="2" fill="currentColor"/>
-          <line x1="12" y1="10" x2="12" y2="18" stroke="currentColor" strokeWidth="2"/>
-          <circle cx="12" cy="18" r="2" fill="currentColor"/>
-          <circle cx="18" cy="6" r="2" fill="currentColor"/>
-          <line x1="18" y1="10" x2="18" y2="18" stroke="currentColor" strokeWidth="2"/>
-          <circle cx="18" cy="18" r="2" fill="currentColor"/>
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2h-2m-2-12H7a2 2 0 00-2 2v8a2 2 0 002 2h8m0-12V6a2 2 0 00-2-2H7a2 2 0 00-2 2v2" />
         </svg>
       )
     },
@@ -106,15 +98,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      )
-    },
-    { 
-      href: '/dashboard/operator-chats', 
-      label: 'ОПЕРАТОР', 
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2h-2m-2-12H7a2 2 0 00-2 2v8a2 2 0 002 2h8m0-12V6a2 2 0 00-2-2H7a2 2 0 00-2 2v2" />
         </svg>
       )
     },
