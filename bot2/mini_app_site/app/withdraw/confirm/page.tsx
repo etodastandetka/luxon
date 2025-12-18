@@ -212,6 +212,9 @@ export default function WithdrawConfirm() {
       // Создаем заявку в админке
       console.log('📤 Создаем заявку в админке...')
       
+      // Получаем transactionId из localStorage если есть (для Mostbet)
+      const savedTransactionId = localStorage.getItem('withdraw_transaction_id') || null
+      
       const requestBody = {
         type: 'withdraw',
         bookmaker: bookmaker,
@@ -223,6 +226,7 @@ export default function WithdrawConfirm() {
         playerId: userId,
         qr_photo: qrPhoto,
         site_code: siteCode,
+        transaction_id: savedTransactionId, // ID транзакции от Mostbet API
         telegram_user_id: telegramUserId,
         telegram_username: telegramUser?.username,
         telegram_first_name: telegramUser?.first_name,
@@ -328,6 +332,7 @@ export default function WithdrawConfirm() {
         localStorage.removeItem('withdraw_user_id')
         localStorage.removeItem('withdraw_site_code')
         localStorage.removeItem('withdraw_amount')
+        localStorage.removeItem('withdraw_transaction_id')
         localStorage.removeItem('withdraw_request_created')
         
         // Перенаправляем на главную через 2 секунды

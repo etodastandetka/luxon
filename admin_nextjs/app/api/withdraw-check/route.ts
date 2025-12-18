@@ -55,49 +55,7 @@ export async function POST(request: NextRequest) {
       return response
     }
 
-    // Проверяем Content-Type
-    const contentType = request.headers.get('content-type') || ''
-    console.log(`[Withdraw Check] Content-Type: ${contentType}`)
-    
-    // Парсим тело запроса с обработкой ошибок
-    let body: any
-    try {
-      if (!contentType.includes('application/json')) {
-        console.error(`[Withdraw Check] Invalid Content-Type: ${contentType}, expected application/json`)
-        return NextResponse.json(
-          createApiResponse(null, 'Content-Type must be application/json'),
-          { 
-            status: 400,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
-      }
-      
-      body = await request.json()
-      console.log(`[Withdraw Check] Request body parsed successfully:`, {
-        hasBookmaker: !!body.bookmaker,
-        hasPlayerId: !!body.playerId,
-        hasCode: !!body.code,
-        codeLength: body.code?.length,
-      })
-    } catch (error: any) {
-      console.error(`[Withdraw Check] Failed to parse request body:`, {
-        error: error.message,
-        contentType,
-        errorName: error.name,
-      })
-      return NextResponse.json(
-        createApiResponse(null, `Invalid JSON body: ${error.message}`),
-        { 
-          status: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
-    }
+    const body = await request.json()
 
     // 🛡️ Валидация и очистка входных данных
     const sanitizedBody = sanitizeInput(body)
@@ -248,8 +206,6 @@ export async function POST(request: NextRequest) {
 
     // Для Mostbet
     if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
-      console.log(`[Withdraw Check] Mostbet detected, loading configuration...`)
-      
       const setting = await prisma.botConfiguration.findFirst({
         where: { key: 'mostbet_api_config' },
       })
@@ -262,12 +218,6 @@ export async function POST(request: NextRequest) {
             secret: settingConfig.secret,
             cashpoint_id: String(settingConfig.cashpoint_id),
           }
-          console.log(`[Withdraw Check] Mostbet config loaded from database:`, {
-            hasApiKey: !!config.api_key,
-            hasSecret: !!config.secret,
-            cashpointId: config.cashpoint_id,
-            apiKeyPrefix: config.api_key?.substring(0, 20) + '...',
-          })
         }
       }
 
@@ -277,20 +227,7 @@ export async function POST(request: NextRequest) {
           secret: process.env.MOSTBET_SECRET || '73353b6b-868e-4561-9128-dce1c91bd24e',
           cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C92905',
         }
-        console.log(`[Withdraw Check] Mostbet config loaded from environment:`, {
-          hasApiKey: !!config.api_key,
-          hasSecret: !!config.secret,
-          cashpointId: config.cashpoint_id,
-          apiKeyPrefix: config.api_key?.substring(0, 20) + '...',
-        })
       }
-
-      console.log(`[Withdraw Check] Calling processWithdraw for Mostbet:`, {
-        bookmaker,
-        playerId,
-        codeLength: code?.length,
-        hasConfig: !!config,
-      })
     }
 
     // Для 1win
@@ -328,31 +265,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем вывод через API казино
-    console.log(`[Withdraw Check] Calling processWithdraw:`, {
-      bookmaker,
-      playerId,
-      codeLength: code?.length,
-      hasConfig: !!config,
-      configKeys: config ? Object.keys(config) : [],
-    })
-    
     const result = await processWithdraw(bookmaker, playerId, code, config)
 
-    console.log(`[Withdraw Check] processWithdraw result:`, {
-      success: result.success,
-      amount: result.amount,
-      transactionId: result.transactionId,
-      message: result.message,
-      hasError: !!result.message,
-    })
-
     if (!result.success) {
-      console.error(`[Withdraw Check] processWithdraw failed:`, {
-        message: result.message,
-        bookmaker,
-        playerId,
-        codeLength: code?.length,
-      })
       return NextResponse.json(
         createApiResponse(null, result.message || 'Failed to check withdrawal'),
         { 
@@ -364,15 +279,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Для 1xbet, 888starz и Winwin вывод уже выполнен на этом этапе (Cashdesk API Payout сразу выполняет вывод)
-    // Для остальных казино вывод будет выполнен позже
+    // Для 1xbet, 888starz, Winwin и Mostbet вывод уже выполнен на этом этапе
+    // Cashdesk API Payout сразу выполняет вывод для 1xbet/888starz/Winwin
+    // Mostbet API confirmation сразу выполняет вывод
     const isAlreadyExecuted = normalizedBookmaker.includes('1xbet') || 
                               normalizedBookmaker === '1xbet' ||
                               normalizedBookmaker.includes('888starz') || 
                               normalizedBookmaker.includes('888') || 
                               normalizedBookmaker === '888starz' ||
                               normalizedBookmaker.includes('winwin') ||
-                              normalizedBookmaker === 'winwin'
+                              normalizedBookmaker === 'winwin' ||
+                              normalizedBookmaker.includes('mostbet') ||
+                              normalizedBookmaker === 'mostbet'
 
     console.log(`[Withdraw Check] Result:`, {
       success: result.success,
@@ -406,13 +324,18 @@ export async function POST(request: NextRequest) {
     const responseData = createApiResponse(
       {
         amount: result.amount,
-        transactionId: result.transactionId,
+        transactionId: result.transactionId, // ID транзакции от Mostbet API
         message: result.message,
         alreadyExecuted: isAlreadyExecuted, // Флаг, что вывод уже выполнен
       },
       undefined, // error - нет ошибки
       isAlreadyExecuted ? 'Withdrawal executed successfully' : 'Withdrawal checked successfully' // message - сообщение об успехе
     )
+    
+    // Логируем transactionId для Mostbet
+    if (result.transactionId && (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet')) {
+      console.log(`[Withdraw Check] Mostbet transactionId: ${result.transactionId}`)
+    }
 
     console.log(`[Withdraw Check] Response data:`, JSON.stringify(responseData, null, 2))
 

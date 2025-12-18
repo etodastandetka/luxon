@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
       payment_method, // 'bank' или 'crypto'
       crypto_invoice_id, // ID крипто invoice
       site_code, // Код ордера на вывод (для withdraw)
+      transaction_id, // ID транзакции от Mostbet API (для withdraw)
     } = sanitizedBody
 
     // 🛡️ Проверка на SQL инъекции и XSS в строковых полях
@@ -347,6 +348,7 @@ export async function POST(request: NextRequest) {
 
     // Для error_log сохраняем информацию об ошибке в statusDetail
     // Для криптоплатежей сохраняем amount_usd в statusDetail
+    // Для вывода Mostbet сохраняем transaction_id в statusDetail
     let statusDetail: string | null = null
     if (type === 'error_log' && body.error) {
       // Сохраняем информацию об ошибке
@@ -361,6 +363,13 @@ export async function POST(request: NextRequest) {
         amount_usd: parseFloat(amount_usd),
         amount_kgs: parseFloat(amount)
       })
+    } else if (type === 'withdraw' && transaction_id) {
+      // Сохраняем transaction_id от Mostbet API в statusDetail
+      statusDetail = JSON.stringify({
+        transaction_id: transaction_id,
+        source: 'mostbet_api'
+      })
+      console.log(`[Payment API] Saving transaction_id for Mostbet withdrawal: ${transaction_id}`)
     }
 
     // Нормализуем фото чека: убеждаемся что это валидный base64 с префиксом

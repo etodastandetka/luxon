@@ -136,19 +136,7 @@ export default function WithdrawStep5() {
     try {
       const base = getApiBase()
       
-      const requestBody = {
-        bookmaker: bookmaker,
-        playerId: userId,
-        code: siteCode.trim(),
-      }
-      
-      console.log('🔄 Проверка кода вывода:', { 
-        bookmaker, 
-        userId, 
-        codeLength: siteCode.trim().length,
-        requestBody,
-        apiUrl: `${base}/api/withdraw-check`
-      })
+      console.log('🔄 Проверка кода вывода:', { bookmaker, userId, codeLength: siteCode.trim().length })
       
       // Только проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
       // Вывод будет выполнен на странице подтверждения
@@ -157,7 +145,11 @@ export default function WithdrawStep5() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          bookmaker: bookmaker,
+          playerId: userId,
+          code: siteCode.trim(),
+        }),
         timeout: 30000,
         retries: 2,
         retryDelay: 1000
@@ -166,8 +158,7 @@ export default function WithdrawStep5() {
       console.log('📥 Ответ от сервера:', {
         status: response.status,
         statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
+        ok: response.ok
       })
 
       if (!response.ok) {
@@ -175,22 +166,9 @@ export default function WithdrawStep5() {
         console.error('❌ Ошибка ответа сервера:', {
           status: response.status,
           statusText: response.statusText,
-          errorText: errorText.substring(0, 1000), // Первые 1000 символов
-          requestBody,
+          errorText
         })
-        
-        // Пытаемся распарсить ошибку как JSON
-        let errorData: any = null
-        try {
-          if (errorText) {
-            errorData = JSON.parse(errorText)
-          }
-        } catch (e) {
-          // Не JSON
-        }
-        
-        const errorMessage = errorData?.error || errorData?.message || errorData?.data?.error || errorData?.data?.message || `Ошибка сервера: ${response.status} ${response.statusText}`
-        throw new Error(errorMessage)
+        throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`)
       }
 
       const data = await response.json()
@@ -294,6 +272,15 @@ export default function WithdrawStep5() {
           const amountStr = amount.toString()
           localStorage.setItem('withdraw_amount', amountStr)
           localStorage.setItem('withdraw_site_code', siteCode.trim())
+          
+          // Сохраняем transactionId если он есть (для Mostbet и других казино)
+          if (data.data?.transactionId) {
+            localStorage.setItem('withdraw_transaction_id', String(data.data.transactionId))
+            console.log('[Withdraw Step5] ✅ TransactionId saved:', data.data.transactionId)
+          } else if (data.transactionId) {
+            localStorage.setItem('withdraw_transaction_id', String(data.transactionId))
+            console.log('[Withdraw Step5] ✅ TransactionId saved (from data root):', data.transactionId)
+          }
           
           // Проверяем, что сумма сохранилась
           const savedAmount = localStorage.getItem('withdraw_amount')
@@ -415,6 +402,7 @@ export default function WithdrawStep5() {
       const savedPhone = localStorage.getItem('withdraw_phone') || phone
       const savedUserId = localStorage.getItem('withdraw_user_id') || userId
       const savedSiteCode = localStorage.getItem('withdraw_site_code') || siteCode.trim()
+      const savedTransactionId = localStorage.getItem('withdraw_transaction_id') || null
 
       // Для 1xbet сначала выполняем вывод (mobile.withdrawal)
       const normalizedBookmaker = savedBookmaker.toLowerCase()
@@ -538,6 +526,7 @@ export default function WithdrawStep5() {
         playerId: savedUserId,
         qr_photo: savedQrPhoto,
         site_code: savedSiteCode,
+        transaction_id: savedTransactionId, // ID транзакции от Mostbet API
         telegram_user_id: telegramUserId,
         telegram_username: telegramUser?.username,
         telegram_first_name: telegramUser?.first_name,
@@ -641,6 +630,7 @@ export default function WithdrawStep5() {
         localStorage.removeItem('withdraw_user_id')
         localStorage.removeItem('withdraw_site_code')
         localStorage.removeItem('withdraw_amount')
+        localStorage.removeItem('withdraw_transaction_id')
         localStorage.removeItem('withdraw_request_created')
         
         // Перенаправляем на главную через 2 секунды
@@ -816,6 +806,9 @@ export default function WithdrawStep5() {
       
       const cleanPhone = phone.replace(/[^\d]/g, '')
       
+      // Получаем transactionId из localStorage если есть
+      const savedTransactionId = localStorage.getItem('withdraw_transaction_id') || null
+      
       const requestBody = {
         type: 'withdraw',
         bookmaker: bookmaker,
@@ -827,6 +820,7 @@ export default function WithdrawStep5() {
         playerId: userId,
         qr_photo: qrPhoto,
         site_code: siteCode.trim(),
+        transaction_id: savedTransactionId, // ID транзакции от Mostbet API
         telegram_user_id: telegramUserId,
         telegram_username: telegramUser?.username,
         telegram_first_name: telegramUser?.first_name,
@@ -927,6 +921,7 @@ export default function WithdrawStep5() {
         localStorage.removeItem('withdraw_user_id')
         localStorage.removeItem('withdraw_site_code')
         localStorage.removeItem('withdraw_amount')
+        localStorage.removeItem('withdraw_transaction_id')
         localStorage.removeItem('withdraw_request_created')
         
         // Перенаправляем на главную через 2 секунды
