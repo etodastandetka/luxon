@@ -425,10 +425,32 @@ export async function checkWithdrawAmountMostbet(
       },
     })
 
-    const listData = await listResponse.json()
-    console.log(`[Mostbet Withdraw Check] List response:`, listData)
+    let listData: any
+    try {
+      listData = await listResponse.json()
+    } catch (e) {
+      const text = await listResponse.text()
+      console.error(`[Mostbet Withdraw Check] Failed to parse list response:`, {
+        status: listResponse.status,
+        statusText: listResponse.statusText,
+        body: text.substring(0, 500)
+      })
+      return {
+        success: false,
+        message: `API error: ${listResponse.status} ${listResponse.statusText}`,
+      }
+    }
+    
+    console.log(`[Mostbet Withdraw Check] List response status: ${listResponse.status}`, listData)
 
-    if (!listResponse.ok || !listData.items || listData.items.length === 0) {
+    if (!listResponse.ok) {
+      return {
+        success: false,
+        message: listData.message || listData.code || `API error: ${listResponse.status} ${listResponse.statusText}`,
+      }
+    }
+
+    if (!listData.items || listData.items.length === 0) {
       return {
         success: false,
         message: 'No withdrawal request found for this player',
@@ -488,14 +510,36 @@ export async function checkWithdrawAmountMostbet(
       body: confirmBodyString,
     })
 
-    const confirmData = await confirmResponse.json()
-    console.log(`[Mostbet Withdraw Check] Confirm response:`, confirmData)
+    let confirmData: any
+    try {
+      confirmData = await confirmResponse.json()
+    } catch (e) {
+      const text = await confirmResponse.text()
+      console.error(`[Mostbet Withdraw Check] Failed to parse confirm response:`, {
+        status: confirmResponse.status,
+        statusText: confirmResponse.statusText,
+        body: text.substring(0, 500)
+      })
+      return {
+        success: false,
+        message: `API error: ${confirmResponse.status} ${confirmResponse.statusText}`,
+      }
+    }
+    
+    console.log(`[Mostbet Withdraw Check] Confirm response status: ${confirmResponse.status}`, confirmData)
 
     // Проверяем статус ответа согласно документации
     if (!confirmResponse.ok) {
+      const errorMessage = confirmData.message || confirmData.code || `API error: ${confirmResponse.status} ${confirmResponse.statusText}`
+      console.error(`[Mostbet Withdraw Check] Confirm failed:`, {
+        status: confirmResponse.status,
+        statusText: confirmResponse.statusText,
+        error: errorMessage,
+        confirmData
+      })
       return {
         success: false,
-        message: confirmData.message || confirmData.code || 'Invalid code or withdrawal not found',
+        message: errorMessage,
       }
     }
 
