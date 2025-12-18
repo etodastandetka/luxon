@@ -328,17 +328,26 @@ export async function checkWithdrawsExistMostbet(
     })
 
     const listData = await listResponse.json()
+    console.log(`[Mostbet Check Withdrawals] List response:`, listData)
     
     if (!listResponse.ok) {
+      const errorMessage = listData.message || listData.error || `API error: ${listResponse.status}`
+      console.error(`[Mostbet Check Withdrawals] API error:`, {
+        status: listResponse.status,
+        message: errorMessage,
+        data: listData
+      })
       return {
         success: false,
         hasWithdrawals: false,
-        message: listData.message || 'Failed to check withdrawals',
+        message: errorMessage || 'Failed to check withdrawals',
       }
     }
 
     const hasWithdrawals = listData.items && listData.items.length > 0 && 
       listData.items.some((item: any) => item.playerId === String(playerId))
+    
+    console.log(`[Mostbet Check Withdrawals] Has withdrawals: ${hasWithdrawals} for player ${playerId}`)
 
     return {
       success: true,
@@ -432,10 +441,26 @@ export async function checkWithdrawAmountMostbet(
     const listData = await listResponse.json()
     console.log(`[Mostbet Withdraw Check] List response:`, listData)
 
-    if (!listResponse.ok || !listData.items || listData.items.length === 0) {
+    // Проверяем ошибки от API
+    if (!listResponse.ok) {
+      const errorMessage = listData.message || listData.error || `API error: ${listResponse.status}`
+      console.error(`[Mostbet Withdraw Check] API error:`, {
+        status: listResponse.status,
+        message: errorMessage,
+        data: listData
+      })
       return {
         success: false,
-        message: 'No withdrawal request found for this player',
+        message: errorMessage || 'Failed to check withdrawals from Mostbet API',
+      }
+    }
+
+    // Проверяем наличие выводов
+    if (!listData.items || listData.items.length === 0) {
+      console.log(`[Mostbet Withdraw Check] No withdrawals found for player ${playerId}`)
+      return {
+        success: false,
+        message: 'У этого игрока нет активных запросов на вывод. Убедитесь, что вы создали заявку на вывод в казино Mostbet.',
       }
     }
 
@@ -446,6 +471,7 @@ export async function checkWithdrawAmountMostbet(
 
     if (!withdrawal) {
       // Если не нашли точно по ID, берем первый (может быть новый запрос)
+      console.log(`[Mostbet Withdraw Check] Player ${playerId} not found in list, using first withdrawal:`, listData.items[0])
       withdrawal = listData.items[0]
     }
 
@@ -500,10 +526,30 @@ export async function checkWithdrawAmountMostbet(
     const confirmData = await confirmResponse.json()
     console.log(`[Mostbet Withdraw Check] Confirm response:`, confirmData)
 
-    if (!confirmResponse.ok || confirmData.status === 'NEW_ERROR' || confirmData.status === 'PROCESSING_ERROR') {
+    if (!confirmResponse.ok) {
+      const errorMessage = confirmData.message || confirmData.error || `API error: ${confirmResponse.status}`
+      console.error(`[Mostbet Withdraw Check] Confirm API error:`, {
+        status: confirmResponse.status,
+        message: errorMessage,
+        data: confirmData
+      })
       return {
         success: false,
-        message: confirmData.message || 'Invalid code or withdrawal not found',
+        message: errorMessage || 'Ошибка при подтверждении вывода. Проверьте код и попробуйте еще раз.',
+      }
+    }
+
+    if (confirmData.status === 'NEW_ERROR' || confirmData.status === 'PROCESSING_ERROR' || confirmData.status === 'CANCELED' || confirmData.status === 'EXPIRED') {
+      const statusMessages: Record<string, string> = {
+        'NEW_ERROR': 'Ошибка при создании транзакции вывода',
+        'PROCESSING_ERROR': 'Ошибка при обработке транзакции',
+        'CANCELED': 'Транзакция была отменена',
+        'EXPIRED': 'Код подтверждения просрочен. Создайте новую заявку на вывод в казино.',
+      }
+      const message = confirmData.message || statusMessages[confirmData.status] || 'Неверный код или транзакция недоступна'
+      return {
+        success: false,
+        message: message,
       }
     }
 

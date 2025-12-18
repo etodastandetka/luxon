@@ -356,7 +356,21 @@ export default function WithdrawStep5() {
         // Ошибка от API
         console.error('[Withdraw Step5] Error response:', data)
         setWithdrawAmount(null)
-        const errorMessage = data.error || data.message || 'Код неверный или вывод не найден'
+        
+        // Улучшенные сообщения об ошибках
+        let errorMessage = data.error || data.message || 'Код неверный или вывод не найден'
+        
+        // Специальные сообщения для разных типов ошибок
+        if (errorMessage.includes('нет активных запросов') || errorMessage.includes('No withdrawal request')) {
+          errorMessage = 'У вас нет активных запросов на вывод. Убедитесь, что вы создали заявку на вывод в казино Mostbet и ввели правильный ID аккаунта.'
+        } else if (errorMessage.includes('просрочен') || errorMessage.includes('EXPIRED')) {
+          errorMessage = 'Код подтверждения просрочен. Создайте новую заявку на вывод в казино Mostbet.'
+        } else if (errorMessage.includes('отменена') || errorMessage.includes('CANCELED')) {
+          errorMessage = 'Транзакция была отменена. Создайте новую заявку на вывод в казино Mostbet.'
+        } else if (errorMessage.includes('неверный код') || errorMessage.includes('Invalid code')) {
+          errorMessage = 'Неверный код подтверждения. Проверьте код, который вы получили в казино Mostbet.'
+        }
+        
         setError(errorMessage)
       }
     } catch (error: any) {
