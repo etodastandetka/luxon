@@ -570,6 +570,8 @@ export async function checkWithdrawAmountMostbet(
     
     console.log(`[Mostbet Withdraw Check] Generated signature:`, confirmSignature.substring(0, 20) + '...')
 
+    // ВАЖНО: Для подписи используется JSON без пробелов (confirmBodyString)
+    // Для отправки используется обычный JSON (JSON.stringify(confirmBody))
     const confirmResponse = await fetch(`${baseUrl}${confirmPath}`, {
       method: 'POST',
       headers: {
@@ -580,7 +582,7 @@ export async function checkWithdrawAmountMostbet(
         'X-Project': 'MBC', // Обязательно согласно документации
         'Accept': '*/*',
       },
-      body: confirmBodyString,
+      body: JSON.stringify(confirmBody), // Используем обычный JSON для отправки, не confirmBodyString
     })
     
     console.log(`[Mostbet Withdraw Check] Confirm request:`, {
