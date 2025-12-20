@@ -32,16 +32,28 @@ export async function POST(
       )
     }
 
-    const message = await prisma.operatorMessage.create({
-      data: {
-        userId,
-        messageText: message_text || null,
-        messageType: message_type,
-        direction: 'in',
-        telegramMessageId: telegram_message_id ? BigInt(telegram_message_id) : null,
-        mediaUrl: media_url || null,
-      },
-    })
+    let message
+    try {
+      message = await prisma.operatorMessage.create({
+        data: {
+          userId,
+          messageText: message_text || null,
+          messageType: message_type,
+          direction: 'in',
+          telegramMessageId: telegram_message_id ? BigInt(telegram_message_id) : null,
+          mediaUrl: media_url || null,
+        },
+      })
+    } catch (error: any) {
+      // Если таблица operator_messages не существует (P2021), пропускаем сохранение в БД
+      if (error.code === 'P2021' && error.meta?.table === 'public.operator_messages') {
+        console.warn('⚠️ operator_messages table not found, skipping DB save')
+        // Создаем минимальный объект для ответа
+        message = { id: 0 } as any
+      } else {
+        throw error
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -57,6 +69,7 @@ export async function POST(
 }
 
 export const dynamic = 'force-dynamic'
+
 
 
 

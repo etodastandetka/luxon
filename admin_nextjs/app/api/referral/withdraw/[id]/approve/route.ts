@@ -38,6 +38,43 @@ export async function POST(
       }, { status: 400 })
     }
     
+    // Проверяем, есть ли достаточно средств для вывода (заработано - уже выведено)
+    const earnings = await prisma.botReferralEarning.findMany({
+      where: {
+        referrer: {
+          userId: withdrawalRequest.userId
+        },
+        status: 'completed'
+      }
+    })
+    
+    const totalEarned = earnings.reduce((sum, e) => {
+      return sum + (e.commissionAmount ? parseFloat(e.commissionAmount.toString()) : 0)
+    }, 0)
+    
+    const completedWithdrawals = await prisma.referralWithdrawalRequest.findMany({
+      where: {
+        userId: withdrawalRequest.userId,
+        status: 'completed',
+        id: { not: requestId } // Исключаем текущую заявку
+      }
+    })
+    
+    const totalWithdrawn = completedWithdrawals.reduce((sum, w) => {
+      return sum + (w.amount ? parseFloat(w.amount.toString()) : 0)
+    }, 0)
+    
+    const availableBalance = totalEarned - totalWithdrawn
+    const requestAmount = parseFloat(withdrawalRequest.amount.toString())
+    
+    // Проверяем, достаточно ли средств
+    if (availableBalance < requestAmount) {
+      return NextResponse.json({
+        success: false,
+        error: `Недостаточно средств для вывода. Доступно: ${availableBalance.toFixed(2)} сом, запрошено: ${requestAmount.toFixed(2)} сом`
+      }, { status: 400 })
+    }
+    
     // Пополняем баланс в казино
     const { depositToCasino } = await import('../../../../../../lib/deposit-balance')
     
@@ -45,11 +82,11 @@ export async function POST(
       await depositToCasino(
         withdrawalRequest.bookmaker,
         withdrawalRequest.bookmakerAccountId,
-        parseFloat(withdrawalRequest.amount.toString()),
+        requestAmount,
         undefined // Для referral withdrawal не передаем requestId, так как это другая таблица
       )
       
-      // Обновляем статус заявки
+      // Обновляем статус заявки на completed (теперь деньги списаны из баланса)
       const updatedRequest = await prisma.referralWithdrawalRequest.update({
         where: { id: requestId },
         data: {
@@ -59,11 +96,13 @@ export async function POST(
         }
       })
       
+      console.log(`✅ [Referral Withdraw Approve] Заявка #${requestId} подтверждена. Сумма ${requestAmount.toFixed(2)} сом списана с баланса и пополнена в казино.`)
+      
       // Отправляем уведомление в группу о завершении вывода
       const amountStr = parseFloat(updatedRequest.amount.toString()).toFixed(2)
       const usernameStr = updatedRequest.username || updatedRequest.firstName || 'Пользователь'
       
-      const groupMessage = `✅ <b>Вывод обработан</b>\n\n` +
+      const groupMessage = `✅ <b>Реферальный вывод обработан</b>\n\n` +
         `👤 Пользователь: ${usernameStr}\n` +
         `💰 Сумма: ${amountStr} ${updatedRequest.currency}\n` +
         `🎰 Казино: ${updatedRequest.bookmaker}\n` +

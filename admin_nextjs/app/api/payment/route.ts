@@ -691,6 +691,7 @@ export async function PUT(request: NextRequest) {
     const response = NextResponse.json(
       createApiResponse({
         ...updatedRequest,
+        userId: updatedRequest.userId.toString(), // Convert BigInt to string
         amount: updatedRequest.amount ? updatedRequest.amount.toString() : null,
       })
     )

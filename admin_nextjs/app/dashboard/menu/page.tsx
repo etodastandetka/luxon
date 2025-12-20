@@ -17,6 +17,7 @@ export default function MenuPage() {
     { href: '/dashboard/crypto', label: 'Крипто', icon: '₿' },
     { href: '/dashboard/limits', label: 'Лимиты', icon: '⚙️' },
     { href: '/dashboard/referral-withdrawals', label: 'Реф. вывод', icon: '💸' },
+    { href: '/dashboard/referral-top-payout', label: 'Выплата топ-5', icon: '🏆' },
     { href: '/dashboard/broadcast', label: 'Рассылка', icon: '📢' },
     { href: '/dashboard/banners', label: 'Баннеры', icon: '🎨' },
     { href: '/dashboard/settings', label: 'Настройки', icon: '🔧' },

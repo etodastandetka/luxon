@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       return sum + (e.commissionAmount ? parseFloat(e.commissionAmount.toString()) : 0)
     }, 0)
     
-    // Получаем уже выведенные средства
+    // Получаем уже выведенные средства (только completed - подтвержденные админом и выплаченные)
     const completedWithdrawals = await prisma.referralWithdrawalRequest.findMany({
       where: {
         userId: BigInt(userId),
@@ -75,24 +75,10 @@ export async function POST(request: NextRequest) {
       return sum + (w.amount ? parseFloat(w.amount.toString()) : 0)
     }, 0)
     
+    // Доступный баланс = заработанное - выведенное (pending заявки НЕ учитываются - деньги остаются на балансе)
     const availableBalance = totalEarned - totalWithdrawn
     
-    // Проверяем, нет ли уже pending заявки
-    const pendingWithdrawal = await prisma.referralWithdrawalRequest.findFirst({
-      where: {
-        userId: BigInt(userId),
-        status: 'pending'
-      }
-    })
-    
-    if (pendingWithdrawal) {
-      const errorResponse = NextResponse.json({
-        success: false,
-        error: 'У вас уже есть заявка на вывод в обработке'
-      }, { status: 400 })
-      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
-      return errorResponse
-    }
+    console.log(`[Referral Withdraw Create] User ${userId}: Earned=${totalEarned.toFixed(2)}, Withdrawn=${totalWithdrawn.toFixed(2)}, Available=${availableBalance.toFixed(2)}`)
     
     // ВАЖНО: Можно вывести только весь баланс сразу
     const tolerance = 0.01 // Допустимая погрешность для округления
@@ -121,7 +107,7 @@ export async function POST(request: NextRequest) {
     const lastName = body.last_name || tg.last_name || null
     const phoneNumber = body.phone_number || tg.phone_number || null
     
-    // Создаем заявку на вывод
+    // Создаем заявку на вывод (деньги НЕ списываются, остаются на балансе до подтверждения админом)
     const withdrawalRequest = await prisma.referralWithdrawalRequest.create({
       data: {
         userId: BigInt(userId),
@@ -138,6 +124,8 @@ export async function POST(request: NextRequest) {
         status: 'pending'
       }
     })
+    
+    console.log(`✅ [Referral Withdraw Create] Заявка #${withdrawalRequest.id} создана успешно. Сумма ${amount.toFixed(2)} сом НЕ списана (остается на балансе до подтверждения админом).`)
     
     // Отправляем уведомление в группу о новой заявке на вывод
     const amountStr = parseFloat(withdrawalRequest.amount.toString()).toFixed(2)

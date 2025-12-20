@@ -79,17 +79,37 @@ export async function POST(
     }
 
     // Сохраняем сообщение в БД
-    const message = await prisma.chatMessage.create({
-      data: {
-        userId,
-        messageText: message_text || null,
-        messageType: message_type,
-        direction: 'in', // Входящее от пользователя
-        telegramMessageId: telegram_message_id ? BigInt(telegram_message_id) : null,
-        mediaUrl: finalMediaUrl || null,
-        channel,
-      },
-    })
+    let message
+    try {
+      message = await prisma.chatMessage.create({
+        data: {
+          userId,
+          messageText: message_text || null,
+          messageType: message_type,
+          direction: 'in', // Входящее от пользователя
+          telegramMessageId: telegram_message_id ? BigInt(telegram_message_id) : null,
+          mediaUrl: finalMediaUrl || null,
+          channel,
+        },
+      })
+    } catch (error: any) {
+      // Если колонка channel не существует (P2022), создаем без channel
+      if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
+        console.warn('⚠️ Channel column not found, creating message without channel field')
+        message = await prisma.chatMessage.create({
+          data: {
+            userId,
+            messageText: message_text || null,
+            messageType: message_type,
+            direction: 'in',
+            telegramMessageId: telegram_message_id ? BigInt(telegram_message_id) : null,
+            mediaUrl: finalMediaUrl || null,
+          } as any, // Type assertion to omit channel field
+        })
+      } else {
+        throw error
+      }
+    }
 
     console.log(`✅ Chat ingest: Сообщение сохранено в БД с ID ${message.id}, direction='in'`)
 

@@ -17,14 +17,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const limit = Number(searchParams.get('limit') || 50)
 
-    const messages = await prisma.operatorMessage.findMany({
-      where: {
-        direction: 'out',
-        telegramMessageId: null,
-      },
-      orderBy: { createdAt: 'asc' },
-      take: Math.min(Math.max(limit, 1), 200),
-    })
+    let messages
+    try {
+      messages = await prisma.operatorMessage.findMany({
+        where: {
+          direction: 'out',
+          telegramMessageId: null,
+        },
+        orderBy: { createdAt: 'asc' },
+        take: Math.min(Math.max(limit, 1), 200),
+      })
+    } catch (error: any) {
+      // Если таблица operator_messages не существует (P2021), возвращаем пустой список
+      if (error.code === 'P2021' && error.meta?.table === 'public.operator_messages') {
+        console.warn('⚠️ operator_messages table not found, returning empty outbox')
+        return NextResponse.json({
+          success: true,
+          data: { messages: [] },
+        })
+      }
+      throw error
+    }
 
     return NextResponse.json({
       success: true,

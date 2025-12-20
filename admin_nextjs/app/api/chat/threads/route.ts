@@ -10,11 +10,26 @@ export async function GET(request: NextRequest) {
     const channel = searchParams.get('channel') || 'bot'
 
     // Получаем последние сообщения (достаточно 400 для уникальных чатов)
-    const messages = await prisma.chatMessage.findMany({
-      where: { channel },
-      orderBy: { createdAt: 'desc' },
-      take: 400,
-    })
+    // Если колонка channel не существует, делаем запрос без фильтра по channel
+    let messages
+    try {
+      messages = await prisma.chatMessage.findMany({
+        where: { channel },
+        orderBy: { createdAt: 'desc' },
+        take: 400,
+      })
+    } catch (error: any) {
+      // Если колонка channel не существует (P2022), делаем запрос без фильтра
+      if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
+        console.warn('⚠️ Channel column not found, querying all messages')
+        messages = await prisma.chatMessage.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 400,
+        })
+      } else {
+        throw error
+      }
+    }
 
     // Собираем последние сообщения по userId
     const latestByUser = new Map<bigint, (typeof messages)[number]>()

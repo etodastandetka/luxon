@@ -93,7 +93,6 @@ export default function DepositStep3() {
         // Валидируем сумму в долларах
         const validation = validateCryptoAmount(numAmount)
         if (!validation.valid) {
-          setIsNavigating(false)
           alert(validation.error || 'Неверная сумма')
           return
         }
@@ -108,7 +107,6 @@ export default function DepositStep3() {
           localStorage.setItem('deposit_amount', amountInKgs.toString())
         } catch (error: any) {
           console.error('❌ Error converting USD to KGS:', error)
-          setIsNavigating(false)
           alert(error.message || 'Ошибка получения курса валют. Пожалуйста, попробуйте позже.')
           return
         }
@@ -116,7 +114,6 @@ export default function DepositStep3() {
         // Для банковских переводов: валидация в сомах
         const minDeposit = getMinDeposit()
         if (numAmount < minDeposit || numAmount > 100000) {
-          setIsNavigating(false)
           alert(`Сумма должна быть от ${minDeposit} до 100000 сом`)
           return
         }
@@ -132,7 +129,6 @@ export default function DepositStep3() {
       // Переходим к оплате (step4 теперь страница оплаты)
       router.push('/deposit/step4')
     } catch (error) {
-      setIsNavigating(false)
       console.error('Error in handleNext:', error)
     }
   }

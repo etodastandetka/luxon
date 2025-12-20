@@ -32,15 +32,29 @@ export async function POST(request: NextRequest) {
 
     for (const item of items) {
       if (!item.id) continue
-      await prisma.operatorMessage.update({
-        where: { id: item.id },
-        data: {
-          telegramMessageId: item.telegram_message_id
-            ? BigInt(item.telegram_message_id)
-            : BigInt(item.id),
-          mediaUrl: item.media_url || undefined,
-        },
-      })
+      try {
+        await prisma.operatorMessage.update({
+          where: { id: item.id },
+          data: {
+            telegramMessageId: item.telegram_message_id
+              ? BigInt(item.telegram_message_id)
+              : BigInt(item.id),
+            mediaUrl: item.media_url || undefined,
+          },
+        })
+      } catch (error: any) {
+        // Если таблица operator_messages не существует (P2021), пропускаем обновление
+        if (error.code === 'P2021' && error.meta?.table === 'public.operator_messages') {
+          console.warn(`⚠️ operator_messages table not found, skipping update for message ${item.id}`)
+          continue
+        }
+        // Если сообщение не найдено (P2025), просто продолжаем
+        if (error.code === 'P2025') {
+          console.warn(`⚠️ Message ${item.id} not found, skipping`)
+          continue
+        }
+        throw error
+      }
     }
 
     return NextResponse.json({ success: true })

@@ -396,7 +396,8 @@ export async function GET(request: NextRequest) {
       prize: prizeDistribution[index] || 0
     }))
     
-    // Получаем уже выведенные средства для расчета доступного баланса
+    // Получаем уже выведенные средства (только completed - подтвержденные и выплаченные)
+    // pending заявки НЕ учитываются - деньги остаются на балансе
     const completedWithdrawals = await prisma.referralWithdrawalRequest.findMany({
       where: {
         userId: userIdBigInt,
@@ -408,20 +409,23 @@ export async function GET(request: NextRequest) {
       return sum + (w.amount ? parseFloat(w.amount.toString()) : 0)
     }, 0)
     
+    // Доступный баланс = заработанное - выведенное (pending заявки НЕ уменьшают баланс)
     const availableBalance = earned - totalWithdrawn
     
-    // Проверяем, есть ли pending заявка
-    const pendingWithdrawal = await prisma.referralWithdrawalRequest.findFirst({
+    // Проверяем, есть ли pending заявки (для информации, но они не влияют на баланс)
+    const pendingWithdrawals = await prisma.referralWithdrawalRequest.findMany({
       where: {
         userId: userIdBigInt,
         status: 'pending'
       }
     })
     
-    const hasPendingWithdrawal = !!pendingWithdrawal
+    const hasPendingWithdrawal = pendingWithdrawals.length > 0
     
+    console.log('📊 [Referral Data API] Заработано:', earned)
+    console.log('📊 [Referral Data API] Выведено (completed):', totalWithdrawn)
     console.log('📊 [Referral Data API] Доступный баланс:', availableBalance)
-    console.log('📊 [Referral Data API] Есть pending заявка:', hasPendingWithdrawal)
+    console.log('📊 [Referral Data API] Есть pending заявка:', hasPendingWithdrawal, `(${pendingWithdrawals.length} заявок)`)
     
     // Рассчитываем дату следующей выплаты (21 число каждого месяца)
     const now = new Date()

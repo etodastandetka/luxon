@@ -58,16 +58,28 @@ export async function POST(
 
     const saved = await saveLocalFile(file, file.type)
 
-    const message = await prisma.operatorMessage.create({
-      data: {
-        userId,
-        messageText,
-        messageType: saved.type,
-        direction: 'in',
-        telegramMessageId: null,
-        mediaUrl: saved.url,
-      },
-    })
+    let message
+    try {
+      message = await prisma.operatorMessage.create({
+        data: {
+          userId,
+          messageText,
+          messageType: saved.type,
+          direction: 'in',
+          telegramMessageId: null,
+          mediaUrl: saved.url,
+        },
+      })
+    } catch (error: any) {
+      // Если таблица operator_messages не существует (P2021), пропускаем сохранение в БД
+      if (error.code === 'P2021' && error.meta?.table === 'public.operator_messages') {
+        console.warn('⚠️ operator_messages table not found, skipping DB save')
+        // Создаем минимальный объект для ответа
+        message = { id: 0 } as any
+      } else {
+        throw error
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -84,6 +96,7 @@ export async function POST(
 }
 
 export const dynamic = 'force-dynamic'
+
 
 
 

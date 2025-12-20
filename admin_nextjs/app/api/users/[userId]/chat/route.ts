@@ -24,11 +24,26 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '50')
     const channel = searchParams.get('channel') || 'bot'
 
-    const messages = await prisma.chatMessage.findMany({
-      where: { userId, channel },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    })
+    let messages
+    try {
+      messages = await prisma.chatMessage.findMany({
+        where: { userId, channel },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      })
+    } catch (error: any) {
+      // Если колонка channel не существует (P2022), делаем запрос без фильтра по channel
+      if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
+        console.warn('⚠️ Channel column not found, querying messages without channel filter')
+        messages = await prisma.chatMessage.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+        })
+      } else {
+        throw error
+      }
+    }
 
     return NextResponse.json(
       createApiResponse({

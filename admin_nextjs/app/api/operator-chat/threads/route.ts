@@ -6,10 +6,20 @@ export async function GET(request: NextRequest) {
   try {
     requireAuth(request)
 
-    const messages = await prisma.operatorMessage.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 400,
-    })
+    let messages
+    try {
+      messages = await prisma.operatorMessage.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 400,
+      })
+    } catch (error: any) {
+      // Если таблица operator_messages не существует (P2021), возвращаем пустой список
+      if (error.code === 'P2021' && error.meta?.table === 'public.operator_messages') {
+        console.warn('⚠️ operator_messages table not found, returning empty threads')
+        return NextResponse.json(createApiResponse({ threads: [] }))
+      }
+      throw error
+    }
 
     const latestByUser = new Map<bigint, (typeof messages)[number]>()
     for (const msg of messages) {

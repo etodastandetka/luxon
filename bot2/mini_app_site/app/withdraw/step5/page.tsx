@@ -297,7 +297,7 @@ export default function WithdrawStep5() {
           if (!autoSubmitAttempted) {
             setAutoSubmitAttempted(true)
             console.log('[Withdraw Step5] 🚀 Автоматическая отправка заявки...')
-            (async () => {
+            ;(async () => {
               // Проверяем, что все данные есть
               const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
               const savedBank = localStorage.getItem('withdraw_bank')
@@ -1103,7 +1103,7 @@ export default function WithdrawStep5() {
                 />
               </div>
               
-              {checking && (
+              {checkingExists && (
                 <div className="mt-2 p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
                   <p className="text-sm text-blue-300 font-semibold">
                     ⏳ Проверка кода...

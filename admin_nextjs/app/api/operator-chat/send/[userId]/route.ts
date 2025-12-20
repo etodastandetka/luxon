@@ -77,16 +77,28 @@ export async function POST(
       messageType = saved.type
     }
 
-    const saved = await prisma.operatorMessage.create({
-      data: {
-        userId,
-        messageText: message,
-        messageType,
-        direction: 'out',
-        telegramMessageId: null,
-        mediaUrl,
-      },
-    })
+    let saved
+    try {
+      saved = await prisma.operatorMessage.create({
+        data: {
+          userId,
+          messageText: message,
+          messageType,
+          direction: 'out',
+          telegramMessageId: null,
+          mediaUrl,
+        },
+      })
+    } catch (error: any) {
+      // Если таблица operator_messages не существует (P2021), пропускаем сохранение в БД
+      if (error.code === 'P2021' && error.meta?.table === 'public.operator_messages') {
+        console.warn('⚠️ operator_messages table not found, skipping DB save')
+        // Создаем минимальный объект для ответа
+        saved = { id: 0 } as any
+      } else {
+        throw error
+      }
+    }
 
     return NextResponse.json(
       createApiResponse({
@@ -103,6 +115,7 @@ export async function POST(
     )
   }
 }
+
 
 
 

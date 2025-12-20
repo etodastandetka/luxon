@@ -61,6 +61,7 @@ export default function RequestDetailPage() {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [searchId, setSearchId] = useState('')
   const [deferring, setDeferring] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false) // Флаг для отслеживания процесса подтверждения
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
   const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null)
   const [showPhotoModal, setShowPhotoModal] = useState(false)
@@ -721,6 +722,20 @@ export default function RequestDetailPage() {
     const updateRequestStatus = async (newStatus: 'completed' | 'approved' | 'rejected') => {
       if (!request) return
       
+      // Защита от повторных нажатий
+      if (isProcessing) {
+        console.warn('⚠️ Request is already being processed, ignoring duplicate click')
+        return
+      }
+      
+      // Проверяем, что заявка еще не обработана
+      if (request.status === 'completed' || request.status === 'approved' || request.status === 'api_error') {
+        alert(`Заявка уже обработана (статус: ${request.status}). Пожалуйста, обновите страницу.`)
+        return
+      }
+      
+      setIsProcessing(true)
+      
       try {
         // Если подтверждаем депозит и выбран платеж, сначала привязываем его
         if ((newStatus === 'completed' || newStatus === 'approved') && request.requestType === 'deposit' && selectedPaymentId) {
@@ -786,13 +801,37 @@ export default function RequestDetailPage() {
             if (!contentType || !contentType.includes('application/json')) {
               const text = await depositResponse.text()
               console.error('❌ Deposit API returned non-JSON response:', depositResponse.status, text.substring(0, 200))
+              alert(`Ошибка при пополнении баланса: Сервер вернул ошибку ${depositResponse.status}. Попробуйте позже.`)
+              setIsProcessing(false)
               return
             }
 
             const depositData = await depositResponse.json()
 
             if (!depositData.success) {
-              console.error('❌ Deposit failed:', depositData.error || depositData.message)
+              const errorMessage = depositData.message || depositData.error || 'Не удалось пополнить баланс'
+              console.error('❌ Deposit failed:', errorMessage)
+              
+              // Показываем ошибку пользователю
+              alert(`Ошибка при пополнении баланса: ${errorMessage}`)
+              
+              // Обновляем заявку чтобы получить актуальный статус (возможно API обновил статус на api_error)
+              try {
+                const refreshResponse = await fetch(`/api/requests/${request.id}`)
+                if (refreshResponse.ok) {
+                  const refreshContentType = refreshResponse.headers.get('content-type')
+                  if (refreshContentType && refreshContentType.includes('application/json')) {
+                    const refreshData = await refreshResponse.json()
+                    if (refreshData.success && isMountedRef.current) {
+                      updateRequestPreservingPhoto(refreshData.data)
+                    }
+                  }
+                }
+              } catch (refreshError) {
+                console.error('Failed to refresh request after deposit error:', refreshError)
+              }
+              
+              setIsProcessing(false)
               return
             }
 
@@ -830,6 +869,7 @@ export default function RequestDetailPage() {
               
               // Перенаправляем на дашборд после успешного депозита
               setTimeout(() => {
+                setIsProcessing(false)
                 router.push('/dashboard')
               }, 500)
               return
@@ -842,6 +882,7 @@ export default function RequestDetailPage() {
                 const refreshContentType = refreshResponse.headers.get('content-type')
                 if (!refreshContentType || !refreshContentType.includes('application/json')) {
                   console.error('❌ Refresh API returned non-JSON:', refreshResponse.status)
+                  setIsProcessing(false)
                   return
                 }
                 
@@ -849,6 +890,7 @@ export default function RequestDetailPage() {
                 if (refreshData.success && isMountedRef.current) {
                   updateRequestPreservingPhoto(refreshData.data)
                 }
+                setIsProcessing(false)
               }, 500)
               
               setSelectedPaymentId(null)
@@ -859,8 +901,11 @@ export default function RequestDetailPage() {
               }, 500)
               return
             }
-          } catch (depositError) {
+          } catch (depositError: any) {
             console.error('Failed to deposit balance:', depositError)
+            const errorMessage = depositError.message || 'Произошла ошибка при пополнении баланса'
+            alert(`Ошибка при пополнении баланса: ${errorMessage}`)
+            setIsProcessing(false)
             return
           }
         }
@@ -880,6 +925,8 @@ export default function RequestDetailPage() {
         if (!responseContentType || !responseContentType.includes('application/json')) {
           const text = await response.text()
           console.error('❌ Update status API returned non-JSON:', response.status, text.substring(0, 200))
+          alert(`Ошибка при обновлении статуса: Сервер вернул ошибку ${response.status}`)
+          setIsProcessing(false)
           return
         }
 
@@ -915,15 +962,22 @@ export default function RequestDetailPage() {
           
           // Перенаправляем на дашборд после успешного обновления статуса
           // Используем router.refresh() для обновления данных перед редиректом
+          setIsProcessing(false)
           setTimeout(() => {
             router.refresh() // Обновляем данные перед редиректом
             router.push('/dashboard?refresh=' + Date.now()) // Добавляем timestamp для обхода кэша
           }, 500)
         } else {
-          console.error('Failed to update request:', data.error)
+          const errorMessage = data.message || data.error || 'Не удалось обновить статус заявки'
+          console.error('Failed to update request:', errorMessage)
+          alert(`Ошибка при обновлении статуса: ${errorMessage}`)
+          setIsProcessing(false)
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to update request status:', error)
+        const errorMessage = error.message || 'Произошла ошибка при обновлении статуса заявки'
+        alert(`Ошибка: ${errorMessage}`)
+        setIsProcessing(false)
       }
     }
 
@@ -1465,15 +1519,21 @@ export default function RequestDetailPage() {
         <div className="mx-4 mb-4 flex space-x-3">
           <button
             onClick={() => {
+              if (isProcessing) return // Защита от повторных нажатий
               setPendingStatus('approved')
               setShowConfirmModal(true)
             }}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
+            disabled={isProcessing || request.status === 'completed' || request.status === 'approved' || request.status === 'api_error'}
+            className={`flex-1 font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2 ${
+              isProcessing || request.status === 'completed' || request.status === 'approved' || request.status === 'api_error'
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600 text-black'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span>Подтвердить</span>
+            <span>{isProcessing ? 'Обработка...' : 'Подтвердить'}</span>
           </button>
           <button
             onClick={() => {
@@ -1544,19 +1604,23 @@ export default function RequestDetailPage() {
             <div className="flex flex-col space-y-3">
               <button
                 onClick={async () => {
+                  if (isProcessing) return // Защита от повторных нажатий
                   setShowConfirmModal(false)
                   if (pendingStatus) {
                     await updateRequestStatus(pendingStatus)
                     setPendingStatus(null)
                   }
                 }}
+                disabled={isProcessing}
                 className={`w-full font-semibold py-3 px-4 rounded-xl transition-colors ${
-                  pendingStatus === 'rejected' 
-                    ? 'bg-red-500 hover:bg-red-600 text-white' 
-                    : 'bg-green-500 hover:bg-green-600 text-white'
+                  isProcessing
+                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    : pendingStatus === 'rejected' 
+                      ? 'bg-red-500 hover:bg-red-600 text-white' 
+                      : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
               >
-                {pendingStatus === 'rejected' ? 'Да, отклонить' : 'Да, принять'}
+                {isProcessing ? 'Обработка...' : (pendingStatus === 'rejected' ? 'Да, отклонить' : 'Да, принять')}
               </button>
               <button
                 onClick={() => {

@@ -21,11 +21,21 @@ export async function GET(
 
     const limit = parseInt(new URL(request.url).searchParams.get('limit') || '50')
 
-    const messages = await prisma.operatorMessage.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    })
+    let messages
+    try {
+      messages = await prisma.operatorMessage.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      })
+    } catch (error: any) {
+      // Если таблица operator_messages не существует (P2021), возвращаем пустой список
+      if (error.code === 'P2021' && error.meta?.table === 'public.operator_messages') {
+        console.warn('⚠️ operator_messages table not found, returning empty history')
+        return NextResponse.json(createApiResponse({ messages: [] }))
+      }
+      throw error
+    }
 
     return NextResponse.json(
       createApiResponse({
@@ -44,6 +54,7 @@ export async function GET(
     )
   }
 }
+
 
 
 

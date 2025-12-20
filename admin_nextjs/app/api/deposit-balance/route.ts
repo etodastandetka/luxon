@@ -68,6 +68,15 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+    
+    // Защита от повторных пополнений - проверяем статус заявки
+    if (requestData.status === 'completed' || requestData.status === 'approved' || requestData.status === 'autodeposit_success') {
+      console.warn(`⚠️ [Deposit Balance] Request ${requestId} already processed (status: ${requestData.status}), skipping deposit`)
+      return NextResponse.json(
+        createApiResponse(null, `Заявка уже обработана (статус: ${requestData.status}). Повторное пополнение невозможно.`),
+        { status: 400 }
+      )
+    }
 
     // ВАЖНО: Используем accountId (ID казино), а не userId (Telegram ID)
     // accountId - это ID игрока в казино (например, ID счета 1xbet, Melbet и т.д.)

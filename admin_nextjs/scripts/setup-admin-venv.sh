@@ -46,3 +46,7 @@ echo "Или используйте обертку:"
 echo "   ./scripts/run-admin-script.sh <command>"
 
 
+
+
+
+
