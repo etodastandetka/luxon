@@ -529,11 +529,11 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      {/* Кнопка вывода */}
-      {availableBalance > 0 && !hasPendingWithdrawal && (
+      {/* Кнопка вывода - показываем если есть хоть какой-то баланс > 0 */}
+      {Number(availableBalance) > 0 && !hasPendingWithdrawal && (
         <section className="card text-center space-y-3">
           <div className="text-lg font-semibold text-white">Доступно для вывода</div>
-          <div className="text-3xl font-bold text-green-400">{availableBalance.toLocaleString()} сом</div>
+          <div className="text-3xl font-bold text-green-400">{Number(availableBalance).toLocaleString()} сом</div>
           <button
             onClick={() => router.push('/referral/withdraw/step1')}
             className="w-full bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors"
@@ -546,10 +546,15 @@ export default function ReferralPage() {
         </section>
       )}
 
-      {hasPendingWithdrawal && (
-        <section className="card bg-yellow-500/20 border border-yellow-500/30 text-center space-y-2">
-          <div className="text-yellow-400 font-semibold">Заявка на вывод в обработке</div>
-          <div className="text-sm text-white/80">Ожидайте подтверждения администратора</div>
+      {/* Показываем сообщение, если баланс есть, но есть pending заявка */}
+      {Number(availableBalance) > 0 && hasPendingWithdrawal && (
+        <section className="card text-center space-y-3">
+          <div className="text-lg font-semibold text-white">Доступно для вывода</div>
+          <div className="text-3xl font-bold text-green-400">{Number(availableBalance).toLocaleString()} сом</div>
+          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-3">
+            <div className="text-yellow-400 font-semibold text-sm">Заявка на вывод в обработке</div>
+            <div className="text-xs text-white/80 mt-1">Ожидайте подтверждения администратора</div>
+          </div>
         </section>
       )}
 
