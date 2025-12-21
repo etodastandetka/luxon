@@ -382,11 +382,23 @@ async function get1winLimit(apiKey: string): Promise<BalanceResult> {
     console.log(`[1win Limit] Response status: ${response.status}, Response ok: ${response.ok}`)
     console.log(`[1win Limit] Response body:`, responseText.substring(0, 500))
     
+    // Проверка на ошибки Cloudflare (502 Bad Gateway, 503 Service Unavailable и т.д.)
+    if (response.status === 502 || response.status === 503 || response.status === 504) {
+      console.warn(`[1win Limit] ⚠️ Cloudflare/Server error (${response.status}): API временно недоступен`)
+      return { balance: 0, limit: 0 }
+    }
+    
+    // Проверка на HTML ответы (Cloudflare может вернуть HTML страницу с ошибкой)
+    if (responseText.trim().startsWith('<html>') || responseText.trim().startsWith('<!DOCTYPE')) {
+      console.warn(`[1win Limit] ⚠️ Received HTML response instead of JSON (likely Cloudflare error page)`)
+      return { balance: 0, limit: 0 }
+    }
+    
     let data: any
     try {
       data = JSON.parse(responseText)
     } catch (e) {
-      console.error(`[1win Limit] Failed to parse response:`, responseText)
+      console.error(`[1win Limit] Failed to parse response:`, responseText.substring(0, 200))
       return { balance: 0, limit: 0 }
     }
 
