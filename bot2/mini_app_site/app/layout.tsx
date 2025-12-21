@@ -200,6 +200,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" as="image" href="/images/1xbet.jpg" />
         <link rel="preload" as="image" href="/images/1win.jpg" />
         <link rel="preload" as="image" href="/images/melbet.jpg" />
+        {/* Критические стили встроены инлайн для мгновенной загрузки */}
+        <style dangerouslySetInnerHTML={{__html: `
+          :root{color-scheme:dark;--tg-theme-bg-color:#0e1621;--tg-theme-text-color:#fff;--tg-theme-hint-color:#999;--tg-theme-link-color:#2481cc;--tg-theme-button-color:#2481cc;--tg-theme-button-text-color:#fff;--tg-theme-secondary-bg-color:#1e2732}
+          html,body{margin:0;padding:0;width:100%;height:100%;box-sizing:border-box}
+          body{background:linear-gradient(135deg,#0f1b0f 0%,#1a2e1a 50%,#0f1b0f 100%);background-attachment:fixed;color:var(--tg-theme-text-color);overflow-x:hidden;position:relative;min-height:100vh}
+          *{box-sizing:border-box}
+          body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 20% 80%,rgba(34,197,94,.1) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(34,197,94,.1) 0%,transparent 50%),radial-gradient(circle at 40% 40%,rgba(34,197,94,.05) 0%,transparent 50%);z-index:-1}
+          .container{max-width:28rem;margin:0 auto;padding:0 1rem;width:100%;box-sizing:border-box;padding-top:0;padding-bottom:100px;min-height:calc(100vh - 100px)}
+          .card{background:linear-gradient(135deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.4) 100%);backdrop-filter:blur(10px);border-radius:.75rem;padding:1rem;border:1px solid rgba(255,255,255,.2);box-shadow:0 12px 40px rgba(0,0,0,.5),0 4px 16px rgba(0,0,0,.3);position:relative;overflow:hidden;transition:all .1s}
+          .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:.75rem;padding:.75rem 1.5rem;font-weight:600;transition:all .1s;background:linear-gradient(135deg,#2481cc 0%,#1a6bb3 100%);color:#fff;border:none;box-shadow:0 6px 20px rgba(36,129,204,.4),0 2px 8px rgba(0,0,0,.3);position:relative;overflow:hidden;cursor:pointer}
+          .btn:hover{background:linear-gradient(135deg,#16a34a 0%,#22c55e 100%);transform:translateY(-2px) scale(1.05);box-shadow:0 12px 35px rgba(34,197,94,.6),0 4px 15px rgba(0,0,0,.4)}
+          .input{width:100%;background-color:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.5rem;padding:.5rem .75rem;outline:none;color:#fff;caret-color:#fff}
+          .input:focus{border-color:var(--tg-theme-button-color);box-shadow:0 0 0 2px rgba(36,129,204,.2)}
+          .input::placeholder{color:rgba(255,255,255,.6)}
+          .bottom-navigation{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;align-items:center;background:linear-gradient(135deg,rgba(0,0,0,.95) 0%,rgba(30,39,50,.95) 100%);backdrop-filter:blur(20px);border-top:2px solid rgba(255,255,255,.2);padding:.55rem .4rem;z-index:10000;box-shadow:0 -4px 20px rgba(0,0,0,.5);height:auto;min-height:62px}
+          body{padding-bottom:100px;position:relative;overflow-x:hidden}
+          main{padding-top:0!important;padding-bottom:100px!important;min-height:calc(100vh - 100px);position:relative;overflow-x:hidden}
+          html{scroll-behavior:smooth;overflow-x:hidden}
+        `}} />
       </head>
       <body style={{ position: 'relative', margin: 0, padding: 0, minHeight: '100vh' }}>
         <LanguageProvider>
