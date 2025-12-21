@@ -247,7 +247,8 @@ export async function PATCH(
 
     const updateData: any = {}
     if (body.status) updateData.status = body.status
-    if (body.statusDetail) updateData.statusDetail = body.statusDetail
+    // ВАЖНО: statusDetail ограничен 50 символами в БД (VarChar(50))
+    if (body.statusDetail) updateData.statusDetail = String(body.statusDetail).substring(0, 50)
     if (body.processedAt !== undefined) {
       updateData.processedAt = body.processedAt ? new Date(body.processedAt) : null
     }

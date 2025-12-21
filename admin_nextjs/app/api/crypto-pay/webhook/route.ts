@@ -262,11 +262,12 @@ export async function POST(request: NextRequest) {
         })
 
         // Обновляем заявку с обеими суммами
+        // ВАЖНО: statusDetail ограничен 50 символами в БД, поэтому обрезаем JSON
         const statusDetailData = amountUsd ? JSON.stringify({
           amount_usd: amountUsd,
           amount_kgs: amountInKgs,
           amount_usdt: amountUsdt
-        }) : null
+        }).substring(0, 50) : null
 
         if (botRequest) {
           await prisma.request.update({
@@ -276,7 +277,7 @@ export async function POST(request: NextRequest) {
               paymentMethod: 'crypto',
               cryptoPaymentId: cryptoPayment.id,
               amount: amountInKgs, // Обновляем сумму в сомах (для пополнения в казино)
-              statusDetail: statusDetailData, // Сохраняем обе суммы
+              statusDetail: statusDetailData, // Сохраняем обе суммы (обрезано до 50 символов)
               processedBy: 'автопополнение' as any, // Автопополнение через криптоплатеж
               processedAt: new Date(),
               updatedAt: new Date(),
@@ -324,12 +325,14 @@ export async function POST(request: NextRequest) {
           console.error(`❌ [Crypto Auto-Deposit] FAILED for request ${botRequest ? botRequest.id : 'n/a'}:`, error.message)
           
           // Обновляем статус заявки для ручной проверки
+          // ВАЖНО: statusDetail ограничен 50 символами в БД
           if (botRequest) {
+            const errorDetail = `crypto_auto_deposit_failed: ${error.message}`.substring(0, 50)
             await prisma.request.update({
               where: { id: botRequest.id },
               data: {
                 status: 'auto_completed',
-                statusDetail: `crypto_auto_deposit_failed: ${error.message}`,
+                statusDetail: errorDetail,
                 updatedAt: new Date()
               }
             })

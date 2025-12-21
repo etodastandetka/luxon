@@ -349,26 +349,27 @@ export async function POST(request: NextRequest) {
     // Для error_log сохраняем информацию об ошибке в statusDetail
     // Для криптоплатежей сохраняем amount_usd в statusDetail
     // Для вывода Mostbet сохраняем transaction_id в statusDetail
+    // ВАЖНО: statusDetail ограничен 50 символами в БД (VarChar(50))
     let statusDetail: string | null = null
     if (type === 'error_log' && body.error) {
-      // Сохраняем информацию об ошибке
+      // Сохраняем информацию об ошибке (обрезаем до 50 символов)
       statusDetail = JSON.stringify({
         error: body.error,
         timestamp: body.error.timestamp || new Date().toISOString(),
         userAgent: body.error.userAgent,
         url: body.error.url
-      })
+      }).substring(0, 50)
     } else if (payment_method === 'crypto' && amount_usd) {
       statusDetail = JSON.stringify({
         amount_usd: parseFloat(amount_usd),
         amount_kgs: parseFloat(amount)
-      })
+      }).substring(0, 50)
     } else if (type === 'withdraw' && transaction_id) {
-      // Сохраняем transaction_id от Mostbet API в statusDetail
+      // Сохраняем transaction_id от Mostbet API в statusDetail (обрезаем до 50 символов)
       statusDetail = JSON.stringify({
         transaction_id: transaction_id,
         source: 'mostbet_api'
-      })
+      }).substring(0, 50)
       console.log(`[Payment API] Saving transaction_id for Mostbet withdrawal: ${transaction_id}`)
     }
 
