@@ -439,6 +439,21 @@ async function get1winLimit(apiKey: string): Promise<BalanceResult> {
     return { balance: 0, limit: 0 }
   } catch (error: any) {
     console.error(`[1win Limit] ❌ Error:`, error.message)
+    
+    // Отправляем ошибку в Telegram только если это не 502/503 (временные проблемы)
+    if (!error.message?.includes('502') && !error.message?.includes('503')) {
+      const { sendTelegramErrorNotification } = await import('./telegram-error-logger')
+      await sendTelegramErrorNotification({
+        message: `1win Limit Check Error: ${error.message}`,
+        stack: error.stack,
+        context: '1win Limit API',
+        severity: 'warning',
+        timestamp: new Date().toISOString(),
+      }).catch(() => {
+        // Игнорируем ошибки отправки
+      })
+    }
+    
     return { balance: 0, limit: 0 }
   }
 }

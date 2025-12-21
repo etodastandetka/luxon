@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createApiResponse } from '@/lib/api-helpers'
 import { sendTelegramGroupMessage } from '@/lib/telegram-group'
+import { sendTelegramErrorNotification } from '@/lib/telegram-error-logger'
 import { 
   rateLimit, 
   sanitizeInput, 
@@ -700,6 +701,19 @@ export async function PUT(request: NextRequest) {
     return response
   } catch (error: any) {
     console.error('Payment API update error:', error)
+    
+    // Отправляем ошибку в Telegram администратору
+    await sendTelegramErrorNotification({
+      message: error.message || 'Payment API update error',
+      stack: error.stack,
+      context: 'Payment API',
+      url: request.url,
+      severity: 'error',
+      timestamp: new Date().toISOString(),
+    }).catch(err => {
+      console.error('Failed to send error notification:', err)
+    })
+    
     const errorResponse = NextResponse.json(
       createApiResponse(null, error.message || 'Failed to update request'),
       { status: 500 }

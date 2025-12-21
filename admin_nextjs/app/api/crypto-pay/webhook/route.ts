@@ -3,6 +3,7 @@ import { verifyWebhookSignature, getInvoice, getExchangeRates } from '@/lib/cryp
 import { prisma } from '@/lib/prisma'
 import { depositToCasino } from '@/lib/deposit-balance'
 import { rateLimit, getClientIP } from '@/lib/security'
+import { sendTelegramErrorNotification } from '@/lib/telegram-error-logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -356,6 +357,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true })
   } catch (error: any) {
     console.error('Error processing crypto webhook:', error)
+    
+    // Отправляем критическую ошибку в Telegram
+    await sendTelegramErrorNotification({
+      message: error.message || 'Unknown error',
+      stack: error.stack,
+      context: 'Crypto Pay Webhook',
+      url: request.url,
+      severity: 'critical',
+      timestamp: new Date().toISOString(),
+    }).catch(err => {
+      // Игнорируем ошибки отправки, чтобы не зациклиться
+      console.error('Failed to send error notification:', err)
+    })
+    
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
