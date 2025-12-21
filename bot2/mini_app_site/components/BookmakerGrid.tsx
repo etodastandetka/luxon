@@ -24,56 +24,26 @@ function BookmakerGrid({
   disabledCasinos?: string[]
 }) {
   const [showModal, setShowModal] = useState<string | null>(null)
-  const [bookmakers, setBookmakers] = useState<Item[]>(ALL_BOOKMAKERS)
 
-  // Проверяем, является ли это ботом только для 1xbet
-  // Делаем это синхронно при первом рендере, без useEffect, чтобы не было задержки
-  const [initialized, setInitialized] = useState(false)
-  
-  useEffect(() => {
-    if (initialized) return
+  // Оптимизировано: проверка синхронно при первом рендере
+  const bookmakers = useMemo(() => {
+    if (typeof window === 'undefined') return ALL_BOOKMAKERS
     
-    // Проверяем параметр в URL (если бот передает ?bot=1xbet)
     const urlParams = new URLSearchParams(window.location.search)
     const botTypeFromUrl = urlParams.get('bot')
-    
-    // Также проверяем Telegram WebApp для определения типа бота
     const tg = (window as any).Telegram?.WebApp
-    let botTypeFromTelegram: string | null = null
-    
-    // Пытаемся определить тип бота из Telegram WebApp
-    if (tg?.initDataUnsafe?.start_param) {
-      // start_param может содержать тип бота
-      const startParam = tg.initDataUnsafe.start_param
-      if (startParam.includes('1xbet') || startParam === '1xbet') {
-        botTypeFromTelegram = '1xbet'
-      }
-    }
-    
-    // Приоритет: URL параметр > Telegram start_param > localStorage (только для очистки)
+    const botTypeFromTelegram = tg?.initDataUnsafe?.start_param?.includes('1xbet') ? '1xbet' : null
     const botType = botTypeFromUrl || botTypeFromTelegram
     
-    // Если определен тип бота как 1xbet, показываем только 1xbet
     if (botType === '1xbet') {
-      // Сохраняем в localStorage для последующих переходов
-      localStorage.setItem('bot_type', '1xbet')
-      
-      setBookmakers([{ key: '1xbet', name: '1XBET', emoji: '🎯', logo: '/images/1xbet.jpg' }])
-      // Автоматически выбираем 1xbet, если еще не выбран
       if (!value || value !== '1xbet') {
-        onChange('1xbet')
+        // Используем setTimeout чтобы не блокировать рендер
+        setTimeout(() => onChange('1xbet'), 0)
       }
-    } else {
-      // Если не определен тип бота как 1xbet - показываем все казино
-      // Это основной бот со всеми казино
-      setBookmakers(ALL_BOOKMAKERS)
-      // Очищаем сохраненный тип бота, чтобы не показывать только 1xbet
-      localStorage.removeItem('bot_type')
+      return [{ key: '1xbet', name: '1XBET', emoji: '🎯', logo: '/images/1xbet.jpg' }]
     }
-    
-    setInitialized(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Убираем value и onChange из зависимостей чтобы избежать бесконечных циклов
+    return ALL_BOOKMAKERS
+  }, [value, onChange])
 
   const handleClick = useCallback((key: string) => {
     // Проверяем, отключено ли казино
@@ -105,7 +75,7 @@ function BookmakerGrid({
             <button 
               key={b.key}
               onClick={() => handleClick(b.key)}
-              className={`relative overflow-hidden rounded-xl transition-all duration-100 ${cardHeight} ${
+              className={`relative overflow-hidden rounded-xl ${cardHeight} ${
                 value === b.key 
                   ? 'ring-2 ring-green-400' 
                   : isDisabled
@@ -118,10 +88,10 @@ function BookmakerGrid({
                   src={b.logo} 
                   alt={b.name}
                   fill
-                  priority={bookmakers.length === 1} // приоритет только если один элемент на экране
-                  loading={bookmakers.length === 1 ? 'eager' : 'lazy'} // ленивое для сетки
-                  sizes={bookmakers.length === 1 ? "100vw" : "(max-width: 768px) 50vw, 33vw"} // быстрее за счет меньшего таргета
-                  quality={bookmakers.length === 1 ? 85 : 70} // ниже качество для сетки
+                  priority={false} // Отключен приоритет для ускорения
+                  loading="lazy" // Всегда ленивая загрузка
+                  sizes="(max-width: 768px) 50vw, 33vw"
+                  quality={60} // Низкое качество для скорости
                   className={b.key === '1xbet' ? "object-cover transform scale-150" : "object-cover"}
                   placeholder="empty"
                   unoptimized={false} // оставляем оптимизацию Next.js

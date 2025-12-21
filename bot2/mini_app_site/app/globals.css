@@ -107,10 +107,8 @@ body::before {
 }
 
 .card:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6), 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(34, 197, 94, 0.2);
+  /* Упрощен hover для производительности */
   border-color: rgba(255, 255, 255, 0.3);
-  border-radius: 0.75rem !important; /* сохраняем скругление при hover */
 }
 
 .btn { 
@@ -140,8 +138,7 @@ body::before {
 
 .btn:hover {
   background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 12px 35px rgba(34, 197, 94, 0.6), 0 4px 15px rgba(0, 0, 0, 0.4);
+  /* Упрощен hover для производительности */
 }
 
 .btn-primary { 
@@ -240,16 +237,17 @@ body::before {
   animation: scaleIn 0.2s ease-out forwards;
 }
 
+/* Отключены тяжелые анимации для производительности */
 .gentle-float {
-  animation: gentleFloat 4s ease-in-out infinite;
+  /* animation: gentleFloat 4s ease-in-out infinite; */
 }
 
 .pulse {
-  animation: pulse 2s ease-in-out infinite;
+  /* animation: pulse 2s ease-in-out infinite; */
 }
 
 .float {
-  animation: float 3s ease-in-out infinite;
+  /* animation: float 3s ease-in-out infinite; */
 }
 
 /* Задержки для последовательного появления */

@@ -208,9 +208,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           *{box-sizing:border-box}
           body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 20% 80%,rgba(34,197,94,.1) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(34,197,94,.1) 0%,transparent 50%),radial-gradient(circle at 40% 40%,rgba(34,197,94,.05) 0%,transparent 50%);z-index:-1}
           .container{max-width:28rem;margin:0 auto;padding:0 1rem;width:100%;box-sizing:border-box;padding-top:0;padding-bottom:100px;min-height:calc(100vh - 100px)}
-          .card{background:linear-gradient(135deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.4) 100%);backdrop-filter:blur(10px);border-radius:.75rem;padding:1rem;border:1px solid rgba(255,255,255,.2);box-shadow:0 12px 40px rgba(0,0,0,.5),0 4px 16px rgba(0,0,0,.3);position:relative;overflow:hidden;transition:all .1s}
-          .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:.75rem;padding:.75rem 1.5rem;font-weight:600;transition:all .1s;background:linear-gradient(135deg,#2481cc 0%,#1a6bb3 100%);color:#fff;border:none;box-shadow:0 6px 20px rgba(36,129,204,.4),0 2px 8px rgba(0,0,0,.3);position:relative;overflow:hidden;cursor:pointer}
-          .btn:hover{background:linear-gradient(135deg,#16a34a 0%,#22c55e 100%);transform:translateY(-2px) scale(1.05);box-shadow:0 12px 35px rgba(34,197,94,.6),0 4px 15px rgba(0,0,0,.4)}
+          .card{background:linear-gradient(135deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.4) 100%);backdrop-filter:blur(10px);border-radius:.75rem;padding:1rem;border:1px solid rgba(255,255,255,.2);box-shadow:0 12px 40px rgba(0,0,0,.5),0 4px 16px rgba(0,0,0,.3);position:relative;overflow:hidden}
+          .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:.75rem;padding:.75rem 1.5rem;font-weight:600;background:linear-gradient(135deg,#2481cc 0%,#1a6bb3 100%);color:#fff;border:none;box-shadow:0 6px 20px rgba(36,129,204,.4),0 2px 8px rgba(0,0,0,.3);position:relative;overflow:hidden;cursor:pointer}
+          .btn:hover{background:linear-gradient(135deg,#16a34a 0%,#22c55e 100%)}
           .input{width:100%;background-color:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.5rem;padding:.5rem .75rem;outline:none;color:#fff;caret-color:#fff}
           .input:focus{border-color:var(--tg-theme-button-color);box-shadow:0 0 0 2px rgba(36,129,204,.2)}
           .input::placeholder{color:rgba(255,255,255,.6)}
@@ -224,7 +224,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageProvider>
           <VersionChecker />
           <TelegramInit />
-          {!shouldHideUI && <Snowflakes />}
+          {/* Snowflakes отключены для производительности */}
           <BlockedChecker>
             <div className="container" style={{ paddingTop: '0', paddingBottom: '100px', minHeight: '100vh' }}>
               {children}
