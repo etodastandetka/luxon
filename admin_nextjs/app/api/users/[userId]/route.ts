@@ -9,6 +9,15 @@ export async function GET(
   try {
     requireAuth(request)
 
+    // Проверяем валидность userId
+    if (!params.userId || isNaN(Number(params.userId))) {
+      console.error(`❌ Invalid userId: ${params.userId}`)
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid user ID'),
+        { status: 400 }
+      )
+    }
+
     const userId = BigInt(params.userId)
     console.log(`🔍 Looking for user with ID: ${userId.toString()}`)
 
@@ -109,29 +118,77 @@ export async function GET(
     const userTransactions = (user as any).transactions || []
     console.log(`📊 Total transactions to return: ${userTransactions.length}`)
     
-    const transactionsFormatted = userTransactions.map((t: any) => ({
-      id: t.id,
-      transType: t.transType,
-      amount: typeof t.amount === 'string' ? t.amount : (t.amount?.toString() || '0'),
-      status: t.status,
-      bookmaker: t.bookmaker,
-      processedBy: t.processedBy || null,
-      bank: t.bank || null,
-      createdAt: typeof t.createdAt === 'string' ? t.createdAt : (t.createdAt?.toISOString() || new Date().toISOString()),
-    }))
+    const transactionsFormatted = userTransactions.map((t: any) => {
+      // Безопасное преобразование даты
+      let createdAtStr: string
+      try {
+        if (typeof t.createdAt === 'string') {
+          createdAtStr = t.createdAt
+        } else if (t.createdAt instanceof Date) {
+          createdAtStr = t.createdAt.toISOString()
+        } else if (t.createdAt && typeof t.createdAt === 'object' && 'toISOString' in t.createdAt) {
+          createdAtStr = (t.createdAt as Date).toISOString()
+        } else {
+          createdAtStr = new Date().toISOString()
+        }
+      } catch (e) {
+        console.warn(`⚠️ Error formatting createdAt for transaction ${t.id}:`, e)
+        createdAtStr = new Date().toISOString()
+      }
+
+      return {
+        id: t.id,
+        transType: t.transType || 'deposit',
+        amount: typeof t.amount === 'string' ? t.amount : (t.amount?.toString() || '0'),
+        status: t.status || 'pending',
+        bookmaker: t.bookmaker || null,
+        processedBy: t.processedBy || null,
+        bank: t.bank || null,
+        createdAt: createdAtStr,
+      }
+    })
 
     console.log(`📊 Formatted transactions: ${transactionsFormatted.length}`)
     console.log(`📊 Sample transaction:`, transactionsFormatted[0] || 'none')
 
+    // Безопасное преобразование данных пользователя
+    const userData = user as any
     const responseData = {
-      ...user,
-      userId: (user as any).userId.toString(),
+      userId: userData.userId?.toString() || params.userId,
+      username: userData.username || null,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      language: userData.language || 'ru',
+      selectedBookmaker: userData.selectedBookmaker || null,
+      note: userData.note || null,
+      isActive: userData.isActive !== false, // По умолчанию true
+      createdAt: userData.createdAt instanceof Date 
+        ? userData.createdAt.toISOString() 
+        : (typeof userData.createdAt === 'string' ? userData.createdAt : new Date().toISOString()),
       transactions: transactionsFormatted,
-      referralEarnings: ((user as any).referralEarnings || []).map((e: any) => ({
+      referralMade: (userData.referralMade || []).map((r: any) => ({
+        referred: {
+          userId: r.referred?.userId?.toString() || r.referred?.userId || '',
+          username: r.referred?.username || null,
+          firstName: r.referred?.firstName || null,
+        },
+        createdAt: r.createdAt instanceof Date 
+          ? r.createdAt.toISOString() 
+          : (typeof r.createdAt === 'string' ? r.createdAt : new Date().toISOString()),
+      })),
+      referralEarnings: (userData.referralEarnings || []).map((e: any) => ({
         ...e,
         amount: e.amount?.toString() || '0',
         commissionAmount: e.commissionAmount?.toString() || '0',
+        createdAt: e.createdAt instanceof Date 
+          ? e.createdAt.toISOString() 
+          : (typeof e.createdAt === 'string' ? e.createdAt : new Date().toISOString()),
       })),
+      _count: {
+        transactions: userData._count?.transactions || transactionsFormatted.length,
+        referralMade: userData._count?.referralMade || 0,
+        referralEarnings: userData._count?.referralEarnings || 0,
+      },
     }
 
     console.log(`📊 Returning user data:`, {
@@ -145,9 +202,28 @@ export async function GET(
       createApiResponse(responseData)
     )
   } catch (error: any) {
+    console.error(`❌ Error fetching user ${params.userId}:`, error)
+    console.error('Error stack:', error.stack)
+    
+    // Более детальная обработка ошибок
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        createApiResponse(null, 'Unauthorized'),
+        { status: 401 }
+      )
+    }
+    
+    // Если ошибка связана с BigInt (невалидный userId)
+    if (error.message?.includes('Invalid') || error.message?.includes('Cannot convert')) {
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid user ID'),
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to fetch user'),
-      { status: error.message === 'Unauthorized' ? 401 : 500 }
+      { status: 500 }
     )
   }
 }
