@@ -117,47 +117,65 @@ export async function GET(request: NextRequest) {
                             parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0') * 0.02
       }
     } else {
-      // Период не выбран - показываем текущую смену (с 00:00 сегодня до текущего времени)
+      // Период не выбран - показываем данные за сегодня (с 00:00 сегодня)
+      // Сначала проверяем, есть ли закрытая смена за сегодня
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const now = new Date()
 
-      const todayFilter = {
-        createdAt: {
-          gte: today,
-          lte: now,
+      // Проверяем, есть ли закрытая смена за сегодня
+      const todayShift = await prisma.dailyShift.findUnique({
+        where: {
+          shiftDate: today,
         },
+      })
+
+      if (todayShift && todayShift.isClosed) {
+        // Используем данные из закрытой смены
+        totalDepositsSum = parseFloat(todayShift.depositsSum.toString())
+        totalDepositsCount = todayShift.depositsCount
+        totalWithdrawalsSum = parseFloat(todayShift.withdrawalsSum.toString())
+        totalWithdrawalsCount = todayShift.withdrawalsCount
+        approximateIncome = parseFloat(todayShift.netProfit.toString())
+      } else {
+        // Смена еще не закрыта - считаем данные напрямую из requests за сегодня
+        const todayFilter = {
+          createdAt: {
+            gte: today,
+            lte: now,
+          },
+        }
+
+        const [depositStats, withdrawalStats] = await Promise.all([
+          prisma.request.aggregate({
+            where: {
+              requestType: 'deposit',
+              status: { in: depositSuccessStatuses },
+              ...todayFilter,
+            },
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+          prisma.request.aggregate({
+            where: {
+              requestType: 'withdraw',
+              status: { in: withdrawalSuccessStatuses },
+              ...todayFilter,
+            },
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+        ])
+
+        totalDepositsCount = depositStats._count.id || 0
+        totalDepositsSum = parseFloat(depositStats._sum.amount?.toString() || '0')
+        totalWithdrawalsCount = withdrawalStats._count.id || 0
+        totalWithdrawalsSum = parseFloat(withdrawalStats._sum.amount?.toString() || '0')
+        approximateIncome = totalDepositsSum * 0.08 + totalWithdrawalsSum * 0.02
       }
-
-      const [depositStats, withdrawalStats] = await Promise.all([
-        prisma.request.aggregate({
-          where: {
-            requestType: 'deposit',
-            status: { in: depositSuccessStatuses },
-            ...todayFilter,
-          },
-          _count: { id: true },
-          _sum: { amount: true },
-        }),
-        prisma.request.aggregate({
-          where: {
-            requestType: 'withdraw',
-            status: { in: withdrawalSuccessStatuses },
-            ...todayFilter,
-          },
-          _count: { id: true },
-          _sum: { amount: true },
-        }),
-      ])
-
-      totalDepositsCount = depositStats._count.id || 0
-      totalDepositsSum = parseFloat(depositStats._sum.amount?.toString() || '0')
-      totalWithdrawalsCount = withdrawalStats._count.id || 0
-      totalWithdrawalsSum = parseFloat(withdrawalStats._sum.amount?.toString() || '0')
-      approximateIncome = totalDepositsSum * 0.08 + totalWithdrawalsSum * 0.02
     }
 
-    // Для графика и статистики по платформам используем те же фильтры
+    // Для статистики по платформам используем те же фильтры, что и для общей статистики
     let dateFilterForStats: any = {}
     if (startDate && endDate) {
       const start = new Date(startDate)
@@ -171,12 +189,14 @@ export async function GET(request: NextRequest) {
         },
       }
     } else {
-      // Для графика показываем последние 30 дней
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      // Период не выбран - считаем за сегодня (с 00:00 до текущего момента)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const now = new Date()
       dateFilterForStats = {
         createdAt: {
-          gte: thirtyDaysAgo,
+          gte: today,
+          lte: now,
         },
       }
     }
