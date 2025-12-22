@@ -39,20 +39,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     fetchUser()
   }, [fetchUser])
 
-  // Отключаем предупреждение о несохранённых изменениях при закрытии страницы
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Не показываем предупреждение
-      e.preventDefault()
-      e.returnValue = ''
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-    }
-  }, [])
-
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
