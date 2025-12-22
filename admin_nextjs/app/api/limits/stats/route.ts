@@ -398,6 +398,7 @@ export async function GET(request: NextRequest) {
     
     // Один запрос для всех платформ - значительно быстрее
     // Используем подзапрос для правильной группировки по алиасу
+    // ВАЖНО: Фильтруем по статусам в WHERE, а не только в CASE, чтобы исключить неподходящие транзакции
     const platformStatsQuery = await prisma.$queryRawUnsafe<Array<{
       platform_key: string;
       deposits_count: bigint;
@@ -407,19 +408,19 @@ export async function GET(request: NextRequest) {
     }>>(`
       SELECT 
         platform_key,
-        SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as deposits_count,
-        COALESCE(SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed') THEN amount ELSE 0 END), 0)::text as deposits_sum,
-        SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as withdrawals_count,
-        COALESCE(SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN amount ELSE 0 END), 0)::text as withdrawals_sum
+        SUM(CASE WHEN request_type = 'deposit' THEN 1 ELSE 0 END)::bigint as deposits_count,
+        COALESCE(SUM(CASE WHEN request_type = 'deposit' THEN amount ELSE 0 END), 0)::text as deposits_sum,
+        SUM(CASE WHEN request_type = 'withdraw' THEN 1 ELSE 0 END)::bigint as withdrawals_count,
+        COALESCE(SUM(CASE WHEN request_type = 'withdraw' THEN amount ELSE 0 END), 0)::text as withdrawals_sum
       FROM (
         SELECT 
           CASE 
-            WHEN bookmaker ILIKE '%1xbet%' OR bookmaker ILIKE '%xbet%' THEN '1xbet'
-            WHEN bookmaker ILIKE '%1win%' OR bookmaker ILIKE '%onewin%' THEN '1win'
-            WHEN bookmaker ILIKE '%melbet%' THEN 'melbet'
-            WHEN bookmaker ILIKE '%mostbet%' THEN 'mostbet'
-            WHEN bookmaker ILIKE '%winwin%' OR bookmaker ILIKE '%win win%' THEN 'winwin'
-            WHEN bookmaker ILIKE '%888%' OR bookmaker ILIKE '%888starz%' THEN '888starz'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%1xbet%' OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' THEN '1xbet'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%1win%' OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' THEN '1win'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%melbet%' THEN 'melbet'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%mostbet%' THEN 'mostbet'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%winwin%' OR LOWER(TRIM(bookmaker)) LIKE '%win win%' THEN 'winwin'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%888%' OR LOWER(TRIM(bookmaker)) LIKE '%888starz%' THEN '888starz'
             ELSE NULL
           END as platform_key,
           request_type,
@@ -428,6 +429,12 @@ export async function GET(request: NextRequest) {
           created_at
         FROM requests
         WHERE bookmaker IS NOT NULL
+          AND TRIM(bookmaker) != ''
+          AND (
+            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed'))
+            OR
+            (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
+          )
           ${dateCondition}
       ) as platform_requests
       WHERE platform_key IS NOT NULL
