@@ -15,17 +15,18 @@ export async function POST(request: NextRequest) {
     const now = new Date()
     const currentMonth = now.getMonth()
     const currentYear = now.getFullYear()
+    const currentDay = now.getDate()
     
     // Начало прошлого месяца
     const lastMonthStart = new Date(currentYear, currentMonth - 1, 1)
     lastMonthStart.setHours(0, 0, 0, 0)
     
-    // Конец прошлого месяца
-    const lastMonthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999)
+    // Конец прошлого месяца (до начала сегодняшнего дня)
+    const lastMonthEnd = new Date(currentYear, currentMonth, currentDay, 0, 0, 0, 0)
+    lastMonthEnd.setMilliseconds(-1) // За секунду до начала сегодняшнего дня
     
-    // Начало нового месяца (текущий месяц)
-    const newMonthStart = new Date(currentYear, currentMonth, 1)
-    newMonthStart.setHours(0, 0, 0, 0)
+    // Начало нового месяца - с сегодняшнего дня (00:00:00 сегодня)
+    const newMonthStart = new Date(currentYear, currentMonth, currentDay, 0, 0, 0, 0)
 
     console.log(`📅 [Close Month] Закрытие месяца:`)
     console.log(`   Прошлый месяц: ${lastMonthStart.toISOString()} - ${lastMonthEnd.toISOString()}`)
