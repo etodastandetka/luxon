@@ -21,15 +21,26 @@ interface Transaction {
 export default function HistoryPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
   const [isInitialLoad, setIsInitialLoad] = useState(true) // Флаг первой загрузки
+  const [hasMore, setHasMore] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const limit = 200 // Загружаем по 200 записей за раз для быстрой загрузки
 
-  const fetchHistory = useCallback(async () => {
+  const fetchHistory = useCallback(async (reset = false) => {
     // При первой загрузке не показываем лоадер - данные загружаются в фоне
-    const isFirstLoad = isInitialLoad
+    const isFirstLoad = isInitialLoad && reset
     
-    if (!isFirstLoad) {
-      setLoading(true)
+    if (reset) {
+      setOffset(0)
+      setTransactions([])
+      setHasMore(true)
+      if (!isInitialLoad) {
+        setLoading(true)
+      }
+    } else {
+      setLoadingMore(true)
     }
     
     try {
@@ -39,9 +50,8 @@ export default function HistoryPage() {
       } else if (activeTab !== 'all') {
         params.append('type', activeTab === 'deposit' ? 'deposit' : 'withdraw')
       }
-      // Загружаем все данные сразу без лимита
-      params.append('limit', '10000')
-      params.append('offset', '0')
+      params.append('limit', limit.toString())
+      params.append('offset', reset ? '0' : offset.toString())
 
       // Используем кеширование для ускорения загрузки (API теперь кэширует на 5 сек)
       const response = await fetch(`/api/transaction-history?${params.toString()}`, {
@@ -59,9 +69,20 @@ export default function HistoryPage() {
       const data = await response.json()
 
       if (data.success) {
-        const allTransactions = data.data.transactions || []
-        console.log('✅ [History] Загружено транзакций:', allTransactions.length, 'для таба:', activeTab)
-        setTransactions(allTransactions)
+        const newTransactions = data.data.transactions || []
+        console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
+        
+        if (reset) {
+          setTransactions(newTransactions)
+          setOffset(newTransactions.length)
+        } else {
+          setTransactions(prev => {
+            const combined = [...prev, ...newTransactions]
+            setOffset(combined.length)
+            return combined
+          })
+        }
+        setHasMore(data.data.pagination?.hasMore || false)
       } else {
         console.error('❌ [History] Ошибка загрузки:', data.error)
       }
@@ -74,17 +95,36 @@ export default function HistoryPage() {
       console.error('Failed to fetch history:', error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }, [activeTab, isInitialLoad])
+  }, [activeTab, isInitialLoad, limit, offset])
 
   // Загружаем данные при монтировании и при изменении таба
-  // Загружаем сразу без задержек - страница показывается мгновенно
   useEffect(() => {
     console.log('📋 [History] Загрузка данных для таба:', activeTab, 'isInitialLoad:', isInitialLoad)
-    // Загружаем все данные сразу при монтировании компонента и при изменении таба
-    fetchHistory()
+    // Сбрасываем и загружаем первую порцию данных
+    fetchHistory(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
+
+  // Автоматическая подгрузка при скролле вниз
+  useEffect(() => {
+    const handleScroll = () => {
+      // Проверяем, достигли ли мы 80% от конца страницы
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      
+      const scrollPercentage = (scrollTop + windowHeight) / documentHeight
+      
+      if (scrollPercentage > 0.8 && hasMore && !loadingMore && !loading) {
+        fetchHistory(false)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [hasMore, loadingMore, loading, fetchHistory])
 
   // Мемоизируем функции форматирования
   const formatDate = useCallback((dateString: string) => {
@@ -303,7 +343,7 @@ export default function HistoryPage() {
           <p className="text-xs text-gray-300 mt-1">Все транзакции</p>
         </div>
         <button
-          onClick={() => fetchHistory()}
+          onClick={() => fetchHistory(true)}
           className="p-2 bg-gray-800 rounded-lg"
         >
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,6 +448,15 @@ export default function HistoryPage() {
           {processedTransactions.map((tx) => (
             <TransactionItem key={tx.id} tx={tx} />
           ))}
+          {/* Индикатор загрузки при подгрузке дополнительных данных */}
+          {loadingMore && (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center gap-2 text-gray-400">
+                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm">Загрузка...</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
