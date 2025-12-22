@@ -322,9 +322,9 @@ export default function HistoryPage() {
               {isDeposit ? '+' : '-'}{formattedAmount}
             </p>
             
-            {/* Статус */}
+            {/* Статус - используем русский текст из statusInfo.label */}
             <span className={`text-xs font-medium whitespace-nowrap ${statusInfo.textColor || 'text-gray-300'}`}>
-              {statusState}
+              {statusInfo.label}
             </span>
           </div>
         </div>
