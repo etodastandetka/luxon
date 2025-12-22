@@ -133,17 +133,43 @@ export default function UserDetailPage() {
   }
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'completed':
-      case 'approved':
-        return 'Успешно'
-      case 'pending':
-        return 'Ожидает'
-      case 'rejected':
-        return 'Отклонено'
-      default:
-        return status
+    // Полный маппинг статусов на русские метки (как в истории)
+    if (status === 'completed' || status === 'approved' || status === 'auto_completed' || status === 'autodeposit_success') {
+      return 'Успешно'
     }
+    if (status === 'rejected' || status === 'declined') {
+      return 'Отклонено'
+    }
+    if (status === 'pending' || status === 'processing') {
+      return 'Ожидает'
+    }
+    if (status === 'deferred') {
+      return 'Отложено'
+    }
+    if (status === 'manual' || status === 'awaiting_manual') {
+      return 'Ручная'
+    }
+    return status
+  }
+
+  const getStatusTextColor = (status: string) => {
+    // Цвет текста статуса (как в истории)
+    if (status === 'completed' || status === 'approved' || status === 'auto_completed' || status === 'autodeposit_success') {
+      return 'text-green-500'
+    }
+    if (status === 'rejected' || status === 'declined') {
+      return 'text-red-500'
+    }
+    if (status === 'pending' || status === 'processing') {
+      return 'text-yellow-500'
+    }
+    if (status === 'deferred') {
+      return 'text-orange-500'
+    }
+    if (status === 'manual' || status === 'awaiting_manual') {
+      return 'text-red-500'
+    }
+    return 'text-gray-300'
   }
 
   const getBankImage = (bank: string | null) => {
@@ -450,71 +476,94 @@ export default function UserDetailPage() {
       <div className="mx-4">
         <h3 className="text-lg font-semibold text-white mb-3">Транзакции</h3>
         {user.transactions.length > 0 ? (
-          <div className="space-y-2">
-            {user.transactions.slice(0, 10).map((tx) => (
-              <div
-                key={tx.id}
-                className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  {/* Иконка банка или дефолтная иконка */}
-                  {getBankImage(tx.bank) ? (
-                    <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900 relative">
-                      <Image
-                        src={getBankImage(tx.bank) || ''}
-                        alt={tx.bank || 'Bank'}
-                        fill
-                        className="object-cover"
-                      />
+          <div className="space-y-3">
+            {user.transactions.slice(0, 10).map((tx) => {
+              const transactionType = (() => {
+                // Если статус pending, показываем "-"
+                if (tx.status === 'pending' || tx.status === 'processing') {
+                  return '-'
+                }
+                // Если есть processedBy, показываем его (если автопополнение, то "автопополнение")
+                if (tx.processedBy) {
+                  return tx.processedBy === 'автопополнение' ? 'автопополнение' : tx.processedBy
+                }
+                // Если нет processedBy, но статус не pending, показываем "-"
+                return '-'
+              })()
+
+              return (
+                <Link
+                  key={tx.id}
+                  href={`/dashboard/requests/${tx.id}`}
+                  prefetch={false}
+                  className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm cursor-pointer"
+                >
+                  <div className="flex items-start justify-between">
+                    {/* Левая часть: Аватар и информация о пользователе */}
+                    <div className="flex items-start space-x-3 flex-1">
+                      {/* Иконка банка */}
+                      {getBankImage(tx.bank) ? (
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-600 bg-gray-900 relative">
+                          <Image
+                            src={getBankImage(tx.bank) || ''}
+                            alt={tx.bank || 'Bank'}
+                            fill
+                            className="object-cover"
+                            loading="lazy"
+                            sizes="48px"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Информация о пользователе и транзакции */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-bold text-white mb-0.5">
+                          {displayName}
+                        </p>
+                        <p className="text-xs text-gray-400 mb-2">
+                          ID: {user.userId}
+                        </p>
+                        
+                        {/* Тип транзакции */}
+                        <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-500 bg-opacity-20 text-blue-300 rounded-md mb-1 border border-blue-500 border-opacity-30">
+                          {transactionType}
+                        </span>
+                      </div>
                     </div>
-                  ) : (
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                      tx.transType === 'deposit' ? 'bg-purple-600' : 'bg-pink-600'
-                    }`}>
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {tx.transType === 'deposit' ? (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        ) : (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        )}
-                      </svg>
+
+                    {/* Правая часть: Дата, сумма и статус */}
+                    <div className="flex flex-col items-end space-y-2 ml-4">
+                      {/* Дата и время */}
+                      <p className="text-xs text-gray-400 whitespace-nowrap">
+                        {formatDate(tx.createdAt)}
+                      </p>
+                      
+                      {/* Сумма */}
+                      <p
+                        className={`text-base font-bold ${
+                          tx.transType === 'deposit' ? 'text-green-500' : 'text-red-500'
+                        }`}
+                      >
+                        {tx.transType === 'deposit' ? '+' : '-'}{parseFloat(tx.amount || '0').toFixed(2).replace('.', ',')}
+                      </p>
+                      
+                      {/* Статус */}
+                      <span className={`text-xs font-medium whitespace-nowrap ${getStatusTextColor(tx.status)}`}>
+                        {getStatusLabel(tx.status)}
+                      </span>
                     </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <p className="text-sm font-medium text-white">{displayName}</p>
-                      <span className="text-xs text-gray-400">ID: {user.userId}</span>
-                    </div>
-                    <span className="inline-block px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded mb-1">
-                      {(() => {
-                        // Если статус pending, показываем "-"
-                        if (tx.status === 'pending' || tx.status === 'processing') {
-                          return '-'
-                        }
-                        // Если есть processedBy, показываем его (если автопополнение, то "автопополнение")
-                        if (tx.processedBy) {
-                          return tx.processedBy === 'автопополнение' ? 'автопополнение' : tx.processedBy
-                        }
-                        // Если нет processedBy, но статус не pending, показываем "-"
-                        return '-'
-                      })()}
-                    </span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400 mb-1">{formatDate(tx.createdAt)}</p>
-                    <p className={`text-lg font-bold ${
-                      tx.transType === 'deposit' ? 'text-green-500' : 'text-red-500'
-                    }`}>
-                      {tx.transType === 'deposit' ? '+' : '-'}{parseFloat(tx.amount || '0').toFixed(2).replace('.', ',')}
-                    </p>
-                    <div className="flex items-center space-x-1 mt-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-xs text-green-500">{getStatusLabel(tx.status)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                </Link>
+              )
+            })}
           </div>
         ) : (
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 text-center">
