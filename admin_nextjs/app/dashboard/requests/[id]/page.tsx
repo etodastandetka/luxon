@@ -68,9 +68,7 @@ export default function RequestDetailPage() {
   const [photoZoom, setPhotoZoom] = useState(1)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<'completed' | 'approved' | 'rejected' | null>(null)
-  const [photoLoading, setPhotoLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
-  const [imageLoading, setImageLoading] = useState(true)
   const isMountedRef = useRef(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const photoLoadedRef = useRef(false) // Флаг, что фото уже загружено для текущей заявки
@@ -164,9 +162,8 @@ export default function RequestDetailPage() {
             
             // Загружаем фото ТОЛЬКО один раз при первой загрузке заявки
             // При автообновлениях (showLoading = false) не загружаем фото повторно
-            // Загружаем фото ПАРАЛЛЕЛЬНО с основными данными для ускорения
+            // Загружаем фото ПАРАЛЛЕЛЬНО с основными данными для ускорения, без показа лоадера
             if (showLoading && !photoLoadedRef.current) {
-              setPhotoLoading(true)
               // Загружаем фото сразу, без задержки - параллельно с основным контентом
               fetch(`/api/requests/${requestId}/photo`, {
                 cache: 'force-cache', // Используем кэш для ускорения
@@ -179,7 +176,6 @@ export default function RequestDetailPage() {
                 .then(photoData => {
                   // Проверяем еще раз, что фото не загружено (защита от дублирования)
                   if (photoLoadedRef.current || !isMountedRef.current) {
-                    setPhotoLoading(false)
                     return
                   }
                   
@@ -195,12 +191,11 @@ export default function RequestDetailPage() {
                         photoFileUrl: photoData.data.photoFileUrl
                       }
                     })
-                    setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
+                    // Фото появится сразу без лоадера
                   }
-                  setPhotoLoading(false)
                 })
                 .catch(() => {
-                  setPhotoLoading(false)
+                  // Тихая ошибка - просто не показываем фото
                 })
             }
             
@@ -1234,51 +1229,20 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      {/* Фото чека или QR-кода */}
-      {photoLoading ? (
+      {/* Фото чека или QR-кода - показываем только если фото загружено */}
+      {request.photoFileUrl && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-base font-semibold text-white mb-3">
             {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
           </h3>
-          <div className="relative w-full flex justify-center items-center bg-gray-900 rounded-lg overflow-hidden" style={{ minHeight: '200px' }}>
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div className="relative">
-                <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                <div className="absolute inset-0 w-16 h-16 border-4 border-green-500/20 rounded-full"></div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <p className="text-sm text-gray-400 font-medium">Загрузка фото...</p>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : request.photoFileUrl ? (
-          <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
-            <h3 className="text-base font-semibold text-white mb-3">
-              {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-            </h3>
-            <div 
+          <div 
             className="relative w-full flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity bg-gray-900 rounded-lg overflow-hidden" 
             style={{ minHeight: '200px' }}
-              onClick={() => {
-                setShowPhotoModal(true)
-                setPhotoZoom(1)
-              }}
-            >
-            {/* Красивый лоадер пока фото загружается */}
-            {imageLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm z-10 photo-loader">
-                <div className="flex flex-col items-center justify-center space-y-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                    <div className="absolute inset-0 w-12 h-12 border-4 border-green-500/30 rounded-full animate-ping"></div>
-                      </div>
-                  <p className="text-xs text-gray-400 font-medium">Загрузка изображения...</p>
-                </div>
-              </div>
-            )}
+            onClick={() => {
+              setShowPhotoModal(true)
+              setPhotoZoom(1)
+            }}
+          >
             <Image
               src={request.photoFileUrl}
               alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
@@ -1286,51 +1250,22 @@ export default function RequestDetailPage() {
               height={600}
               className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
               style={{ display: 'block' }}
-              loading="eager" // Загружаем сразу, не лениво
-              priority // Высокий приоритет загрузки
+              loading="eager"
+              priority
               unoptimized={request.photoFileUrl?.startsWith('data:')}
-                    onError={(e) => {
+              onError={(e) => {
                 console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
-                setImageLoading(false)
-                // Скрываем лоадер при ошибке
-                const loader = document.querySelector('.photo-loader')
-                if (loader) {
-                  (loader as HTMLElement).style.display = 'none'
-                }
-                // Показываем сообщение об ошибке
-                      const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
                 const parent = target.parentElement
                 if (parent) {
                   parent.innerHTML = '<div class="text-center py-8"><p class="text-red-400">Ошибка загрузки фото</p></div>'
                 }
               }}
-              onLoad={(e) => {
+              onLoad={() => {
                 console.log('✅ [Request Detail] Изображение успешно загружено')
-                setImageLoading(false)
-                // Скрываем лоадер после загрузки с плавной анимацией
-                const loader = document.querySelector('.photo-loader')
-                if (loader) {
-                  (loader as HTMLElement).style.transition = 'opacity 0.3s ease-out'
-                  ;(loader as HTMLElement).style.opacity = '0'
-                  setTimeout(() => {
-                    if (loader.parentElement) {
-                      loader.remove()
-                    }
-                  }, 300)
-                      }
-                    }}
-                  />
-            </div>
-          </div>
-      ) : (
-        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
-          <h3 className="text-base font-semibold text-white mb-3">
-            {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-          </h3>
-          <div className="text-center py-8">
-            <p className="text-gray-400 text-sm">Фото не загружено</p>
-            <p className="text-gray-500 text-xs mt-1">Пользователь не прикрепил фото</p>
+              }}
+            />
           </div>
         </div>
       )}
