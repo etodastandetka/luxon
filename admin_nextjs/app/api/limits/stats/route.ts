@@ -416,34 +416,55 @@ export async function GET(request: NextRequest) {
       FROM (
         SELECT 
           CASE 
-            -- 1xbet: учитываем различные варианты написания (1xbet, 1XBet, 1XBET, xbet, XBET)
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%1xbet%' 
+            -- Точные значения из BookmakerGrid: '1xbet', '1win', 'melbet', 'mostbet', 'winwin', '888starz'
+            -- Также учитываем различные варианты написания с учетом регистра и пробелов
+            WHEN LOWER(TRIM(bookmaker)) = '1xbet' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%1xbet%' 
               OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' 
-              OR LOWER(TRIM(bookmaker)) = '1xbet'
-              OR LOWER(TRIM(bookmaker)) = 'xbet' THEN '1xbet'
-            -- 1win: учитываем различные варианты (1win, 1WIN, onewin, one win)
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%1win%' 
+              OR TRIM(bookmaker) = '1xbet'
+              OR TRIM(bookmaker) = '1XBet'
+              OR TRIM(bookmaker) = '1XBET'
+              OR TRIM(bookmaker) = 'xbet'
+              OR TRIM(bookmaker) = 'Xbet'
+              OR TRIM(bookmaker) = 'XBET' THEN '1xbet'
+            -- 1win
+            WHEN LOWER(TRIM(bookmaker)) = '1win' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%1win%' 
               OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' 
               OR LOWER(TRIM(bookmaker)) LIKE '%one win%'
-              OR LOWER(TRIM(bookmaker)) = '1win' THEN '1win'
-            -- melbet: учитываем различные варианты (melbet, MELBET, mel bet)
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%melbet%' 
+              OR TRIM(bookmaker) = '1win'
+              OR TRIM(bookmaker) = '1Win'
+              OR TRIM(bookmaker) = '1WIN' THEN '1win'
+            -- melbet
+            WHEN LOWER(TRIM(bookmaker)) = 'melbet' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%melbet%' 
               OR LOWER(TRIM(bookmaker)) LIKE '%mel bet%'
-              OR LOWER(TRIM(bookmaker)) = 'melbet' THEN 'melbet'
-            -- mostbet: учитываем различные варианты
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%mostbet%' 
+              OR TRIM(bookmaker) = 'melbet'
+              OR TRIM(bookmaker) = 'Melbet'
+              OR TRIM(bookmaker) = 'MELBET' THEN 'melbet'
+            -- mostbet
+            WHEN LOWER(TRIM(bookmaker)) = 'mostbet' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%mostbet%' 
               OR LOWER(TRIM(bookmaker)) LIKE '%most bet%'
-              OR LOWER(TRIM(bookmaker)) = 'mostbet' THEN 'mostbet'
-            -- winwin: учитываем различные варианты (winwin, win win, WINWIN)
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%winwin%' 
+              OR TRIM(bookmaker) = 'mostbet'
+              OR TRIM(bookmaker) = 'Mostbet'
+              OR TRIM(bookmaker) = 'MOSTBET' THEN 'mostbet'
+            -- winwin
+            WHEN LOWER(TRIM(bookmaker)) = 'winwin' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%winwin%' 
               OR LOWER(TRIM(bookmaker)) LIKE '%win win%'
-              OR LOWER(TRIM(bookmaker)) = 'winwin' THEN 'winwin'
-            -- 888starz: учитываем различные варианты (888, 888starz, 888 starz)
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%888%' 
+              OR TRIM(bookmaker) = 'winwin'
+              OR TRIM(bookmaker) = 'Winwin'
+              OR TRIM(bookmaker) = 'WINWIN' THEN 'winwin'
+            -- 888starz
+            WHEN LOWER(TRIM(bookmaker)) = '888starz' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%888%' 
               OR LOWER(TRIM(bookmaker)) LIKE '%888starz%'
               OR LOWER(TRIM(bookmaker)) LIKE '%888 starz%'
-              OR LOWER(TRIM(bookmaker)) = '888' 
-              OR LOWER(TRIM(bookmaker)) = '888starz' THEN '888starz'
+              OR TRIM(bookmaker) = '888'
+              OR TRIM(bookmaker) = '888starz'
+              OR TRIM(bookmaker) = '888Starz'
+              OR TRIM(bookmaker) = '888STARZ' THEN '888starz'
             ELSE NULL
           END as platform_key,
           request_type,
