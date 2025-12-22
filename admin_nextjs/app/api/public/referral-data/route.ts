@@ -81,7 +81,28 @@ export async function GET(request: NextRequest) {
     // Если только топ, возвращаем только топ игроков
     if (topOnly) {
       try {
-        // Получаем топ-5 реферов через агрегацию
+        // Получаем дату начала текущего месяца из конфигурации
+        const monthStartConfig = await prisma.botConfiguration.findUnique({
+          where: { key: 'referral_current_month_start' }
+        })
+        
+        let monthStartDate: Date | null = null
+        if (monthStartConfig && monthStartConfig.value) {
+          try {
+            monthStartDate = new Date(monthStartConfig.value as string)
+          } catch (e) {
+            console.warn('Failed to parse referral_current_month_start date, using current month')
+          }
+        }
+        
+        // Если дата не установлена, используем начало текущего месяца
+        if (!monthStartDate) {
+          const now = new Date()
+          monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
+          monthStartDate.setHours(0, 0, 0, 0)
+        }
+        
+        // Получаем топ-5 реферов через агрегацию (только за текущий месяц)
         const topReferrersRaw = await prisma.$queryRaw<Array<{
           referrer_id: bigint,
           total_deposits: number | bigint,
@@ -96,6 +117,7 @@ export async function GET(request: NextRequest) {
             AND r.request_type = 'deposit'
             AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
             AND r.amount > 0
+            AND r.created_at >= ${monthStartDate}::timestamp
           GROUP BY br.referrer_id
           ORDER BY total_deposits DESC
           LIMIT 5
@@ -235,6 +257,27 @@ export async function GET(request: NextRequest) {
     
     console.log('🔍 [Referral Data API] Поиск рефералов для пользователя:', userIdBigInt.toString())
     
+    // Получаем дату начала текущего месяца из конфигурации
+    const monthStartConfig = await prisma.botConfiguration.findUnique({
+      where: { key: 'referral_current_month_start' }
+    })
+    
+    let monthStartDate: Date | null = null
+    if (monthStartConfig && monthStartConfig.value) {
+      try {
+        monthStartDate = new Date(monthStartConfig.value as string)
+      } catch (e) {
+        console.warn('Failed to parse referral_current_month_start date, using current month')
+      }
+    }
+    
+    // Если дата не установлена, используем начало текущего месяца
+    if (!monthStartDate) {
+      const now = new Date()
+      monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      monthStartDate.setHours(0, 0, 0, 0)
+    }
+    
     // ОПТИМИЗИРОВАННЫЕ ЗАПРОСЫ: Используем параллельные запросы и агрегацию
     const [referrals, earnings, stats] = await Promise.all([
       // Получаем только количество рефералов (без include для скорости)
@@ -245,19 +288,22 @@ export async function GET(request: NextRequest) {
           }
         }
       }),
-      // Получаем заработанные комиссии с агрегацией
+      // Получаем заработанные комиссии с агрегацией (только за текущий месяц)
       prisma.botReferralEarning.aggregate({
         where: {
           referrer: {
             userId: userIdBigInt
           },
-          status: 'completed'
+          status: 'completed',
+          createdAt: {
+            gte: monthStartDate
+          }
         },
         _sum: {
           commissionAmount: true
         }
       }),
-      // Получаем статистику депозитов рефералов через агрегацию
+      // Получаем статистику депозитов рефералов через агрегацию (только за текущий месяц)
       prisma.$queryRaw<Array<{
         active_referrals: bigint,
         total_deposits: number
@@ -271,6 +317,7 @@ export async function GET(request: NextRequest) {
           AND r.request_type = 'deposit'
           AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
           AND r.amount > 0
+          AND r.created_at >= ${monthStartDate}::timestamp
       `
     ])
     
@@ -285,6 +332,7 @@ export async function GET(request: NextRequest) {
     
     // ОПТИМИЗИРОВАННАЯ ЛОГИКА: Используем агрегацию на уровне БД для скорости
     // Получаем топ-5 реферов через агрегацию (быстрее чем обработка в памяти)
+    // Учитываем дату начала месяца
     const topReferrersRaw = await prisma.$queryRaw<Array<{
       referrer_id: bigint,
       total_deposits: number,
@@ -299,6 +347,7 @@ export async function GET(request: NextRequest) {
         AND r.request_type = 'deposit'
         AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
         AND r.amount > 0
+        AND r.created_at >= ${monthStartDate}::timestamp
       GROUP BY br.referrer_id
       ORDER BY total_deposits DESC
       LIMIT 5
@@ -336,7 +385,7 @@ export async function GET(request: NextRequest) {
       }
     })
     
-    // Находим место текущего пользователя через отдельный запрос
+    // Находим место текущего пользователя через отдельный запрос (только за текущий месяц)
     const userRankData = await prisma.$queryRaw<Array<{
       referrer_id: bigint,
       total_deposits: number,
@@ -352,6 +401,7 @@ export async function GET(request: NextRequest) {
           AND r.request_type = 'deposit'
           AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
           AND r.amount > 0
+          AND r.created_at >= ${monthStartDate}::timestamp
         GROUP BY br.referrer_id
       )
       SELECT referrer_id, total_deposits, rank
