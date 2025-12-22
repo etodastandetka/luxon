@@ -1,6 +1,7 @@
 "use client"
 
 import { useBotSettings } from './SettingsLoader'
+import { useState, useEffect } from 'react'
 
 interface ServiceStatusProps {
   service: 'deposits' | 'withdrawals' | 'casinos'
@@ -9,6 +10,7 @@ interface ServiceStatusProps {
 
 export default function ServiceStatus({ service, children }: ServiceStatusProps) {
   const { settings, loading, error } = useBotSettings()
+  const [isEnabled, setIsEnabled] = useState(true) // По умолчанию показываем кнопки
 
   const resolveServiceEnabled = () => {
     const s = settings as any
@@ -24,24 +26,15 @@ export default function ServiceStatus({ service, children }: ServiceStatusProps)
     return Array.isArray(enabledSites) ? enabledSites.length > 0 : true
   }
 
-  if (loading) {
-    return (
-      <div className="card text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto mb-2"></div>
-        <p className="text-white/70">Загрузка...</p>
-      </div>
-    )
-  }
+  // Обновляем статус в фоне, не блокируя рендер
+  useEffect(() => {
+    if (!loading && settings) {
+      setIsEnabled(resolveServiceEnabled())
+    }
+  }, [loading, settings, service])
 
-  if (error && !settings) {
-    return (
-      <div className="card text-center bg-red-900/20 border-red-500">
-        <p className="text-red-400">Ошибка загрузки настроек</p>
-      </div>
-    )
-  }
-
-  if (!resolveServiceEnabled()) {
+  // Если сервис отключен, показываем предупреждение вместо кнопки
+  if (!loading && !isEnabled) {
     const messages = {
       deposits: 'Пополнение временно недоступно',
       withdrawals: 'Вывод временно недоступен',
@@ -60,6 +53,7 @@ export default function ServiceStatus({ service, children }: ServiceStatusProps)
     )
   }
 
+  // Показываем кнопки сразу, даже если настройки еще загружаются
   return <>{children}</>
 }
 
