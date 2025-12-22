@@ -399,6 +399,7 @@ export async function GET(request: NextRequest) {
     // Один запрос для всех платформ - значительно быстрее
     // Используем подзапрос для правильной группировки по алиасу
     // ВАЖНО: Фильтруем по статусам в WHERE, а не только в CASE, чтобы исключить неподходящие транзакции
+    // Улучшено сопоставление платформ: учитываем различные варианты написания
     const platformStatsQuery = await prisma.$queryRawUnsafe<Array<{
       platform_key: string;
       deposits_count: bigint;
@@ -415,12 +416,34 @@ export async function GET(request: NextRequest) {
       FROM (
         SELECT 
           CASE 
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%1xbet%' OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' THEN '1xbet'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%1win%' OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' THEN '1win'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%melbet%' THEN 'melbet'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%mostbet%' THEN 'mostbet'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%winwin%' OR LOWER(TRIM(bookmaker)) LIKE '%win win%' THEN 'winwin'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%888%' OR LOWER(TRIM(bookmaker)) LIKE '%888starz%' THEN '888starz'
+            -- 1xbet: учитываем различные варианты написания (1xbet, 1XBet, 1XBET, xbet, XBET)
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%1xbet%' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' 
+              OR LOWER(TRIM(bookmaker)) = '1xbet'
+              OR LOWER(TRIM(bookmaker)) = 'xbet' THEN '1xbet'
+            -- 1win: учитываем различные варианты (1win, 1WIN, onewin, one win)
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%1win%' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%one win%'
+              OR LOWER(TRIM(bookmaker)) = '1win' THEN '1win'
+            -- melbet: учитываем различные варианты (melbet, MELBET, mel bet)
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%melbet%' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%mel bet%'
+              OR LOWER(TRIM(bookmaker)) = 'melbet' THEN 'melbet'
+            -- mostbet: учитываем различные варианты
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%mostbet%' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%most bet%'
+              OR LOWER(TRIM(bookmaker)) = 'mostbet' THEN 'mostbet'
+            -- winwin: учитываем различные варианты (winwin, win win, WINWIN)
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%winwin%' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%win win%'
+              OR LOWER(TRIM(bookmaker)) = 'winwin' THEN 'winwin'
+            -- 888starz: учитываем различные варианты (888, 888starz, 888 starz)
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%888%' 
+              OR LOWER(TRIM(bookmaker)) LIKE '%888starz%'
+              OR LOWER(TRIM(bookmaker)) LIKE '%888 starz%'
+              OR LOWER(TRIM(bookmaker)) = '888' 
+              OR LOWER(TRIM(bookmaker)) = '888starz' THEN '888starz'
             ELSE NULL
           END as platform_key,
           request_type,
@@ -440,6 +463,50 @@ export async function GET(request: NextRequest) {
       WHERE platform_key IS NOT NULL
       GROUP BY platform_key
     `, ...dateParams)
+    
+    // Отладочное логирование для проверки запросов без совпадения платформ
+    // Проверяем, есть ли транзакции, которые не попали в статистику по платформам
+    if (dateFilterForStats.createdAt) {
+      const debugQuery = await prisma.$queryRawUnsafe<Array<{
+        bookmaker: string | null;
+        request_type: string;
+        status: string;
+        amount: string;
+        count: bigint;
+      }>>(`
+        SELECT 
+          bookmaker,
+          request_type,
+          status,
+          SUM(amount)::text as amount,
+          COUNT(*)::bigint as count
+        FROM requests
+        WHERE bookmaker IS NOT NULL
+          AND TRIM(bookmaker) != ''
+          AND (
+            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed'))
+            OR
+            (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
+          )
+          ${dateCondition}
+          AND (
+            LOWER(TRIM(bookmaker)) NOT LIKE '%1xbet%' 
+            AND LOWER(TRIM(bookmaker)) NOT LIKE '%xbet%'
+            AND LOWER(TRIM(bookmaker)) NOT LIKE '%1win%'
+            AND LOWER(TRIM(bookmaker)) NOT LIKE '%onewin%'
+            AND LOWER(TRIM(bookmaker)) NOT LIKE '%melbet%'
+            AND LOWER(TRIM(bookmaker)) NOT LIKE '%mostbet%'
+            AND LOWER(TRIM(bookmaker)) NOT LIKE '%winwin%'
+            AND LOWER(TRIM(bookmaker)) NOT LIKE '%888%'
+          )
+        GROUP BY bookmaker, request_type, status
+        LIMIT 10
+      `, ...dateParams)
+      
+      if (debugQuery.length > 0) {
+        console.warn('⚠️ [Platform Stats] Найдены транзакции без совпадения платформ:', debugQuery)
+      }
+    }
     
     // Преобразуем результаты в нужный формат
     const platformStatsMap = new Map<string, PlatformStats>()
