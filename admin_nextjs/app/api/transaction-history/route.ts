@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('user_id')
     const type = searchParams.get('type') // deposit, withdraw, or empty for all
     const manual = searchParams.get('manual') === 'true' // Ручные заявки (не автопополнение)
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const limit = parseInt(searchParams.get('limit') || '10000') // По умолчанию загружаем все
     const offset = parseInt(searchParams.get('offset') || '0')
 
     const where: any = {}
@@ -42,7 +42,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Оптимизация: берем на 1 больше для проверки hasMore без отдельного count запроса
+    // Оптимизация: если limit очень большой, загружаем все без проверки hasMore
+    const shouldCheckHasMore = limit < 10000
+    const takeValue = shouldCheckHasMore ? limit + 1 : limit
+
     const requests = await prisma.request.findMany({
       where,
       select: {
@@ -64,16 +67,13 @@ export async function GET(request: NextRequest) {
         processedBy: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: limit + 1, // Берем на 1 больше для проверки hasMore
+      take: takeValue,
       skip: offset,
     })
 
-    // Проверяем hasMore (если получили больше limit, значит есть еще)
-    const hasMore = requests.length > limit
-    const actualRequests = hasMore ? requests.slice(0, limit) : requests
-
-    // Убираем count полностью для ускорения - hasMore достаточно
-    const total = 0
+    // Проверяем hasMore только если нужно
+    const hasMore = shouldCheckHasMore ? requests.length > limit : false
+    const actualRequests = shouldCheckHasMore && hasMore ? requests.slice(0, limit) : requests
 
     const transactions = actualRequests.map((r) => ({
       id: r.id.toString(),

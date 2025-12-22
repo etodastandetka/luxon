@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, memo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useCallback, useMemo, memo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -20,30 +19,17 @@ interface Transaction {
 }
 
 export default function HistoryPage() {
-  const router = useRouter()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(false) // НЕ показываем лоадер - данные загружаются в фоне
-  const [loadingMore, setLoadingMore] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'deposit' | 'withdraw' | 'manual'>('all')
-  const [hasMore, setHasMore] = useState(true)
-  const [offset, setOffset] = useState(0)
-  const limit = 50 // Увеличиваем лимит для быстрой загрузки и меньше запросов
   const [isInitialLoad, setIsInitialLoad] = useState(true) // Флаг первой загрузки
 
-  const fetchHistory = useCallback(async (reset = false, currentOffset = 0) => {
+  const fetchHistory = useCallback(async () => {
     // При первой загрузке не показываем лоадер - данные загружаются в фоне
-    const isFirstLoad = isInitialLoad && reset
+    const isFirstLoad = isInitialLoad
     
-    if (reset) {
-      setOffset(0)
-      setTransactions([])
-      setHasMore(true)
-      // Показываем лоадер только при переключении табов (не при первой загрузке)
-      if (!isInitialLoad) {
-        setLoading(true)
-      }
-    } else {
-      setLoadingMore(true)
+    if (!isFirstLoad) {
+      setLoading(true)
     }
     
     try {
@@ -53,8 +39,9 @@ export default function HistoryPage() {
       } else if (activeTab !== 'all') {
         params.append('type', activeTab === 'deposit' ? 'deposit' : 'withdraw')
       }
-      params.append('limit', limit.toString())
-      params.append('offset', reset ? '0' : currentOffset.toString())
+      // Загружаем все данные сразу без лимита
+      params.append('limit', '10000')
+      params.append('offset', '0')
 
       // Используем кеширование для ускорения загрузки (API теперь кэширует на 5 сек)
       const response = await fetch(`/api/transaction-history?${params.toString()}`, {
@@ -72,19 +59,9 @@ export default function HistoryPage() {
       const data = await response.json()
 
       if (data.success) {
-        const newTransactions = data.data.transactions || []
-        console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
-        if (reset) {
-          setTransactions(newTransactions)
-          setOffset(newTransactions.length)
-        } else {
-          setTransactions(prev => {
-            const combined = [...prev, ...newTransactions]
-            setOffset(combined.length)
-            return combined
-          })
-        }
-        setHasMore(data.data.pagination?.hasMore || false)
+        const allTransactions = data.data.transactions || []
+        console.log('✅ [History] Загружено транзакций:', allTransactions.length, 'для таба:', activeTab)
+        setTransactions(allTransactions)
       } else {
         console.error('❌ [History] Ошибка загрузки:', data.error)
       }
@@ -97,26 +74,17 @@ export default function HistoryPage() {
       console.error('Failed to fetch history:', error)
     } finally {
       setLoading(false)
-      setLoadingMore(false)
     }
-  }, [activeTab, limit, isInitialLoad])
+  }, [activeTab, isInitialLoad])
 
   // Загружаем данные при монтировании и при изменении таба
   // Загружаем сразу без задержек - страница показывается мгновенно
   useEffect(() => {
     console.log('📋 [History] Загрузка данных для таба:', activeTab, 'isInitialLoad:', isInitialLoad)
-    // Загружаем данные сразу при монтировании компонента и при изменении таба
-    fetchHistory(true, 0)
+    // Загружаем все данные сразу при монтировании компонента и при изменении таба
+    fetchHistory()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
-  
-  // Убрали предзагрузку всех табов - это вызывало 429 ошибки (Too Many Requests)
-
-  const loadMore = useCallback(() => {
-    if (!loadingMore && hasMore) {
-      fetchHistory(false, offset)
-    }
-  }, [loadingMore, hasMore, fetchHistory, offset])
 
   // Мемоизируем функции форматирования
   const formatDate = useCallback((dateString: string) => {
@@ -335,7 +303,7 @@ export default function HistoryPage() {
           <p className="text-xs text-gray-300 mt-1">Все транзакции</p>
         </div>
         <button
-          onClick={() => fetchHistory(true)}
+          onClick={() => fetchHistory()}
           className="p-2 bg-gray-800 rounded-lg"
         >
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -409,7 +377,7 @@ export default function HistoryPage() {
       </div>
 
       {/* Список транзакций */}
-      {transactions.length === 0 && !loadingMore && !isInitialLoad ? (
+      {transactions.length === 0 && !loading && !isInitialLoad ? (
         // Показываем пустое состояние только если данных нет, не идет загрузка И не первая загрузка
         <div className="text-center py-12 text-gray-400">
           <p>История транзакций пуста</p>
@@ -440,44 +408,6 @@ export default function HistoryPage() {
           {processedTransactions.map((tx) => (
             <TransactionItem key={tx.id} tx={tx} />
           ))}
-          {/* Показываем скелетон только при загрузке дополнительных данных */}
-          {loadingMore && (
-            <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 animate-pulse">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3 flex-1">
-                  <div className="w-12 h-12 bg-gray-700 rounded-lg"></div>
-                  <div className="flex-1">
-                    <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
-                    <div className="h-3 bg-gray-700 rounded w-24"></div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="h-4 bg-gray-700 rounded w-20 mb-2"></div>
-                  <div className="h-3 bg-gray-700 rounded w-16"></div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Кнопка "Загрузить еще" - показываем только если есть данные и есть еще для загрузки */}
-      {hasMore && transactions.length > 0 && (
-        <div className="text-center mt-4">
-          <button
-            onClick={loadMore}
-            disabled={loadingMore}
-            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
-          >
-            {loadingMore ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Загрузка...</span>
-              </>
-            ) : (
-              'Загрузить еще'
-            )}
-          </button>
         </div>
       )}
     </div>
