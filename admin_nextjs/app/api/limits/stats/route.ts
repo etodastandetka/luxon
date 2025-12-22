@@ -87,48 +87,68 @@ export async function GET(request: NextRequest) {
         approximateIncome += parseFloat(shift.netProfit.toString())
       })
 
-      // Также учитываем текущую смену, если она попадает в период
+      // Также учитываем текущую смену, если она попадает в период И еще не закрыта
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const todayEnd = new Date(today)
       todayEnd.setHours(23, 59, 59, 999)
 
       if (today >= start && today <= end) {
-        // Текущий день попадает в период - добавляем данные за сегодня до текущего момента
-        const todayFilter = {
-          createdAt: {
-            gte: today,
-            lte: new Date(), // До текущего момента
-          },
+        // Проверяем, закрыта ли уже смена за сегодня
+        let todayShift: any = null
+        try {
+          todayShift = await prisma.dailyShift.findUnique({
+            where: {
+              shiftDate: today,
+            },
+          })
+        } catch (dbError: any) {
+          // Если таблица не существует, просто продолжаем
+          if (!(dbError.message?.includes('does not exist') || 
+                dbError.message?.includes('Unknown model') ||
+                dbError.code === 'P2021')) {
+            throw dbError
+          }
         }
 
-        const [todayDepositStats, todayWithdrawalStats] = await Promise.all([
-          prisma.request.aggregate({
-            where: {
-              requestType: 'deposit',
-              status: { in: depositSuccessStatuses },
-              ...todayFilter,
+        // Добавляем данные за сегодня только если смена еще НЕ закрыта
+        // Если смена закрыта, данные уже учтены в shifts выше
+        if (!todayShift || !todayShift.isClosed) {
+          const todayFilter = {
+            createdAt: {
+              gte: today,
+              lte: new Date(), // До текущего момента
             },
-            _count: { id: true },
-            _sum: { amount: true },
-          }),
-          prisma.request.aggregate({
-            where: {
-              requestType: 'withdraw',
-              status: { in: withdrawalSuccessStatuses },
-              ...todayFilter,
-            },
-            _count: { id: true },
-            _sum: { amount: true },
-          }),
-        ])
+          }
 
-        totalDepositsSum += parseFloat(todayDepositStats._sum.amount?.toString() || '0')
-        totalDepositsCount += todayDepositStats._count.id || 0
-        totalWithdrawalsSum += parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0')
-        totalWithdrawalsCount += todayWithdrawalStats._count.id || 0
-        approximateIncome += parseFloat(todayDepositStats._sum.amount?.toString() || '0') * 0.08 + 
-                            parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0') * 0.02
+          const [todayDepositStats, todayWithdrawalStats] = await Promise.all([
+            prisma.request.aggregate({
+              where: {
+                requestType: 'deposit',
+                status: { in: depositSuccessStatuses },
+                ...todayFilter,
+              },
+              _count: { id: true },
+              _sum: { amount: true },
+            }),
+            prisma.request.aggregate({
+              where: {
+                requestType: 'withdraw',
+                status: { in: withdrawalSuccessStatuses },
+                ...todayFilter,
+              },
+              _count: { id: true },
+              _sum: { amount: true },
+            }),
+          ])
+
+          totalDepositsSum += parseFloat(todayDepositStats._sum.amount?.toString() || '0')
+          totalDepositsCount += todayDepositStats._count.id || 0
+          totalWithdrawalsSum += parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0')
+          totalWithdrawalsCount += todayWithdrawalStats._count.id || 0
+          approximateIncome += parseFloat(todayDepositStats._sum.amount?.toString() || '0') * 0.08 + 
+                              parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0') * 0.02
+        }
       }
     } else {
       // Период не выбран - показываем данные за сегодня (с 00:00 сегодня)
