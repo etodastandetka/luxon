@@ -10,8 +10,8 @@ export default function TelegramInit() {
       // Расширяем WebApp на весь экран
       tg.expand()
       
-      // Включаем кнопку закрытия
-      tg.enableClosingConfirmation()
+      // Отключаем подтверждение закрытия (чтобы не показывалось предупреждение)
+      tg.disableClosingConfirmation()
       
       // Настраиваем тему
       tg.headerColor = '#1f2937'
