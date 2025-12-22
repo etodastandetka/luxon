@@ -199,9 +199,10 @@ export async function GET(
     
     const response = NextResponse.json(createApiResponse(responseData))
     // Добавляем кэширование для быстрой загрузки
-    // Для pending заявок кэш короче (2 сек), для остальных дольше (10 сек)
-    const cacheTime = requestData.status === 'pending' ? 2 : 10
-    response.headers.set('Cache-Control', `public, s-maxage=${cacheTime}, stale-while-revalidate=${cacheTime * 2}`)
+    // Для pending заявок кэш короче (3 сек), для остальных дольше (15 сек)
+    // Используем stale-while-revalidate для мгновенной загрузки из кэша
+    const cacheTime = requestData.status === 'pending' ? 3 : 15
+    response.headers.set('Cache-Control', `public, s-maxage=${cacheTime}, stale-while-revalidate=${cacheTime * 3}`)
     return response
   } catch (error: any) {
     console.error('❌ [GET /api/requests/[id]] Error:', {

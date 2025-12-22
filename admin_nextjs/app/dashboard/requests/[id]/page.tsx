@@ -130,10 +130,11 @@ export default function RequestDetailPage() {
         
         try {
           // Используем кэш для быстрой загрузки, но с перевалидацией для свежих данных
+          // Для первого запроса используем 'default' для свежих данных, для повторных - 'force-cache'
           const response = await fetch(`/api/requests/${requestId}`, {
             signal: abortController.signal,
-            cache: 'default', // Используем стандартное кэширование браузера
-            next: { revalidate: 2 }, // Перевалидируем каждые 2 секунды для свежих данных
+            cache: showLoading ? 'default' : 'force-cache', // Первый запрос - свежие данные, повторные - из кэша
+            next: { revalidate: 5 }, // Перевалидируем каждые 5 секунд для свежих данных
           })
           
           if (abortController.signal.aborted || !isMountedRef.current) return
@@ -205,15 +206,12 @@ export default function RequestDetailPage() {
             
             // Интервал автообновления управляется в основном useEffect
             
-            // Загружаем фото профиля асинхронно в фоне с задержкой (не блокируем отображение страницы)
+            // Загружаем фото профиля параллельно (не блокируем отображение страницы)
             if (requestData.userId) {
-              setTimeout(() => {
-                if (isMountedRef.current) {
+              // Загружаем сразу, без задержки - параллельно с основным контентом
               fetchProfilePhoto(requestData.userId).catch(err => {
                 console.error('Failed to fetch profile photo:', err)
               })
-                }
-              }, 200) // Задержка для приоритизации основного контента
             }
             
             // Проверяем автопополнение (привязанный платеж с совпадающей суммой)
@@ -222,8 +220,9 @@ export default function RequestDetailPage() {
                 requestData.status === 'pending' &&
                 requestData.matchingPayments && 
                 requestData.matchingPayments.length > 0) {
-              // Выполняем проверку асинхронно после отображения страницы
-              setTimeout(() => {
+              // Выполняем проверку сразу, без задержки (не блокируем UI)
+              // Используем requestAnimationFrame для выполнения после рендера
+              requestAnimationFrame(() => {
                 if (!isMountedRef.current) return
                 
                 const linkedPayment = requestData.matchingPayments.find((p: MatchingPayment) => 
@@ -256,19 +255,15 @@ export default function RequestDetailPage() {
                     })
                   }
                 }
-              }, 300) // Задержка для приоритизации основного контента
+              })
             }
           } else {
             console.error('❌ Failed to fetch request:', data.error)
             // Если заявка не найдена, показываем лоадер, затем простой экран
             if (showLoading && response.status === 404) {
               setNotFound(true)
-              // Показываем лоадер еще немного, затем переключаемся на простой экран
-              setTimeout(() => {
-                if (isMountedRef.current) {
-                  setLoading(false)
-                }
-              }, 500)
+              // Убираем задержку - показываем ошибку сразу
+              setLoading(false)
             } else if (showLoading) {
               setLoading(false)
             }
