@@ -1,7 +1,6 @@
 "use client"
 import { useEffect, useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import LoadingScreen from '../components/LoadingScreen'
 import ServiceStatus from '../components/ServiceStatus'
 import FixedHeaderControls from '../components/FixedHeaderControls'
 import { useLanguage } from '../components/LanguageContext'
@@ -10,9 +9,9 @@ import { initTelegramWebApp, syncWithBot, TelegramUser, getTelegramUserId } from
 import { getApiBase } from '../utils/fetch'
 import { ReferralIcon, HistoryIcon, InstructionIcon, SupportIcon } from '../components/Icons'
 
+// Загружаем компоненты динамически без лоадеров для мгновенного отображения
 const BannerCarousel = dynamic(() => import('../components/BannerCarousel'), {
-  ssr: false,
-  loading: () => <div className="card h-[180px] animate-pulse" />
+  ssr: false
 })
 
 const VideoModal = dynamic(() => import('../components/VideoModal'), {
@@ -20,14 +19,11 @@ const VideoModal = dynamic(() => import('../components/VideoModal'), {
 })
 
 const UserProfile = dynamic(() => import('../components/UserProfile'), {
-  ssr: false,
-  loading: () => <div className="card h-24 animate-pulse" />
+  ssr: false
 })
 
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadingProgress, setLoadingProgress] = useState(0)
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState<string>('')
   const [videoTitle, setVideoTitle] = useState<string>('')
@@ -36,6 +32,19 @@ export default function HomePage() {
   const [userStats, setUserStats] = useState<{deposits: number, withdraws: number} | null>(null)
   const { language } = useLanguage()
   const { loading: settingsLoading } = useBotSettings()
+  
+  // Инициализируем пользователя сразу при монтировании (без задержек)
+  useEffect(() => {
+    const telegramUser = initTelegramWebApp()
+    if (telegramUser) {
+      setUser(telegramUser)
+      // Синхронизируем с ботом в фоне (не блокируем рендер)
+      syncWithBot(telegramUser, 'app_opened', {
+        page: 'home',
+        language
+      }).catch(err => console.error('Sync error:', err))
+    }
+  }, [language])
 
   // Приветствие по времени суток
   const greeting = useMemo(() => {
@@ -202,93 +211,6 @@ export default function HomePage() {
     }
   }, [])
 
-  useEffect(() => {
-    let progressInterval: NodeJS.Timeout | null = null
-    let checkInterval: NodeJS.Timeout | null = null
-    let timeoutId: NodeJS.Timeout | null = null
-    
-    // Инициализируем Telegram WebApp
-    const telegramUser = initTelegramWebApp()
-    if (telegramUser) {
-      setUser(telegramUser)
-      
-      // Синхронизируем с ботом при первом входе
-      syncWithBot(telegramUser, 'app_opened', {
-        page: 'home',
-        language
-      })
-    }
-
-    // Функция проверки готовности
-    const checkReady = () => {
-      const isDocumentReady = document.readyState === 'complete' || document.readyState === 'interactive'
-      // Не ждем settings, если они долго загружаются - показываем страницу
-      const isSettingsLoaded = !settingsLoading || true // Всегда true для быстрого показа
-      
-      // Проверяем все условия
-      return isDocumentReady && isSettingsLoaded
-    }
-
-    // Функция завершения загрузки
-    const finishLoading = () => {
-      console.log('✅ Завершение загрузки')
-      setLoadingProgress(100)
-      setTimeout(() => {
-        setIsLoading(false)
-        console.log('✅ Загрузка завершена, показываем главную страницу')
-      }, 300)
-    }
-
-    // Анимация прогресса загрузки
-    let currentProgress = 0
-    progressInterval = setInterval(() => {
-      currentProgress = Math.min(currentProgress + 2, 98)
-      setLoadingProgress(currentProgress)
-      
-      // Если достигли 98%, останавливаем анимацию
-      if (currentProgress >= 98) {
-        if (progressInterval) clearInterval(progressInterval)
-      }
-    }, 40)
-
-    // Быстрая проверка готовности каждые 50мс
-    checkInterval = setInterval(() => {
-      if (checkReady()) {
-        console.log('✅ Все готово, завершаем загрузку')
-        if (checkInterval) clearInterval(checkInterval)
-        if (progressInterval) clearInterval(progressInterval)
-        if (timeoutId) clearTimeout(timeoutId)
-        finishLoading()
-      }
-    }, 50)
-
-    // Максимальное время загрузки - 1 секунда (быстрее реакция)
-    timeoutId = setTimeout(() => {
-      console.log('⏰ Таймаут загрузки, принудительно завершаем')
-      if (checkInterval) clearInterval(checkInterval)
-      if (progressInterval) clearInterval(progressInterval)
-      finishLoading()
-    }, 1000)
-
-    // Проверяем сразу при монтировании
-    if (checkReady()) {
-      console.log('✅ Готово сразу при монтировании')
-      if (checkInterval) clearInterval(checkInterval)
-      if (progressInterval) clearInterval(progressInterval)
-      if (timeoutId) clearTimeout(timeoutId)
-      finishLoading()
-    }
-
-    return () => {
-      if (progressInterval) clearInterval(progressInterval)
-      if (checkInterval) clearInterval(checkInterval)
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [language, settingsLoading])
-
-  const handleLoaderComplete = () => {
-    setIsLoading(false)
-  }
 
   const translations = {
     ru: {
@@ -338,16 +260,6 @@ export default function HomePage() {
   }
 
   const t = translations[language as keyof typeof translations] || translations.ru
-
-  if (isLoading) {
-    return (
-      <LoadingScreen 
-        message="LUX ON"
-        showProgress={true}
-        progress={loadingProgress}
-      />
-    )
-  }
 
   return (
     <main className="space-y-6" style={{ paddingTop: '0.5rem', paddingBottom: '100px' }}>
