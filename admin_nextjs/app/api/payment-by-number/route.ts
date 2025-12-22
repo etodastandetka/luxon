@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
 
     let settings = {
       phoneNumber: '',
-      recipientName: ''
+      recipientName: '',
+      bankName: ''
     }
 
     if (config) {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     requireAuth(request)
 
     const body = await request.json()
-    const { phoneNumber, recipientName } = body
+    const { phoneNumber, recipientName, bankName } = body
 
     if (!phoneNumber || !recipientName) {
       return NextResponse.json(
@@ -53,7 +54,8 @@ export async function POST(request: NextRequest) {
 
     const settings = {
       phoneNumber: String(phoneNumber).trim(),
-      recipientName: String(recipientName).trim()
+      recipientName: String(recipientName).trim(),
+      bankName: String(bankName || '').trim()
     }
 
     await prisma.botConfiguration.upsert({

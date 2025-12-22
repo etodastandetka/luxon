@@ -20,7 +20,7 @@ export default function DepositStep4() {
   const [isCreatingRequest, setIsCreatingRequest] = useState(false)
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
   const [paymentMethod, setPaymentMethod] = useState<'qr' | 'number'>('qr') // QR или по номеру
-  const [paymentByNumber, setPaymentByNumber] = useState<{ phoneNumber: string; recipientName: string } | null>(null)
+  const [paymentByNumber, setPaymentByNumber] = useState<{ phoneNumber: string; recipientName: string; bankName: string } | null>(null)
   const [cryptoInvoice, setCryptoInvoice] = useState<any>(null)
   const [cryptoLoading, setCryptoLoading] = useState(false)
   const router = useRouter()
@@ -274,7 +274,8 @@ export default function DepositStep4() {
           if (data.success && data.phoneNumber && data.recipientName) {
             setPaymentByNumber({
               phoneNumber: data.phoneNumber,
-              recipientName: data.recipientName
+              recipientName: data.recipientName,
+              bankName: data.bankName || ''
             })
           }
         }
@@ -2129,8 +2130,8 @@ export default function DepositStep4() {
               onClick={() => setPaymentMethod('qr')}
               className={`py-3 px-4 rounded-lg font-medium transition-all ${
                 paymentMethod === 'qr'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-700 text-white/70 hover:bg-gray-600'
+                  ? 'bg-green-700 text-white'
+                  : 'bg-gray-800 text-white/70 hover:bg-gray-700'
               }`}
             >
               {language === 'ru' ? 'QR код' : 'QR Code'}
@@ -2139,8 +2140,8 @@ export default function DepositStep4() {
               onClick={() => setPaymentMethod('number')}
               className={`py-3 px-4 rounded-lg font-medium transition-all ${
                 paymentMethod === 'number'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-700 text-white/70 hover:bg-gray-600'
+                  ? 'bg-green-700 text-white'
+                  : 'bg-gray-800 text-white/70 hover:bg-gray-700'
               }`}
             >
               {language === 'ru' ? 'По номеру' : 'By number'}
@@ -2155,24 +2156,32 @@ export default function DepositStep4() {
           <h2 className="text-lg font-semibold text-white">
             {language === 'ru' ? 'Реквизиты для перевода' : 'Transfer details'}
           </h2>
-          <div className="space-y-3 bg-gray-800/50 rounded-lg p-4">
+          <div className="space-y-3 bg-gray-900/80 rounded-lg p-4 border border-gray-700">
+            {paymentByNumber.bankName && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1">
+                  {language === 'ru' ? 'Банк' : 'Bank'}
+                </p>
+                <p className="text-lg font-semibold text-white">{paymentByNumber.bankName}</p>
+              </div>
+            )}
             <div>
-              <p className="text-sm text-white/70 mb-1">
+              <p className="text-sm text-gray-400 mb-1">
                 {language === 'ru' ? 'Номер телефона' : 'Phone number'}
               </p>
               <p className="text-lg font-semibold text-white">{paymentByNumber.phoneNumber}</p>
             </div>
             <div>
-              <p className="text-sm text-white/70 mb-1">
+              <p className="text-sm text-gray-400 mb-1">
                 {language === 'ru' ? 'Получатель' : 'Recipient'}
               </p>
               <p className="text-lg font-semibold text-white">{paymentByNumber.recipientName}</p>
             </div>
             <div>
-              <p className="text-sm text-white/70 mb-1">
+              <p className="text-sm text-gray-400 mb-1">
                 {language === 'ru' ? 'Сумма' : 'Amount'}
               </p>
-              <p className="text-lg font-semibold text-green-400">{formatKgs(amount)}</p>
+              <p className="text-lg font-semibold text-green-500">{formatKgs(amount)}</p>
             </div>
           </div>
         </div>

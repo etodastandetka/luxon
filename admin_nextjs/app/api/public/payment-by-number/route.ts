@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
 
     let settings = {
       phoneNumber: '',
-      recipientName: ''
+      recipientName: '',
+      bankName: ''
     }
 
     if (config) {
