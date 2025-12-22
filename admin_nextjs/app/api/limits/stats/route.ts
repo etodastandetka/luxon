@@ -406,8 +406,16 @@ export async function GET(request: NextRequest) {
       const limitsPromise = getPlatformLimits()
       platformLimits = await Promise.race([limitsPromise, timeoutPromise]) as any[]
     } catch (error) {
-      console.warn('⚠️ [Limits Stats] Failed to load platform limits (using empty array):', error)
-      platformLimits = []
+      console.warn('⚠️ [Limits Stats] Failed to load platform limits:', error)
+      // Если не удалось загрузить, используем дефолтный список платформ для отображения статистики
+      platformLimits = [
+        { key: '1xbet', name: '1xbet', limit: 0, balance: 0 },
+        { key: '888starz', name: '888starz', limit: 0, balance: 0 },
+        { key: 'melbet', name: 'Melbet', limit: 0, balance: 0 },
+        { key: '1win', name: '1WIN', limit: 0, balance: 0 },
+        { key: 'winwin', name: 'Winwin', limit: 0, balance: 0 },
+        { key: 'mostbet', name: 'Mostbet', limit: 0, balance: 0 },
+      ]
     }
     
     let casinoSettings: Record<string, boolean> = {
@@ -494,8 +502,15 @@ export async function GET(request: NextRequest) {
     
     // Преобразуем результаты в нужный формат
     const platformStatsMap = new Map<string, PlatformStats>()
+    
+    // Логируем для отладки
+    console.log(`📊 [Limits Stats] Platform stats query returned ${platformStatsQuery.length} rows`)
+    console.log(`📊 [Limits Stats] Platform limits loaded: ${platformLimits.length} platforms`)
+    
     platformStatsQuery.forEach((row) => {
+      // Ищем платформу по ключу (без учета регистра)
       const platform = platformLimits.find(p => p.key.toLowerCase() === row.platform_key.toLowerCase())
+      
       if (platform) {
         platformStatsMap.set(platform.key, {
           key: platform.key,
@@ -505,20 +520,49 @@ export async function GET(request: NextRequest) {
           withdrawalsSum: parseFloat(row.withdrawals_sum || '0'),
           withdrawalsCount: Number(row.withdrawals_count || 0),
         })
+        console.log(`✅ [Limits Stats] Mapped ${row.platform_key}: deposits=${row.deposits_sum}, withdrawals=${row.withdrawals_sum}`)
+      } else {
+        // Если платформа не найдена в limits, создаем запись напрямую из SQL результата
+        const platformName = row.platform_key.charAt(0).toUpperCase() + row.platform_key.slice(1).toLowerCase()
+        platformStatsMap.set(row.platform_key, {
+          key: row.platform_key,
+          name: platformName,
+          depositsSum: parseFloat(row.deposits_sum || '0'),
+          depositsCount: Number(row.deposits_count || 0),
+          withdrawalsSum: parseFloat(row.withdrawals_sum || '0'),
+          withdrawalsCount: Number(row.withdrawals_count || 0),
+        })
+        console.log(`⚠️ [Limits Stats] Platform ${row.platform_key} not found in limits, using SQL data directly`)
       }
     })
     
-    // Заполняем недостающие платформы нулями
-    const platformStats = platformLimits.map(platform => 
-      platformStatsMap.get(platform.key) || {
-        key: platform.key,
-        name: platform.name,
-        depositsSum: 0,
-        depositsCount: 0,
-        withdrawalsSum: 0,
-        withdrawalsCount: 0,
+    // Формируем финальный список статистики по платформам
+    // Если есть данные из SQL, показываем их; если нет - показываем все платформы из limits с нулями
+    const platformStats: PlatformStats[] = []
+    
+    // Сначала добавляем все платформы из SQL запроса (с данными)
+    platformStatsMap.forEach((stats, key) => {
+      platformStats.push(stats)
+    })
+    
+    // Затем добавляем платформы из limits, которых нет в SQL (с нулями)
+    platformLimits.forEach(platform => {
+      if (!platformStatsMap.has(platform.key)) {
+        platformStats.push({
+          key: platform.key,
+          name: platform.name,
+          depositsSum: 0,
+          depositsCount: 0,
+          withdrawalsSum: 0,
+          withdrawalsCount: 0,
+        })
       }
-    )
+    })
+    
+    // Сортируем по ключу для консистентности
+    platformStats.sort((a, b) => a.key.localeCompare(b.key))
+    
+    console.log(`📊 [Limits Stats] Final platform stats: ${platformStats.length} platforms`)
     
     // Убрали отладочные запросы для ускорения
 
