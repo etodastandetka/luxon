@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('start')
     const endDate = searchParams.get('end')
 
-    // Статусы для подсчета
-    const depositSuccessStatuses = ['autodeposit_success', 'auto_completed']
+    // Статусы для подсчета (учитываем все успешные статусы, включая ручную обработку)
+    const depositSuccessStatuses = ['autodeposit_success', 'auto_completed', 'completed', 'approved']
     const withdrawalSuccessStatuses = ['completed', 'approved', 'autodeposit_success', 'auto_completed']
 
     let totalDepositsSum = 0
@@ -272,13 +272,13 @@ export async function GET(request: NextRequest) {
     }>>`
       SELECT 
         DATE(created_at)::text as date,
-        SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as deposit_count,
+        SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved') THEN 1 ELSE 0 END)::bigint as deposit_count,
         SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as withdrawal_count
       FROM requests
       WHERE created_at >= ${chartStartDate}::timestamp
         AND created_at <= ${chartEndDate}::timestamp
         AND (
-          (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed'))
+          (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
           OR
           (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
         )
@@ -475,7 +475,7 @@ export async function GET(request: NextRequest) {
         WHERE bookmaker IS NOT NULL
           AND TRIM(bookmaker) != ''
           AND (
-            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed'))
+            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
             OR
             (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
           )
@@ -505,7 +505,7 @@ export async function GET(request: NextRequest) {
         WHERE bookmaker IS NOT NULL
           AND TRIM(bookmaker) != ''
           AND (
-            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed'))
+            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
             OR
             (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
           )
