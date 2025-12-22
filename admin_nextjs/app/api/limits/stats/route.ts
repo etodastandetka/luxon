@@ -395,19 +395,22 @@ export async function GET(request: NextRequest) {
       `,
     ])
     
-    // Загружаем лимиты платформ с таймаутом (не блокируем основной ответ более 2 секунд)
+    // Загружаем лимиты платформ с увеличенным таймаутом (внешние API могут быть медленными)
     let platformLimits: any[] = []
     try {
       const { getPlatformLimits } = await import('../../../../lib/casino-api')
-      // Таймаут 2 секунды для запросов к внешним API
+      // Увеличиваем таймаут до 10 секунд для запросов к внешним API казино
       const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), 2000)
+        setTimeout(() => reject(new Error('Timeout')), 10000)
       )
       const limitsPromise = getPlatformLimits()
       platformLimits = await Promise.race([limitsPromise, timeoutPromise]) as any[]
-    } catch (error) {
-      console.warn('⚠️ [Limits Stats] Failed to load platform limits:', error)
+      console.log(`✅ [Limits Stats] Platform limits loaded: ${platformLimits.length} platforms`)
+    } catch (error: any) {
+      console.warn('⚠️ [Limits Stats] Failed to load platform limits:', error?.message || error)
       // Если не удалось загрузить, используем дефолтный список платформ для отображения статистики
+      // Но не устанавливаем limit: 0, чтобы не показывать N/A - лучше показать пустой массив
+      // и на фронтенде показать "Загрузка..." или попробовать загрузить отдельно
       platformLimits = [
         { key: '1xbet', name: '1xbet', limit: 0, balance: 0 },
         { key: '888starz', name: '888starz', limit: 0, balance: 0 },
@@ -416,6 +419,7 @@ export async function GET(request: NextRequest) {
         { key: 'winwin', name: 'Winwin', limit: 0, balance: 0 },
         { key: 'mostbet', name: 'Mostbet', limit: 0, balance: 0 },
       ]
+      console.warn('⚠️ [Limits Stats] Using default platform list with zero limits')
     }
     
     let casinoSettings: Record<string, boolean> = {
