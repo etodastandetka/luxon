@@ -396,10 +396,34 @@ export async function GET(request: NextRequest) {
       dateParams.push(dateFilterForStats.createdAt.lte)
     }
     
+    // Сначала получаем все уникальные значения bookmaker для отладки
+    const allBookmakers = await prisma.$queryRawUnsafe<Array<{
+      bookmaker: string | null;
+      count: bigint;
+    }>>(`
+      SELECT 
+        bookmaker,
+        COUNT(*)::bigint as count
+      FROM requests
+      WHERE bookmaker IS NOT NULL
+        AND TRIM(bookmaker) != ''
+        AND (
+          (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
+          OR
+          (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
+        )
+        ${dateCondition}
+      GROUP BY bookmaker
+      ORDER BY count DESC
+      LIMIT 20
+    `, ...dateParams)
+    
+    console.log('📊 [Platform Stats] Все уникальные bookmaker значения:', allBookmakers)
+    
     // Один запрос для всех платформ - значительно быстрее
     // Используем подзапрос для правильной группировки по алиасу
     // ВАЖНО: Фильтруем по статусам в WHERE, а не только в CASE, чтобы исключить неподходящие транзакции
-    // Улучшено сопоставление платформ: учитываем различные варианты написания
+    // Упрощенное сопоставление платформ: используем только LOWER и TRIM для надежности
     const platformStatsQuery = await prisma.$queryRawUnsafe<Array<{
       platform_key: string;
       deposits_count: bigint;
@@ -416,55 +440,27 @@ export async function GET(request: NextRequest) {
       FROM (
         SELECT 
           CASE 
-            -- Точные значения из BookmakerGrid: '1xbet', '1win', 'melbet', 'mostbet', 'winwin', '888starz'
-            -- Также учитываем различные варианты написания с учетом регистра и пробелов
-            WHEN LOWER(TRIM(bookmaker)) = '1xbet' 
+            -- Упрощенная логика: используем только LOWER и TRIM для надежности
+            WHEN LOWER(TRIM(bookmaker)) IN ('1xbet', 'xbet', '1x', '1 xbet', '1 x bet') 
               OR LOWER(TRIM(bookmaker)) LIKE '%1xbet%' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' 
-              OR TRIM(bookmaker) = '1xbet'
-              OR TRIM(bookmaker) = '1XBet'
-              OR TRIM(bookmaker) = '1XBET'
-              OR TRIM(bookmaker) = 'xbet'
-              OR TRIM(bookmaker) = 'Xbet'
-              OR TRIM(bookmaker) = 'XBET' THEN '1xbet'
+              OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' THEN '1xbet'
             -- 1win
-            WHEN LOWER(TRIM(bookmaker)) = '1win' 
+            WHEN LOWER(TRIM(bookmaker)) IN ('1win', 'onewin', 'one win', '1 win', '1-win')
               OR LOWER(TRIM(bookmaker)) LIKE '%1win%' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%one win%'
-              OR TRIM(bookmaker) = '1win'
-              OR TRIM(bookmaker) = '1Win'
-              OR TRIM(bookmaker) = '1WIN' THEN '1win'
+              OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' THEN '1win'
             -- melbet
-            WHEN LOWER(TRIM(bookmaker)) = 'melbet' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%melbet%' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%mel bet%'
-              OR TRIM(bookmaker) = 'melbet'
-              OR TRIM(bookmaker) = 'Melbet'
-              OR TRIM(bookmaker) = 'MELBET' THEN 'melbet'
+            WHEN LOWER(TRIM(bookmaker)) IN ('melbet', 'mel bet', 'mel-bet', 'mel_bet')
+              OR LOWER(TRIM(bookmaker)) LIKE '%melbet%' THEN 'melbet'
             -- mostbet
-            WHEN LOWER(TRIM(bookmaker)) = 'mostbet' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%mostbet%' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%most bet%'
-              OR TRIM(bookmaker) = 'mostbet'
-              OR TRIM(bookmaker) = 'Mostbet'
-              OR TRIM(bookmaker) = 'MOSTBET' THEN 'mostbet'
+            WHEN LOWER(TRIM(bookmaker)) IN ('mostbet', 'most bet', 'most-bet', 'most_bet')
+              OR LOWER(TRIM(bookmaker)) LIKE '%mostbet%' THEN 'mostbet'
             -- winwin
-            WHEN LOWER(TRIM(bookmaker)) = 'winwin' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%winwin%' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%win win%'
-              OR TRIM(bookmaker) = 'winwin'
-              OR TRIM(bookmaker) = 'Winwin'
-              OR TRIM(bookmaker) = 'WINWIN' THEN 'winwin'
+            WHEN LOWER(TRIM(bookmaker)) IN ('winwin', 'win win', 'win-win', 'win_win')
+              OR LOWER(TRIM(bookmaker)) LIKE '%winwin%' THEN 'winwin'
             -- 888starz
-            WHEN LOWER(TRIM(bookmaker)) = '888starz' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%888%' 
+            WHEN LOWER(TRIM(bookmaker)) IN ('888starz', '888 starz', '888-starz', '888_starz', '888')
               OR LOWER(TRIM(bookmaker)) LIKE '%888starz%'
-              OR LOWER(TRIM(bookmaker)) LIKE '%888 starz%'
-              OR TRIM(bookmaker) = '888'
-              OR TRIM(bookmaker) = '888starz'
-              OR TRIM(bookmaker) = '888Starz'
-              OR TRIM(bookmaker) = '888STARZ' THEN '888starz'
+              OR LOWER(TRIM(bookmaker)) LIKE '%888%' THEN '888starz'
             ELSE NULL
           END as platform_key,
           request_type,
