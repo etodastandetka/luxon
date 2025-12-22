@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
+// Импортируем планировщик для автоматического запуска
+import '@/lib/shift-scheduler'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,90 +34,109 @@ export async function GET(request: NextRequest) {
     
     console.log('📊 [Limits Stats] Fetching stats:', { startDate, endDate })
 
-    // По умолчанию показываем статистику за все время
-    // Если выбран период - показываем за период
-    let filters: any = {}
-    let dateFilterForStats: any = {}
-    
-    if (startDate && endDate) {
-      // Период выбран - используем его
-      filters.createdAt = { 
-        gte: new Date(startDate),
-        lte: new Date(endDate)
-      }
-      dateFilterForStats = {
-        createdAt: {
-          gte: new Date(startDate),
-          lte: new Date(endDate)
-        }
-      }
-    } else {
-      // Период не выбран - показываем все данные (не применяем фильтр по датам)
-      // Оставляем filters и dateFilterForStats пустыми
-    }
-
-    // Статистика пополнений и выводов параллельно
-    // Для пополнений: считаем только РЕАЛЬНО обработанные через API казино
-    // - autodeposit_success: автоматически зачислено через API
-    // - auto_completed: автоматически завершено
-    // Для выводов: считаем все успешные (completed, approved, autodeposit_success, auto_completed)
-    // так как выводы часто подтверждаются вручную админом
+    // Статусы для подсчета
     const depositSuccessStatuses = ['autodeposit_success', 'auto_completed']
     const withdrawalSuccessStatuses = ['completed', 'approved', 'autodeposit_success', 'auto_completed']
-    
-    const [depositStats, withdrawalStats] = await Promise.all([
-      prisma.request.aggregate({
-        where: {
-          requestType: 'deposit',
-          status: { in: depositSuccessStatuses },
-          ...dateFilterForStats,
-        },
-        _count: { id: true },
-        _sum: { amount: true },
-      }),
-      prisma.request.aggregate({
-        where: {
-          requestType: 'withdraw',
-          status: { in: withdrawalSuccessStatuses },
-          ...dateFilterForStats,
-        },
-        _count: { id: true },
-        _sum: { amount: true },
-      }),
-    ])
 
-    const totalDepositsCount = depositStats._count.id || 0
-    const totalDepositsSum = parseFloat(depositStats._sum.amount?.toString() || '0')
-    const totalWithdrawalsCount = withdrawalStats._count.id || 0
-    const totalWithdrawalsSum = parseFloat(withdrawalStats._sum.amount?.toString() || '0')
+    let totalDepositsSum = 0
+    let totalDepositsCount = 0
+    let totalWithdrawalsSum = 0
+    let totalWithdrawalsCount = 0
+    let approximateIncome = 0
 
-    // Приблизительный доход: 8% от пополнений + 2% от выводов
-    // Если период не выбран - считаем за сегодня, иначе за выбранный период
-    let approximateIncome: number
     if (startDate && endDate) {
-      // Период выбран - используем общую статистику
-      approximateIncome = totalDepositsSum * 0.08 + totalWithdrawalsSum * 0.02
-    } else {
-      // Период не выбран - считаем только за сегодня
+      // Период выбран - получаем все закрытые смены за этот период и суммируем
+      const start = new Date(startDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+
+      const shifts = await prisma.dailyShift.findMany({
+        where: {
+          shiftDate: {
+            gte: start,
+            lte: end,
+          },
+          isClosed: true, // Только закрытые смены
+        },
+        orderBy: {
+          shiftDate: 'asc',
+        },
+      })
+
+      // Суммируем все смены за период
+      shifts.forEach((shift) => {
+        totalDepositsSum += parseFloat(shift.depositsSum.toString())
+        totalDepositsCount += shift.depositsCount
+        totalWithdrawalsSum += parseFloat(shift.withdrawalsSum.toString())
+        totalWithdrawalsCount += shift.withdrawalsCount
+        approximateIncome += parseFloat(shift.netProfit.toString())
+      })
+
+      // Также учитываем текущую смену, если она попадает в период
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      
+      const todayEnd = new Date(today)
+      todayEnd.setHours(23, 59, 59, 999)
+
+      if (today >= start && today <= end) {
+        // Текущий день попадает в период - добавляем данные за сегодня до текущего момента
+        const todayFilter = {
+          createdAt: {
+            gte: today,
+            lte: new Date(), // До текущего момента
+          },
+        }
+
+        const [todayDepositStats, todayWithdrawalStats] = await Promise.all([
+          prisma.request.aggregate({
+            where: {
+              requestType: 'deposit',
+              status: { in: depositSuccessStatuses },
+              ...todayFilter,
+            },
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+          prisma.request.aggregate({
+            where: {
+              requestType: 'withdraw',
+              status: { in: withdrawalSuccessStatuses },
+              ...todayFilter,
+            },
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+        ])
+
+        totalDepositsSum += parseFloat(todayDepositStats._sum.amount?.toString() || '0')
+        totalDepositsCount += todayDepositStats._count.id || 0
+        totalWithdrawalsSum += parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0')
+        totalWithdrawalsCount += todayWithdrawalStats._count.id || 0
+        approximateIncome += parseFloat(todayDepositStats._sum.amount?.toString() || '0') * 0.08 + 
+                            parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0') * 0.02
+      }
+    } else {
+      // Период не выбран - показываем текущую смену (с 00:00 сегодня до текущего времени)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const now = new Date()
+
       const todayFilter = {
         createdAt: {
           gte: today,
-          lt: tomorrow
-        }
+          lte: now,
+        },
       }
-      
-      const [todayDepositStats, todayWithdrawalStats] = await Promise.all([
+
+      const [depositStats, withdrawalStats] = await Promise.all([
         prisma.request.aggregate({
           where: {
             requestType: 'deposit',
             status: { in: depositSuccessStatuses },
             ...todayFilter,
           },
+          _count: { id: true },
           _sum: { amount: true },
         }),
         prisma.request.aggregate({
@@ -124,26 +145,57 @@ export async function GET(request: NextRequest) {
             status: { in: withdrawalSuccessStatuses },
             ...todayFilter,
           },
+          _count: { id: true },
           _sum: { amount: true },
         }),
       ])
-      
-      const todayDepositsSum = parseFloat(todayDepositStats._sum.amount?.toString() || '0')
-      const todayWithdrawalsSum = parseFloat(todayWithdrawalStats._sum.amount?.toString() || '0')
-      approximateIncome = todayDepositsSum * 0.08 + todayWithdrawalsSum * 0.02
+
+      totalDepositsCount = depositStats._count.id || 0
+      totalDepositsSum = parseFloat(depositStats._sum.amount?.toString() || '0')
+      totalWithdrawalsCount = withdrawalStats._count.id || 0
+      totalWithdrawalsSum = parseFloat(withdrawalStats._sum.amount?.toString() || '0')
+      approximateIncome = totalDepositsSum * 0.08 + totalWithdrawalsSum * 0.02
     }
 
-    // Данные для графика (все данные если период не указан, иначе за период)
-    // Ограничиваем данные графика последними 30 днями для ускорения загрузки
-    let chartStartDate = startDate ? new Date(startDate) : null
-    let chartEndDate = endDate ? new Date(endDate) : null
-    
-    // Если период не указан, ограничиваем последними 30 днями
-    if (!chartStartDate || !chartEndDate) {
+    // Для графика и статистики по платформам используем те же фильтры
+    let dateFilterForStats: any = {}
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      dateFilterForStats = {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      }
+    } else {
+      // Для графика показываем последние 30 дней
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      chartStartDate = chartStartDate || thirtyDaysAgo
-      chartEndDate = chartEndDate || new Date()
+      dateFilterForStats = {
+        createdAt: {
+          gte: thirtyDaysAgo,
+        },
+      }
+    }
+
+    // Данные для графика
+    // Если период выбран - показываем за период, иначе последние 30 дней
+    let chartStartDate: Date
+    let chartEndDate: Date
+    
+    if (startDate && endDate) {
+      chartStartDate = new Date(startDate)
+      chartStartDate.setHours(0, 0, 0, 0)
+      chartEndDate = new Date(endDate)
+      chartEndDate.setHours(23, 59, 59, 999)
+    } else {
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      chartStartDate = thirtyDaysAgo
+      chartEndDate = new Date()
     }
     
     // Группировка по датам для графика используя SQL (оптимизировано с индексами)

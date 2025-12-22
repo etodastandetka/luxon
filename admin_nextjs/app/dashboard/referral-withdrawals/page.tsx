@@ -23,12 +23,43 @@ interface WithdrawalRequest {
   processedAt: string | null
 }
 
+interface TopPlayer {
+  id: string
+  username: string | null
+  firstName: string | null
+  lastName: string | null
+  total_deposits: number
+  referral_count: number
+  rank: number
+  prize: number
+}
+
+interface PayoutResult {
+  userId: string
+  username: string | null
+  rank: number
+  amount: number
+  success: boolean
+}
+
+interface PayoutError {
+  userId: string
+  username: string | null
+  rank: number
+  error: string
+}
+
 export default function ReferralWithdrawalsPage() {
   const router = useRouter()
   const [requests, setRequests] = useState<WithdrawalRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([])
+  const [loadingTop, setLoadingTop] = useState(false)
+  const [payoutLoading, setPayoutLoading] = useState(false)
+  const [payoutResults, setPayoutResults] = useState<PayoutResult[]>([])
+  const [payoutErrors, setPayoutErrors] = useState<PayoutError[]>([])
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -50,9 +81,66 @@ export default function ReferralWithdrawalsPage() {
     }
   }, [statusFilter])
 
+  const fetchTopPlayers = useCallback(async () => {
+    try {
+      setLoadingTop(true)
+      const response = await fetch('/api/referral/top-players')
+      const data = await response.json()
+      
+      if (data.success && data.top_players) {
+        setTopPlayers(data.top_players)
+      }
+    } catch (error) {
+      console.error('Error fetching top players:', error)
+    } finally {
+      setLoadingTop(false)
+    }
+  }, [])
+
+  const handleTopPayout = async () => {
+    if (!confirm('Выполнить выплату топ-5 рефералам?\n\n1 место: 10 000 сом\n2 место: 5 000 сом\n3 место: 2 500 сом\n4 место: 1 500 сом\n5 место: 1 000 сом')) {
+      return
+    }
+
+    try {
+      setPayoutLoading(true)
+      setPayoutResults([])
+      setPayoutErrors([])
+      
+      const response = await fetch('/api/referral/top-payout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        if (data.results) {
+          setPayoutResults(data.results)
+        }
+        if (data.errors) {
+          setPayoutErrors(data.errors)
+        }
+        // Обновляем список топ-игроков после выплаты
+        fetchTopPlayers()
+        alert(`Баланс добавлен!\n\nУспешно: ${data.results?.length || 0}\nОшибок: ${data.errors?.length || 0}\n\nТеперь топ-рефералы могут создать заявку на вывод через реферальную страницу.`)
+      } else {
+        alert(`Ошибка: ${data.error || 'Не удалось выполнить выплату'}`)
+      }
+    } catch (error: any) {
+      console.error('Error processing top payout:', error)
+      alert(`Ошибка: ${error.message || 'Не удалось выполнить выплату'}`)
+    } finally {
+      setPayoutLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchRequests()
-  }, [fetchRequests])
+    fetchTopPlayers()
+  }, [fetchRequests, fetchTopPlayers])
 
   const handleApprove = async (requestId: number) => {
     if (!confirm('Подтвердить вывод и пополнить баланс игрока?')) {
@@ -150,6 +238,75 @@ export default function ReferralWithdrawalsPage() {
         </div>
         <div className="w-10"></div>
       </div>
+
+      {/* Топ-5 игроков и кнопка выплаты */}
+      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-white font-semibold">🏆 Топ игроков</h2>
+          <button
+            onClick={handleTopPayout}
+            disabled={payoutLoading || loadingTop}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+              payoutLoading || loadingTop
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700'
+            }`}
+          >
+            {payoutLoading ? 'Выполняется...' : 'Выплатить топ-5'}
+          </button>
+        </div>
+        
+        {loadingTop ? (
+          <div className="text-white/70 text-sm text-center py-4">Загрузка...</div>
+        ) : topPlayers.length === 0 ? (
+          <div className="text-white/70 text-sm text-center py-4">Нет топ-игроков</div>
+        ) : (
+          <div className="space-y-2">
+            {topPlayers.map((player) => (
+              <div key={player.id} className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-white/70 text-sm w-6">{player.rank} место:</span>
+                  <span className="text-white font-medium text-sm">
+                    {player.username ? `@${player.username}` : player.firstName || `ID: ${player.id}`}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <div className="text-green-400 font-semibold text-sm">{player.prize.toLocaleString()} сом</div>
+                  <div className="text-white/50 text-xs">Заработано: {player.total_deposits.toLocaleString()} сом</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Результаты выплаты */}
+      {payoutResults.length > 0 && (
+        <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/30">
+          <h3 className="text-green-400 font-semibold mb-3">✅ Успешно добавлен баланс ({payoutResults.length}):</h3>
+          <div className="space-y-2">
+            {payoutResults.map((result, index) => (
+              <div key={index} className="text-white/80 text-sm">
+                <span className="font-semibold">{result.rank} место:</span> {result.username || `ID: ${result.userId}`} - {result.amount.toLocaleString()} сом
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Ошибки выплаты */}
+      {payoutErrors.length > 0 && (
+        <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/30">
+          <h3 className="text-red-400 font-semibold mb-3">❌ Ошибки ({payoutErrors.length}):</h3>
+          <div className="space-y-2">
+            {payoutErrors.map((error, index) => (
+              <div key={index} className="text-white/80 text-sm">
+                <span className="font-semibold">{error.rank} место:</span> {error.username || `ID: ${error.userId}`} - {error.error}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Фильтры - горизонтальный скролл для мобильных */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">

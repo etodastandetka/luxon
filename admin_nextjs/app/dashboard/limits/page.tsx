@@ -20,6 +20,18 @@ interface PlatformStats {
   withdrawalsCount: number
 }
 
+interface DailyShift {
+  id: number
+  date: string
+  depositsSum: string
+  withdrawalsSum: string
+  netProfit: string
+  depositsCount: number
+  withdrawalsCount: number
+  isClosed: boolean
+  closedAt?: string
+}
+
 interface LimitsStats {
   platformLimits: PlatformLimit[]
   platformStats?: PlatformStats[]
@@ -40,6 +52,7 @@ export default function LimitsPage() {
   const searchParams = useSearchParams()
   const [stats, setStats] = useState<LimitsStats | null>(null)
   const [loading, setLoading] = useState(true) // Начинаем с true - показываем скелетон сразу
+  const [shifts, setShifts] = useState<DailyShift[]>([])
   const [showCalendar, setShowCalendar] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -63,18 +76,24 @@ export default function LimitsPage() {
       if (start) params.append('start', start)
       if (end) params.append('end', end)
 
-      const response = await fetch(`/api/limits/stats?${params.toString()}`, {
-        cache: 'no-store', // Не кэшируем для получения свежих данных
-      })
+      // Загружаем статистику и смены параллельно
+      const [statsResponse, shiftsResponse] = await Promise.all([
+        fetch(`/api/limits/stats?${params.toString()}`, {
+          cache: 'no-store',
+        }),
+        (start && end) ? fetch(`/api/shifts?start=${start}&end=${end}`, {
+          cache: 'no-store',
+        }) : Promise.resolve(null),
+      ])
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+      if (!statsResponse.ok) {
+        throw new Error(`HTTP ${statsResponse.status}`)
       }
       
-      const data = await response.json()
+      const statsData = await statsResponse.json()
 
-      if (data.success && data.data) {
-        setStats(data.data)
+      if (statsData.success && statsData.data) {
+        setStats(statsData.data)
         
         // Устанавливаем значение дат
         setStartDate(start || '')
@@ -87,7 +106,17 @@ export default function LimitsPage() {
           setSelectedDates([])
         }
       } else {
-        console.error('Failed to fetch limits stats: API returned error', data)
+        console.error('Failed to fetch limits stats: API returned error', statsData)
+      }
+
+      // Загружаем смены, если период выбран
+      if (shiftsResponse && shiftsResponse.ok) {
+        const shiftsData = await shiftsResponse.json()
+        if (shiftsData.success && shiftsData.data) {
+          setShifts(shiftsData.data.shifts || [])
+        }
+      } else {
+        setShifts([])
       }
     } catch (error) {
       console.error('Failed to fetch limits stats:', error)
@@ -132,9 +161,11 @@ export default function LimitsPage() {
   }
 
   const handleApplyPeriod = () => {
-    if (selectedDates.length === 2) {
+    if (selectedDates.length >= 1) {
       const start = selectedDates[0].toISOString().split('T')[0]
-      const end = selectedDates[1].toISOString().split('T')[0]
+      const end = selectedDates.length === 2 
+        ? selectedDates[1].toISOString().split('T')[0]
+        : start // Если выбрана одна дата, используем её как начало и конец
       
       const params = new URLSearchParams()
       params.append('start', start)
@@ -569,9 +600,11 @@ export default function LimitsPage() {
                 </div>
               </div>
               
-              {selectedDates.length === 2 && (
+              {selectedDates.length >= 1 && (
                 <div className="text-center text-xs text-gray-300 mb-2">
-                  Период выбран
+                  {selectedDates.length === 1 
+                    ? 'Выбрана одна дата' 
+                    : 'Период выбран'}
                 </div>
               )}
               
@@ -579,7 +612,7 @@ export default function LimitsPage() {
                 <button
                   type="button"
                   onClick={handleApplyPeriod}
-                  disabled={selectedDates.length !== 2}
+                  disabled={selectedDates.length === 0}
                   className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 text-black font-medium py-1.5 px-3 rounded-lg transition-colors text-xs"
                 >
                   Применить
@@ -695,18 +728,122 @@ export default function LimitsPage() {
         </div>
       </div>
 
-      {/* Приблизительный доход */}
+      {/* Чистая прибыль (из смен) */}
       <div className="bg-gradient-to-r from-green-500/20 to-green-600/20 rounded-xl p-4 mb-4 border border-green-500/30 backdrop-blur-sm">
-        <div className="text-base font-bold text-white mb-2">Приблизительный доход</div>
+        <div className="text-base font-bold text-white mb-2">
+          {startDate && endDate ? 'Чистая прибыль за период' : 'Чистая прибыль (текущая смена)'}
+        </div>
         <div className="text-green-500 font-bold text-2xl mb-1">
           {stats.approximateIncome.toFixed(2)} с
         </div>
         <div className="text-xs text-gray-400">
           {startDate && endDate 
-            ? `8% от пополнений + 2% от выводов (за период ${startDate} — ${endDate})`
-            : '8% от пополнений + 2% от выводов (за сегодня)'}
+            ? `Сумма всех закрытых смен за период ${startDate} — ${endDate} (8% от пополнений + 2% от выводов)`
+            : '8% от пополнений + 2% от выводов (смена с 00:00 до текущего момента)'}
         </div>
       </div>
+
+      {/* Смены за период */}
+      {startDate && endDate && shifts.length > 0 && (
+        <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
+          <div className="text-base font-bold text-white mb-3">
+            Смены за период ({shifts.length} {shifts.length === 1 ? 'смена' : shifts.length < 5 ? 'смены' : 'смен'})
+          </div>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {shifts.map((shift) => (
+              <div key={shift.id} className="bg-gray-900 bg-opacity-50 rounded-xl p-3 border border-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-white font-semibold text-sm">
+                    {new Date(shift.date).toLocaleDateString('ru-RU', { 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      year: 'numeric' 
+                    })}
+                  </div>
+                  <div className={`text-xs px-2 py-1 rounded ${
+                    shift.isClosed 
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                      : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                  }`}>
+                    {shift.isClosed ? 'Закрыта' : 'Открыта'}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <div className="text-gray-400">Пополнения</div>
+                    <div className="text-green-500 font-bold">
+                      {parseFloat(shift.depositsSum).toFixed(2)} с
+                    </div>
+                    <div className="text-gray-500">{shift.depositsCount} оп.</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Выводы</div>
+                    <div className="text-yellow-500 font-bold">
+                      {parseFloat(shift.withdrawalsSum).toFixed(2)} с
+                    </div>
+                    <div className="text-gray-500">{shift.withdrawalsCount} оп.</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Чистая прибыль</div>
+                    <div className="text-green-400 font-bold text-base">
+                      {parseFloat(shift.netProfit).toFixed(2)} с
+                    </div>
+                    <div className="text-gray-500 text-[10px]">8% + 2%</div>
+                  </div>
+                </div>
+                {shift.closedAt && (
+                  <div className="text-[10px] text-gray-500 mt-2">
+                    Закрыта: {new Date(shift.closedAt).toLocaleString('ru-RU')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Информация о текущей смене, если период не выбран */}
+      {!startDate && !endDate && (
+        <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-base font-bold text-white">Текущая смена</div>
+            <button
+              onClick={async () => {
+                if (confirm('Закрыть текущую смену? Смена будет закрыта за сегодняшний день.')) {
+                  try {
+                    const today = new Date().toISOString().split('T')[0]
+                    const response = await fetch('/api/shifts/close', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ date: today }),
+                    })
+                    if (response.ok) {
+                      alert('Смена успешно закрыта!')
+                      fetchStats() // Обновляем данные
+                    } else {
+                      alert('Ошибка при закрытии смены')
+                    }
+                  } catch (error) {
+                    console.error('Error closing shift:', error)
+                    alert('Ошибка при закрытии смены')
+                  }
+                }
+              }}
+              className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-black font-medium rounded-lg transition-colors text-xs"
+            >
+              Закрыть смену
+            </button>
+          </div>
+          <div className="text-sm text-gray-400 mb-1">
+            Смена началась в 00:00 сегодня и будет закрыта автоматически в 23:59
+          </div>
+          <div className="text-xs text-gray-500">
+            При закрытии смены будет рассчитана чистая прибыль: 8% от пополнений + 2% от выводов
+          </div>
+        </div>
+      )}
 
       {/* График */}
       <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 backdrop-blur-sm">

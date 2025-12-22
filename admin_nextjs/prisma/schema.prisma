@@ -402,3 +402,22 @@ model Banner {
   @@index([order])
   @@map("banners")
 }
+
+// Daily Shifts (Дневные смены)
+model DailyShift {
+  id                Int      @id @default(autoincrement())
+  shiftDate         DateTime @unique @map("shift_date") // Дата смены (только дата, без времени)
+  depositsSum       Decimal  @default(0) @map("deposits_sum") @db.Decimal(12, 2)
+  withdrawalsSum    Decimal  @default(0) @map("withdrawals_sum") @db.Decimal(12, 2)
+  netProfit         Decimal  @default(0) @map("net_profit") @db.Decimal(12, 2) // Чистая прибыль: 8% от пополнений + 2% от выводов
+  depositsCount     Int      @default(0) @map("deposits_count")
+  withdrawalsCount  Int      @default(0) @map("withdrawals_count")
+  isClosed          Boolean  @default(false) @map("is_closed") // Закрыта ли смена
+  closedAt          DateTime? @map("closed_at") // Когда была закрыта смена
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([shiftDate])
+  @@index([isClosed])
+  @@map("daily_shifts")
+}
