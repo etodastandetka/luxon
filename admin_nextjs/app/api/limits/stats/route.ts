@@ -220,8 +220,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Для статистики по платформам используем те же фильтры, что и для общей статистики
+    // Для статистики по платформам используем ТОЧНО ТЕ ЖЕ данные, что и для общей статистики
+    // Если общая статистика берется из DailyShift, то статистика по платформам тоже должна учитывать это
+    // Но DailyShift не хранит разбивку по платформам, поэтому всегда берем из requests
+    // НО используем те же фильтры дат, что и для общей статистики
     let dateFilterForStats: any = {}
+    let useDirectRequests = true // Флаг: использовать ли данные напрямую из requests
+    
     if (startDate && endDate) {
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
@@ -233,16 +238,45 @@ export async function GET(request: NextRequest) {
           lte: end,
         },
       }
+      // Для периода всегда используем requests напрямую (DailyShift не хранит разбивку по платформам)
+      useDirectRequests = true
     } else {
-      // Период не выбран - считаем за сегодня (с 00:00 до текущего момента)
+      // Период не выбран - используем те же данные, что и для общей статистики
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const now = new Date()
-      dateFilterForStats = {
-        createdAt: {
-          gte: today,
-          lte: now,
-        },
+      
+      // Проверяем, откуда взялась общая статистика (из DailyShift или из requests)
+      let todayShift: any = null
+      try {
+        todayShift = await prisma.dailyShift.findUnique({
+          where: {
+            shiftDate: today,
+          },
+        })
+      } catch (dbError: any) {
+        // Игнорируем ошибки таблицы
+      }
+      
+      if (todayShift && todayShift.isClosed) {
+        // Общая статистика взята из DailyShift, но для платформ все равно используем requests
+        // так как DailyShift не хранит разбивку по платформам
+        dateFilterForStats = {
+          createdAt: {
+            gte: today,
+            lte: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1), // До конца дня
+          },
+        }
+        useDirectRequests = true
+      } else {
+        // Общая статистика взята из requests - используем те же фильтры
+        dateFilterForStats = {
+          createdAt: {
+            gte: today,
+            lte: now,
+          },
+        }
+        useDirectRequests = true
       }
     }
 
