@@ -10,7 +10,6 @@ export default function MenuPage() {
 
   const menuItems = [
     { href: '/dashboard/search', label: 'Поиск', icon: '🔍' },
-    { href: '/dashboard/requests', label: 'Заявки', icon: '📝' },
     { href: '/dashboard/requisites', label: 'Реквизиты', icon: '💳' },
     { href: '/dashboard/history', label: 'История транзакций', icon: '🕐' },
     { href: '/dashboard/wallet', label: 'Кошельки', icon: '💰' },
