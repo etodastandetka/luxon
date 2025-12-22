@@ -731,7 +731,7 @@ export default function LimitsPage() {
       {/* Чистая прибыль (из смен) */}
       <div className="bg-gradient-to-r from-green-500/20 to-green-600/20 rounded-xl p-4 mb-4 border border-green-500/30 backdrop-blur-sm">
         <div className="text-base font-bold text-white mb-2">
-          {startDate && endDate ? 'Чистая прибыль за период' : 'Чистая прибыль (текущая смена)'}
+          {startDate && endDate ? 'Чистая прибыль за период' : 'Чистая прибыль за сегодня'}
         </div>
         <div className="text-green-500 font-bold text-2xl mb-1">
           {stats.approximateIncome.toFixed(2)} с
@@ -739,7 +739,7 @@ export default function LimitsPage() {
         <div className="text-xs text-gray-400">
           {startDate && endDate 
             ? `Сумма всех закрытых смен за период ${startDate} — ${endDate} (8% от пополнений + 2% от выводов)`
-            : '8% от пополнений + 2% от выводов (смена с 00:00 до текущего момента)'}
+            : '8% от пополнений + 2% от выводов (за сегодня с 00:00)'}
         </div>
       </div>
 
@@ -802,48 +802,6 @@ export default function LimitsPage() {
         </div>
       )}
 
-      {/* Информация о текущей смене, если период не выбран */}
-      {!startDate && !endDate && (
-        <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-base font-bold text-white">Текущая смена</div>
-            <button
-              onClick={async () => {
-                if (confirm('Закрыть текущую смену? Смена будет закрыта за сегодняшний день.')) {
-                  try {
-                    const today = new Date().toISOString().split('T')[0]
-                    const response = await fetch('/api/shifts/close', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({ date: today }),
-                    })
-                    if (response.ok) {
-                      alert('Смена успешно закрыта!')
-                      fetchStats() // Обновляем данные
-                    } else {
-                      alert('Ошибка при закрытии смены')
-                    }
-                  } catch (error) {
-                    console.error('Error closing shift:', error)
-                    alert('Ошибка при закрытии смены')
-                  }
-                }
-              }}
-              className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-black font-medium rounded-lg transition-colors text-xs"
-            >
-              Закрыть смену
-            </button>
-          </div>
-          <div className="text-sm text-gray-400 mb-1">
-            Смена началась в 00:00 сегодня и будет закрыта автоматически в 23:59
-          </div>
-          <div className="text-xs text-gray-500">
-            При закрытии смены будет рассчитана чистая прибыль: 8% от пополнений + 2% от выводов
-          </div>
-        </div>
-      )}
 
       {/* График */}
       <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 backdrop-blur-sm">
