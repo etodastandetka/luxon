@@ -69,10 +69,29 @@ export default function RequestDetailPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<'completed' | 'approved' | 'rejected' | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const [photoError, setPhotoError] = useState(false) // Флаг ошибки загрузки фото
   const isMountedRef = useRef(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const photoLoadedRef = useRef(false) // Флаг, что фото уже загружено для текущей заявки
   const currentRequestIdRef = useRef<string | null>(null) // ID текущей заявки
+
+  // Функция для валидации URL фото
+  const isValidPhotoUrl = (url: string | null | undefined): boolean => {
+    if (!url || typeof url !== 'string' || url.trim() === '') return false
+    // Проверяем, что это валидный URL или data URL
+    try {
+      if (url.startsWith('data:')) {
+        // Проверяем формат data URL: data:[<mediatype>][;base64],<data>
+        const dataUrlPattern = /^data:([a-zA-Z][a-zA-Z0-9]*\/[a-zA-Z0-9][a-zA-Z0-9]*)(;base64)?,/
+        return dataUrlPattern.test(url)
+      }
+      // Проверяем обычный URL
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
 
   // Вспомогательная функция для обновления заявки с сохранением photoFileUrl
   const updateRequestPreservingPhoto = useCallback((newRequestData: RequestDetail | ((prev: RequestDetail | null) => RequestDetail | null)) => {
@@ -111,9 +130,10 @@ export default function RequestDetailPage() {
         return
       }
 
-      // Если заявка изменилась, сбрасываем флаг загрузки фото
+      // Если заявка изменилась, сбрасываем флаги загрузки фото
       if (currentRequestIdRef.current !== requestId) {
         photoLoadedRef.current = false
+        setPhotoError(false) // Сбрасываем ошибку при смене заявки
         currentRequestIdRef.current = requestId
       }
 
@@ -180,18 +200,25 @@ export default function RequestDetailPage() {
                   }
                   
                   if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
-                    setRequest(prev => {
-                      if (!prev) return null
-                      // Если фото уже есть, не меняем его
-                      if (prev.photoFileUrl) return prev
-                      
-                      photoLoadedRef.current = true // Отмечаем, что фото загружено
-                      return {
-                        ...prev,
-                        photoFileUrl: photoData.data.photoFileUrl
-                      }
-                    })
-                    // Фото появится сразу без лоадера
+                    const photoUrl = photoData.data.photoFileUrl
+                    // Валидируем URL перед использованием
+                    if (isValidPhotoUrl(photoUrl)) {
+                      setRequest(prev => {
+                        if (!prev) return null
+                        // Если фото уже есть, не меняем его
+                        if (prev.photoFileUrl) return prev
+                        
+                        photoLoadedRef.current = true // Отмечаем, что фото загружено
+                        setPhotoError(false) // Сбрасываем ошибку
+                        return {
+                          ...prev,
+                          photoFileUrl: photoUrl
+                        }
+                      })
+                    } else {
+                      console.warn('⚠️ [Request Detail] Невалидный URL фото:', photoUrl)
+                      setPhotoError(true)
+                    }
                   }
                 })
                 .catch(() => {
@@ -1229,8 +1256,8 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      {/* Фото чека или QR-кода - показываем только если фото загружено */}
-      {request.photoFileUrl && (
+      {/* Фото чека или QR-кода - показываем только если фото загружено и валидно */}
+      {request.photoFileUrl && isValidPhotoUrl(request.photoFileUrl) && !photoError && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-base font-semibold text-white mb-3">
             {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
@@ -1253,19 +1280,27 @@ export default function RequestDetailPage() {
               loading="eager"
               priority
               unoptimized={request.photoFileUrl?.startsWith('data:')}
-              onError={(e) => {
-                console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
-                const target = e.target as HTMLImageElement
-                target.style.display = 'none'
-                const parent = target.parentElement
-                if (parent) {
-                  parent.innerHTML = '<div class="text-center py-8"><p class="text-red-400">Ошибка загрузки фото</p></div>'
-                }
+              onError={() => {
+                console.error('❌ [Request Detail] Ошибка загрузки изображения')
+                setPhotoError(true)
               }}
               onLoad={() => {
                 console.log('✅ [Request Detail] Изображение успешно загружено')
+                setPhotoError(false)
               }}
             />
+          </div>
+        </div>
+      )}
+      
+      {/* Показываем сообщение об ошибке, если фото не удалось загрузить */}
+      {photoError && (
+        <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
+          <h3 className="text-base font-semibold text-white mb-3">
+            {request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+          </h3>
+          <div className="text-center py-8 bg-gray-900 rounded-lg">
+            <p className="text-red-400 text-sm">Ошибка загрузки фото</p>
           </div>
         </div>
       )}
