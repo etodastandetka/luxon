@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { TelegramUser, getTelegramUser, getTelegramUserId } from '../utils/telegram'
+import { TelegramUser, getTelegramUser } from '../utils/telegram'
 import { getApiBase } from '../utils/fetch'
 import { useLanguage } from './LanguageContext'
 import { PremiumIcon } from './Icons'
@@ -14,31 +14,46 @@ interface UserStats {
   totalWithdrawAmount: number
 }
 
+// Кеш статистики в памяти (на время сессии)
+const statsCache = new Map<number, { stats: UserStats; timestamp: number }>()
+const CACHE_TTL = 60_000 // 60 секунд
+
 export default function UserProfile() {
   const [user, setUser] = useState<TelegramUser | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { language } = useLanguage()
+  const statsLoadedRef = useRef(false)
 
+  // Загружаем пользователя сразу (синхронно)
   useEffect(() => {
-    const loadUserData = () => {
-      const telegramUser = getTelegramUser()
-      if (telegramUser) {
-        setUser(telegramUser)
-        loadStats(telegramUser.id)
-      } else {
-        setLoading(false)
-      }
+    const telegramUser = getTelegramUser()
+    if (telegramUser) {
+      setUser(telegramUser)
+      // Загружаем статистику в фоне, не блокируя рендер
+      loadStats(telegramUser.id)
     }
-
-    loadUserData()
   }, [])
 
   const loadStats = async (userId: number) => {
+    // Проверяем кеш
+    const cached = statsCache.get(userId)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      setStats(cached.stats)
+      return
+    }
+
+    // Если уже загружается, не делаем повторный запрос
+    if (statsLoadedRef.current) return
+    statsLoadedRef.current = true
+
     try {
       const apiUrl = getApiBase()
-      const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}`)
+      // Используем лимит для быстрой загрузки - нам нужны только счетчики
+      // Для точных сумм можно сделать отдельный запрос, но для счетчиков достаточно
+      const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}&limit=1000`, {
+        cache: 'default'
+      })
       const data = await response.json()
       
       const transactions = data.data?.transactions || data.transactions || []
@@ -54,6 +69,8 @@ export default function UserProfile() {
           .reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
       }
       
+      // Сохраняем в кеш
+      statsCache.set(userId, { stats: userStats, timestamp: Date.now() })
       setStats(userStats)
     } catch (error) {
       console.error('Error loading stats:', error)
@@ -64,7 +81,7 @@ export default function UserProfile() {
         totalWithdrawAmount: 0
       })
     } finally {
-      setLoading(false)
+      statsLoadedRef.current = false
     }
   }
 
@@ -91,7 +108,8 @@ export default function UserProfile() {
 
   const t = translations[language as keyof typeof translations] || translations.ru
 
-  if (loading || !user) {
+  // Показываем профиль сразу, даже если статистика еще загружается
+  if (!user) {
     return null
   }
 
