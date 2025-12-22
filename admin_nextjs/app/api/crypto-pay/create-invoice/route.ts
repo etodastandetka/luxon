@@ -4,11 +4,13 @@ import { createInvoice, getExchangeRates } from '@/lib/crypto-pay'
 import { CryptoPayClient, Networks } from "@koo0ki/send"
 
 // Инициализация клиента @koo0ki/send для создания invoice
-const cryptoPay = new CryptoPayClient({
-  token: process.env.CRYPTO_PAY_API_TOKEN || '',
+// Проверяем наличие токена перед инициализацией
+const CRYPTO_PAY_TOKEN = process.env.CRYPTO_PAY_API_TOKEN || ''
+const cryptoPay = CRYPTO_PAY_TOKEN ? new CryptoPayClient({
+  token: CRYPTO_PAY_TOKEN,
   net: process.env.NODE_ENV === 'production' ? Networks.MAINNET : Networks.TESTNET,
   pollingEnabled: false,
-})
+}) : null
 
 export const dynamic = 'force-dynamic'
 
@@ -111,6 +113,12 @@ export async function POST(request: NextRequest) {
     // Создаем invoice через библиотеку @koo0ki/send
     let invoice: any
     try {
+      // Проверяем наличие токена и клиента
+      if (!CRYPTO_PAY_TOKEN || !cryptoPay) {
+        console.warn('⚠️ CRYPTO_PAY_API_TOKEN не настроен, используем прямой API')
+        throw new Error('Crypto Pay token not configured')
+      }
+      
       console.log('🔄 Создаем invoice через @koo0ki/send с параметрами:', {
         amount: amountUsdt,
         asset: asset,

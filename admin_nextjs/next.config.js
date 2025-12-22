@@ -44,7 +44,7 @@ const nextConfig = {
   
   // Production оптимизации
   ...(process.env.NODE_ENV === 'production' && {
-    output: 'standalone', // Standalone режим для меньшего размера
+    // output: 'standalone', // Отключено - несовместимо с next start в PM2
     productionBrowserSourceMaps: false, // Отключаем source maps в production
   }),
   
