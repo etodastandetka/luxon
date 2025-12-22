@@ -421,9 +421,8 @@ export async function GET(request: NextRequest) {
     console.log('📊 [Platform Stats] Все уникальные bookmaker значения:', allBookmakers)
     
     // Один запрос для всех платформ - значительно быстрее
-    // Используем подзапрос для правильной группировки по алиасу
-    // ВАЖНО: Фильтруем по статусам в WHERE, а не только в CASE, чтобы исключить неподходящие транзакции
-    // Упрощенное сопоставление платформ: используем только LOWER и TRIM для надежности
+    // Упрощенная логика: сначала проверяем точные совпадения, потом LIKE для надежности
+    // Ключи из BookmakerGrid: '1xbet', '1win', 'melbet', 'mostbet', 'winwin', '888starz'
     const platformStatsQuery = await prisma.$queryRawUnsafe<Array<{
       platform_key: string;
       deposits_count: bigint;
@@ -440,27 +439,20 @@ export async function GET(request: NextRequest) {
       FROM (
         SELECT 
           CASE 
-            -- Упрощенная логика: используем только LOWER и TRIM для надежности
-            WHEN LOWER(TRIM(bookmaker)) IN ('1xbet', 'xbet', '1x', '1 xbet', '1 x bet') 
-              OR LOWER(TRIM(bookmaker)) LIKE '%1xbet%' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' THEN '1xbet'
-            -- 1win
-            WHEN LOWER(TRIM(bookmaker)) IN ('1win', 'onewin', 'one win', '1 win', '1-win')
-              OR LOWER(TRIM(bookmaker)) LIKE '%1win%' 
-              OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' THEN '1win'
-            -- melbet
-            WHEN LOWER(TRIM(bookmaker)) IN ('melbet', 'mel bet', 'mel-bet', 'mel_bet')
-              OR LOWER(TRIM(bookmaker)) LIKE '%melbet%' THEN 'melbet'
-            -- mostbet
-            WHEN LOWER(TRIM(bookmaker)) IN ('mostbet', 'most bet', 'most-bet', 'most_bet')
-              OR LOWER(TRIM(bookmaker)) LIKE '%mostbet%' THEN 'mostbet'
-            -- winwin
-            WHEN LOWER(TRIM(bookmaker)) IN ('winwin', 'win win', 'win-win', 'win_win')
-              OR LOWER(TRIM(bookmaker)) LIKE '%winwin%' THEN 'winwin'
-            -- 888starz
-            WHEN LOWER(TRIM(bookmaker)) IN ('888starz', '888 starz', '888-starz', '888_starz', '888')
-              OR LOWER(TRIM(bookmaker)) LIKE '%888starz%'
-              OR LOWER(TRIM(bookmaker)) LIKE '%888%' THEN '888starz'
+            -- Точные совпадения с ключами из BookmakerGrid (все в нижнем регистре)
+            WHEN LOWER(TRIM(bookmaker)) = '1xbet' THEN '1xbet'
+            WHEN LOWER(TRIM(bookmaker)) = '1win' THEN '1win'
+            WHEN LOWER(TRIM(bookmaker)) = 'melbet' THEN 'melbet'
+            WHEN LOWER(TRIM(bookmaker)) = 'mostbet' THEN 'mostbet'
+            WHEN LOWER(TRIM(bookmaker)) = 'winwin' THEN 'winwin'
+            WHEN LOWER(TRIM(bookmaker)) = '888starz' THEN '888starz'
+            -- Дополнительные варианты написания (на случай если сохраняются по-другому)
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%1xbet%' OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' THEN '1xbet'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%1win%' OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' THEN '1win'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%melbet%' THEN 'melbet'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%mostbet%' THEN 'mostbet'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%winwin%' OR LOWER(TRIM(bookmaker)) LIKE '%win win%' THEN 'winwin'
+            WHEN LOWER(TRIM(bookmaker)) LIKE '%888starz%' OR LOWER(TRIM(bookmaker)) LIKE '%888%' THEN '888starz'
             ELSE NULL
           END as platform_key,
           request_type,
