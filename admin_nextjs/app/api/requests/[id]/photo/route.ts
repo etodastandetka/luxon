@@ -40,8 +40,11 @@ export async function GET(
       })
     )
     
-    // Кэшируем фото на 10 секунд (фото редко меняется)
-    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
+    // Кэшируем фото на 60 секунд для ускорения (фото редко меняется)
+    // Используем более длительное кэширование для ускорения повторных загрузок
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+    // Добавляем заголовки для оптимизации
+    response.headers.set('X-Content-Type-Options', 'nosniff')
     
     return response
   } catch (error: any) {

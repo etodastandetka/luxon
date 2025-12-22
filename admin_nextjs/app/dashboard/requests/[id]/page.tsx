@@ -163,47 +163,44 @@ export default function RequestDetailPage() {
             
             // Загружаем фото ТОЛЬКО один раз при первой загрузке заявки
             // При автообновлениях (showLoading = false) не загружаем фото повторно
+            // Загружаем фото ПАРАЛЛЕЛЬНО с основными данными для ускорения
             if (showLoading && !photoLoadedRef.current) {
               setPhotoLoading(true)
-              // Загружаем фото с небольшой задержкой, чтобы не блокировать основной контент
-              setTimeout(() => {
-                if (!isMountedRef.current || photoLoadedRef.current) return
-                
-                fetch(`/api/requests/${requestId}/photo`, {
-                  cache: 'default',
-                  priority: 'low', // Низкий приоритет - не блокирует другие запросы
+              // Загружаем фото сразу, без задержки - параллельно с основным контентом
+              fetch(`/api/requests/${requestId}/photo`, {
+                cache: 'force-cache', // Используем кэш для ускорения
+                next: { revalidate: 10 }, // Перевалидируем каждые 10 секунд
+              })
+                .then(res => {
+                  if (!res.ok) return { success: false }
+                  return res.json()
                 })
-                  .then(res => {
-                    if (!res.ok) return { success: false }
-                    return res.json()
-                  })
-                  .then(photoData => {
-                    // Проверяем еще раз, что фото не загружено (защита от дублирования)
-                    if (photoLoadedRef.current) {
-                      setPhotoLoading(false)
-                      return
-                    }
-                    
-                    if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
-                      setRequest(prev => {
-                        if (!prev) return null
-                        // Если фото уже есть, не меняем его
-                        if (prev.photoFileUrl) return prev
-                        
-                        photoLoadedRef.current = true // Отмечаем, что фото загружено
-                        return {
-                          ...prev,
-                          photoFileUrl: photoData.data.photoFileUrl
-                        }
-                      })
-                      setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
-                    }
+                .then(photoData => {
+                  // Проверяем еще раз, что фото не загружено (защита от дублирования)
+                  if (photoLoadedRef.current || !isMountedRef.current) {
                     setPhotoLoading(false)
-                  })
-                  .catch(() => {
-                    setPhotoLoading(false)
-                  })
-              }, 50) // Небольшая задержка для приоритизации основного контента
+                    return
+                  }
+                  
+                  if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
+                    setRequest(prev => {
+                      if (!prev) return null
+                      // Если фото уже есть, не меняем его
+                      if (prev.photoFileUrl) return prev
+                      
+                      photoLoadedRef.current = true // Отмечаем, что фото загружено
+                      return {
+                        ...prev,
+                        photoFileUrl: photoData.data.photoFileUrl
+                      }
+                    })
+                    setImageLoading(true) // Устанавливаем состояние загрузки для нового фото
+                  }
+                  setPhotoLoading(false)
+                })
+                .catch(() => {
+                  setPhotoLoading(false)
+                })
             }
             
             // Интервал автообновления управляется в основном useEffect
@@ -1294,7 +1291,8 @@ export default function RequestDetailPage() {
               height={600}
               className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
               style={{ display: 'block' }}
-              loading="lazy"
+              loading="eager" // Загружаем сразу, не лениво
+              priority // Высокий приоритет загрузки
               unoptimized={request.photoFileUrl?.startsWith('data:')}
                     onError={(e) => {
                 console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
@@ -1358,14 +1356,16 @@ export default function RequestDetailPage() {
             </button>
             
                     <Image
-            src={request.photoFileUrl}
-            alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+                      src={request.photoFileUrl}
+                      alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
                       width={1200}
-            height={1200}
-            className="max-w-full max-h-full object-contain rounded-lg"
-            onClick={(e) => e.stopPropagation()}
+                      height={1200}
+                      className="max-w-full max-h-full object-contain rounded-lg"
+                      onClick={(e) => e.stopPropagation()}
+                      loading="eager"
+                      priority
                       unoptimized
-          />
+                    />
         </div>
       )}
 
