@@ -51,18 +51,32 @@ export async function GET(request: NextRequest) {
       const end = new Date(endDate)
       end.setHours(23, 59, 59, 999)
 
-      const shifts = await prisma.dailyShift.findMany({
-        where: {
-          shiftDate: {
-            gte: start,
-            lte: end,
+      // Пытаемся получить закрытые смены за период
+      let shifts: any[] = []
+      try {
+        shifts = await prisma.dailyShift.findMany({
+          where: {
+            shiftDate: {
+              gte: start,
+              lte: end,
+            },
+            isClosed: true, // Только закрытые смены
           },
-          isClosed: true, // Только закрытые смены
-        },
-        orderBy: {
-          shiftDate: 'asc',
-        },
-      })
+          orderBy: {
+            shiftDate: 'asc',
+          },
+        })
+      } catch (dbError: any) {
+        // Если таблица не существует, просто продолжаем без смен
+        if (dbError.message?.includes('does not exist') || 
+            dbError.message?.includes('Unknown model') ||
+            dbError.code === 'P2021') {
+          console.warn('⚠️ [Limits Stats] DailyShift table does not exist yet. Run: npx prisma db push')
+          shifts = []
+        } else {
+          throw dbError
+        }
+      }
 
       // Суммируем все смены за период
       shifts.forEach((shift) => {
@@ -124,11 +138,24 @@ export async function GET(request: NextRequest) {
       const now = new Date()
 
       // Проверяем, есть ли закрытая смена за сегодня
-      const todayShift = await prisma.dailyShift.findUnique({
-        where: {
-          shiftDate: today,
-        },
-      })
+      let todayShift: any = null
+      try {
+        todayShift = await prisma.dailyShift.findUnique({
+          where: {
+            shiftDate: today,
+          },
+        })
+      } catch (dbError: any) {
+        // Если таблица не существует, просто продолжаем без смены
+        if (dbError.message?.includes('does not exist') || 
+            dbError.message?.includes('Unknown model') ||
+            dbError.code === 'P2021') {
+          console.warn('⚠️ [Limits Stats] DailyShift table does not exist yet. Run: npx prisma db push')
+          todayShift = null
+        } else {
+          throw dbError
+        }
+      }
 
       if (todayShift && todayShift.isClosed) {
         // Используем данные из закрытой смены

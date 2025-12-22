@@ -29,12 +29,29 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const shifts = await prisma.dailyShift.findMany({
-      where,
-      orderBy: {
-        shiftDate: 'desc',
-      },
-    })
+    // Проверяем, существует ли модель DailyShift в Prisma Client
+    let shifts: any[] = []
+    try {
+      shifts = await prisma.dailyShift.findMany({
+        where,
+        orderBy: {
+          shiftDate: 'desc',
+        },
+      })
+    } catch (dbError: any) {
+      // Если таблица не существует, возвращаем пустой массив
+      if (dbError.message?.includes('does not exist') || 
+          dbError.message?.includes('Unknown model') ||
+          dbError.code === 'P2021') {
+        console.warn('⚠️ [Shifts API] DailyShift table does not exist yet. Run: npx prisma db push')
+        return NextResponse.json(
+          createApiResponse({
+            shifts: [],
+          })
+        )
+      }
+      throw dbError
+    }
 
     return NextResponse.json(
       createApiResponse({
@@ -52,7 +69,12 @@ export async function GET(request: NextRequest) {
       })
     )
   } catch (error: any) {
-    console.error('Get shifts error:', error)
+    console.error('❌ [Shifts API] Get shifts error:', error)
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    })
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to fetch shifts'),
       { status: error.message === 'Unauthorized' ? 401 : 500 }
