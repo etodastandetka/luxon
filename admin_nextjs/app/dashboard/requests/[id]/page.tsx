@@ -1354,6 +1354,10 @@ export default function RequestDetailPage() {
                       loading="eager"
                       priority
                       unoptimized
+                      onError={() => {
+                        console.error('❌ [Request Detail] Ошибка загрузки изображения в модальном окне')
+                        setShowPhotoModal(false)
+                      }}
                     />
         </div>
       )}
