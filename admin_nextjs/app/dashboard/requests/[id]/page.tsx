@@ -368,6 +368,20 @@ export default function RequestDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]) // request?.status обновляется внутри fetchRequest, не нужно в зависимостях
 
+  // Отключаем предупреждение о несохранённых изменениях при закрытии страницы
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Не показываем предупреждение
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [])
+
   // Обновляем интервал автообновления в зависимости от статуса заявки
   useEffect(() => {
     if (!request) return
