@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       throw dbError
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createApiResponse({
         shifts: shifts.map((shift) => ({
           id: shift.id,
@@ -68,6 +68,13 @@ export async function GET(request: NextRequest) {
         })),
       })
     )
+    
+    // Кеширование для закрытых смен
+    if (startDate && endDate) {
+      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+    }
+    
+    return response
   } catch (error: any) {
     console.error('❌ [Shifts API] Get shifts error:', error)
     console.error('Error details:', {

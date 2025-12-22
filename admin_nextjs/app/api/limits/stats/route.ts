@@ -31,8 +31,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start')
     const endDate = searchParams.get('end')
-    
-    console.log('📊 [Limits Stats] Fetching stats:', { startDate, endDate })
 
     // Статусы для подсчета
     const depositSuccessStatuses = ['autodeposit_success', 'auto_completed']
@@ -266,36 +264,30 @@ export async function GET(request: NextRequest) {
     }
     
     // Группировка по датам для графика используя SQL (оптимизировано с индексами)
-    // Для пополнений: считаем только РЕАЛЬНО обработанные через API казино
-    // Для выводов: считаем все успешные статусы
-    // Используем DATE() для более быстрой группировки
-    // Ограничиваем последними 30 днями для ускорения
-    const [depositsByDate, withdrawalsByDate] = await Promise.all([
-      prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-        SELECT 
-          DATE(created_at)::text as date,
-          COUNT(*)::bigint as count
-        FROM requests
-        WHERE request_type = 'deposit'
-          AND status IN ('autodeposit_success', 'auto_completed')
-          AND created_at >= ${chartStartDate}::timestamp
-          AND created_at <= ${chartEndDate}::timestamp
-        GROUP BY DATE(created_at)
-        ORDER BY date DESC
-      `,
-      prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-        SELECT 
-          DATE(created_at)::text as date,
-          COUNT(*)::bigint as count
-        FROM requests
-        WHERE request_type = 'withdraw'
-          AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed')
-          AND created_at >= ${chartStartDate}::timestamp
-          AND created_at <= ${chartEndDate}::timestamp
-        GROUP BY DATE(created_at)
-        ORDER BY date DESC
-      `,
-    ])
+    // Объединяем оба запроса в один для ускорения
+    const chartData = await prisma.$queryRaw<Array<{ 
+      date: string; 
+      deposit_count: bigint;
+      withdrawal_count: bigint;
+    }>>`
+      SELECT 
+        DATE(created_at)::text as date,
+        SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as deposit_count,
+        SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as withdrawal_count
+      FROM requests
+      WHERE created_at >= ${chartStartDate}::timestamp
+        AND created_at <= ${chartEndDate}::timestamp
+        AND (
+          (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed'))
+          OR
+          (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
+        )
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+    `
+    
+    const depositsByDate = chartData.map(d => ({ date: d.date, count: d.deposit_count }))
+    const withdrawalsByDate = chartData.map(d => ({ date: d.date, count: d.withdrawal_count }))
 
     // Форматируем даты для графика (YYYY-MM-DD -> dd.mm)
     const formatDate = (dateStr: string) => {
@@ -384,13 +376,8 @@ export async function GET(request: NextRequest) {
         : key
       
       const isEnabled = casinoSettings[settingKey] !== false
-      if (!isEnabled) {
-        console.log(`🚫 Platform ${platform.name} (${key}) is disabled in settings, hiding from limits`)
-      }
       return isEnabled
     })
-    
-    console.log(`✅ Platform limits received:`, platformLimits.map(p => `${p.name}=${p.limit}`).join(', '))
 
     // Оптимизация: получаем статистику по всем платформам одним запросом вместо множества запросов
     // Строим условия для дат
@@ -494,8 +481,13 @@ export async function GET(request: NextRequest) {
       })
     )
     
-    // Добавляем кэширование для быстрой загрузки (10 секунд)
-    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
+    // Кеширование: если период выбран (закрытые смены) - кешируем на 30 секунд
+    // Если период не выбран (текущий день) - кешируем на 5 секунд для свежести данных
+    if (startDate && endDate) {
+      response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
+    } else {
+      response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=15')
+    }
     
     return response
   } catch (error: any) {
