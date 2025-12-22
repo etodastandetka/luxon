@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
       // Пытаемся получить закрытые смены за период
       let shifts: any[] = []
       try {
+        // @ts-ignore - dailyShift может быть не в типах, если Prisma Client не обновлен
         shifts = await prisma.dailyShift.findMany({
           where: {
             shiftDate: {
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
         // Проверяем, закрыта ли уже смена за сегодня
         let todayShift: any = null
         try {
+          // @ts-ignore - dailyShift может быть не в типах, если Prisma Client не обновлен
           todayShift = await prisma.dailyShift.findUnique({
             where: {
               shiftDate: today,
@@ -158,6 +160,7 @@ export async function GET(request: NextRequest) {
       // Проверяем, есть ли закрытая смена за сегодня
       let todayShift: any = null
       try {
+        // @ts-ignore - dailyShift может быть не в типах, если Prisma Client не обновлен
         todayShift = await prisma.dailyShift.findUnique({
           where: {
             shiftDate: today,
@@ -249,6 +252,7 @@ export async function GET(request: NextRequest) {
       // Проверяем, откуда взялась общая статистика (из DailyShift или из requests)
       let todayShift: any = null
       try {
+        // @ts-ignore - dailyShift может быть не в типах, если Prisma Client не обновлен
         todayShift = await prisma.dailyShift.findUnique({
           where: {
             shiftDate: today,
@@ -372,6 +376,27 @@ export async function GET(request: NextRequest) {
           GROUP BY platform_key
         `, ...dateParams)
       })(),
+      // Выполняем запрос данных графика параллельно
+      prisma.$queryRaw<Array<{ 
+        date: string; 
+        deposit_count: bigint;
+        withdrawal_count: bigint;
+      }>>`
+        SELECT 
+          DATE(created_at)::text as date,
+          SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved') THEN 1 ELSE 0 END)::bigint as deposit_count,
+          SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as withdrawal_count
+        FROM requests
+        WHERE created_at >= ${chartStartDate}::timestamp
+          AND created_at <= ${chartEndDate}::timestamp
+          AND (
+            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
+            OR
+            (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
+          )
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+      `,
     ])
     
     let platformLimits = platformLimitsResult
