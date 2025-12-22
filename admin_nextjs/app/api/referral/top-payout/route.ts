@@ -16,7 +16,28 @@ export async function POST(request: NextRequest) {
   try {
     requireAuth(request)
     
-    // Получаем топ-5 реферов через агрегацию
+    // Получаем дату начала текущего месяца из конфигурации
+    const monthStartConfig = await prisma.botConfiguration.findUnique({
+      where: { key: 'referral_current_month_start' }
+    })
+    
+    let monthStartDate: Date | null = null
+    if (monthStartConfig && monthStartConfig.value) {
+      try {
+        monthStartDate = new Date(monthStartConfig.value as string)
+      } catch (e) {
+        console.warn('Failed to parse referral_current_month_start date, using current month')
+      }
+    }
+    
+    // Если дата не установлена, используем начало текущего месяца
+    if (!monthStartDate) {
+      const now = new Date()
+      monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      monthStartDate.setHours(0, 0, 0, 0)
+    }
+    
+    // Получаем топ-5 реферов через агрегацию (только за текущий месяц)
     const topReferrersRaw = await prisma.$queryRaw<Array<{
       referrer_id: bigint,
       total_deposits: number | bigint,
@@ -31,6 +52,7 @@ export async function POST(request: NextRequest) {
         AND r.request_type = 'deposit'
         AND r.status IN ('completed', 'approved', 'auto_completed', 'autodeposit_success')
         AND r.amount > 0
+        AND r.created_at >= ${monthStartDate}::timestamp
       GROUP BY br.referrer_id
       ORDER BY total_deposits DESC
       LIMIT 5
@@ -87,15 +109,13 @@ export async function POST(request: NextRequest) {
         console.log(`[Top Payout] Добавление баланса для места ${referrer.rank}: UserId=${referrer.userId}, Amount=${referrer.prize}`)
         
         // Проверяем, не была ли уже выплата за этот месяц (чтобы избежать дублей)
-        const now = new Date()
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-        
+        // Используем дату начала месяца из конфигурации
         const existingPayment = await prisma.botMonthlyPayment.findFirst({
           where: {
             userId: referrer.userId,
             position: referrer.rank,
             createdAt: {
-              gte: startOfMonth
+              gte: monthStartDate
             },
             status: 'completed'
           }

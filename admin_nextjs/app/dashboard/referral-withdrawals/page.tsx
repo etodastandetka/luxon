@@ -60,6 +60,7 @@ export default function ReferralWithdrawalsPage() {
   const [payoutLoading, setPayoutLoading] = useState(false)
   const [payoutResults, setPayoutResults] = useState<PayoutResult[]>([])
   const [payoutErrors, setPayoutErrors] = useState<PayoutError[]>([])
+  const [closingMonth, setClosingMonth] = useState(false)
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -96,6 +97,37 @@ export default function ReferralWithdrawalsPage() {
       setLoadingTop(false)
     }
   }, [])
+
+  const handleCloseMonth = async () => {
+    if (!confirm('Вы уверены, что хотите закрыть прошлый месяц и начать новый?\n\nЭто сохранит данные за прошлый месяц и начнет подсчет за новый месяц.')) {
+      return
+    }
+
+    try {
+      setClosingMonth(true)
+      const response = await fetch('/api/referral/close-month', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        alert(data.data.message || 'Месяц успешно закрыт. Новый месяц начат.')
+        // Обновляем список топ-игроков после закрытия месяца
+        fetchTopPlayers()
+      } else {
+        alert(data.error || 'Ошибка при закрытии месяца')
+      }
+    } catch (error: any) {
+      console.error('Error closing month:', error)
+      alert(`Ошибка: ${error.message || 'Не удалось закрыть месяц'}`)
+    } finally {
+      setClosingMonth(false)
+    }
+  }
 
   const handleTopPayout = async () => {
     if (!confirm('Выполнить выплату топ-5 рефералам?\n\n1 место: 10 000 сом\n2 место: 5 000 сом\n3 место: 2 500 сом\n4 место: 1 500 сом\n5 место: 1 000 сом')) {
@@ -239,21 +271,34 @@ export default function ReferralWithdrawalsPage() {
         <div className="w-10"></div>
       </div>
 
-      {/* Топ-5 игроков и кнопка выплаты */}
+      {/* Топ-5 игроков и кнопки */}
       <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-white font-semibold">🏆 Топ игроков</h2>
-          <button
-            onClick={handleTopPayout}
-            disabled={payoutLoading || loadingTop}
-            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-              payoutLoading || loadingTop
-                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700'
-            }`}
-          >
-            {payoutLoading ? 'Выполняется...' : 'Выплатить топ-5'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCloseMonth}
+              disabled={closingMonth}
+              className={`px-4 py-2 rounded-lg font-semibold transition-colors text-sm ${
+                closingMonth
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
+              }`}
+            >
+              {closingMonth ? 'Закрытие...' : 'Закрыть месяц'}
+            </button>
+            <button
+              onClick={handleTopPayout}
+              disabled={payoutLoading || loadingTop}
+              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                payoutLoading || loadingTop
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700'
+              }`}
+            >
+              {payoutLoading ? 'Выполняется...' : 'Выплатить топ-5'}
+            </button>
+          </div>
         </div>
         
         {loadingTop ? (
