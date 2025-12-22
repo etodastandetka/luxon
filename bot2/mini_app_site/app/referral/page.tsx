@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
 import { getApiBase, safeFetchJson } from '../../utils/fetch'
+import { getTelegramUserId, getTelegramUser } from '../../utils/telegram'
 
 export default function ReferralPage() {
   const [referralLink, setReferralLink] = useState('')
@@ -62,41 +63,67 @@ export default function ReferralPage() {
     setError(null)
     let userId: string | null = null
     try {
-      // Получаем ID пользователя из Telegram WebApp
-      const tg = (window as any).Telegram?.WebApp
+      // Используем утилиту для получения user ID (более надежный способ)
+      // Пробуем несколько раз с задержкой, если Telegram WebApp еще не инициализирован
+      let attempts = 0
+      const maxAttempts = 10 // Увеличиваем количество попыток
       
-      // Минимальное логирование только для отладки
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Telegram WebApp:', !!tg, 'User ID:', tg?.initDataUnsafe?.user?.id)
-      }
+      console.log('🔍 [Referral] Начинаем получение user ID...')
       
-      // Если Telegram WebApp еще не инициализирован, ждем короткое время
-      if (!tg) {
-        console.warn('⚠️ Telegram WebApp не доступен, ждем инициализации...')
-        await new Promise(resolve => setTimeout(resolve, 200)) // Уменьшено с 1000 до 200ms
-        const tgRetry = (window as any).Telegram?.WebApp
-        if (!tgRetry) {
-          throw new Error('Telegram WebApp не инициализирован. Откройте приложение через Telegram бота.')
+      while (attempts < maxAttempts && !userId) {
+        // Пробуем получить через утилиту
+        const telegramUserId = getTelegramUserId()
+        if (telegramUserId) {
+          userId = String(telegramUserId)
+          setIsFromBot(true)
+          console.log('✅ [Referral] User ID получен через getTelegramUserId:', userId)
+          break
         }
-      }
-      
-      // Правильный способ получения user ID из Telegram WebApp
-      if (tg?.initDataUnsafe?.user?.id) {
-        userId = String(tg.initDataUnsafe.user.id)
-        setIsFromBot(true)
-      } else if (tg?.initData) {
-        // Парсим initData если он есть (правильный способ)
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            const userData = JSON.parse(decodeURIComponent(userParam))
-            userId = String(userData.id)
-            setIsFromBot(true)
+        
+        // Также пробуем напрямую через window
+        const tg = (window as any).Telegram?.WebApp
+        if (tg?.initDataUnsafe?.user?.id) {
+          userId = String(tg.initDataUnsafe.user.id)
+          setIsFromBot(true)
+          console.log('✅ [Referral] User ID получен через window.Telegram.WebApp:', userId)
+          break
+        }
+        
+        // Пробуем через initData
+        if (tg?.initData) {
+          try {
+            const params = new URLSearchParams(tg.initData)
+            const userParam = params.get('user')
+            if (userParam) {
+              const userData = JSON.parse(decodeURIComponent(userParam))
+              userId = String(userData.id)
+              setIsFromBot(true)
+              console.log('✅ [Referral] User ID получен через initData:', userId)
+              break
+            }
+          } catch (e) {
+            console.error('❌ [Referral] Error parsing initData:', e)
           }
-        } catch (e) {
-          // Тихая ошибка парсинга
         }
+        
+        // Если не получили, ждем немного и пробуем снова
+        if (attempts < maxAttempts - 1 && !userId) {
+          console.log(`⏳ [Referral] Попытка ${attempts + 1}/${maxAttempts}, ждем 300ms...`)
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+        attempts++
+      }
+      
+      if (!userId) {
+        console.error('❌ [Referral] Не удалось получить user ID после', maxAttempts, 'попыток')
+        console.log('🔍 [Referral] Debug info:', {
+          hasTelegram: !!(window as any).Telegram,
+          hasWebApp: !!(window as any).Telegram?.WebApp,
+          hasInitDataUnsafe: !!(window as any).Telegram?.WebApp?.initDataUnsafe,
+          hasUser: !!(window as any).Telegram?.WebApp?.initDataUnsafe?.user,
+          hasUserId: !!(window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id,
+          hasInitData: !!(window as any).Telegram?.WebApp?.initData
+        })
       }
       
       // Если не из бота, все равно загружаем топ (но не личные данные)
