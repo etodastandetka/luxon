@@ -205,20 +205,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 except ValueError:
                     logger.warning(f"⚠️ Неверный формат реферального кода: {referral_code}")
     
-    # Создаем кнопки как полноэкранные мини-приложения (WebApp)
+    # Создаем одну кнопку для открытия главной страницы приложения
     keyboard = [
-        [
-            InlineKeyboardButton("💰 Пополнить", web_app=WebAppInfo(url=f"{WEBSITE_URL}/deposit/step0")),
-            InlineKeyboardButton("💸 Вывести", web_app=WebAppInfo(url=f"{WEBSITE_URL}/withdraw/step0"))
-        ],
-        [
-            InlineKeyboardButton("📊 История", web_app=WebAppInfo(url=f"{WEBSITE_URL}/history")),
-            InlineKeyboardButton("👥 Рефералы", web_app=WebAppInfo(url=f"{WEBSITE_URL}/referral"))
-        ],
-        [
-            InlineKeyboardButton("ℹ️ Инструкция", web_app=WebAppInfo(url=f"{WEBSITE_URL}/instruction")),
-            InlineKeyboardButton("🆘 Поддержка", web_app=WebAppInfo(url=f"{WEBSITE_URL}/support"))
-        ],
         [
             InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url=WEBSITE_URL))
         ]
@@ -241,7 +229,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 🔒 Финансовый контроль обеспечен личным отделом безопасности
 
-Выберите действие:"""
+Нажмите кнопку ниже, чтобы открыть приложение:"""
     
     # Отправляем текст с кнопками (как в 1xbet боте - напрямую через update.message)
     try:
@@ -351,29 +339,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except Exception as e:
         logger.error(f"❌ Ошибка при сохранении сообщения в чат: {e}", exc_info=True)
     
-    # Отвечаем пользователю, предлагая использовать меню
+    # Отвечаем пользователю, предлагая открыть приложение
     try:
-        # Создаем кнопки как в команде /start
+        # Создаем одну кнопку для открытия главной страницы
         keyboard = [
-            [
-                InlineKeyboardButton("💰 Пополнить", web_app=WebAppInfo(url=f"{WEBSITE_URL}/deposit/step0")),
-                InlineKeyboardButton("💸 Вывести", web_app=WebAppInfo(url=f"{WEBSITE_URL}/withdraw/step0"))
-            ],
-            [
-                InlineKeyboardButton("📊 История", web_app=WebAppInfo(url=f"{WEBSITE_URL}/history")),
-                InlineKeyboardButton("👥 Рефералы", web_app=WebAppInfo(url=f"{WEBSITE_URL}/referral"))
-            ],
-            [
-                InlineKeyboardButton("ℹ️ Инструкция", web_app=WebAppInfo(url=f"{WEBSITE_URL}/instruction")),
-                InlineKeyboardButton("🆘 Поддержка", web_app=WebAppInfo(url=f"{WEBSITE_URL}/support"))
-            ],
             [
                 InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url=WEBSITE_URL))
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        reply_text = "Используйте кнопки меню для работы с ботом 👇"
+        reply_text = "Откройте приложение для работы 👇"
         await update.message.reply_text(reply_text, reply_markup=reply_markup)
     except Exception as e:
         logger.error(f"❌ Ошибка при отправке ответа пользователю: {e}", exc_info=True)
@@ -496,20 +472,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         if data.get('success'):
                             channel_username = data.get('data', {}).get('username', '')
                 
-                # Создаем кнопки основного меню
+                # Создаем одну кнопку для открытия главной страницы
                 keyboard = [
-                    [
-                        InlineKeyboardButton("💰 Пополнить", web_app=WebAppInfo(url=f"{WEBSITE_URL}/deposit/step0")),
-                        InlineKeyboardButton("💸 Вывести", web_app=WebAppInfo(url=f"{WEBSITE_URL}/withdraw/step0"))
-                    ],
-                    [
-                        InlineKeyboardButton("📊 История", web_app=WebAppInfo(url=f"{WEBSITE_URL}/history")),
-                        InlineKeyboardButton("👥 Рефералы", web_app=WebAppInfo(url=f"{WEBSITE_URL}/referral"))
-                    ],
-                    [
-                        InlineKeyboardButton("ℹ️ Инструкция", web_app=WebAppInfo(url=f"{WEBSITE_URL}/instruction")),
-                        InlineKeyboardButton("🆘 Поддержка", web_app=WebAppInfo(url=f"{WEBSITE_URL}/support"))
-                    ],
                     [
                         InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url=WEBSITE_URL))
                     ]
@@ -532,7 +496,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 🔒 Финансовый контроль обеспечен личным отделом безопасности
 
-Выберите действие:"""
+Нажмите кнопку ниже, чтобы открыть приложение:"""
                 
                 await query.edit_message_text(
                     welcome_text,
