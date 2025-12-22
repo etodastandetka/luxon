@@ -280,8 +280,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Данные для графика
-    // Если период выбран - показываем за период, иначе последние 30 дней
+    // Данные для графика - вычисляем даты заранее
     let chartStartDate: Date
     let chartEndDate: Date
     
@@ -297,81 +296,81 @@ export async function GET(request: NextRequest) {
       chartEndDate = new Date()
     }
     
-    // Группировка по датам для графика используя SQL (оптимизировано с индексами)
-    // Объединяем оба запроса в один для ускорения
-    const chartData = await prisma.$queryRaw<Array<{ 
-      date: string; 
-      deposit_count: bigint;
-      withdrawal_count: bigint;
-    }>>`
-      SELECT 
-        DATE(created_at)::text as date,
-        SUM(CASE WHEN request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved') THEN 1 ELSE 0 END)::bigint as deposit_count,
-        SUM(CASE WHEN request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed') THEN 1 ELSE 0 END)::bigint as withdrawal_count
-      FROM requests
-      WHERE created_at >= ${chartStartDate}::timestamp
-        AND created_at <= ${chartEndDate}::timestamp
-        AND (
-          (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
-          OR
-          (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
-        )
-      GROUP BY DATE(created_at)
-      ORDER BY date DESC
-    `
-    
-    const depositsByDate = chartData.map(d => ({ date: d.date, count: d.deposit_count }))
-    const withdrawalsByDate = chartData.map(d => ({ date: d.date, count: d.withdrawal_count }))
-
-    // Форматируем даты для графика (YYYY-MM-DD -> dd.mm)
-    const formatDate = (dateStr: string) => {
-      const [year, month, day] = dateStr.split('-')
-      return `${day}.${month}`
-    }
-
-    const depositsLabels = depositsByDate.map((d) => formatDate(d.date))
-    const depositsData = depositsByDate.map((d) => Number(d.count))
-    const withdrawalsLabels = withdrawalsByDate.map((d) => formatDate(d.date))
-    const withdrawalsData = withdrawalsByDate.map((d) => Number(d.count))
-
-    // Создаем мапу для быстрого доступа
-    const depositsDateMap = new Map<string, string>()
-    depositsByDate.forEach((d) => {
-      depositsDateMap.set(formatDate(d.date), d.date)
-    })
-    
-    const withdrawalsDateMap = new Map<string, string>()
-    withdrawalsByDate.forEach((d) => {
-      withdrawalsDateMap.set(formatDate(d.date), d.date)
-    })
-    
-    // Объединяем метки и сортируем по исходной дате
-    const allLabelsSet = new Set([...depositsLabels, ...withdrawalsLabels])
-    const allLabels = Array.from(allLabelsSet).sort((a, b) => {
-      const dateA = depositsDateMap.get(a) || withdrawalsDateMap.get(a) || ''
-      const dateB = depositsDateMap.get(b) || withdrawalsDateMap.get(b) || ''
-      return dateA.localeCompare(dateB)
-    })
-
-    // Синхронизируем данные
-    const depositsDict = Object.fromEntries(
-      depositsLabels.map((label, i) => [label, depositsData[i]])
-    )
-    const withdrawalsDict = Object.fromEntries(
-      withdrawalsLabels.map((label, i) => [label, withdrawalsData[i]])
-    )
-
-    const synchronizedDeposits = allLabels.map((label) => depositsDict[label] || 0)
-    const synchronizedWithdrawals = allLabels.map((label) => withdrawalsDict[label] || 0)
-
-    // Получаем настройки казино и лимиты платформ параллельно (с кешированием на 30 секунд)
-    const [casinoSettingsConfig, platformLimitsResult] = await Promise.all([
+    // Получаем настройки казино, лимиты платформ, статистику по платформам и данные графика параллельно
+    // Это значительно ускоряет загрузку, так как все выполняется параллельно
+    const [casinoSettingsConfig, platformLimitsResult, platformStatsQuery, chartData] = await Promise.all([
       prisma.botConfiguration.findFirst({
         where: { key: 'casinos' },
       }),
       (async () => {
         const { getPlatformLimits } = await import('../../../../lib/casino-api')
         return await getPlatformLimits()
+      })(),
+      // Выполняем запрос статистики по платформам параллельно
+      (async () => {
+        // Строим условия для дат
+        let dateCondition = ''
+        const dateParams: any[] = []
+        
+        if (dateFilterForStats.createdAt?.gte) {
+          dateCondition += ` AND created_at >= $${dateParams.length + 1}::timestamp`
+          dateParams.push(dateFilterForStats.createdAt.gte)
+        }
+        if (dateFilterForStats.createdAt?.lt) {
+          dateCondition += ` AND created_at < $${dateParams.length + 1}::timestamp`
+          dateParams.push(dateFilterForStats.createdAt.lt)
+        } else if (dateFilterForStats.createdAt?.lte) {
+          dateCondition += ` AND created_at <= $${dateParams.length + 1}::timestamp`
+          dateParams.push(dateFilterForStats.createdAt.lte)
+        }
+        
+        return await prisma.$queryRawUnsafe<Array<{
+          platform_key: string;
+          deposits_count: bigint;
+          deposits_sum: string | null;
+          withdrawals_count: bigint;
+          withdrawals_sum: string | null;
+        }>>(`
+          SELECT 
+            platform_key,
+            SUM(CASE WHEN request_type = 'deposit' THEN 1 ELSE 0 END)::bigint as deposits_count,
+            COALESCE(SUM(CASE WHEN request_type = 'deposit' THEN amount ELSE 0 END), 0)::text as deposits_sum,
+            SUM(CASE WHEN request_type = 'withdraw' THEN 1 ELSE 0 END)::bigint as withdrawals_count,
+            COALESCE(SUM(CASE WHEN request_type = 'withdraw' THEN amount ELSE 0 END), 0)::text as withdrawals_sum
+          FROM (
+            SELECT 
+              CASE 
+                WHEN LOWER(TRIM(bookmaker)) = '1xbet' THEN '1xbet'
+                WHEN LOWER(TRIM(bookmaker)) = '1win' THEN '1win'
+                WHEN LOWER(TRIM(bookmaker)) = 'melbet' THEN 'melbet'
+                WHEN LOWER(TRIM(bookmaker)) = 'mostbet' THEN 'mostbet'
+                WHEN LOWER(TRIM(bookmaker)) = 'winwin' THEN 'winwin'
+                WHEN LOWER(TRIM(bookmaker)) = '888starz' THEN '888starz'
+                WHEN LOWER(TRIM(bookmaker)) LIKE '%1xbet%' OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' THEN '1xbet'
+                WHEN LOWER(TRIM(bookmaker)) LIKE '%1win%' OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' THEN '1win'
+                WHEN LOWER(TRIM(bookmaker)) LIKE '%melbet%' THEN 'melbet'
+                WHEN LOWER(TRIM(bookmaker)) LIKE '%mostbet%' THEN 'mostbet'
+                WHEN LOWER(TRIM(bookmaker)) LIKE '%winwin%' OR LOWER(TRIM(bookmaker)) LIKE '%win win%' THEN 'winwin'
+                WHEN LOWER(TRIM(bookmaker)) LIKE '%888starz%' OR LOWER(TRIM(bookmaker)) LIKE '%888%' THEN '888starz'
+                ELSE NULL
+              END as platform_key,
+              request_type,
+              status,
+              amount,
+              created_at
+            FROM requests
+            WHERE bookmaker IS NOT NULL
+              AND TRIM(bookmaker) != ''
+              AND (
+                (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
+                OR
+                (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
+              )
+              ${dateCondition}
+          ) as platform_requests
+          WHERE platform_key IS NOT NULL
+          GROUP BY platform_key
+        `, ...dateParams)
       })(),
     ])
     
@@ -413,143 +412,51 @@ export async function GET(request: NextRequest) {
       return isEnabled
     })
 
-    // Оптимизация: получаем статистику по всем платформам одним запросом вместо множества запросов
-    // Строим условия для дат
-    let dateCondition = ''
-    const dateParams: any[] = []
-    
-    if (dateFilterForStats.createdAt?.gte) {
-      dateCondition += ` AND created_at >= $${dateParams.length + 1}::timestamp`
-      dateParams.push(dateFilterForStats.createdAt.gte)
+    // Обрабатываем данные графика (получены параллельно выше)
+    const chartDataSafe = chartData || []
+    const depositsByDate = chartDataSafe.map((d: any) => ({ date: d.date, count: d.deposit_count }))
+    const withdrawalsByDate = chartDataSafe.map((d: any) => ({ date: d.date, count: d.withdrawal_count }))
+
+    // Форматируем даты для графика (YYYY-MM-DD -> dd.mm)
+    const formatDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-')
+      return `${day}.${month}`
     }
-    if (dateFilterForStats.createdAt?.lt) {
-      dateCondition += ` AND created_at < $${dateParams.length + 1}::timestamp`
-      dateParams.push(dateFilterForStats.createdAt.lt)
-    } else if (dateFilterForStats.createdAt?.lte) {
-      dateCondition += ` AND created_at <= $${dateParams.length + 1}::timestamp`
-      dateParams.push(dateFilterForStats.createdAt.lte)
-    }
+
+    const depositsLabels = depositsByDate.map((d: any) => formatDate(d.date))
+    const depositsData = depositsByDate.map((d: any) => Number(d.count))
+    const withdrawalsLabels = withdrawalsByDate.map((d: any) => formatDate(d.date))
+    const withdrawalsData = withdrawalsByDate.map((d: any) => Number(d.count))
+
+    // Создаем мапу для быстрого доступа
+    const depositsDateMap = new Map<string, string>()
+    depositsByDate.forEach((d: any) => {
+      depositsDateMap.set(formatDate(d.date), d.date)
+    })
     
-    // Сначала получаем все уникальные значения bookmaker для отладки
-    const allBookmakers = await prisma.$queryRawUnsafe<Array<{
-      bookmaker: string | null;
-      count: bigint;
-    }>>(`
-      SELECT 
-        bookmaker,
-        COUNT(*)::bigint as count
-      FROM requests
-      WHERE bookmaker IS NOT NULL
-        AND TRIM(bookmaker) != ''
-        AND (
-          (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
-          OR
-          (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
-        )
-        ${dateCondition}
-      GROUP BY bookmaker
-      ORDER BY count DESC
-      LIMIT 20
-    `, ...dateParams)
-    
-    console.log('📊 [Platform Stats] Все уникальные bookmaker значения:', allBookmakers)
-    
-    // Один запрос для всех платформ - значительно быстрее
-    // Упрощенная логика: сначала проверяем точные совпадения, потом LIKE для надежности
-    // Ключи из BookmakerGrid: '1xbet', '1win', 'melbet', 'mostbet', 'winwin', '888starz'
-    const platformStatsQuery = await prisma.$queryRawUnsafe<Array<{
-      platform_key: string;
-      deposits_count: bigint;
-      deposits_sum: string | null;
-      withdrawals_count: bigint;
-      withdrawals_sum: string | null;
-    }>>(`
-      SELECT 
-        platform_key,
-        SUM(CASE WHEN request_type = 'deposit' THEN 1 ELSE 0 END)::bigint as deposits_count,
-        COALESCE(SUM(CASE WHEN request_type = 'deposit' THEN amount ELSE 0 END), 0)::text as deposits_sum,
-        SUM(CASE WHEN request_type = 'withdraw' THEN 1 ELSE 0 END)::bigint as withdrawals_count,
-        COALESCE(SUM(CASE WHEN request_type = 'withdraw' THEN amount ELSE 0 END), 0)::text as withdrawals_sum
-      FROM (
-        SELECT 
-          CASE 
-            -- Точные совпадения с ключами из BookmakerGrid (все в нижнем регистре)
-            WHEN LOWER(TRIM(bookmaker)) = '1xbet' THEN '1xbet'
-            WHEN LOWER(TRIM(bookmaker)) = '1win' THEN '1win'
-            WHEN LOWER(TRIM(bookmaker)) = 'melbet' THEN 'melbet'
-            WHEN LOWER(TRIM(bookmaker)) = 'mostbet' THEN 'mostbet'
-            WHEN LOWER(TRIM(bookmaker)) = 'winwin' THEN 'winwin'
-            WHEN LOWER(TRIM(bookmaker)) = '888starz' THEN '888starz'
-            -- Дополнительные варианты написания (на случай если сохраняются по-другому)
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%1xbet%' OR LOWER(TRIM(bookmaker)) LIKE '%xbet%' THEN '1xbet'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%1win%' OR LOWER(TRIM(bookmaker)) LIKE '%onewin%' THEN '1win'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%melbet%' THEN 'melbet'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%mostbet%' THEN 'mostbet'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%winwin%' OR LOWER(TRIM(bookmaker)) LIKE '%win win%' THEN 'winwin'
-            WHEN LOWER(TRIM(bookmaker)) LIKE '%888starz%' OR LOWER(TRIM(bookmaker)) LIKE '%888%' THEN '888starz'
-            ELSE NULL
-          END as platform_key,
-          request_type,
-          status,
-          amount,
-          created_at
-        FROM requests
-        WHERE bookmaker IS NOT NULL
-          AND TRIM(bookmaker) != ''
-          AND (
-            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
-            OR
-            (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
-          )
-          ${dateCondition}
-      ) as platform_requests
-      WHERE platform_key IS NOT NULL
-      GROUP BY platform_key
-    `, ...dateParams)
-    
-    // Отладочное логирование для проверки запросов без совпадения платформ
-    // Проверяем, есть ли транзакции, которые не попали в статистику по платформам
-    if (dateFilterForStats.createdAt) {
-      const debugQuery = await prisma.$queryRawUnsafe<Array<{
-        bookmaker: string | null;
-        request_type: string;
-        status: string;
-        amount: string;
-        count: bigint;
-      }>>(`
-        SELECT 
-          bookmaker,
-          request_type,
-          status,
-          SUM(amount)::text as amount,
-          COUNT(*)::bigint as count
-        FROM requests
-        WHERE bookmaker IS NOT NULL
-          AND TRIM(bookmaker) != ''
-          AND (
-            (request_type = 'deposit' AND status IN ('autodeposit_success', 'auto_completed', 'completed', 'approved'))
-            OR
-            (request_type = 'withdraw' AND status IN ('completed', 'approved', 'autodeposit_success', 'auto_completed'))
-          )
-          ${dateCondition}
-          AND (
-            LOWER(TRIM(bookmaker)) NOT LIKE '%1xbet%' 
-            AND LOWER(TRIM(bookmaker)) NOT LIKE '%xbet%'
-            AND LOWER(TRIM(bookmaker)) NOT LIKE '%1win%'
-            AND LOWER(TRIM(bookmaker)) NOT LIKE '%onewin%'
-            AND LOWER(TRIM(bookmaker)) NOT LIKE '%melbet%'
-            AND LOWER(TRIM(bookmaker)) NOT LIKE '%mostbet%'
-            AND LOWER(TRIM(bookmaker)) NOT LIKE '%winwin%'
-            AND LOWER(TRIM(bookmaker)) NOT LIKE '%888%'
-          )
-        GROUP BY bookmaker, request_type, status
-        LIMIT 10
-      `, ...dateParams)
-      
-      if (debugQuery.length > 0) {
-        console.warn('⚠️ [Platform Stats] Найдены транзакции без совпадения платформ:', debugQuery)
-      }
-    }
+    const withdrawalsDateMap = new Map<string, string>()
+    withdrawalsByDate.forEach((d: any) => {
+      withdrawalsDateMap.set(formatDate(d.date), d.date)
+    })
+
+    // Объединяем метки и сортируем по исходной дате
+    const allLabelsSet = new Set([...depositsLabels, ...withdrawalsLabels])
+    const allLabels = Array.from(allLabelsSet).sort((a: string, b: string) => {
+      const dateA = depositsDateMap.get(a) || withdrawalsDateMap.get(a) || ''
+      const dateB = depositsDateMap.get(b) || withdrawalsDateMap.get(b) || ''
+      return dateA.localeCompare(dateB)
+    })
+
+    // Синхронизируем данные
+    const depositsDict = Object.fromEntries(
+      depositsLabels.map((label: string, i: number) => [label, depositsData[i]])
+    )
+    const withdrawalsDict = Object.fromEntries(
+      withdrawalsLabels.map((label: string, i: number) => [label, withdrawalsData[i]])
+    )
+
+    const synchronizedDeposits = allLabels.map((label: string) => depositsDict[label] || 0)
+    const synchronizedWithdrawals = allLabels.map((label: string) => withdrawalsDict[label] || 0)
     
     // Преобразуем результаты в нужный формат
     const platformStatsMap = new Map<string, PlatformStats>()
