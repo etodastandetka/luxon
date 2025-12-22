@@ -300,16 +300,12 @@ export async function GET(request: NextRequest) {
       chartEndDate = new Date()
     }
     
-    // Получаем настройки казино, лимиты платформ, статистику по платформам и данные графика параллельно
-    // Это значительно ускоряет загрузку, так как все выполняется параллельно
-    const [casinoSettingsConfig, platformLimitsResult, platformStatsQuery, chartData] = await Promise.all([
+    // Получаем настройки казино, статистику по платформам и данные графика параллельно
+    // Лимиты платформ загружаем отдельно с таймаутом, чтобы не блокировать основной ответ
+    const [casinoSettingsConfig, platformStatsQuery, chartData] = await Promise.all([
       prisma.botConfiguration.findFirst({
         where: { key: 'casinos' },
       }),
-      (async () => {
-        const { getPlatformLimits } = await import('../../../../lib/casino-api')
-        return await getPlatformLimits()
-      })(),
       // Выполняем запрос статистики по платформам параллельно
       (async () => {
         // Строим условия для дат
@@ -399,7 +395,20 @@ export async function GET(request: NextRequest) {
       `,
     ])
     
-    let platformLimits = platformLimitsResult
+    // Загружаем лимиты платформ с таймаутом (не блокируем основной ответ более 2 секунд)
+    let platformLimits: any[] = []
+    try {
+      const { getPlatformLimits } = await import('../../../../lib/casino-api')
+      // Таймаут 2 секунды для запросов к внешним API
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 2000)
+      )
+      const limitsPromise = getPlatformLimits()
+      platformLimits = await Promise.race([limitsPromise, timeoutPromise]) as any[]
+    } catch (error) {
+      console.warn('⚠️ [Limits Stats] Failed to load platform limits (using empty array):', error)
+      platformLimits = []
+    }
     
     let casinoSettings: Record<string, boolean> = {
       '1xbet': true,
