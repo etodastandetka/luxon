@@ -89,18 +89,25 @@ export async function GET(request: NextRequest) {
         let monthStartDate: Date | null = null
         if (monthStartConfig && monthStartConfig.value) {
           try {
-            monthStartDate = new Date(monthStartConfig.value as string)
+            const configValue = typeof monthStartConfig.value === 'string' 
+              ? monthStartConfig.value 
+              : JSON.stringify(monthStartConfig.value)
+            monthStartDate = new Date(configValue)
+            console.log('📅 [Referral Data API] Дата начала месяца из конфигурации (top_only):', monthStartDate.toISOString())
           } catch (e) {
-            console.warn('Failed to parse referral_current_month_start date, using current month')
+            console.warn('⚠️ [Referral Data API] Failed to parse referral_current_month_start date:', e)
           }
         }
         
         // Если дата не установлена, используем начало текущего месяца
-        if (!monthStartDate) {
+        if (!monthStartDate || isNaN(monthStartDate.getTime())) {
           const now = new Date()
           monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
           monthStartDate.setHours(0, 0, 0, 0)
+          console.log('📅 [Referral Data API] Используем начало текущего месяца (по умолчанию, top_only):', monthStartDate.toISOString())
         }
+        
+        console.log('📅 [Referral Data API] Фильтрация топ-5 с даты:', monthStartDate.toISOString())
         
         // Получаем топ-5 реферов через агрегацию (только за текущий месяц)
         const topReferrersRaw = await prisma.$queryRaw<Array<{
@@ -265,18 +272,25 @@ export async function GET(request: NextRequest) {
     let monthStartDate: Date | null = null
     if (monthStartConfig && monthStartConfig.value) {
       try {
-        monthStartDate = new Date(monthStartConfig.value as string)
+        const configValue = typeof monthStartConfig.value === 'string' 
+          ? monthStartConfig.value 
+          : JSON.stringify(monthStartConfig.value)
+        monthStartDate = new Date(configValue)
+        console.log('📅 [Referral Data API] Дата начала месяца из конфигурации:', monthStartDate.toISOString())
       } catch (e) {
-        console.warn('Failed to parse referral_current_month_start date, using current month')
+        console.warn('⚠️ [Referral Data API] Failed to parse referral_current_month_start date:', e)
       }
     }
     
     // Если дата не установлена, используем начало текущего месяца
-    if (!monthStartDate) {
+    if (!monthStartDate || isNaN(monthStartDate.getTime())) {
       const now = new Date()
       monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
       monthStartDate.setHours(0, 0, 0, 0)
+      console.log('📅 [Referral Data API] Используем начало текущего месяца (по умолчанию):', monthStartDate.toISOString())
     }
+    
+    console.log('📅 [Referral Data API] Фильтрация данных с даты:', monthStartDate.toISOString())
     
     // ОПТИМИЗИРОВАННЫЕ ЗАПРОСЫ: Используем параллельные запросы и агрегацию
     const [referrals, earnings, stats] = await Promise.all([

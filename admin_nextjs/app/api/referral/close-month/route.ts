@@ -118,15 +118,29 @@ export async function POST(request: NextRequest) {
     })
 
     // Устанавливаем дату начала нового месяца в конфигурации
+    // Важно: сохраняем как строку в формате ISO
+    const monthStartValue = newMonthStart.toISOString()
+    console.log(`📅 [Close Month] Устанавливаем дату начала нового месяца: ${monthStartValue}`)
+    
     await prisma.botConfiguration.upsert({
       where: { key: 'referral_current_month_start' },
       update: {
-        value: newMonthStart.toISOString()
+        value: monthStartValue
       },
       create: {
         key: 'referral_current_month_start',
-        value: newMonthStart.toISOString()
+        value: monthStartValue
       }
+    })
+    
+    // Проверяем, что дата установлена правильно
+    const verifyConfig = await prisma.botConfiguration.findUnique({
+      where: { key: 'referral_current_month_start' }
+    })
+    console.log(`✅ [Close Month] Дата начала нового месяца установлена и проверена:`, {
+      saved: verifyConfig?.value,
+      expected: monthStartValue,
+      match: verifyConfig?.value === monthStartValue
     })
 
     console.log(`✅ [Close Month] Месяц закрыт успешно. Топ-5 за прошлый месяц сохранен.`)
