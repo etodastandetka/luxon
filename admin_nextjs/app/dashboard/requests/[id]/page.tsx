@@ -78,16 +78,34 @@ export default function RequestDetailPage() {
   // Функция для валидации URL фото
   const isValidPhotoUrl = (url: string | null | undefined): boolean => {
     if (!url || typeof url !== 'string' || url.trim() === '') return false
+    
     // Проверяем, что это валидный URL или data URL
     try {
       if (url.startsWith('data:')) {
         // Проверяем формат data URL: data:[<mediatype>][;base64],<data>
+        // Должен быть полный формат с запятой и данными после нее
         const dataUrlPattern = /^data:([a-zA-Z][a-zA-Z0-9]*\/[a-zA-Z0-9][a-zA-Z0-9]*)(;base64)?,/
-        return dataUrlPattern.test(url)
+        if (!dataUrlPattern.test(url)) return false
+        
+        // Проверяем, что после запятой есть данные (минимум несколько символов)
+        const commaIndex = url.indexOf(',')
+        if (commaIndex === -1 || commaIndex === url.length - 1) return false
+        
+        // Проверяем, что данные не пустые (минимум 10 символов для валидного изображения)
+        const dataPart = url.substring(commaIndex + 1)
+        if (dataPart.length < 10) return false
+        
+        return true
       }
-      // Проверяем обычный URL
-      new URL(url)
-      return true
+      
+      // Проверяем обычный URL (http/https)
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        new URL(url)
+        return true
+      }
+      
+      // Если это не data URL и не http/https, считаем невалидным
+      return false
     } catch {
       return false
     }
@@ -1270,25 +1288,31 @@ export default function RequestDetailPage() {
               setPhotoZoom(1)
             }}
           >
-            <Image
-              src={request.photoFileUrl}
-              alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-              width={800}
-              height={600}
-              className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
-              style={{ display: 'block' }}
-              loading="eager"
-              priority
-              unoptimized={request.photoFileUrl?.startsWith('data:')}
-              onError={() => {
-                console.error('❌ [Request Detail] Ошибка загрузки изображения')
-                setPhotoError(true)
-              }}
-              onLoad={() => {
-                console.log('✅ [Request Detail] Изображение успешно загружено')
-                setPhotoError(false)
-              }}
-            />
+            {isValidPhotoUrl(request.photoFileUrl) ? (
+              <Image
+                src={request.photoFileUrl}
+                alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+                width={800}
+                height={600}
+                className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
+                style={{ display: 'block' }}
+                loading="eager"
+                priority
+                unoptimized={request.photoFileUrl?.startsWith('data:')}
+                onError={(e) => {
+                  console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
+                  setPhotoError(true)
+                }}
+                onLoad={() => {
+                  console.log('✅ [Request Detail] Изображение успешно загружено')
+                  setPhotoError(false)
+                }}
+              />
+            ) : (
+              <div className="text-center py-8 bg-gray-900 rounded-lg">
+                <p className="text-red-400 text-sm">Невалидный URL фото</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1306,7 +1330,7 @@ export default function RequestDetailPage() {
       )}
 
       {/* Модальное окно для увеличения фото */}
-      {showPhotoModal && request.photoFileUrl && (
+      {showPhotoModal && request.photoFileUrl && isValidPhotoUrl(request.photoFileUrl) && (
         <div 
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
           onClick={() => setShowPhotoModal(false)}
