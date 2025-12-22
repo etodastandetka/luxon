@@ -19,6 +19,8 @@ export default function DepositStep4() {
   const [isPaid, setIsPaid] = useState(false)
   const [isCreatingRequest, setIsCreatingRequest] = useState(false)
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
+  const [paymentMethod, setPaymentMethod] = useState<'qr' | 'number'>('qr') // QR или по номеру
+  const [paymentByNumber, setPaymentByNumber] = useState<{ phoneNumber: string; recipientName: string } | null>(null)
   const [cryptoInvoice, setCryptoInvoice] = useState<any>(null)
   const [cryptoLoading, setCryptoLoading] = useState(false)
   const router = useRouter()
@@ -261,6 +263,28 @@ export default function DepositStep4() {
     }
   }
 
+  // Загружаем настройки пополнения по номеру
+  useEffect(() => {
+    const loadPaymentByNumber = async () => {
+      try {
+        const apiUrl = getApiBase()
+        const response = await fetch(`${apiUrl}/api/public/payment-by-number`, { cache: 'no-store' })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.phoneNumber && data.recipientName) {
+            setPaymentByNumber({
+              phoneNumber: data.phoneNumber,
+              recipientName: data.recipientName
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки настроек пополнения по номеру:', error)
+      }
+    }
+    loadPaymentByNumber()
+  }, [])
+
   // Генерируем QR код или крипто invoice в зависимости от типа оплаты
   useEffect(() => {
     if (bookmaker && playerId && amount > 0) {
@@ -275,13 +299,16 @@ export default function DepositStep4() {
         createCryptoInvoice().catch((error) => {
           console.error('❌ Ошибка создания crypto invoice:', error)
         })
-      } else {
+      } else if (paymentMethod === 'qr') {
         // Генерируем QR код для банковского перевода
         generateQRCode()
+      } else if (paymentMethod === 'number') {
+        // Для пополнения по номеру создаем ссылки на банки без QR hash
+        generateBankLinksForNumber()
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookmaker, playerId, amount, paymentType])
+  }, [bookmaker, playerId, amount, paymentType, paymentMethod])
 
   // Таймер обратного отсчета и проверка почты (только для банковских переводов)
   useEffect(() => {
@@ -1521,6 +1548,36 @@ export default function DepositStep4() {
     }
   }
 
+  // Генерируем ссылки на банки для пополнения по номеру (без QR hash)
+  const generateBankLinksForNumber = () => {
+    if (!paymentByNumber) return
+    
+    // Создаем простые ссылки на банки без QR hash
+    const bankLinks: Record<string, string> = {
+      'DemirBank': 'https://retail.demirbank.kg/',
+      'O!Money': 'https://api.dengi.o.kg/',
+      'Balance.kg': 'https://balance.kg/',
+      'Bakai': 'https://bakai24.app/',
+      'MegaPay': 'https://megapay.kg/',
+      'MBank': 'https://app.mbank.kg/',
+      'demirbank': 'https://retail.demirbank.kg/',
+      'omoney': 'https://api.dengi.o.kg/',
+      'balance': 'https://balance.kg/',
+      'bakai': 'https://bakai24.app/',
+      'megapay': 'https://megapay.kg/',
+      'mbank': 'https://app.mbank.kg/'
+    }
+    
+    setQrData({
+      all_bank_urls: bankLinks,
+      settings: {
+        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
+        deposits_enabled: true
+      }
+    })
+    setPaymentUrl(bankLinks['DemirBank'] || '')
+  }
+
   const generateQRCode = async (selectedBank?: string) => {
     try {
       const currentBank = selectedBank || bank
@@ -2060,6 +2117,66 @@ export default function DepositStep4() {
       </div>
 
 
+
+      {/* Выбор способа оплаты (QR или по номеру) - только для банковских переводов */}
+      {paymentType === 'bank' && paymentByNumber && (
+        <div className="card space-y-4 slide-in-right delay-200">
+          <h2 className="text-lg font-semibold text-white">
+            {language === 'ru' ? 'Способ оплаты' : 'Payment method'}
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setPaymentMethod('qr')}
+              className={`py-3 px-4 rounded-lg font-medium transition-all ${
+                paymentMethod === 'qr'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-700 text-white/70 hover:bg-gray-600'
+              }`}
+            >
+              {language === 'ru' ? 'QR код' : 'QR Code'}
+            </button>
+            <button
+              onClick={() => setPaymentMethod('number')}
+              className={`py-3 px-4 rounded-lg font-medium transition-all ${
+                paymentMethod === 'number'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-700 text-white/70 hover:bg-gray-600'
+              }`}
+            >
+              {language === 'ru' ? 'По номеру' : 'By number'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Информация о пополнении по номеру */}
+      {paymentType === 'bank' && paymentMethod === 'number' && paymentByNumber && (
+        <div className="card space-y-4 slide-in-right delay-300">
+          <h2 className="text-lg font-semibold text-white">
+            {language === 'ru' ? 'Реквизиты для перевода' : 'Transfer details'}
+          </h2>
+          <div className="space-y-3 bg-gray-800/50 rounded-lg p-4">
+            <div>
+              <p className="text-sm text-white/70 mb-1">
+                {language === 'ru' ? 'Номер телефона' : 'Phone number'}
+              </p>
+              <p className="text-lg font-semibold text-white">{paymentByNumber.phoneNumber}</p>
+            </div>
+            <div>
+              <p className="text-sm text-white/70 mb-1">
+                {language === 'ru' ? 'Получатель' : 'Recipient'}
+              </p>
+              <p className="text-lg font-semibold text-white">{paymentByNumber.recipientName}</p>
+            </div>
+            <div>
+              <p className="text-sm text-white/70 mb-1">
+                {language === 'ru' ? 'Сумма' : 'Amount'}
+              </p>
+              <p className="text-lg font-semibold text-green-400">{formatKgs(amount)}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Выбор банка (только для банковских переводов) */}
       {paymentType === 'bank' && (

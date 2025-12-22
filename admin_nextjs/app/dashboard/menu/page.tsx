@@ -11,6 +11,7 @@ export default function MenuPage() {
   const menuItems = [
     { href: '/dashboard/search', label: 'Поиск', icon: '🔍' },
     { href: '/dashboard/requisites', label: 'Реквизиты', icon: '💳' },
+    { href: '/dashboard/payment-by-number', label: 'Пополнение по номеру', icon: '📱' },
     { href: '/dashboard/history', label: 'История транзакций', icon: '🕐' },
     { href: '/dashboard/wallet', label: 'Кошельки', icon: '💰' },
     { href: '/dashboard/crypto', label: 'Крипто', icon: '₿' },
