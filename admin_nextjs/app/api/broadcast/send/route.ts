@@ -28,6 +28,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // URL мини-приложения для кнопки
+    const miniAppUrl = process.env.MINI_APP_URL || 'https://luxon.dad'
+
     // Получаем всех пользователей
     const users = await prisma.botUser.findMany({
       select: {
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
     let successCount = 0
     let errorCount = 0
 
-    // Отправляем сообщение всем пользователям
+    // Отправляем сообщение всем пользователям с кнопкой WebApp
     for (const user of users) {
       try {
         const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
@@ -57,7 +60,19 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             chat_id: user.userId.toString(),
             text: message,
-            parse_mode: 'HTML'
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: '🚀 Открыть приложение',
+                    web_app: {
+                      url: miniAppUrl
+                    }
+                  }
+                ]
+              ]
+            }
           })
         })
 
