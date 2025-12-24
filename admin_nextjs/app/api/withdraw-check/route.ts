@@ -4,7 +4,6 @@ import { createApiResponse } from '@/lib/api-helpers'
 import { processWithdraw, checkWithdrawAmountCashdesk } from '@/lib/casino-withdraw'
 import { getCasinoConfig } from '@/lib/deposit-balance'
 import { 
-  rateLimit, 
   containsSQLInjection,
   getClientIP 
 } from '@/lib/security'
@@ -39,23 +38,8 @@ export async function POST(request: NextRequest) {
     
     console.log(`[Withdraw Check #${requestId}] ✅ Processing public API request`)
 
-    // Rate limiting (строгий для критичного endpoint)
-    const rateLimitResult = rateLimit({ 
-      maxRequests: 20, 
-      windowMs: 60 * 1000,
-      keyGenerator: (req) => `withdraw_check:${getClientIP(req)}`
-    })(request)
-    if (rateLimitResult) {
-      console.warn(`[Withdraw Check #${requestId}] ⚠️ Rate limit exceeded from IP: ${ip}`)
-      const response = NextResponse.json(
-        createApiResponse(null, 'Rate limit exceeded'),
-        { status: 429 }
-      )
-      response.headers.set('Access-Control-Allow-Origin', '*')
-      return response
-    }
-    
-    console.log(`[Withdraw Check #${requestId}] ✅ Passed rate limit check`)
+    // Rate limiting уже обрабатывается в middleware для публичных API
+    // Здесь не применяем дополнительный rate limit, чтобы не блокировать легитимные запросы
 
     // Проверяем Content-Type
     const contentType = request.headers.get('content-type')
