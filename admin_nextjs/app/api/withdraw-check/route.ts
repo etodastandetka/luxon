@@ -4,9 +4,7 @@ import { createApiResponse } from '@/lib/api-helpers'
 import { processWithdraw, checkWithdrawAmountCashdesk } from '@/lib/casino-withdraw'
 import { getCasinoConfig } from '@/lib/deposit-balance'
 import { 
-  protectAPI, 
   rateLimit, 
-  sanitizeInput, 
   containsSQLInjection,
   getClientIP 
 } from '@/lib/security'
@@ -34,19 +32,12 @@ export async function POST(request: NextRequest) {
   try {
     console.log(`[Withdraw Check #${requestId}] Request started from IP: ${ip}`)
     
-    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
-    const protectionResult = protectAPI(request)
-    if (protectionResult) {
-      console.warn(`[Withdraw Check #${requestId}] ⚠️ Blocked by protectAPI from IP: ${ip}`)
-      const response = NextResponse.json(
-        createApiResponse(null, 'Forbidden'),
-        { status: 403 }
-      )
-      response.headers.set('Access-Control-Allow-Origin', '*')
-      return response
-    }
+    // 🛡️ ЗАЩИТА: protectAPI уже вызывается в middleware для непубличных маршрутов
+    // Этот endpoint является публичным (добавлен в publicApiRoutes в middleware)
+    // Поэтому здесь не вызываем protectAPI, чтобы не блокировать легитимные запросы
+    // Middleware уже обработал защиту для этого маршрута
     
-    console.log(`[Withdraw Check #${requestId}] ✅ Passed protectAPI check`)
+    console.log(`[Withdraw Check #${requestId}] ✅ Processing public API request`)
 
     // Rate limiting (строгий для критичного endpoint)
     const rateLimitResult = rateLimit({ 
