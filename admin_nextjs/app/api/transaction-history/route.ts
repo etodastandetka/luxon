@@ -24,7 +24,27 @@ export async function GET(request: NextRequest) {
 
     const where: any = {}
     if (userId) {
-      where.userId = BigInt(userId)
+      // Валидация userId перед конвертацией в BigInt
+      // Проверяем, что это числовая строка (может быть большим числом)
+      const userIdTrimmed = userId.trim()
+      // Проверяем, что строка содержит только цифры (может быть отрицательным числом, но для Telegram ID это не нужно)
+      if (!/^\d+$/.test(userIdTrimmed)) {
+        console.error(`❌ Invalid userId format: ${userId} (not a valid number)`)
+        return NextResponse.json(
+          createApiResponse(null, `Invalid user ID format: ${userId}`),
+          { status: 400 }
+        )
+      }
+      
+      try {
+        where.userId = BigInt(userIdTrimmed)
+      } catch (error: any) {
+        console.error(`❌ Failed to convert userId to BigInt: ${userId}`, error)
+        return NextResponse.json(
+          createApiResponse(null, `Invalid user ID: ${userId}`),
+          { status: 400 }
+        )
+      }
     }
     if (type) {
       where.requestType = type

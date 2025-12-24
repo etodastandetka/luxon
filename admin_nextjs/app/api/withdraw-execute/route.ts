@@ -41,17 +41,102 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json()
+    let body: any
+    try {
+      body = await request.json()
+    } catch (parseError: any) {
+      console.error('❌ [Withdraw Execute] JSON parse error:', parseError)
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid JSON in request body'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
 
-    // 🛡️ Валидация и очистка входных данных
-    const sanitizedBody = sanitizeInput(body)
-    const { bookmaker, playerId, code, amount } = sanitizedBody
+    // Извлекаем поля до sanitizeInput, чтобы код не был поврежден
+    const { bookmaker: rawBookmaker, playerId: rawPlayerId, code: rawCode, amount: rawAmount } = body
 
-    // 🛡️ Проверка на SQL инъекции
-    const stringFields = [bookmaker, playerId, code].filter(Boolean)
+    // Валидация наличия полей (до sanitizeInput)
+    if (!rawBookmaker || !rawPlayerId || !rawCode || rawAmount === undefined || rawAmount === null) {
+      console.error('❌ [Withdraw Execute] Missing required fields:', {
+        hasBookmaker: !!rawBookmaker,
+        hasPlayerId: !!rawPlayerId,
+        hasCode: !!rawCode,
+        hasAmount: rawAmount !== undefined && rawAmount !== null,
+        codeType: typeof rawCode,
+        codeLength: typeof rawCode === 'string' ? rawCode.length : 'N/A'
+      })
+      return NextResponse.json(
+        createApiResponse(null, 'Missing required fields: bookmaker, playerId, code, amount'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
+    // Преобразуем в строки и обрезаем пробелы
+    const bookmaker = String(rawBookmaker).trim()
+    const playerId = String(rawPlayerId).trim()
+    // КОД НЕ ОБРАБАТЫВАЕМ через sanitizeInput - он может содержать любые символы
+    // Только обрезаем пробелы по краям
+    const code = String(rawCode).trim()
+    const amount = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount))
+
+    // Проверяем, что после trim код не пустой
+    if (!code || code.length === 0) {
+      console.error('❌ [Withdraw Execute] Code is empty after trim')
+      return NextResponse.json(
+        createApiResponse(null, 'Code cannot be empty'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
+    // Проверяем минимальную длину кода
+    if (code.length < 3) {
+      console.error('❌ [Withdraw Execute] Code too short:', code.length)
+      return NextResponse.json(
+        createApiResponse(null, 'Code is too short (minimum 3 characters)'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
+    // Проверяем валидность суммы
+    if (isNaN(amount) || amount <= 0) {
+      console.error('❌ [Withdraw Execute] Invalid amount:', rawAmount)
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid amount: must be a positive number'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
+    // 🛡️ Проверка на SQL инъекции (только для bookmaker и playerId)
+    // КОД ВЫВОДА НЕ ПРОВЕРЯЕМ НА SQL ИНЪЕКЦИИ - он может содержать любые символы
+    const stringFields = [bookmaker, playerId].filter(Boolean)
     for (const field of stringFields) {
       if (typeof field === 'string' && containsSQLInjection(field)) {
-        console.warn(`🚫 SQL injection attempt from ${getClientIP(request)}`)
+        console.warn(`🚫 SQL injection attempt from ${getClientIP(request)} in field: ${field.substring(0, 20)}`)
         return NextResponse.json(
           createApiResponse(null, 'Invalid input detected'),
           { 
@@ -64,19 +149,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!bookmaker || !playerId || !code || !amount) {
-      return NextResponse.json(
-        createApiResponse(null, 'Missing required fields: bookmaker, playerId, code, amount'),
-        { 
-          status: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
-    }
+    // КОД ВЫВОДА: не проверяем на SQL инъекции, так как код может содержать любые символы
+    // Коды вывода от казино могут содержать буквы, цифры, дефисы, подчеркивания и другие символы
+    // Проверка SQL инъекций для кода вывода отключена, чтобы не блокировать валидные коды
 
-    console.log(`[Withdraw Execute] Bookmaker: ${bookmaker}, Player ID: ${playerId}, Code: ${code}, Amount: ${amount}`)
+    console.log(`[Withdraw Execute] Bookmaker: ${bookmaker}, Player ID: ${playerId}, Code: ${code} (length: ${code.length}), Amount: ${amount}`)
 
     const normalizedBookmaker = bookmaker.toLowerCase()
 
@@ -92,7 +169,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         createApiResponse(
           {
-            amount: parseFloat(amount),
+            amount: typeof amount === 'number' ? amount : parseFloat(String(amount)),
             alreadyExecuted: true,
           },
           undefined, // no error

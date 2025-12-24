@@ -84,7 +84,7 @@ export default function WithdrawConfirm() {
           body: JSON.stringify({
             bookmaker: bookmaker,
             playerId: userId,
-            code: siteCode,
+            code: siteCode.trim(), // Обрезаем пробелы
             amount: amount, // amount уже число
           }),
           timeout: 30000,

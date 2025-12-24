@@ -14,8 +14,10 @@ export async function GET(req: NextRequest) {
   try {
     // ВАЖНО: Это внутренний endpoint, вызываемый через setTimeout из payment API
     // Проверяем, что это внутренний запрос (localhost или внутренний IP)
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 
+    // НО: не блокируем внешние запросы, так как они могут приходить через прокси/nginx
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
                req.headers.get('x-real-ip') || 
+               req.headers.get('host')?.split(':')[0] ||
                'unknown'
     
     const isInternalRequest = ip === '127.0.0.1' || 
@@ -31,33 +33,46 @@ export async function GET(req: NextRequest) {
       requestId: req.nextUrl.searchParams.get('requestId'),
       ip,
       isInternal: isInternalRequest,
-      userAgent: req.headers.get('user-agent')
+      userAgent: req.headers.get('user-agent'),
+      host: req.headers.get('host')
     })
     
     const searchParams = req.nextUrl.searchParams
     const requestId = searchParams.get('requestId')
 
     if (!requestId) {
+      console.error('❌ [Delayed Notification] Missing requestId parameter')
       return NextResponse.json(
         createApiResponse(null, 'Missing requestId parameter'),
         { status: 400 }
       )
     }
 
-    const requestIdNum = parseInt(requestId)
-    if (isNaN(requestIdNum)) {
+    const requestIdNum = parseInt(requestId, 10)
+    if (isNaN(requestIdNum) || requestIdNum <= 0) {
+      console.error(`❌ [Delayed Notification] Invalid requestId: ${requestId}`)
       return NextResponse.json(
         createApiResponse(null, 'Invalid requestId'),
         { status: 400 }
       )
     }
 
-    // Получаем заявку
-    const request = await prisma.request.findUnique({
-      where: { id: requestIdNum },
-    })
+    // Получаем заявку с обработкой ошибок
+    let request
+    try {
+      request = await prisma.request.findUnique({
+        where: { id: requestIdNum },
+      })
+    } catch (dbError: any) {
+      console.error(`❌ [Delayed Notification] Database error fetching request ${requestIdNum}:`, dbError)
+      return NextResponse.json(
+        createApiResponse(null, `Database error: ${dbError.message || 'Unknown error'}`),
+        { status: 500 }
+      )
+    }
 
     if (!request) {
+      console.warn(`⚠️ [Delayed Notification] Request ${requestIdNum} not found`)
       return NextResponse.json(
         createApiResponse(null, 'Request not found'),
         { status: 404 }
@@ -100,7 +115,18 @@ export async function GET(req: NextRequest) {
         `📋 ID заявки: #${request.id}\n\n` +
         `Статус: ожидает обработки`
       
-      const sent = await sendTelegramGroupMessage(groupMessage)
+      let sent = false
+      try {
+        sent = await sendTelegramGroupMessage(groupMessage)
+      } catch (telegramError: any) {
+        console.error(`❌ [Delayed Notification] Telegram API error for request ${requestId}:`, telegramError)
+        // Не возвращаем ошибку 500, так как это не критично
+        // Возвращаем успешный ответ, но с флагом, что отправка не удалась
+        return NextResponse.json(
+          createApiResponse({ sent: false, error: telegramError.message }, undefined, 'Notification failed to send'),
+          { status: 200 } // Возвращаем 200, чтобы не вызывать повторные попытки
+        )
+      }
       
       if (sent) {
         console.log(`✅ [Delayed Notification] Sent notification for request ${requestId}`)
@@ -108,10 +134,11 @@ export async function GET(req: NextRequest) {
           createApiResponse({ sent: true }, undefined, 'Notification sent successfully')
         )
       } else {
-        console.error(`❌ [Delayed Notification] Failed to send notification for request ${requestId}`)
+        console.error(`❌ [Delayed Notification] Failed to send notification for request ${requestId} (sendTelegramGroupMessage returned false)`)
+        // Возвращаем 200, чтобы не вызывать повторные попытки
         return NextResponse.json(
-          createApiResponse(null, 'Failed to send notification'),
-          { status: 500 }
+          createApiResponse({ sent: false }, undefined, 'Notification failed to send'),
+          { status: 200 }
         )
       }
     }
@@ -122,11 +149,20 @@ export async function GET(req: NextRequest) {
       createApiResponse({ skipped: true, reason: `Status: ${request.status}` }, undefined, 'Notification skipped')
     )
   } catch (error: any) {
-    console.error('❌ Error in delayed deposit notification:', error)
-    return NextResponse.json(
-      createApiResponse(null, `Error: ${error.message}`),
+    console.error('❌ [Delayed Notification] Unexpected error:', error)
+    // Логируем полный стек ошибки для отладки
+    if (error.stack) {
+      console.error('❌ [Delayed Notification] Error stack:', error.stack)
+    }
+    // Возвращаем более информативный ответ
+    const errorMessage = error.message || 'Unknown error occurred'
+    const errorResponse = NextResponse.json(
+      createApiResponse(null, `Error: ${errorMessage}`),
       { status: 500 }
     )
+    // Добавляем заголовки для отладки
+    errorResponse.headers.set('X-Error-Type', error.name || 'Error')
+    return errorResponse
   }
 }
 

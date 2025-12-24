@@ -28,10 +28,16 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = Math.random().toString(36).substring(7)
+  const ip = getClientIP(request)
+  
   try {
+    console.log(`[Withdraw Check #${requestId}] Request started from IP: ${ip}`)
+    
     // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА
     const protectionResult = protectAPI(request)
     if (protectionResult) {
+      console.warn(`[Withdraw Check #${requestId}] ⚠️ Blocked by protectAPI from IP: ${ip}`)
       const response = NextResponse.json(
         createApiResponse(null, 'Forbidden'),
         { status: 403 }
@@ -39,6 +45,8 @@ export async function POST(request: NextRequest) {
       response.headers.set('Access-Control-Allow-Origin', '*')
       return response
     }
+    
+    console.log(`[Withdraw Check #${requestId}] ✅ Passed protectAPI check`)
 
     // Rate limiting (строгий для критичного endpoint)
     const rateLimitResult = rateLimit({ 
@@ -47,6 +55,7 @@ export async function POST(request: NextRequest) {
       keyGenerator: (req) => `withdraw_check:${getClientIP(req)}`
     })(request)
     if (rateLimitResult) {
+      console.warn(`[Withdraw Check #${requestId}] ⚠️ Rate limit exceeded from IP: ${ip}`)
       const response = NextResponse.json(
         createApiResponse(null, 'Rate limit exceeded'),
         { status: 429 }
@@ -54,28 +63,64 @@ export async function POST(request: NextRequest) {
       response.headers.set('Access-Control-Allow-Origin', '*')
       return response
     }
+    
+    console.log(`[Withdraw Check #${requestId}] ✅ Passed rate limit check`)
 
-    const body = await request.json()
-
-    // 🛡️ Валидация и очистка входных данных
-    const sanitizedBody = sanitizeInput(body)
-    const { bookmaker, playerId, code } = sanitizedBody
-
-    // 🛡️ Проверка на SQL инъекции
-    const stringFields = [bookmaker, playerId, code].filter(Boolean)
-    for (const field of stringFields) {
-      if (typeof field === 'string' && containsSQLInjection(field)) {
-        console.warn(`🚫 SQL injection attempt from ${getClientIP(request)}`)
-        const response = NextResponse.json(
-          createApiResponse(null, 'Invalid input detected'),
-          { status: 400 }
+    // Проверяем Content-Type
+    const contentType = request.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      console.warn(`[Withdraw Check #${requestId}] ⚠️ Invalid Content-Type: ${contentType}`)
+      // Не блокируем, но логируем
+    }
+    
+    let body: any
+    try {
+      const bodyText = await request.text()
+      console.log(`[Withdraw Check #${requestId}] Raw body (first 200 chars):`, bodyText.substring(0, 200))
+      
+      try {
+        body = JSON.parse(bodyText)
+      } catch (jsonError: any) {
+        console.error(`[Withdraw Check #${requestId}] ❌ JSON parse error:`, {
+          error: jsonError.message,
+          bodyPreview: bodyText.substring(0, 200),
+          contentType
+        })
+        return NextResponse.json(
+          createApiResponse(null, 'Invalid JSON in request body'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
         )
-        response.headers.set('Access-Control-Allow-Origin', '*')
-        return response
       }
+    } catch (readError: any) {
+      console.error(`[Withdraw Check #${requestId}] ❌ Error reading request body:`, readError)
+      return NextResponse.json(
+        createApiResponse(null, 'Error reading request body'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
     }
 
-    if (!bookmaker || !playerId || !code) {
+    // Извлекаем поля до sanitizeInput, чтобы код не был поврежден
+    const { bookmaker: rawBookmaker, playerId: rawPlayerId, code: rawCode } = body
+
+    // Валидация наличия полей (до sanitizeInput)
+    if (!rawBookmaker || !rawPlayerId || !rawCode) {
+      console.error('❌ [Withdraw Check] Missing required fields:', {
+        hasBookmaker: !!rawBookmaker,
+        hasPlayerId: !!rawPlayerId,
+        hasCode: !!rawCode,
+        codeType: typeof rawCode,
+        codeLength: typeof rawCode === 'string' ? rawCode.length : 'N/A'
+      })
       return NextResponse.json(
         createApiResponse(null, 'Missing required fields: bookmaker, playerId, code'),
         { 
@@ -87,7 +132,69 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[Withdraw Check] Bookmaker: ${bookmaker}, Player ID: ${playerId}, Code: ${code}`)
+    // Преобразуем в строки и обрезаем пробелы
+    const bookmaker = String(rawBookmaker).trim()
+    const playerId = String(rawPlayerId).trim()
+    // КОД НЕ ОБРАБАТЫВАЕМ через sanitizeInput - он может содержать любые символы
+    // Только обрезаем пробелы по краям
+    const code = String(rawCode).trim()
+
+    // Проверяем, что после trim код не пустой
+    if (!code || code.length === 0) {
+      console.error('❌ [Withdraw Check] Code is empty after trim')
+      return NextResponse.json(
+        createApiResponse(null, 'Code cannot be empty'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
+    // Проверяем минимальную длину кода (обычно коды вывода минимум 3-4 символа)
+    if (code.length < 3) {
+      console.error('❌ [Withdraw Check] Code too short:', code.length)
+      return NextResponse.json(
+        createApiResponse(null, 'Code is too short (minimum 3 characters)'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
+    // 🛡️ Проверка на SQL инъекции (только для bookmaker и playerId)
+    // КОД ВЫВОДА НЕ ПРОВЕРЯЕМ НА SQL ИНЪЕКЦИИ - он может содержать любые символы
+    const stringFields = [bookmaker, playerId].filter(Boolean)
+    for (const field of stringFields) {
+      if (typeof field === 'string' && containsSQLInjection(field)) {
+        console.warn(`🚫 SQL injection attempt from ${getClientIP(request)} in field: ${field.substring(0, 20)}`)
+        const response = NextResponse.json(
+          createApiResponse(null, 'Invalid input detected'),
+          { status: 400 }
+        )
+        response.headers.set('Access-Control-Allow-Origin', '*')
+        return response
+      }
+    }
+
+    // КОД ВЫВОДА: не проверяем на SQL инъекции, так как код может содержать любые символы
+    // Коды вывода от казино могут содержать буквы, цифры, дефисы, подчеркивания и другие символы
+    // Проверка SQL инъекций для кода вывода отключена, чтобы не блокировать валидные коды
+
+    console.log(`[Withdraw Check #${requestId}] ✅ Fields validated:`, {
+      bookmaker,
+      playerId,
+      code: code.substring(0, 20) + (code.length > 20 ? '...' : ''),
+      codeLength: code.length,
+      codeType: typeof code,
+      ip,
+      userAgent: request.headers.get('user-agent')?.substring(0, 50)
+    })
 
     // Получаем конфигурацию казино
     const normalizedBookmaker = bookmaker.toLowerCase()
@@ -348,11 +455,24 @@ export async function POST(request: NextRequest) {
       }
     )
   } catch (error: any) {
-    console.error('❌ Error checking withdrawal:', error)
+    console.error('❌ [Withdraw Check] Unexpected error:', {
+      message: error.message,
+      stack: error.stack?.substring(0, 500),
+      name: error.name,
+      ip: getClientIP(request),
+      userAgent: request.headers.get('user-agent')?.substring(0, 50)
+    })
+    
+    // Если это ошибка валидации, возвращаем 400, иначе 500
+    const isValidationError = error.message?.includes('Missing') || 
+                              error.message?.includes('Invalid') ||
+                              error.message?.includes('required')
+    const statusCode = isValidationError ? 400 : 500
+    
     return NextResponse.json(
-      createApiResponse(null, `Error: ${error.message}`),
+      createApiResponse(null, `Error: ${error.message || 'Unknown error'}`),
       { 
-        status: 500,
+        status: statusCode,
         headers: {
           'Access-Control-Allow-Origin': '*',
         }

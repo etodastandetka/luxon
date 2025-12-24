@@ -43,17 +43,33 @@ function scheduleDelayedNotification(requestId: number) {
       })
       
       if (response.ok) {
-        const data = await response.json()
-        if (data.success && !data.data?.skipped) {
-          console.log(`✅ [Delayed Notification] Notification sent for request ${requestId}`)
-        } else {
-          console.log(`ℹ️ [Delayed Notification] Notification skipped for request ${requestId}:`, data.data?.reason)
+        try {
+          const data = await response.json()
+          if (data.success && !data.data?.skipped) {
+            console.log(`✅ [Delayed Notification] Notification sent for request ${requestId}`)
+          } else {
+            console.log(`ℹ️ [Delayed Notification] Notification skipped for request ${requestId}:`, data.data?.reason || 'Unknown reason')
+          }
+        } catch (parseError: any) {
+          console.error(`❌ [Delayed Notification] Failed to parse response for request ${requestId}:`, parseError.message)
         }
       } else {
-        console.error(`❌ [Delayed Notification] Failed to send notification for request ${requestId}:`, response.status)
+        // Получаем текст ошибки для лучшей диагностики
+        let errorText = `Status: ${response.status}`
+        try {
+          const errorData = await response.text()
+          if (errorData) {
+            errorText += `, Response: ${errorData.substring(0, 200)}`
+          }
+        } catch (e) {
+          // Игнорируем ошибки парсинга
+        }
+        console.error(`❌ [Delayed Notification] Failed to send notification for request ${requestId}: ${errorText}`)
       }
     } catch (error: any) {
-      console.error(`❌ [Delayed Notification] Error sending notification for request ${requestId}:`, error.message)
+      const errorMessage = error.message || 'Unknown error'
+      const errorStack = error.stack ? `\nStack: ${error.stack.substring(0, 500)}` : ''
+      console.error(`❌ [Delayed Notification] Error sending notification for request ${requestId}: ${errorMessage}${errorStack}`)
     }
   }, 60 * 1000) // 1 минута = 60 секунд
 }

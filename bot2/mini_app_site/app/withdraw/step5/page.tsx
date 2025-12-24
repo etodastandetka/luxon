@@ -155,13 +155,44 @@ export default function WithdrawStep5() {
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
+        let errorText = ''
+        let errorData: any = null
+        try {
+          errorText = await response.text()
+          // Пытаемся распарсить как JSON
+          try {
+            errorData = JSON.parse(errorText)
+          } catch (e) {
+            // Если не JSON, используем текст как есть
+          }
+        } catch (e) {
+          console.error('❌ Ошибка чтения ответа:', e)
+        }
+        
         console.error('❌ Ошибка ответа сервера:', {
           status: response.status,
           statusText: response.statusText,
-          errorText
+          errorText: errorText.substring(0, 200),
+          errorData
         })
-        throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`)
+        
+        // Формируем понятное сообщение об ошибке
+        let errorMessage = `Ошибка сервера: ${response.status}`
+        if (errorData?.error) {
+          errorMessage = errorData.error
+        } else if (errorData?.message) {
+          errorMessage = errorData.message
+        } else if (errorText) {
+          // Пытаемся извлечь сообщение из текста
+          const messageMatch = errorText.match(/"message":\s*"([^"]+)"/)
+          if (messageMatch) {
+            errorMessage = messageMatch[1]
+          } else if (errorText.length < 200) {
+            errorMessage = errorText
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
