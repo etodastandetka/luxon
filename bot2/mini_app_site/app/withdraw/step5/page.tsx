@@ -18,6 +18,7 @@ export default function WithdrawStep5() {
   const [userId, setUserId] = useState('')
   const [qrPhoto, setQrPhoto] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
   const [autoSubmitAttempted, setAutoSubmitAttempted] = useState(false)
   const [autoSubmitSuccess, setAutoSubmitSuccess] = useState(false)
   const [autoSubmitFailed, setAutoSubmitFailed] = useState(false)
@@ -97,34 +98,35 @@ export default function WithdrawStep5() {
     }
   }
 
-  // Проверка кода и получение суммы ордера при изменении кода
-  useEffect(() => {
+  // Убрана автоматическая проверка - теперь проверка только по кнопке
+
+  const handleCheckCode = async () => {
+    if (!siteCode.trim()) {
+      setError('Введите код для проверки')
+      return
+    }
+
     const bookmaker = localStorage.getItem('withdraw_bookmaker')
     const userId = localStorage.getItem('withdraw_user_id')
     
-    // Выполняем вывод только если код полный (минимум 4 символа для большинства кодов)
-    if (siteCode.trim().length >= 4 && bookmaker && userId) {
-      // Сбрасываем флаги автоматической отправки при изменении кода
-      setAutoSubmitAttempted(false)
-      setAutoSubmitSuccess(false)
-      setAutoSubmitFailed(false)
-      processWithdraw(bookmaker, userId)
-    } else {
-      setWithdrawAmount(null)
-      setError(null)
-      setAutoSubmitAttempted(false)
-      setAutoSubmitSuccess(false)
-      setAutoSubmitFailed(false)
+    if (!bookmaker || !userId) {
+      setError('Ошибка: не найдены данные заявки')
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteCode])
+
+    setIsChecking(true)
+    setError(null)
+    setWithdrawAmount(null)
+    
+    await processWithdraw(bookmaker, userId)
+    
+    setIsChecking(false)
+  }
 
   const processWithdraw = async (bookmaker: string, userId: string) => {
     if (!siteCode.trim()) {
       return
     }
-
-    setError(null)
     
     try {
       const base = getApiBase()
@@ -192,7 +194,9 @@ export default function WithdrawStep5() {
           }
         }
         
-        throw new Error(errorMessage)
+        // Устанавливаем ошибку и выходим
+        setError(errorMessage)
+        return
       }
 
       const data = await response.json()
@@ -323,36 +327,7 @@ export default function WithdrawStep5() {
             }
           }, 50)
 
-          // АВТОМАТИЧЕСКАЯ ОТПРАВКА ЗАЯВКИ после успешной проверки кода
-          // Ждем немного, чтобы состояние обновилось, затем автоматически отправляем заявку
-          if (!autoSubmitAttempted) {
-            setAutoSubmitAttempted(true)
-            console.log('[Withdraw Step5] 🚀 Автоматическая отправка заявки...')
-            ;(async () => {
-              // Проверяем, что все данные есть
-              const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
-              const savedBank = localStorage.getItem('withdraw_bank')
-              const savedQrPhoto = localStorage.getItem('withdraw_qr_photo')
-              const savedPhone = localStorage.getItem('withdraw_phone')
-              const savedUserId = localStorage.getItem('withdraw_user_id')
-              
-              if (savedBookmaker && savedBank && savedQrPhoto && savedPhone && savedUserId && amount > 0) {
-                console.log('[Withdraw Step5] 🚀 Все данные готовы, автоматически отправляем заявку...')
-                // Вызываем handleSubmit автоматически
-                await handleSubmitAuto(amount)
-              } else {
-                console.log('[Withdraw Step5] ⚠️ Не все данные готовы для автоматической отправки:', {
-                  bookmaker: !!savedBookmaker,
-                  bank: !!savedBank,
-                  qrPhoto: !!savedQrPhoto,
-                  phone: !!savedPhone,
-                  userId: !!savedUserId,
-                  amount: amount > 0
-                })
-                setAutoSubmitAttempted(false) // Разрешаем попробовать еще раз
-              }
-            })() // Задержка 1 секунда для обновления состояния
-          }
+          // УБРАНА АВТОМАТИЧЕСКАЯ ОТПРАВКА - пользователь сам нажмет кнопку "Отправить заявку" после проверки кода
         } else {
           // Если success: true, но нет amount, проверяем message
           console.error('[Withdraw Step5] ❌ Amount validation failed:', {
@@ -1029,32 +1004,36 @@ export default function WithdrawStep5() {
       ru: {
       title: 'Вывод - Шаг 5',
       subtitle: 'Код с сайта',
-      instruction: 'Введите код подтверждения с сайта букмекера. После ввода код будет проверен, и заявка будет отправлена.',
+      instruction: 'Введите код подтверждения с сайта букмекера и нажмите "Проверить". После проверки кода вы сможете отправить заявку.',
       placeholder: 'Введите код',
+      check: 'Проверить',
       submit: 'Отправить заявку',
       back: 'Назад'
     },
     en: {
       title: 'Withdraw - Step 5',
       subtitle: 'Site code',
-      instruction: 'Enter confirmation code from bookmaker site',
+      instruction: 'Enter confirmation code from bookmaker site and click "Check". After verification you can submit the request.',
       placeholder: 'Enter code',
+      check: 'Check',
       submit: 'Submit request',
       back: 'Back'
     },
     ky: {
       title: 'Чыгаруу - 5-чи кадам',
       subtitle: 'Сайт коду',
-      instruction: 'Букмекер сайтынан ырастоо кодун киргизиңиз',
+      instruction: 'Букмекер сайтынан ырастоо кодун киргизип, "Текшерүү" баскычын басыңыз. Текшерүүдөн кийин өтүнүч жөнөтө аласыз.',
       placeholder: 'Код киргизиңиз',
+      check: 'Текшерүү',
       submit: 'Өтүнүч жөнөтүү',
       back: 'Артка'
     },
     uz: {
       title: 'Yechib olish - 5-qadam',
       subtitle: 'Sayt kodi',
-      instruction: 'Bukmeker saytidan tasdiqlash kodini kiriting',
+      instruction: 'Bukmeker saytidan tasdiqlash kodini kiriting va "Tekshirish" tugmasini bosing. Tekshiruvdan keyin so\'rov yuborishingiz mumkin.',
       placeholder: 'Kod kiriting',
+      check: 'Tekshirish',
       submit: 'So\'rov yuborish',
       back: 'Orqaga'
     }
@@ -1120,21 +1099,36 @@ export default function WithdrawStep5() {
             </div>
           )}
           
-          {hasWithdrawals !== false && (
+              {hasWithdrawals !== false && (
             <>
-              <div>
-                <label className="label">{t.subtitle}</label>
-                <input 
-                  className="input w-full"
-                  type="text"
-                  value={siteCode}
-                  onChange={(e) => setSiteCode(e.target.value)}
-                  placeholder={t.placeholder}
-                  disabled={false}
-                />
+              <div className="space-y-2">
+                <div>
+                  <label className="label">{t.subtitle}</label>
+                  <input 
+                    className="input w-full"
+                    type="text"
+                    value={siteCode}
+                    onChange={(e) => {
+                      setSiteCode(e.target.value)
+                      // Сбрасываем результаты при изменении кода
+                      setWithdrawAmount(null)
+                      setError(null)
+                    }}
+                    placeholder={t.placeholder}
+                    disabled={isChecking || isSubmitting}
+                  />
+                </div>
+                
+                <button
+                  className="btn btn-primary w-full"
+                  onClick={handleCheckCode}
+                  disabled={!siteCode.trim() || isChecking || isSubmitting}
+                >
+                  {isChecking ? '⏳ Проверка...' : t.check}
+                </button>
               </div>
               
-              {checkingExists && (
+              {isChecking && (
                 <div className="mt-2 p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
                   <p className="text-sm text-blue-300 font-semibold">
                     ⏳ Проверка кода...
@@ -1163,13 +1157,11 @@ export default function WithdrawStep5() {
                         </span>
                       </div>
                     </div>
-                    {autoSubmitFailed && (
-                      <div className="pt-2 border-t border-yellow-500/30 mt-2">
-                        <p className="text-xs text-yellow-200">
-                          ⚠️ Автоматическая отправка не удалась. Нажмите кнопку "Отправить заявку" вручную.
-                        </p>
-                      </div>
-                    )}
+                    <div className="pt-2 border-t border-green-500/30 mt-2">
+                      <p className="text-xs text-green-200">
+                        ✅ Код проверен. Теперь вы можете отправить заявку.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Отображение всех данных */}
@@ -1204,11 +1196,11 @@ export default function WithdrawStep5() {
                 </>
               )}
               
-              {/* Показываем ошибку ТОЛЬКО если сумма НЕ извлечена И есть ошибка */}
-              {error && hasWithdrawals === true && (withdrawAmount === null || withdrawAmount === 0) && (
+              {/* Показываем ошибку если есть ошибка и сумма не найдена */}
+              {error && (withdrawAmount === null || withdrawAmount === 0) && (
                 <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
                   <p className="text-sm text-red-300 font-semibold">
-                    ❌ Ошибка вывода
+                    ❌ Ошибка проверки кода
                   </p>
                   <p className="text-sm text-red-200 mt-1">
                     {error}
@@ -1226,18 +1218,14 @@ export default function WithdrawStep5() {
           >
             {t.back}
           </button>
-          {/* Показываем кнопку отправки только если:
-              1. Автоматическая отправка не была успешной (autoSubmitSuccess === false)
-              2. ИЛИ автоматическая отправка завершилась с ошибкой (autoSubmitFailed === true)
-              3. И сумма извлечена (withdrawAmount > 0)
-          */}
-          {!autoSubmitSuccess && (
+          {/* Показываем кнопку отправки только если код проверен и сумма найдена */}
+          {withdrawAmount !== null && withdrawAmount > 0 && (
             <button 
               className="btn btn-primary"
               onClick={handleSubmit}
-              disabled={!siteCode.trim() || !withdrawAmount || hasWithdrawals === false || isSubmitting || (autoSubmitAttempted && !autoSubmitFailed)}
+              disabled={!siteCode.trim() || hasWithdrawals === false || isSubmitting}
             >
-              {isSubmitting ? '⏳ Отправка заявки...' : hasWithdrawals === false ? 'Вывод не найден' : (autoSubmitAttempted && !autoSubmitFailed) ? 'Автоматическая отправка...' : t.submit}
+              {isSubmitting ? '⏳ Отправка заявки...' : hasWithdrawals === false ? 'Вывод не найден' : t.submit}
             </button>
           )}
         </div>
