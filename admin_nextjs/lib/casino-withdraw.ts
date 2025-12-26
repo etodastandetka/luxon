@@ -585,6 +585,7 @@ export async function checkWithdrawAmount1win(
     
     // Проверяем наличие API ключа
     if (!config.api_key || config.api_key.trim() === '') {
+      console.error(`[1win Withdraw Check] ❌ API key is missing or empty`)
       return {
         success: false,
         message: 'Missing required 1win API key',
@@ -596,6 +597,7 @@ export async function checkWithdrawAmount1win(
     const codeNum = parseInt(code)
 
     if (isNaN(userIdNum) || isNaN(codeNum)) {
+      console.error(`[1win Withdraw Check] ❌ Invalid userId or code format: userId=${userId}, code=${code}`)
       return {
         success: false,
         message: 'Invalid userId or code format',
@@ -607,16 +609,27 @@ export async function checkWithdrawAmount1win(
       code: codeNum,
     }
 
+    // Очищаем API ключ от пробелов и проверяем его длину
+    const apiKey = config.api_key.trim()
+    if (apiKey.length < 10) {
+      console.error(`[1win Withdraw Check] ❌ API key is too short: ${apiKey.length} characters`)
+      return {
+        success: false,
+        message: 'Invalid 1win API key format',
+      }
+    }
+
     console.log(`[1win Withdraw Check] User ID: ${userIdNum}, Code: ${codeNum}`)
     console.log(`[1win Withdraw Check] URL: ${baseUrl}/withdrawal`)
     console.log(`[1win Withdraw Check] Request body:`, requestBody)
-    console.log(`[1win Withdraw Check] API Key: ${config.api_key.substring(0, 20)}...`)
+    console.log(`[1win Withdraw Check] API Key length: ${apiKey.length} characters`)
+    console.log(`[1win Withdraw Check] API Key preview: ${apiKey.substring(0, 20)}...${apiKey.substring(apiKey.length - 10)}`)
 
     const response = await fetch(`${baseUrl}/withdrawal`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-KEY': config.api_key,
+        'X-API-KEY': apiKey, // Используем очищенный ключ
       },
       body: JSON.stringify(requestBody),
     })
@@ -656,7 +669,11 @@ export async function checkWithdrawAmount1win(
           errorMessage = 'Не корректный идентификатор кассы'
         }
       } else if (response.status === 403) {
-        errorMessage = 'Не допускается'
+        // Ошибка 403 "Не допускается" обычно означает проблему с API ключом
+        console.error(`[1win Withdraw Check] ❌ 403 Forbidden - API key may be invalid or missing`)
+        console.error(`[1win Withdraw Check] ❌ API Key used: ${apiKey.substring(0, 20)}...${apiKey.substring(apiKey.length - 10)}`)
+        console.error(`[1win Withdraw Check] ❌ Response body: ${responseText.substring(0, 200)}`)
+        errorMessage = 'Не допускается. Проверьте правильность API ключа или обратитесь к менеджеру для получения нового ключа.'
       } else if (response.status === 404) {
         if (responseText.includes('Вывод не найден')) {
           errorMessage = 'Вывод не найден'

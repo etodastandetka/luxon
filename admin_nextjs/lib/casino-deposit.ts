@@ -476,12 +476,21 @@ export async function deposit1winAPI(
   const baseUrl = 'https://api.1win.win/v1/client'
 
   // Проверяем, что все обязательные поля заполнены
-  const apiKey = config.api_key
+  const apiKeyRaw = config.api_key
 
-  if (!apiKey || apiKey.trim() === '') {
+  if (!apiKeyRaw || apiKeyRaw.trim() === '') {
     return {
       success: false,
       message: 'Missing required 1win API key. Please configure API settings in database or environment variables.',
+    }
+  }
+
+  // Очищаем API ключ от пробелов
+  const apiKey = apiKeyRaw.trim()
+  if (apiKey.length < 10) {
+    return {
+      success: false,
+      message: 'Invalid 1win API key format. API key is too short.',
     }
   }
 
@@ -499,7 +508,8 @@ export async function deposit1winAPI(
 
     console.log(`[1win Deposit] URL: ${url}`)
     console.log(`[1win Deposit] Request body:`, requestBody)
-    console.log(`[1win Deposit] API Key: ${apiKey.substring(0, 20)}...`)
+    console.log(`[1win Deposit] API Key length: ${apiKey.length} characters`)
+    console.log(`[1win Deposit] API Key preview: ${apiKey.substring(0, 20)}...${apiKey.substring(apiKey.length - 10)}`)
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       let response: Response
@@ -508,7 +518,7 @@ export async function deposit1winAPI(
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-KEY': apiKey,
+            'X-API-KEY': apiKey, // Используем очищенный ключ
           },
           body: JSON.stringify(requestBody),
         })
@@ -573,7 +583,10 @@ export async function deposit1winAPI(
             errorMessage = 'Слишком большая комиссия за внесение депозита'
           }
         } else if (response.status === 403) {
-          errorMessage = 'Не допускается'
+          // Ошибка 403 "Не допускается" обычно означает проблему с API ключом
+          console.error(`[1win Deposit] ❌ 403 Forbidden - API key may be invalid or missing`)
+          console.error(`[1win Deposit] ❌ API Key used: ${apiKey.substring(0, 20)}...${apiKey.substring(apiKey.length - 10)}`)
+          errorMessage = 'Не допускается. Проверьте правильность API ключа или обратитесь к менеджеру для получения нового ключа.'
         } else if (response.status === 404) {
           errorMessage = 'Пользователь не найден'
         } else if (response.status === 429) {

@@ -320,17 +320,51 @@ export async function POST(request: NextRequest) {
 
       if (setting) {
         const settingConfig = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
-        if (settingConfig.api_key) {
+        if (settingConfig.api_key && settingConfig.api_key.trim() !== '') {
           config = {
-            api_key: settingConfig.api_key,
+            api_key: settingConfig.api_key.trim(), // Очищаем пробелы
           }
+          console.log(`[Withdraw Check] ✅ 1win API key found in database (length: ${config.api_key.length})`)
+        } else {
+          console.warn(`[Withdraw Check] ⚠️ 1win API key in database is empty or missing`)
+        }
+      } else {
+        console.warn(`[Withdraw Check] ⚠️ 1win API config not found in database`)
+      }
+
+      if (!config || !config.api_key || config.api_key.trim() === '') {
+        const envApiKey = process.env.ONEWIN_API_KEY || process.env['1WIN_API_KEY'] || ''
+        if (envApiKey && envApiKey.trim() !== '') {
+          config = {
+            api_key: envApiKey.trim(),
+          }
+          console.log(`[Withdraw Check] ✅ 1win API key found in environment (length: ${config.api_key.length})`)
+        } else {
+          console.error(`[Withdraw Check] ❌ 1win API key not found in database or environment`)
+          return NextResponse.json(
+            createApiResponse(null, '1win API key not configured. Please configure 1win_api_config in database or set ONEWIN_API_KEY environment variable.'),
+            { 
+              status: 400,
+              headers: {
+                'Access-Control-Allow-Origin': '*',
+              }
+            }
+          )
         }
       }
 
-      if (!config) {
-        config = {
-          api_key: process.env.ONEWIN_API_KEY || 'f69190bced227b4d2ee16f614c64f777d1414435570efb430a6008242da0244c',
-        }
+      // Финальная проверка, что API ключ валиден
+      if (!config.api_key || config.api_key.trim().length < 10) {
+        console.error(`[Withdraw Check] ❌ 1win API key is invalid (too short: ${config.api_key?.length || 0} characters)`)
+        return NextResponse.json(
+          createApiResponse(null, 'Invalid 1win API key format. Please check your configuration.'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
       }
     }
 
