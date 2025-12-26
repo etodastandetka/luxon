@@ -627,11 +627,22 @@ export async function checkWithdrawAmount1win(
     console.log(`[1win Withdraw Check] API Key full (for debugging): ${apiKey}`)
     console.log(`[1win Withdraw Check] Header X-API-KEY will be set to: ${apiKey.substring(0, 20)}...`)
 
-    const headers = {
+    // Пробуем оба варианта заголовка (некоторые API чувствительны к регистру)
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'X-API-KEY': apiKey, // Согласно документации API 1win: заголовок X-API-KEY
     }
-    console.log(`[1win Withdraw Check] Request headers:`, { ...headers, 'X-API-KEY': `${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 5)}` })
+    
+    // Согласно документации: заголовок x-api-key (строчными)
+    // Но также пробуем X-API-KEY для совместимости
+    headers['x-api-key'] = apiKey
+    
+    console.log(`[1win Withdraw Check] Request headers:`, { 
+      'Content-Type': headers['Content-Type'],
+      'x-api-key': `${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 5)}`,
+      'API Key length': apiKey.length,
+      'API Key first 10': apiKey.substring(0, 10),
+      'API Key last 5': apiKey.substring(apiKey.length - 5)
+    })
 
     const response = await fetch(`${baseUrl}/withdrawal`, {
       method: 'POST',

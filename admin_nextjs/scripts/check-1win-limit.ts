@@ -40,12 +40,16 @@ async function check1winLimit() {
     console.log(`  - Amount: ${testAmount}`)
     console.log(`  - URL: https://api.1win.win/v1/client/deposit`)
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    
+    // Согласно документации: заголовок x-api-key (строчными)
+    headers['x-api-key'] = apiKey.trim()
+    
     const response = await fetch('https://api.1win.win/v1/client/deposit', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': apiKey, // Согласно документации API 1win
-      },
+      headers,
       body: JSON.stringify({
         userId: testUserId,
         amount: testAmount,

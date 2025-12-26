@@ -374,12 +374,16 @@ async function get1winLimit(apiKey: string): Promise<BalanceResult> {
     console.log(`[1win Limit]   - API Key: ${cleanApiKey.substring(0, 20)}...`)
     console.log(`[1win Limit]   - API Key length: ${cleanApiKey.length} characters`)
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    
+    // Согласно документации: заголовок x-api-key (строчными)
+    headers['x-api-key'] = cleanApiKey
+    
     const response = await fetch('https://api.1win.win/v1/client/deposit', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': cleanApiKey, // Согласно документации API 1win
-      },
+      headers,
       body: JSON.stringify({
         userId: testUserId,
         amount: testAmount,
