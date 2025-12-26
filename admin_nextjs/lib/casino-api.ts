@@ -357,6 +357,13 @@ async function getMostbetBalance(cfg: MostbetConfig): Promise<BalanceResult> {
  */
 async function get1winLimit(apiKey: string): Promise<BalanceResult> {
   try {
+    // Очищаем API ключ от пробелов (как в других функциях)
+    const cleanApiKey = apiKey.trim()
+    
+    if (!cleanApiKey || cleanApiKey.length < 10) {
+      throw new Error('Invalid 1win API key format')
+    }
+    
     // Тестовый ID и большая сумма для получения ошибки с лимитом
     const testUserId = 306751296
     const testAmount = 500000
@@ -364,13 +371,14 @@ async function get1winLimit(apiKey: string): Promise<BalanceResult> {
     console.log(`[1win Limit] Making test deposit to get cash limit:`)
     console.log(`[1win Limit]   - User ID: ${testUserId}`)
     console.log(`[1win Limit]   - Amount: ${testAmount}`)
-    console.log(`[1win Limit]   - API Key: ${apiKey.substring(0, 20)}...`)
+    console.log(`[1win Limit]   - API Key: ${cleanApiKey.substring(0, 20)}...`)
+    console.log(`[1win Limit]   - API Key length: ${cleanApiKey.length} characters`)
 
     const response = await fetch('https://api.1win.win/v1/client/deposit', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-KEY': apiKey, // Согласно документации API 1win
+        'X-API-KEY': cleanApiKey, // Согласно документации API 1win
       },
       body: JSON.stringify({
         userId: testUserId,
@@ -573,19 +581,20 @@ export async function getPlatformLimits(): Promise<
 
     if (onewinSetting) {
       const config = typeof onewinSetting.value === 'string' ? JSON.parse(onewinSetting.value) : onewinSetting.value
-      onewinApiKey = config.api_key
+      onewinApiKey = config.api_key ? config.api_key.trim() : undefined
       console.log(`[1win Limit] API key from DB: ${onewinApiKey ? onewinApiKey.substring(0, 20) + '...' : 'not found'}`)
     }
 
     if (!onewinApiKey) {
-      onewinApiKey = process.env.ONEWIN_API_KEY || process.env['1WIN_API_KEY'] || ''
+      const envKey = process.env.ONEWIN_API_KEY || process.env['1WIN_API_KEY'] || ''
+      onewinApiKey = envKey ? envKey.trim() : undefined
       console.log(`[1win Limit] API key from env: ${onewinApiKey ? onewinApiKey.substring(0, 20) + '...' : 'not found'}`)
     }
 
     if (onewinApiKey && onewinApiKey.trim() !== '') {
       console.log(`[1win Limit] ✅ API key found, calling get1winLimit...`)
       try {
-        const onewinLimit = await get1winLimit(onewinApiKey)
+        const onewinLimit = await get1winLimit(onewinApiKey.trim())
         console.log(`📊 1win result: balance=${onewinLimit.balance}, limit=${onewinLimit.limit}`)
         limits.push({ 
           key: '1win', 
