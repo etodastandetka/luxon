@@ -518,7 +518,7 @@ export async function deposit1winAPI(
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-KEY': apiKey, // Используем очищенный ключ
+            'X-Api-Key': apiKey, // Используем очищенный ключ
           },
           body: JSON.stringify(requestBody),
         })
