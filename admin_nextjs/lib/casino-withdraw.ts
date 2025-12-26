@@ -624,13 +624,18 @@ export async function checkWithdrawAmount1win(
     console.log(`[1win Withdraw Check] Request body:`, requestBody)
     console.log(`[1win Withdraw Check] API Key length: ${apiKey.length} characters`)
     console.log(`[1win Withdraw Check] API Key preview: ${apiKey.substring(0, 20)}...${apiKey.substring(apiKey.length - 10)}`)
+    console.log(`[1win Withdraw Check] API Key full (for debugging): ${apiKey}`)
+    console.log(`[1win Withdraw Check] Header X-API-KEY will be set to: ${apiKey.substring(0, 20)}...`)
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-API-KEY': apiKey, // Согласно документации API 1win: заголовок X-API-KEY
+    }
+    console.log(`[1win Withdraw Check] Request headers:`, { ...headers, 'X-API-KEY': `${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 5)}` })
 
     const response = await fetch(`${baseUrl}/withdrawal`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey, // Используем очищенный ключ
-      },
+      headers,
       body: JSON.stringify(requestBody),
     })
 

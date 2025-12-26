@@ -44,7 +44,7 @@ async function check1winLimit() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
+        'X-API-KEY': apiKey, // Согласно документации API 1win
       },
       body: JSON.stringify({
         userId: testUserId,

@@ -510,16 +510,20 @@ export async function deposit1winAPI(
     console.log(`[1win Deposit] Request body:`, requestBody)
     console.log(`[1win Deposit] API Key length: ${apiKey.length} characters`)
     console.log(`[1win Deposit] API Key preview: ${apiKey.substring(0, 20)}...${apiKey.substring(apiKey.length - 10)}`)
+    console.log(`[1win Deposit] API Key full (for debugging): ${apiKey}`)
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       let response: Response
       try {
+        const headers = {
+          'Content-Type': 'application/json',
+          'X-API-KEY': apiKey, // Согласно документации API 1win: заголовок X-API-KEY
+        }
+        console.log(`[1win Deposit] Attempt ${attempt}: Request headers:`, { ...headers, 'X-API-KEY': `${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 5)}` })
+        
         response = await fetch(url, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Key': apiKey, // Используем очищенный ключ
-          },
+          headers,
           body: JSON.stringify(requestBody),
         })
       } catch (error: any) {

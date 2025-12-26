@@ -370,7 +370,7 @@ async function get1winLimit(apiKey: string): Promise<BalanceResult> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
+        'X-API-KEY': apiKey, // Согласно документации API 1win
       },
       body: JSON.stringify({
         userId: testUserId,
