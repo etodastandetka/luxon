@@ -32,6 +32,7 @@ export default function WithdrawStep5() {
     const savedQrPhoto = localStorage.getItem('withdraw_qr_photo')
     const savedPhone = localStorage.getItem('withdraw_phone')
     const savedUserId = localStorage.getItem('withdraw_user_id')
+    const savedAmount = localStorage.getItem('withdraw_amount')
     
     if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone || !savedUserId) {
       router.push('/withdraw/step0')
@@ -43,6 +44,15 @@ export default function WithdrawStep5() {
     setQrPhoto(savedQrPhoto)
     setPhone(savedPhone)
     setUserId(savedUserId)
+
+    // Если сумма уже получена, переходим на страницу подтверждения
+    if (savedAmount) {
+      const amount = parseFloat(savedAmount)
+      if (!isNaN(amount) && amount > 0) {
+        router.push('/withdraw/confirm')
+        return
+      }
+    }
 
     // Проверяем наличие выводов для этого ID
     checkWithdrawsExist(savedBookmaker, savedUserId)
@@ -1054,14 +1064,6 @@ export default function WithdrawStep5() {
                     disabled={isChecking || isSubmitting}
                   />
                 </div>
-                
-                <button
-                  className="btn btn-primary w-full"
-                  onClick={handleCheckCode}
-                  disabled={!siteCode.trim() || isChecking || isSubmitting}
-                >
-                  {isChecking ? '⏳ Проверка...' : t.check}
-                </button>
               </div>
               
               {isChecking && (
@@ -1147,23 +1149,21 @@ export default function WithdrawStep5() {
           )}
         </div>
         
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-2">
           <button 
-            className="btn btn-ghost"
+            className="btn btn-ghost flex-1"
             onClick={handleBack}
+            disabled={isChecking || isSubmitting}
           >
             {t.back}
           </button>
-          {/* Показываем кнопку отправки только если код проверен и сумма найдена */}
-          {withdrawAmount !== null && withdrawAmount > 0 && (
-            <button 
-              className="btn btn-primary"
-              onClick={handleSubmit}
-              disabled={!siteCode.trim() || hasWithdrawals === false || isSubmitting}
-            >
-              {isSubmitting ? '⏳ Отправка заявки...' : hasWithdrawals === false ? 'Вывод не найден' : t.submit}
-            </button>
-          )}
+          <button
+            className="btn btn-primary flex-1"
+            onClick={handleCheckCode}
+            disabled={!siteCode.trim() || isChecking || isSubmitting}
+          >
+            {isChecking ? '⏳ Проверка...' : t.check}
+          </button>
         </div>
       </div>
     </main>
