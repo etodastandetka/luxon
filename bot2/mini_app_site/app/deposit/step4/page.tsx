@@ -1202,9 +1202,9 @@ export default function DepositStep4() {
   // Функция для получения активного реквизита из админки
   const getActiveRequisite = async (): Promise<{ value: string; bank: string | null; name: string | null } | null> => {
     try {
-      const apiUrl = getApiBase()
-      // Используем публичный API админ-панели
-      const response = await fetch(`${apiUrl}/api/public/requisites/list/`, {
+      // Используем наш прокси API route для избежания CORS проблем
+      const response = await fetch('/api/requisites-proxy', {
+        method: 'GET',
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
@@ -1581,6 +1581,13 @@ export default function DepositStep4() {
       })
 
       if (!response.ok) {
+        // Обрабатываем ошибку 429 (Too Many Requests)
+        if (response.status === 429) {
+          console.warn('⚠️ Rate limit exceeded for QR generation, using fallback')
+          // Используем fallback вместо ошибки
+          generateFallbackQR(currentBank)
+          return
+        }
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
