@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { TelegramUser, getTelegramUser } from '../utils/telegram'
 import { getApiBase } from '../utils/fetch'
@@ -26,7 +26,12 @@ export default function UserProfile() {
   const statsLoadedRef = useRef(false)
 
   // Загружаем пользователя синхронно при первом рендере для мгновенного отображения
+  // Используем useRef для предотвращения повторных вызовов
+  const userLoadedRef = useRef(false)
   useEffect(() => {
+    if (userLoadedRef.current) return
+    userLoadedRef.current = true
+    
     const telegramUser = getTelegramUser()
     if (telegramUser && !user) {
       setUser(telegramUser)

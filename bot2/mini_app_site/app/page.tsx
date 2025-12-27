@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import ServiceStatus from '../components/ServiceStatus'
 import FixedHeaderControls from '../components/FixedHeaderControls'
@@ -41,7 +41,12 @@ export default function HomePage() {
   const { loading: settingsLoading } = useBotSettings()
   
   // Инициализируем пользователя сразу при монтировании (без задержек)
+  // Используем useRef для предотвращения повторных вызовов
+  const userInitialized = useRef(false)
   useEffect(() => {
+    if (userInitialized.current) return
+    userInitialized.current = true
+    
     const telegramUser = initTelegramWebApp()
     if (telegramUser) {
       setUser(telegramUser)
@@ -51,7 +56,7 @@ export default function HomePage() {
         language
       }).catch(err => console.error('Sync error:', err))
     }
-  }, [language])
+  }, []) // Убираем language из зависимостей, чтобы не вызывать повторно
 
   // Приветствие по времени суток
   const greeting = useMemo(() => {
@@ -68,8 +73,11 @@ export default function HomePage() {
   }, [language])
 
   // Загружаем статистику пользователя (с кешем и без блока основного потока)
+  // Используем useRef для предотвращения повторных вызовов
+  const statsLoadedRef = useRef(false)
   useEffect(() => {
-    if (!user) return
+    if (!user || statsLoadedRef.current) return
+    statsLoadedRef.current = true
 
     const userId = getTelegramUserId()
     if (!userId) return
