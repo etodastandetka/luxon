@@ -24,8 +24,14 @@ const CACHE_TTL = 30_000 // 30 секунд
 // Глобальный флаг загрузки для предотвращения дублирования
 let isLoading = false
 let loadingPromise: Promise<HomePageData> | null = null
+let providerInstanceCount = 0
 
 const loadAllData = async (): Promise<HomePageData> => {
+  // Если уже идет загрузка, возвращаем существующий промис
+  if (isLoading && loadingPromise) {
+    return loadingPromise
+  }
+
   const userId = getTelegramUserId()
   if (!userId) {
     return { transactions: [], topPlayers: [], loading: false }
@@ -38,36 +44,45 @@ const loadAllData = async (): Promise<HomePageData> => {
     return cached.data
   }
 
-  try {
-    // Загружаем все данные параллельно одним запросом
-    const [transactionsResponse, leaderboardResponse] = await Promise.all([
-      fetch(`${API_URLS.BASE}/api/transaction-history?user_id=${userId}&limit=1000`),
-      fetch(`${API_URLS.LEADERBOARD}?type=deposits&limit=5`),
-    ])
+  // Устанавливаем флаг загрузки и создаем промис
+  isLoading = true
+  loadingPromise = (async () => {
+    try {
+      // Загружаем все данные параллельно одним запросом
+      const [transactionsResponse, leaderboardResponse] = await Promise.all([
+        fetch(`${API_URLS.BASE}/api/transaction-history?user_id=${userId}&limit=1000`),
+        fetch(`${API_URLS.LEADERBOARD}?type=deposits&limit=5`),
+      ])
 
-    const [transactionsData, leaderboardData] = await Promise.all([
-      transactionsResponse.json(),
-      leaderboardResponse.json(),
-    ])
+      const [transactionsData, leaderboardData] = await Promise.all([
+        transactionsResponse.json(),
+        leaderboardResponse.json(),
+      ])
 
-    const transactions = transactionsData.data?.transactions || transactionsData.transactions || []
-    const topPlayers = leaderboardData.success && leaderboardData.data?.leaderboard
-      ? leaderboardData.data.leaderboard.slice(0, 5)
-      : []
+      const transactions = transactionsData.data?.transactions || transactionsData.transactions || []
+      const topPlayers = leaderboardData.success && leaderboardData.data?.leaderboard
+        ? leaderboardData.data.leaderboard.slice(0, 5)
+        : []
 
-    const result: HomePageData = {
-      transactions,
-      topPlayers,
-      loading: false,
+      const result: HomePageData = {
+        transactions,
+        topPlayers,
+        loading: false,
+      }
+
+      // Сохраняем в кеш
+      dataCache.set(cacheKey, { data: result, timestamp: Date.now() })
+      return result
+    } catch (error) {
+      console.error('Error loading homepage data:', error)
+      return { transactions: [], topPlayers: [], loading: false }
+    } finally {
+      isLoading = false
+      loadingPromise = null
     }
+  })()
 
-    // Сохраняем в кеш
-    dataCache.set(cacheKey, { data: result, timestamp: Date.now() })
-    return result
-  } catch (error) {
-    console.error('Error loading homepage data:', error)
-    return { transactions: [], topPlayers: [], loading: false }
-  }
+  return loadingPromise
 }
 
 export function HomePageDataProvider({ children }: { children: ReactNode }) {
@@ -79,29 +94,45 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
   const loadedRef = useRef(false)
 
   useEffect(() => {
-    if (loadedRef.current) return
-    loadedRef.current = true
+    // Увеличиваем счетчик экземпляров провайдера
+    providerInstanceCount++
+    const instanceId = providerInstanceCount
 
-    // Если уже идет загрузка, ждем ее
-    if (isLoading && loadingPromise) {
-      loadingPromise.then(result => {
-        setData(result)
+    // Только первый экземпляр загружает данные
+    if (instanceId === 1 && !loadedRef.current) {
+      loadedRef.current = true
+      
+      loadAllData().then(result => {
+        // Обновляем данные только если это все еще первый экземпляр
+        if (instanceId === 1) {
+          setData(result)
+        }
       })
-      return
+    } else if (isLoading && loadingPromise) {
+      // Если уже идет загрузка, ждем ее
+      loadingPromise.then(result => {
+        if (instanceId === 1) {
+          setData(result)
+        }
+      })
+    } else {
+      // Если данные уже загружены, используем кеш
+      const userId = getTelegramUserId()
+      if (userId) {
+        const cacheKey = `homepage_${userId}`
+        const cached = dataCache.get(cacheKey)
+        if (cached) {
+          setData(cached.data)
+        }
+      }
     }
 
-    // Начинаем загрузку
-    isLoading = true
-    loadingPromise = loadAllData()
-    
-    loadingPromise.then(result => {
-      setData(result)
-      isLoading = false
-      loadingPromise = null
-    }).catch(() => {
-      isLoading = false
-      loadingPromise = null
-    })
+    return () => {
+      // При размонтировании уменьшаем счетчик
+      if (instanceId === 1) {
+        providerInstanceCount = 0
+      }
+    }
   }, [])
 
   const refresh = () => {
