@@ -59,16 +59,19 @@ export default function HomePage() {
   // Используем единый хук для загрузки всех данных главной страницы
   const { transactions } = useHomePageData()
   
-  // Вычисляем статистику из загруженных транзакций
-  useEffect(() => {
-    if (!transactions.length) return
-    
-    const stats = {
-      deposits: transactions.filter((t: any) => t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')).length,
-      withdraws: transactions.filter((t: any) => t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')).length
-    }
-    setUserStats(stats)
+  // Вычисляем статистику сразу через useMemo (без задержек)
+  const computedStats = useMemo(() => {
+    const deposits = transactions.filter((t: any) => t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')).length
+    const withdraws = transactions.filter((t: any) => t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')).length
+    return { deposits, withdraws }
   }, [transactions])
+  
+  // Обновляем состояние только если изменилось
+  useEffect(() => {
+    if (userStats?.deposits !== computedStats.deposits || userStats?.withdraws !== computedStats.withdraws) {
+      setUserStats(computedStats)
+    }
+  }, [computedStats])
 
   // Видео инструкции удалены - не используются
 

@@ -45,23 +45,8 @@ export default function RatingBlock() {
     }
   }
 
-  // Показываем skeleton только если данных нет и идет загрузка
-  if (loading && topPlayers.length === 0) {
-    return (
-      <div className="card p-4">
-        <div className="animate-pulse space-y-2">
-          <div className="h-4 bg-white/10 rounded w-1/2"></div>
-          <div className="h-3 bg-white/5 rounded"></div>
-          <div className="h-3 bg-white/5 rounded"></div>
-        </div>
-      </div>
-    )
-  }
-
-  // Если данных нет, не показываем компонент
-  if (!loading && topPlayers.length === 0) {
-    return null
-  }
+  // Показываем блок всегда, даже если данных нет (показываем пустой список)
+  // Не показываем skeleton - это создает задержку
 
   return (
     <div className="card p-4">
@@ -75,28 +60,34 @@ export default function RatingBlock() {
         </button>
       </div>
       <div className="space-y-2">
-        {topPlayers.map((player, index) => (
-          <div
-            key={player.userId}
-            className={`flex items-center justify-between p-2 rounded-lg ${
-              index < 3 ? 'bg-white/5' : 'bg-white/2'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className={`text-lg ${getRankColor(player.rankType)}`}>
-                {getRankIcon(player.rankType)}
-              </span>
-              <div>
-                <div className="text-sm font-medium text-white">
-                  #{player.rank} {player.displayName}
+        {topPlayers.length > 0 ? (
+          topPlayers.map((player, index) => (
+            <div
+              key={player.userId}
+              className={`flex items-center justify-between p-2 rounded-lg ${
+                index < 3 ? 'bg-white/5' : 'bg-white/2'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`text-lg ${getRankColor(player.rankType)}`}>
+                  {getRankIcon(player.rankType)}
+                </span>
+                <div>
+                  <div className="text-sm font-medium text-white">
+                    #{player.rank} {player.displayName}
+                  </div>
                 </div>
               </div>
+              <div className={`text-sm font-bold ${getRankColor(player.rankType)}`}>
+                {player.totalAmount.toLocaleString('ru-RU')} сом
+              </div>
             </div>
-            <div className={`text-sm font-bold ${getRankColor(player.rankType)}`}>
-              {player.totalAmount.toLocaleString('ru-RU')} сом
-            </div>
+          ))
+        ) : (
+          <div className="text-sm text-white/50 text-center py-2">
+            Рейтинг загружается...
           </div>
-        ))}
+        )}
       </div>
     </div>
   )

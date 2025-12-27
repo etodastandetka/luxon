@@ -186,8 +186,8 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
     mountedRef.current = true
     
     // Если данные уже загружены из кеша, сразу показываем их и обновляем в фоне
-    if (!data.loading && (data.transactions.length > 0 || data.topPlayers.length > 0)) {
-      // Загружаем свежие данные в фоне без блокировки UI
+    if (!data.loading) {
+      // Загружаем свежие данные в фоне без блокировки UI (даже если данных нет)
       loadAllData().then(result => {
         if (mountedRef.current) {
           setData(result)
@@ -195,7 +195,7 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
       }).catch(() => {
         // Игнорируем ошибки фоновой загрузки
       })
-      return
+      // Не возвращаемся - продолжаем подписку
     }
 
     // Подписываемся на обновления (только один раз)
@@ -215,8 +215,8 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
             setData(result)
           }
         })
-      } else if (!globalData || globalData.loading) {
-        // Загружаем данные только если их еще нет
+      } else {
+        // Загружаем данные сразу, не ждем
         loadAllData()
       }
 

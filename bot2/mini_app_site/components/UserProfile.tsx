@@ -35,13 +35,8 @@ export default function UserProfile() {
   }, [])
 
   // Вычисляем статистику из общих данных (без отдельного запроса)
-  // Не показываем компонент, пока данные не загружены
-  const stats = useMemo<UserStats | null>(() => {
-    if (!transactions.length) {
-      // Если данные еще загружаются, возвращаем null чтобы не показывать пустой компонент
-      return null
-    }
-    
+  // Показываем сразу с нулями, не ждем загрузки
+  const stats = useMemo<UserStats>(() => {
     const deposits = transactions.filter((t: any) => 
       t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')
     )
@@ -130,19 +125,17 @@ export default function UserProfile() {
             <p className="text-sm text-white/60 truncate">@{displayUser.username}</p>
           )}
           
-          {/* Статистика */}
-          {stats && (
-            <div className="flex items-center space-x-4 mt-2">
-              <div className="text-xs">
-                <span className="text-white/50">{t.deposits}: </span>
-                <span className="text-green-400 font-semibold">{stats.totalDeposits}</span>
-              </div>
-              <div className="text-xs">
-                <span className="text-white/50">{t.withdraws}: </span>
-                <span className="text-blue-400 font-semibold">{stats.totalWithdraws}</span>
-              </div>
+          {/* Статистика - показываем всегда, даже если 0 */}
+          <div className="flex items-center space-x-4 mt-2">
+            <div className="text-xs">
+              <span className="text-white/50">{t.deposits}: </span>
+              <span className="text-green-400 font-semibold">{stats.totalDeposits}</span>
             </div>
-          )}
+            <div className="text-xs">
+              <span className="text-white/50">{t.withdraws}: </span>
+              <span className="text-blue-400 font-semibold">{stats.totalWithdraws}</span>
+            </div>
+          </div>
         </div>
 
         {/* Иконка стрелки */}

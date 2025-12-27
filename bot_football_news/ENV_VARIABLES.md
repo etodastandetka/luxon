@@ -68,3 +68,4 @@ AI_TEXT_SERVICE=huggingface
 
 ⚠️ **IMPORTANT**: Never commit `.env` files to version control. The current `config.py` has hardcoded values as fallbacks, but these should be removed in production.
 
+

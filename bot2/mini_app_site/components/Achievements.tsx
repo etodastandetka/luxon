@@ -20,8 +20,9 @@ export default function Achievements() {
   const { transactions, loading } = useHomePageData()
 
   // Вычисляем достижения на основе загруженных транзакций
+  // Не ждем loading - используем данные из кеша сразу
   const achievements = useMemo<Achievement[]>(() => {
-    if (loading || !transactions.length) {
+    if (!transactions.length) {
       return []
     }
       
@@ -132,24 +133,10 @@ export default function Achievements() {
       ]
       
       return allAchievements
-  }, [transactions, loading])
+  }, [transactions])
 
-  // Показываем skeleton только если данных нет и идет загрузка
-  if (loading && achievements.length === 0) {
-    return (
-      <div className="card p-4">
-        <div className="animate-pulse space-y-2">
-          <div className="h-4 bg-white/10 rounded w-1/2"></div>
-          <div className="h-3 bg-white/5 rounded"></div>
-        </div>
-      </div>
-    )
-  }
-  
-  // Если данных нет, не показываем компонент
-  if (!loading && achievements.length === 0) {
-    return null
-  }
+  // Показываем блок всегда, даже если данных нет (показываем пустой список)
+  // Не показываем skeleton - это создает задержку
 
   const unlockedCount = achievements?.filter(a => a.unlocked).length || 0
   const totalCount = achievements?.length || 0
@@ -163,16 +150,17 @@ export default function Achievements() {
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {achievements.map((achievement) => (
-          <div
-            key={achievement.id}
-            onClick={() => setSelectedAchievement(achievement)}
-            className={`p-3 rounded-lg border cursor-pointer transition-all ${
-              achievement.unlocked
-                ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20'
-                : 'bg-white/5 border-white/10 opacity-60 hover:opacity-80'
-            }`}
-          >
+        {achievements.length > 0 ? (
+          achievements.map((achievement) => (
+            <div
+              key={achievement.id}
+              onClick={() => setSelectedAchievement(achievement)}
+              className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                achievement.unlocked
+                  ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20'
+                  : 'bg-white/5 border-white/10 opacity-60 hover:opacity-80'
+              }`}
+            >
             <div className="flex items-center gap-2 mb-1">
               <span className="text-2xl">{achievement.icon}</span>
               <div className="flex-1 min-w-0">
@@ -200,7 +188,12 @@ export default function Achievements() {
               <div className="text-xs text-green-400 mt-1">✓ Получено</div>
             )}
           </div>
-        ))}
+          ))
+        ) : (
+          <div className="col-span-2 text-sm text-white/50 text-center py-2">
+            Достижения загружаются...
+          </div>
+        )}
       </div>
 
       {/* Модальное окно с инструкцией */}

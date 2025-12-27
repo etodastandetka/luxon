@@ -39,3 +39,4 @@ ADMIN_API_BASE_URL=https://japar.click
 JWT_SECRET=your-secret-key-here
 ```
 
+
