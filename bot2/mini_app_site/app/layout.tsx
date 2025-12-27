@@ -3,6 +3,7 @@
 import './globals.css'
 import TelegramInit from '../components/TelegramInit'
 import { LanguageProvider } from '../components/LanguageContext'
+import { HomePageDataProvider } from '../contexts/HomePageDataContext'
 import BottomNavigation from '../components/BottomNavigation'
 import Snowflakes from '../components/Snowflakes'
 import VersionChecker from '../components/VersionChecker'
@@ -298,15 +299,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body style={{ position: 'relative', margin: 0, padding: 0, minHeight: '100vh' }}>
         <LanguageProvider>
-          <OldDeviceWarning />
-          <VersionChecker />
-          <TelegramInit />
-          {!shouldHideUI && <Snowflakes />}
-          <BlockedChecker>
-            <div className="container" style={{ paddingTop: '0', paddingBottom: '100px', minHeight: '100vh' }}>
-              {children}
-            </div>
-          </BlockedChecker>
+          <HomePageDataProvider>
+            <OldDeviceWarning />
+            <VersionChecker />
+            <TelegramInit />
+            {!shouldHideUI && <Snowflakes />}
+            <BlockedChecker>
+              <div className="container" style={{ paddingTop: '0', paddingBottom: '100px', minHeight: '100vh' }}>
+                {children}
+              </div>
+            </BlockedChecker>
+          </HomePageDataProvider>
         </LanguageProvider>
       </body>
     </html>
