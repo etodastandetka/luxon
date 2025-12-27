@@ -13,10 +13,8 @@ const nextConfig = {
       { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: '**' }
     ],
-    // Для старых устройств используем JPEG вместо современных форматов
-    formats: process.env.NODE_ENV === 'production' 
-      ? ['image/webp', 'image/jpeg'] // WebP с fallback на JPEG
-      : ['image/webp', 'image/jpeg'],
+    // Форматы изображений (Next.js поддерживает только avif и webp)
+    formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 31536000, // Кеш изображений на 1 год (статические изображения)
