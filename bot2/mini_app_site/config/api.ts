@@ -40,6 +40,7 @@ export const API_URLS = {
   PAYMENT: `${ADMIN_API_BASE_URL}/api/payment`,
   PAYMENT_SETTINGS: `${ADMIN_API_BASE_URL}/api/public/payment-settings`,
   LEADERBOARD: `${ADMIN_API_BASE_URL}/api/public/leaderboard`,
+  USER_REFERRALS: `${ADMIN_API_BASE_URL}/api/public/user-referrals`,
 } as const
 
 /**

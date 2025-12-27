@@ -184,14 +184,42 @@ export default function RatingPage() {
     try {
       const apiUrl = getApiBase()
       
-      // Получаем данные рефералов через API users для получения списка рефералов
-      // API referral-data не возвращает список рефералов, только статистику
-      // Используем альтернативный подход - получаем топ игроков и сравниваем
-      // Для сравнения с друзьями нужно использовать другой endpoint или логику
+      // Получаем список рефералов с их статистикой
+      const referralResponse = await fetch(`${apiUrl}/api/public/user-referrals?user_id=${userId}&limit=5`)
+      const referralData = await referralResponse.json()
       
-      // Временно отключаем сравнение с друзьями, т.к. API не предоставляет список рефералов
-      // Можно добавить отдельный endpoint для получения списка рефералов с их статистикой
-      setFriends([])
+      if (referralData.success && referralData.data?.referrals) {
+        const referrals = referralData.data.referrals
+        const friendsList: FriendComparison[] = []
+        
+        for (const ref of referrals) {
+          let refTotal = 0
+          
+          // Определяем сумму в зависимости от активного таба
+          if (activeTab === 'deposits') {
+            refTotal = ref.totalDeposits || 0
+          } else if (activeTab === 'withdrawals') {
+            refTotal = ref.totalWithdrawals || 0
+          } else {
+            refTotal = ref.totalAmount || 0
+          }
+          
+          const difference = Math.abs(userTotal - refTotal)
+          const isAhead = userTotal > refTotal
+          
+          friendsList.push({
+            userId: ref.userId,
+            displayName: ref.displayName,
+            totalAmount: refTotal,
+            isAhead,
+            difference,
+          })
+        }
+        
+        // Сортируем по разнице
+        friendsList.sort((a, b) => b.difference - a.difference)
+        setFriends(friendsList)
+      }
     } catch (error) {
       logger.error('Error loading friends comparison:', error)
     }
