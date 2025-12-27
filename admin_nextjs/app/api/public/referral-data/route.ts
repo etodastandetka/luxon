@@ -297,13 +297,13 @@ export async function GET(request: NextRequest) {
       // Получаем только количество рефералов (без include для скорости)
       prisma.botReferral.count({
         where: {
-          referrer_id: userIdBigInt
+          referrerId: userIdBigInt
         }
       }),
       // Получаем заработанные комиссии с агрегацией (только за текущий месяц)
       prisma.botReferralEarning.aggregate({
         where: {
-          referrer_id: userIdBigInt,
+          referrerId: userIdBigInt,
           status: 'completed',
           createdAt: {
             gte: monthStartDate
@@ -510,7 +510,7 @@ export async function GET(request: NextRequest) {
     // Получаем список рефералов пользователя для сравнения
     const userReferrals = await prisma.botReferral.findMany({
       where: {
-        referrer_id: userIdBigInt
+        referrerId: userIdBigInt
       },
       include: {
         referred: {
@@ -529,7 +529,7 @@ export async function GET(request: NextRequest) {
     })
     
     const referralsList = userReferrals.map(ref => ({
-      referred_id: ref.referred_id.toString(),
+      referred_id: ref.referredId.toString(),
       referred_username: ref.referred?.username || null,
       referred_firstName: ref.referred?.firstName || null,
       referred_lastName: ref.referred?.lastName || null,
@@ -537,7 +537,7 @@ export async function GET(request: NextRequest) {
         ? `@${ref.referred.username}` 
         : ref.referred?.firstName 
           ? `${ref.referred.firstName}${ref.referred.lastName ? ' ' + ref.referred.lastName : ''}`
-          : `Игрок #${ref.referred_id}`,
+          : `Игрок #${ref.referredId}`,
       createdAt: ref.createdAt.toISOString()
     }))
     
