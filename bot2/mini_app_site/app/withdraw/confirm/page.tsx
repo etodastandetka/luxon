@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
-import { checkUserBlocked } from '../../../utils/telegram'
+import { checkUserBlocked, getTelegramUserId } from '../../../utils/telegram'
 import { safeFetch } from '../../../utils/fetch'
 
 export default function WithdrawConfirm() {
@@ -173,6 +173,7 @@ export default function WithdrawConfirm() {
       }
 
       // Получаем Telegram ID пользователя (оптимизированная функция)
+      const { getTelegramUserId } = await import('../../../utils/telegram')
       const telegramUserId = getTelegramUserId()
 
       if (!telegramUserId) {

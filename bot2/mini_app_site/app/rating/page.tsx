@@ -130,8 +130,28 @@ export default function RatingPage() {
         if (userId) {
           const userIndex = data.data.leaderboard.findIndex((u: LeaderboardUser) => u.userId === userId)
           if (userIndex !== -1) {
+            // Пользователь в топе
             setUserRank(userIndex + 1)
             setUserTotal(data.data.leaderboard[userIndex].totalAmount)
+            
+            // Вычисляем прогресс до следующего ранга
+            const rankInfo = getRankByAmount(data.data.leaderboard[userIndex].totalAmount)
+            const remaining = Math.max(0, rankInfo.nextAmount - data.data.leaderboard[userIndex].totalAmount)
+            const progress = rankInfo.nextAmount > data.data.leaderboard[userIndex].totalAmount 
+              ? (data.data.leaderboard[userIndex].totalAmount / rankInfo.nextAmount) * 100 
+              : 100
+            
+            setProgressInfo({
+              currentRank: rankInfo.rank,
+              nextRank: rankInfo.nextRank,
+              currentAmount: data.data.leaderboard[userIndex].totalAmount,
+              nextRankAmount: rankInfo.nextAmount,
+              progress: Math.min(100, progress),
+              remaining,
+            })
+            
+            // Загружаем сравнение с друзьями
+            loadFriendsComparison(userId)
           } else {
             // Если пользователь не в топе, загружаем его статистику отдельно
             const userStatsResponse = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}`)
@@ -166,30 +186,7 @@ export default function RatingPage() {
             })
             
             // Загружаем сравнение с друзьями
-            if (userId) {
-              loadFriendsComparison(userId)
-            }
-          } else {
-            // Пользователь в топе - вычисляем прогресс
-            const rankInfo = getRankByAmount(userTotal)
-            const remaining = Math.max(0, rankInfo.nextAmount - userTotal)
-            const progress = rankInfo.nextAmount > userTotal 
-              ? (userTotal / rankInfo.nextAmount) * 100 
-              : 100
-            
-            setProgressInfo({
-              currentRank: rankInfo.rank,
-              nextRank: rankInfo.nextRank,
-              currentAmount: userTotal,
-              nextRankAmount: rankInfo.nextAmount,
-              progress: Math.min(100, progress),
-              remaining,
-            })
-            
-            // Загружаем сравнение с друзьями
-            if (userId) {
-              loadFriendsComparison(userId)
-            }
+            loadFriendsComparison(userId)
           }
         }
       }

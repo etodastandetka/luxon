@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
 import { safeFetch, getApiBase } from '../../../../utils/fetch'
+import { getTelegramUserId } from '../../../../utils/telegram'
 
 function ReferralWithdrawStep2Content() {
   const router = useRouter()

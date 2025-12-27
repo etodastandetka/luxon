@@ -62,9 +62,10 @@ export default function ReferralPage() {
     setLoading(true)
     setError(null)
     
+    // Используем оптимизированную функцию (без задержек и множественных попыток)
+    const userId = getTelegramUserId()
+    
     try {
-      // Используем оптимизированную функцию (без задержек и множественных попыток)
-      const userId = getTelegramUserId()
       
       if (!userId) {
         setError('Не удалось определить ID пользователя. Пожалуйста, откройте приложение через Telegram.')
@@ -292,7 +293,7 @@ export default function ReferralPage() {
         error,
         message: error?.message,
         stack: error?.stack,
-        userId,
+        userId: userId || 'unknown',
         timestamp: new Date().toISOString()
       })
       setError(error?.message || 'Произошла ошибка при загрузке данных')

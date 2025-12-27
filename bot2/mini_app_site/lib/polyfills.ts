@@ -267,9 +267,12 @@ if (typeof window !== 'undefined' && typeof URLSearchParams === 'undefined') {
             this.params[decodedKey].push(decodedValue)
           }
         })
-      } else if (init) {
+      } else if (init && typeof init === 'object' && !Array.isArray(init)) {
         Object.keys(init).forEach(key => {
-          this.params[key] = [init[key]]
+          const value = (init as { [key: string]: string })[key]
+          if (typeof value === 'string') {
+            this.params[key] = [value]
+          }
         })
       }
     }
