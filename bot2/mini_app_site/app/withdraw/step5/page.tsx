@@ -489,12 +489,19 @@ export default function WithdrawStep5() {
           const params = new URLSearchParams(tg.initData)
           const userParam = params.get('user')
           if (userParam) {
-            const userData = JSON.parse(decodeURIComponent(userParam))
-            telegramUserId = String(userData.id)
+            try {
+              const userData = JSON.parse(decodeURIComponent(userParam))
+              if (userData?.id) {
+                telegramUserId = String(userData.id)
+              }
+            } catch (parseError: any) {
+              // Игнорируем ошибки парсинга JSON
+              console.warn('⚠️ Error parsing user JSON from initData:', parseError?.message || String(parseError))
+            }
           }
-        } catch (e: any) {
-          // Игнорируем ошибки парсинга, пробуем другие способы
-          console.warn('⚠️ Error parsing initData for telegram_user_id:', e?.message || String(e))
+        } catch (urlError: any) {
+          // Игнорируем ошибки парсинга URLSearchParams
+          console.warn('⚠️ Error parsing initData URL:', urlError?.message || String(urlError))
         }
       }
       
@@ -797,12 +804,19 @@ export default function WithdrawStep5() {
           const params = new URLSearchParams(tg.initData)
           const userParam = params.get('user')
           if (userParam) {
-            const userData = JSON.parse(decodeURIComponent(userParam))
-            telegramUserId = String(userData.id)
+            try {
+              const userData = JSON.parse(decodeURIComponent(userParam))
+              if (userData?.id) {
+                telegramUserId = String(userData.id)
+              }
+            } catch (parseError: any) {
+              // Игнорируем ошибки парсинга JSON
+              console.warn('⚠️ Error parsing user JSON from initData:', parseError?.message || String(parseError))
+            }
           }
-        } catch (e: any) {
-          // Игнорируем ошибки парсинга, пробуем другие способы
-          console.warn('⚠️ Error parsing initData for telegram_user_id:', e?.message || String(e))
+        } catch (urlError: any) {
+          // Игнорируем ошибки парсинга URLSearchParams
+          console.warn('⚠️ Error parsing initData URL:', urlError?.message || String(urlError))
         }
       }
       
