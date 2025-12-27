@@ -658,9 +658,23 @@ export default function WithdrawStep5() {
         name: error?.name,
       })
       
-      let errorMessage = 'Ошибка при автоматическом создании заявки. Попробуйте отправить вручную.'
       const errorMsg = String(error?.message || '')
       const errorName = error?.name || ''
+      
+      // Игнорируем несущественные ошибки загрузки ресурсов
+      const isNonCriticalError = 
+        errorMsg.includes('Load failed') ||
+        errorMsg.includes('Failed to load') ||
+        (errorName === 'TypeError' && errorMsg.includes('Load'))
+      
+      if (isNonCriticalError) {
+        console.warn('⚠️ Игнорируем несущественную ошибку загрузки ресурса:', errorMsg)
+        setAutoSubmitAttempted(false)
+        setAutoSubmitFailed(true)
+        return // Не показываем alert для несущественных ошибок
+      }
+      
+      let errorMessage = 'Ошибка при автоматическом создании заявки. Попробуйте отправить вручную.'
       
       if (error?.status || errorMsg.includes('HTTP') || errorMsg.includes('Status:') || errorMsg.includes('Ошибка создания заявки') || errorMsg.includes('Ошибка выполнения вывода')) {
         errorMessage = errorMsg || 'Ошибка сервера. Попробуйте отправить вручную.'
@@ -949,9 +963,21 @@ export default function WithdrawStep5() {
         name: error?.name,
       })
       
-      let errorMessage = 'Ошибка при создании заявки. Попробуйте еще раз.'
       const errorMsg = String(error?.message || '')
       const errorName = error?.name || ''
+      
+      // Игнорируем несущественные ошибки загрузки ресурсов
+      const isNonCriticalError = 
+        errorMsg.includes('Load failed') ||
+        errorMsg.includes('Failed to load') ||
+        (errorName === 'TypeError' && errorMsg.includes('Load'))
+      
+      if (isNonCriticalError) {
+        console.warn('⚠️ Игнорируем несущественную ошибку загрузки ресурса:', errorMsg)
+        return // Не показываем alert для несущественных ошибок
+      }
+      
+      let errorMessage = 'Ошибка при создании заявки. Попробуйте еще раз.'
       
       if (error?.status || errorMsg.includes('HTTP') || errorMsg.includes('Status:') || errorMsg.includes('Ошибка создания заявки') || errorMsg.includes('Ошибка выполнения вывода')) {
         errorMessage = errorMsg || 'Ошибка сервера. Попробуйте еще раз.'
