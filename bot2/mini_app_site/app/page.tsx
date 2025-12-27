@@ -14,13 +14,9 @@ import { ReferralIcon, HistoryIcon, InstructionIcon, SupportIcon } from '../comp
 // Загружаем UserProfile без динамической загрузки для мгновенного отображения
 import UserProfile from '../components/UserProfile'
 
-const RatingBlock = dynamic(() => import('../components/RatingBlock'), {
-  ssr: false
-})
-
-const Achievements = dynamic(() => import('../components/Achievements'), {
-  ssr: false
-})
+// Загружаем компоненты без динамической загрузки для мгновенного отображения
+import RatingBlock from '../components/RatingBlock'
+import Achievements from '../components/Achievements'
 
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)

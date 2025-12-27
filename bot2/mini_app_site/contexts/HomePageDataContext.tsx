@@ -19,7 +19,35 @@ const HomePageDataContext = createContext<HomePageDataContextType | undefined>(u
 
 // Кеш для данных главной страницы
 const dataCache = new Map<string, { data: HomePageData; timestamp: number }>()
-const CACHE_TTL = 30_000 // 30 секунд
+const CACHE_TTL = 120_000 // 120 секунд - увеличили для более быстрой загрузки
+
+// Кеш в sessionStorage для еще более быстрого доступа
+const getSessionCache = (userId: string): HomePageData | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const cacheKey = `homepage_cache_${userId}`
+    const cached = sessionStorage.getItem(cacheKey)
+    if (cached) {
+      const parsed = JSON.parse(cached) as { data: HomePageData; timestamp: number }
+      if (Date.now() - parsed.timestamp < CACHE_TTL) {
+        return parsed.data
+      }
+    }
+  } catch {
+    // Игнорируем ошибки
+  }
+  return null
+}
+
+const setSessionCache = (userId: string, data: HomePageData) => {
+  if (typeof window === 'undefined') return
+  try {
+    const cacheKey = `homepage_cache_${userId}`
+    sessionStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }))
+  } catch {
+    // Игнорируем ошибки quota
+  }
+}
 
 // Глобальное состояние для предотвращения множественных загрузок
 let globalData: HomePageData | null = null
@@ -45,11 +73,22 @@ const loadAllData = async (): Promise<HomePageData> => {
     return emptyData
   }
 
-  // Проверяем кеш
+  // Проверяем кеш (сначала sessionStorage, потом память)
   const cacheKey = `homepage_${userId}`
+  
+  // Проверяем sessionStorage для быстрого доступа
+  const sessionCached = getSessionCache(userId)
+  if (sessionCached && !sessionCached.loading) {
+    globalData = sessionCached
+    dataCache.set(cacheKey, { data: sessionCached, timestamp: Date.now() })
+    return sessionCached
+  }
+  
+  // Проверяем кеш в памяти
   const cached = dataCache.get(cacheKey)
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     globalData = cached.data
+    setSessionCache(userId, cached.data) // Сохраняем в sessionStorage
     return cached.data
   }
 
@@ -58,8 +97,9 @@ const loadAllData = async (): Promise<HomePageData> => {
   loadingPromise = (async () => {
     try {
       // Загружаем все данные параллельно одним запросом
+      // Уменьшаем лимит транзакций для достижений - им не нужны все 1000
       const [transactionsResponse, leaderboardResponse] = await Promise.all([
-        fetch(`${API_URLS.BASE}/api/transaction-history?user_id=${userId}&limit=1000`),
+        fetch(`${API_URLS.BASE}/api/transaction-history?user_id=${userId}&limit=200`),
         fetch(`${API_URLS.LEADERBOARD}?type=deposits&limit=5`),
       ])
 
@@ -79,8 +119,9 @@ const loadAllData = async (): Promise<HomePageData> => {
         loading: false,
       }
 
-      // Сохраняем в кеш и глобально
+      // Сохраняем в кеш (память + sessionStorage) и глобально
       dataCache.set(cacheKey, { data: result, timestamp: Date.now() })
+      setSessionCache(userId, result)
       globalData = result
       
       // Уведомляем всех подписчиков
@@ -112,6 +153,15 @@ const getInitialData = (): HomePageData => {
   const userId = getTelegramUserId()
   if (userId) {
     const cacheKey = `homepage_${userId}`
+    
+    // Проверяем sessionStorage для быстрого доступа
+    const sessionCached = getSessionCache(userId)
+    if (sessionCached && !sessionCached.loading) {
+      globalData = sessionCached
+      return sessionCached
+    }
+    
+    // Проверяем кеш в памяти
     const cached = dataCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       globalData = cached.data
@@ -135,8 +185,16 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     mountedRef.current = true
     
-    // Если данные уже загружены, не делаем ничего
-    if (!data.loading && data.transactions.length > 0) {
+    // Если данные уже загружены из кеша, сразу показываем их и обновляем в фоне
+    if (!data.loading && (data.transactions.length > 0 || data.topPlayers.length > 0)) {
+      // Загружаем свежие данные в фоне без блокировки UI
+      loadAllData().then(result => {
+        if (mountedRef.current) {
+          setData(result)
+        }
+      }).catch(() => {
+        // Игнорируем ошибки фоновой загрузки
+      })
       return
     }
 

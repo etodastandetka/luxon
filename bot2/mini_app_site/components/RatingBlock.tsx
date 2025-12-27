@@ -45,7 +45,8 @@ export default function RatingBlock() {
     }
   }
 
-  if (loading) {
+  // Показываем skeleton только если данных нет и идет загрузка
+  if (loading && topPlayers.length === 0) {
     return (
       <div className="card p-4">
         <div className="animate-pulse space-y-2">
@@ -57,7 +58,8 @@ export default function RatingBlock() {
     )
   }
 
-  if (topPlayers.length === 0) {
+  // Если данных нет, не показываем компонент
+  if (!loading && topPlayers.length === 0) {
     return null
   }
 

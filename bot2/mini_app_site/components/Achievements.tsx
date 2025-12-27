@@ -134,7 +134,8 @@ export default function Achievements() {
       return allAchievements
   }, [transactions, loading])
 
-  if (loading) {
+  // Показываем skeleton только если данных нет и идет загрузка
+  if (loading && achievements.length === 0) {
     return (
       <div className="card p-4">
         <div className="animate-pulse space-y-2">
@@ -143,6 +144,11 @@ export default function Achievements() {
         </div>
       </div>
     )
+  }
+  
+  // Если данных нет, не показываем компонент
+  if (!loading && achievements.length === 0) {
+    return null
   }
 
   const unlockedCount = achievements?.filter(a => a.unlocked).length || 0
