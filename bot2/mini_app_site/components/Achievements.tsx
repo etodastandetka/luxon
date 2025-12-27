@@ -13,11 +13,13 @@ interface Achievement {
   progress: number
   target: number
   unlockedAt?: string
+  instruction?: string // Инструкция как получить достижение
 }
 
 export default function Achievements() {
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null)
 
   useEffect(() => {
     loadAchievements()
@@ -50,7 +52,7 @@ export default function Achievements() {
       const depositCount = deposits.length
       const withdrawalCount = withdrawals.length
       
-      // Определяем достижения
+      // Определяем достижения с инструкциями
       const allAchievements: Achievement[] = [
         {
           id: 'first_deposit',
@@ -60,6 +62,7 @@ export default function Achievements() {
           unlocked: depositCount >= 1,
           progress: Math.min(depositCount, 1),
           target: 1,
+          instruction: 'Перейдите в раздел "Пополнение", выберите способ оплаты и пополните баланс на любую сумму. Достижение откроется автоматически после успешного пополнения.',
         },
         {
           id: 'deposit_10',
@@ -69,6 +72,7 @@ export default function Achievements() {
           unlocked: depositCount >= 10,
           progress: Math.min(depositCount, 10),
           target: 10,
+          instruction: 'Совершите 10 успешных пополнений баланса. Каждое пополнение должно быть завершено со статусом "Успешно" или "Одобрено".',
         },
         {
           id: 'deposit_50',
@@ -78,6 +82,7 @@ export default function Achievements() {
           unlocked: depositCount >= 50,
           progress: Math.min(depositCount, 50),
           target: 50,
+          instruction: 'Совершите 50 успешных пополнений баланса. Это достижение показывает ваш опыт и активность в системе.',
         },
         {
           id: 'deposit_100',
@@ -87,6 +92,7 @@ export default function Achievements() {
           unlocked: depositCount >= 100,
           progress: Math.min(depositCount, 100),
           target: 100,
+          instruction: 'Совершите 100 успешных пополнений баланса. Это высшее достижение для самых активных игроков!',
         },
         {
           id: 'total_10k',
@@ -96,6 +102,7 @@ export default function Achievements() {
           unlocked: totalDeposits >= 10000,
           progress: Math.min(totalDeposits, 10000),
           target: 10000,
+          instruction: 'Накопите общую сумму пополнений в размере 10,000 сом. Сумма считается по всем успешным пополнениям. Можно пополнять баланс несколько раз.',
         },
         {
           id: 'total_50k',
@@ -105,6 +112,7 @@ export default function Achievements() {
           unlocked: totalDeposits >= 50000,
           progress: Math.min(totalDeposits, 50000),
           target: 50000,
+          instruction: 'Накопите общую сумму пополнений в размере 50,000 сом. Это элитный клуб для самых щедрых игроков!',
         },
         {
           id: 'first_withdraw',
@@ -114,6 +122,7 @@ export default function Achievements() {
           unlocked: withdrawalCount >= 1,
           progress: Math.min(withdrawalCount, 1),
           target: 1,
+          instruction: 'Перейдите в раздел "Вывод", укажите сумму и реквизиты для вывода. Достижение откроется после успешного вывода средств.',
         },
         {
           id: 'withdraw_10',
@@ -123,6 +132,7 @@ export default function Achievements() {
           unlocked: withdrawalCount >= 10,
           progress: Math.min(withdrawalCount, 10),
           target: 10,
+          instruction: 'Совершите 10 успешных выводов средств. Каждый вывод должен быть завершен со статусом "Успешно" или "Одобрено".',
         },
         {
           id: 'total_withdraw_50k',
@@ -132,6 +142,7 @@ export default function Achievements() {
           unlocked: totalWithdrawals >= 50000,
           progress: Math.min(totalWithdrawals, 50000),
           target: 50000,
+          instruction: 'Выведите общую сумму в размере 50,000 сом. Сумма считается по всем успешным выводам. Можно выводить средства несколько раз.',
         },
       ]
       
@@ -169,10 +180,11 @@ export default function Achievements() {
         {achievements.map((achievement) => (
           <div
             key={achievement.id}
-            className={`p-3 rounded-lg border ${
+            onClick={() => setSelectedAchievement(achievement)}
+            className={`p-3 rounded-lg border cursor-pointer transition-all ${
               achievement.unlocked
-                ? 'bg-green-500/10 border-green-500/30'
-                : 'bg-white/5 border-white/10 opacity-60'
+                ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20'
+                : 'bg-white/5 border-white/10 opacity-60 hover:opacity-80'
             }`}
           >
             <div className="flex items-center gap-2 mb-1">
@@ -204,6 +216,74 @@ export default function Achievements() {
           </div>
         ))}
       </div>
+
+      {/* Модальное окно с инструкцией */}
+      {selectedAchievement && (
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedAchievement(null)}
+        >
+          <div 
+            className="card p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-4xl">{selectedAchievement.icon}</span>
+                <div>
+                  <h3 className="text-xl font-bold text-white">{selectedAchievement.title}</h3>
+                  <p className="text-sm text-white/70">{selectedAchievement.description}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedAchievement(null)}
+                className="text-white/50 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-4">
+              {selectedAchievement.unlocked ? (
+                <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-green-400">
+                    <span className="text-xl">✓</span>
+                    <span className="font-semibold">Достижение получено!</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-3">
+                  <div className="text-blue-400 font-semibold mb-2">Прогресс</div>
+                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden mb-2">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-300"
+                      style={{ width: `${(selectedAchievement.progress / selectedAchievement.target) * 100}%` }}
+                    />
+                  </div>
+                  <div className="text-sm text-white/70">
+                    {selectedAchievement.progress} / {selectedAchievement.target}
+                    {selectedAchievement.id.includes('total_') || selectedAchievement.id.includes('withdraw_50k') ? ' сом' : ''}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white/5 rounded-lg p-4">
+              <h4 className="text-white font-semibold mb-2">📖 Как получить:</h4>
+              <p className="text-white/80 text-sm leading-relaxed">
+                {selectedAchievement.instruction || selectedAchievement.description}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setSelectedAchievement(null)}
+              className="w-full mt-4 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors"
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
