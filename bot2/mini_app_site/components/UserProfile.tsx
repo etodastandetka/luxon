@@ -25,10 +25,10 @@ export default function UserProfile() {
   const { language } = useLanguage()
   const statsLoadedRef = useRef(false)
 
-  // Загружаем пользователя сразу (синхронно)
+  // Загружаем пользователя синхронно при первом рендере для мгновенного отображения
   useEffect(() => {
     const telegramUser = getTelegramUser()
-    if (telegramUser) {
+    if (telegramUser && !user) {
       setUser(telegramUser)
       // Загружаем статистику в фоне, не блокируя рендер
       loadStats(telegramUser.id)
@@ -114,13 +114,17 @@ export default function UserProfile() {
 
   const t = translations[language as keyof typeof translations] || translations.ru
 
+  // Получаем пользователя синхронно для мгновенного отображения
+  const telegramUser = getTelegramUser()
+  const displayUser = user || telegramUser
+  
   // Показываем профиль сразу, даже если статистика еще загружается
-  if (!user) {
+  if (!displayUser) {
     return null
   }
 
   // Получаем аватарку пользователя (если есть)
-  const avatarUrl = user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name + (user.last_name || ''))}&background=22c55e&color=fff&size=128`
+  const avatarUrl = displayUser.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayUser.first_name + (displayUser.last_name || ''))}&background=22c55e&color=fff&size=128`
 
   return (
     <div 
@@ -131,15 +135,15 @@ export default function UserProfile() {
         {/* Аватарка */}
         <div className="relative">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden profile-avatar-3d">
-            {user.photo_url ? (
+            {displayUser.photo_url ? (
               <img 
                 src={avatarUrl} 
-                alt={user.first_name}
+                alt={displayUser.first_name}
                 className="w-full h-full object-cover"
               />
             ) : (
               <span className="text-2xl font-bold text-white">
-                {user.first_name?.[0]?.toUpperCase() || 'U'}
+                {displayUser.first_name?.[0]?.toUpperCase() || 'U'}
               </span>
             )}
           </div>
@@ -150,14 +154,14 @@ export default function UserProfile() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
             <h3 className="text-lg font-bold text-white truncate">
-              {user.first_name} {user.last_name || ''}
+              {displayUser.first_name} {displayUser.last_name || ''}
             </h3>
-            {user.is_premium && (
+            {displayUser.is_premium && (
               <PremiumIcon className="w-5 h-5 text-yellow-400" />
             )}
           </div>
-          {user.username && (
-            <p className="text-sm text-white/60 truncate">@{user.username}</p>
+          {displayUser.username && (
+            <p className="text-sm text-white/60 truncate">@{displayUser.username}</p>
           )}
           
           {/* Статистика */}

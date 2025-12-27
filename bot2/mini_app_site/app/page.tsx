@@ -18,9 +18,8 @@ const VideoModal = dynamic(() => import('../components/VideoModal'), {
   ssr: false
 })
 
-const UserProfile = dynamic(() => import('../components/UserProfile'), {
-  ssr: false
-})
+// Загружаем UserProfile без динамической загрузки для мгновенного отображения
+import UserProfile from '../components/UserProfile'
 
 const RatingBlock = dynamic(() => import('../components/RatingBlock'), {
   ssr: false
