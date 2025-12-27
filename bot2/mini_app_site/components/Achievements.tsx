@@ -45,8 +45,8 @@ export default function Achievements() {
       const deposits = successful.filter((t: any) => t.type === 'deposit')
       const withdrawals = successful.filter((t: any) => t.type === 'withdraw')
       
-      const totalDeposits = deposits.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
-      const totalWithdrawals = withdrawals.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
+      const totalDeposits = Math.round(deposits.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) * 100) / 100
+      const totalWithdrawals = Math.round(withdrawals.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) * 100) / 100
       const depositCount = deposits.length
       const withdrawalCount = withdrawals.length
       
@@ -105,15 +105,6 @@ export default function Achievements() {
           unlocked: totalDeposits >= 50000,
           progress: Math.min(totalDeposits, 50000),
           target: 50000,
-        },
-        {
-          id: 'total_100k',
-          title: '100K клуб',
-          description: 'Пополнить на 100,000 сом',
-          icon: '💍',
-          unlocked: totalDeposits >= 100000,
-          progress: Math.min(totalDeposits, 100000),
-          target: 100000,
         },
         {
           id: 'first_withdraw',

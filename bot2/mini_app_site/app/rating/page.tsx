@@ -6,6 +6,7 @@ import { getTelegramUserId } from '../../utils/telegram'
 import { getApiBase } from '../../utils/fetch'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
+import { DiamondIcon, GoldIcon, SilverIcon, BronzeIcon, IronIcon } from '../../components/Icons'
 
 interface LeaderboardUser {
   userId: string
@@ -50,11 +51,13 @@ export default function RatingPage() {
   // Определяем ранг на основе суммы (перемещено выше для использования)
   const getRankByAmount = (amount: number): { rank: string; nextRank: string; nextAmount: number } => {
     // Пороги для рангов (можно настроить)
-    if (amount >= 100000) return { rank: 'diamond', nextRank: 'diamond', nextAmount: amount }
-    if (amount >= 50000) return { rank: 'gold', nextRank: 'diamond', nextAmount: 100000 }
-    if (amount >= 25000) return { rank: 'silver', nextRank: 'gold', nextAmount: 50000 }
-    if (amount >= 10000) return { rank: 'bronze', nextRank: 'silver', nextAmount: 25000 }
-    return { rank: 'iron', nextRank: 'bronze', nextAmount: 10000 }
+    // Округляем amount до 2 знаков после запятой
+    const roundedAmount = Math.round(amount * 100) / 100
+    if (roundedAmount >= 50000) return { rank: 'diamond', nextRank: 'diamond', nextAmount: roundedAmount }
+    if (roundedAmount >= 25000) return { rank: 'gold', nextRank: 'diamond', nextAmount: 50000 }
+    if (roundedAmount >= 10000) return { rank: 'silver', nextRank: 'gold', nextAmount: 25000 }
+    if (roundedAmount >= 5000) return { rank: 'bronze', nextRank: 'silver', nextAmount: 10000 }
+    return { rank: 'iron', nextRank: 'bronze', nextAmount: 5000 }
   }
 
   // Загружаем сравнение с друзьями (перемещено выше для использования)
@@ -70,8 +73,8 @@ export default function RatingPage() {
         const referrals = referralData.referrals.slice(0, 5) // Топ 5 рефералов
         const friendsList: FriendComparison[] = []
         
-        // Получаем статистику каждого реферала
-        for (const ref of referrals) {
+        // Параллельно загружаем статистику всех рефералов для ускорения
+        const refStatsPromises = referrals.map(async (ref: any) => {
           try {
             const refStatsResponse = await fetch(`${apiUrl}/api/transaction-history?user_id=${ref.referred_id}`)
             const refStatsData = await refStatsResponse.json()
@@ -84,21 +87,24 @@ export default function RatingPage() {
               return isSuccess
             })
             
-            const refTotal = filtered.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
-            const difference = Math.abs(userTotal - refTotal)
+            const refTotal = Math.round(filtered.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) * 100) / 100
+            const difference = Math.round(Math.abs(userTotal - refTotal) * 100) / 100
             const isAhead = userTotal > refTotal
             
-            friendsList.push({
+            return {
               userId: ref.referred_id.toString(),
               displayName: ref.displayName || (ref.referred_username ? `@${ref.referred_username}` : `Игрок #${ref.referred_id}`),
               totalAmount: refTotal,
               isAhead,
               difference,
-            })
+            }
           } catch (e) {
-            // Игнорируем ошибки для отдельных рефералов
+            return null
           }
-        }
+        })
+        
+        const friendsResults = await Promise.all(refStatsPromises)
+        friendsList.push(...friendsResults.filter((f): f is FriendComparison => f !== null))
         
         // Сортируем по разнице
         friendsList.sort((a, b) => b.difference - a.difference)
@@ -132,13 +138,14 @@ export default function RatingPage() {
           if (userIndex !== -1) {
             // Пользователь в топе
             setUserRank(userIndex + 1)
-            setUserTotal(data.data.leaderboard[userIndex].totalAmount)
+            const userAmount = Math.round(data.data.leaderboard[userIndex].totalAmount * 100) / 100
+            setUserTotal(userAmount)
             
             // Вычисляем прогресс до следующего ранга
-            const rankInfo = getRankByAmount(data.data.leaderboard[userIndex].totalAmount)
-            const remaining = Math.max(0, rankInfo.nextAmount - data.data.leaderboard[userIndex].totalAmount)
-            const progress = rankInfo.nextAmount > data.data.leaderboard[userIndex].totalAmount 
-              ? (data.data.leaderboard[userIndex].totalAmount / rankInfo.nextAmount) * 100 
+            const rankInfo = getRankByAmount(userAmount)
+            const remaining = Math.round(Math.max(0, rankInfo.nextAmount - userAmount) * 100) / 100
+            const progress = rankInfo.nextAmount > userAmount 
+              ? (userAmount / rankInfo.nextAmount) * 100 
               : 100
             
             setProgressInfo({
@@ -165,13 +172,13 @@ export default function RatingPage() {
               return isSuccess
             })
             
-            const total = filtered.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
+            const total = Math.round(filtered.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) * 100) / 100
             setUserTotal(total)
             setUserRank(null) // Не в топе
             
             // Вычисляем прогресс до следующего ранга
             const rankInfo = getRankByAmount(total)
-            const remaining = Math.max(0, rankInfo.nextAmount - total)
+            const remaining = Math.round(Math.max(0, rankInfo.nextAmount - total) * 100) / 100
             const progress = rankInfo.nextAmount > total 
               ? (total / rankInfo.nextAmount) * 100 
               : 100
@@ -198,17 +205,18 @@ export default function RatingPage() {
   }
 
   const getRankIcon = (rankType: string) => {
+    const iconClass = "w-5 h-5"
     switch (rankType) {
       case 'diamond':
-        return '💎'
+        return <DiamondIcon className={iconClass} />
       case 'gold':
-        return '🥇'
+        return <GoldIcon className={iconClass} />
       case 'silver':
-        return '🥈'
+        return <SilverIcon className={iconClass} />
       case 'bronze':
-        return '🥉'
+        return <BronzeIcon className={iconClass} />
       default:
-        return '⭐'
+        return <IronIcon className={iconClass} />
     }
   }
 
@@ -322,11 +330,12 @@ export default function RatingPage() {
           <div className="mb-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-white/70">{t.progressToNext}</span>
-              <span className={`text-sm font-bold ${getRankColor(progressInfo.nextRank)}`}>
-                {getRankIcon(progressInfo.nextRank)} {progressInfo.nextRank === 'diamond' ? 'Алмаз' :
+              <span className={`text-sm font-bold flex items-center gap-1 ${getRankColor(progressInfo.nextRank)}`}>
+                {getRankIcon(progressInfo.nextRank)}
+                <span>{progressInfo.nextRank === 'diamond' ? 'Алмаз' :
                  progressInfo.nextRank === 'gold' ? 'Золото' :
                  progressInfo.nextRank === 'silver' ? 'Серебро' :
-                 progressInfo.nextRank === 'bronze' ? 'Бронза' : 'Железо'}
+                 progressInfo.nextRank === 'bronze' ? 'Бронза' : 'Железо'}</span>
               </span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
@@ -337,10 +346,10 @@ export default function RatingPage() {
             </div>
             <div className="flex items-center justify-between mt-2">
               <span className="text-xs text-white/50">
-                {progressInfo.currentAmount.toLocaleString('ru-RU')} / {progressInfo.nextRankAmount.toLocaleString('ru-RU')} сом
+                {(Math.round(progressInfo.currentAmount * 100) / 100).toLocaleString('ru-RU')} / {(Math.round(progressInfo.nextRankAmount * 100) / 100).toLocaleString('ru-RU')} сом
               </span>
               <span className="text-xs font-semibold text-green-400">
-                {t.remaining}: {progressInfo.remaining.toLocaleString('ru-RU')} сом
+                {t.remaining}: {(Math.round(progressInfo.remaining * 100) / 100).toLocaleString('ru-RU')} сом
               </span>
             </div>
           </div>
@@ -354,7 +363,7 @@ export default function RatingPage() {
             <div className="text-lg font-semibold text-white mb-1">{t.yourRank}</div>
             <div className="text-3xl font-bold text-purple-400">#{userRank}</div>
             <div className="text-sm text-white/70 mt-2">
-              {userTotal.toLocaleString('ru-RU')} сом
+              {(Math.round(userTotal * 100) / 100).toLocaleString('ru-RU')} сом
             </div>
           </div>
         </div>
@@ -389,7 +398,7 @@ export default function RatingPage() {
                       {friend.isAhead ? t.youAhead : t.aheadOfYou}
                     </div>
                     <div className="text-xs text-white/50">
-                      {t.by} {friend.difference.toLocaleString('ru-RU')} сом
+                      {t.by} {(Math.round(friend.difference * 100) / 100).toLocaleString('ru-RU')} сом
                     </div>
                   </div>
                 </div>
@@ -421,7 +430,7 @@ export default function RatingPage() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`text-2xl ${getRankColor(user.rankType)}`}>
+                  <div className={getRankColor(user.rankType)}>
                     {getRankIcon(user.rankType)}
                   </div>
                   <div>
@@ -431,7 +440,7 @@ export default function RatingPage() {
                 </div>
                 <div className="text-right">
                   <div className={`font-bold ${getRankColor(user.rankType)}`}>
-                    {user.totalAmount.toLocaleString('ru-RU')} сом
+                    {(Math.round(user.totalAmount * 100) / 100).toLocaleString('ru-RU')} сом
                   </div>
                   <div className="text-xs text-white/50">
                     {user.transactionCount} {t.transactions}
