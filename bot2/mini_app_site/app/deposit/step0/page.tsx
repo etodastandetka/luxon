@@ -2,34 +2,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
-import VideoModal from '../../../components/VideoModal'
+// Видео компоненты удалены
 import { useLanguage } from '../../../components/LanguageContext'
 
 export default function DepositStep0() {
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
-  const [depositVideoUrl, setDepositVideoUrl] = useState<string>('')
-
-  // Загружаем видео URL из API
-  useEffect(() => {
-    const fetchVideoUrl = async () => {
-      try {
-        const response = await fetch('/api/video-instructions', { cache: 'no-store' })
-        const data = await response.json()
-        
-        if (data.success && data.data?.deposit_video_url) {
-          setDepositVideoUrl(data.data.deposit_video_url)
-        } else {
-          setDepositVideoUrl('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
-        }
-      } catch (error) {
-        console.error('Failed to fetch video URL:', error)
-        setDepositVideoUrl('https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
-      }
-    }
-    
-    fetchVideoUrl()
-  }, [])
+  // Видео инструкции удалены
   const router = useRouter()
   const { language } = useLanguage()
 
@@ -188,19 +166,6 @@ export default function DepositStep0() {
             </button>
           </div>
           
-          {/* Кнопка "Как пополнить" */}
-          <button
-            onClick={() => setIsVideoModalOpen(true)}
-            className="w-full btn btn-ghost p-4 border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors"
-          >
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-semibold">{t.watchVideo}</span>
-            </div>
-          </button>
 
         <div className="flex gap-2">
           <button 
@@ -219,13 +184,6 @@ export default function DepositStep0() {
         </div>
       </div>
 
-      {/* Модальное окно с видео */}
-      <VideoModal
-        isOpen={isVideoModalOpen}
-        onClose={() => setIsVideoModalOpen(false)}
-        videoSrc={depositVideoUrl || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view'}
-        title={t.howToDeposit}
-      />
     </main>
   )
 }

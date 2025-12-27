@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
-import VideoModal from '../../../components/VideoModal'
+// Видео компоненты удалены
 import { useRouter } from 'next/navigation'
 import BookmakerGrid from '../../../components/BookmakerGrid'
 import PageTransition from '../../../components/PageTransition'
@@ -14,8 +14,7 @@ export default function WithdrawStep0() {
   const [bookmaker, setBookmaker] = useState<string>('')
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
-  const [withdrawVideoUrl, setWithdrawVideoUrl] = useState<string>('')
+  // Видео инструкции удалены
 
   const translations = {
     ru: {
@@ -82,27 +81,7 @@ export default function WithdrawStep0() {
     checkSettings()
   }, [])
 
-  // Загружаем видео URL из API
-  useEffect(() => {
-    const fetchVideoUrl = async () => {
-      try {
-        const base = getApiBase()
-        const response = await fetch(`${base}/api/public/video-instructions`, { cache: 'no-store' })
-        const data = await response.json()
-        
-        if (data.success && data.data?.withdraw_video_url) {
-          setWithdrawVideoUrl(data.data.withdraw_video_url)
-        } else {
-          setWithdrawVideoUrl('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
-        }
-      } catch (error) {
-        console.error('Failed to fetch video URL:', error)
-        setWithdrawVideoUrl('https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
-      }
-    }
-    
-    fetchVideoUrl()
-  }, [])
+  // Видео инструкции удалены
 
   useEffect(() => {
     // Загружаем сохраненный букмекер, если есть
@@ -177,19 +156,6 @@ export default function WithdrawStep0() {
         />
       </section>
 
-      {/* Кнопка "Как вывести" */}
-      <button
-        onClick={() => setIsVideoModalOpen(true)}
-        className="w-full card btn btn-ghost p-4 border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors"
-      >
-        <div className="flex items-center justify-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="font-semibold">{t.watchVideo}</span>
-        </div>
-      </button>
 
       <div className="flex gap-3">
         <button 
@@ -207,13 +173,6 @@ export default function WithdrawStep0() {
         </button>
       </div>
 
-      {/* Модальное окно с видео */}
-      <VideoModal
-        isOpen={isVideoModalOpen}
-        onClose={() => setIsVideoModalOpen(false)}
-        videoSrc={withdrawVideoUrl || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'}
-        title={t.howToWithdraw}
-      />
     </main>
   )
 }

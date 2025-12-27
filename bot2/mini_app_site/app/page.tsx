@@ -9,14 +9,7 @@ import { initTelegramWebApp, syncWithBot, TelegramUser } from '../utils/telegram
 import { useHomePageData } from '../hooks/useHomePageData'
 import { ReferralIcon, HistoryIcon, InstructionIcon, SupportIcon } from '../components/Icons'
 
-// Загружаем компоненты динамически без лоадеров для мгновенного отображения
-const BannerCarousel = dynamic(() => import('../components/BannerCarousel'), {
-  ssr: false
-})
-
-const VideoModal = dynamic(() => import('../components/VideoModal'), {
-  ssr: false
-})
+// Видео компоненты удалены - не используются
 
 // Загружаем UserProfile без динамической загрузки для мгновенного отображения
 import UserProfile from '../components/UserProfile'
@@ -31,11 +24,6 @@ const Achievements = dynamic(() => import('../components/Achievements'), {
 
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
-  const [selectedVideo, setSelectedVideo] = useState<string>('')
-  const [videoTitle, setVideoTitle] = useState<string>('')
-  const [depositVideoUrl, setDepositVideoUrl] = useState<string>('')
-  const [withdrawVideoUrl, setWithdrawVideoUrl] = useState<string>('')
   const [userStats, setUserStats] = useState<{deposits: number, withdraws: number} | null>(null)
   const { language } = useLanguage()
   const { loading: settingsLoading } = useBotSettings()
@@ -86,72 +74,7 @@ export default function HomePage() {
     setUserStats(stats)
   }, [transactions])
 
-  // Загружаем видео URL из API (кешируем чтобы не дергать на каждый заход)
-  useEffect(() => {
-    let cancelled = false
-    const CACHE_TTL = 10 * 60 * 1000 // 10 минут
-    const cacheKey = 'video_instructions_cache_v1'
-
-    const applyVideos = (deposit: string, withdraw: string) => {
-      if (!cancelled) {
-        setDepositVideoUrl(deposit)
-        setWithdrawVideoUrl(withdraw)
-      }
-    }
-
-    if (typeof window !== 'undefined') {
-      try {
-        const cachedRaw = sessionStorage.getItem(cacheKey)
-        if (cachedRaw) {
-          const cached = JSON.parse(cachedRaw) as { deposit: string; withdraw: string; ts: number }
-          if (Date.now() - cached.ts < CACHE_TTL) {
-            applyVideos(
-              cached.deposit || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
-              cached.withdraw || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'
-            )
-            return
-          }
-        }
-      } catch {
-        // ignore cache read errors
-      }
-    }
-
-    const fetchVideoUrls = async () => {
-      try {
-        const response = await fetch('/api/video-instructions', { cache: 'no-store' })
-        const data = await response.json()
-        
-        if (data.success && data.data) {
-          const deposit = data.data.deposit_video_url || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view'
-          const withdraw = data.data.withdraw_video_url || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'
-          applyVideos(deposit, withdraw)
-          if (typeof window !== 'undefined') {
-            try {
-              sessionStorage.setItem(cacheKey, JSON.stringify({ deposit, withdraw, ts: Date.now() }))
-            } catch {
-              // ignore quota errors
-            }
-          }
-          return
-        }
-      } catch (error) {
-        console.error('Failed to fetch video instructions:', error)
-      }
-
-      // Фоллбек
-      applyVideos(
-        'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
-        'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view'
-      )
-    }
-    
-    fetchVideoUrls()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  // Видео инструкции удалены - не используются
 
 
   const translations = {
@@ -251,8 +174,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Баннеры розыгрышей */}
-      <BannerCarousel />
       
       {/* Сервисы - банковский стиль */}
       <div className="space-y-3">
@@ -311,49 +232,6 @@ export default function HomePage() {
       {/* Достижения */}
       <Achievements />
 
-      {/* Видео инструкции */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => {
-            setSelectedVideo(depositVideoUrl || 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view')
-            setVideoTitle(t.howToDeposit)
-            setIsVideoModalOpen(true)
-          }}
-          className="card btn btn-ghost text-center p-4 service-card-3d hover:scale-105 transition-transform"
-        >
-          <div className="font-semibold text-sm flex flex-col items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{t.howToDeposit}</span>
-          </div>
-        </button>
-        <button
-          onClick={() => {
-            setSelectedVideo(withdrawVideoUrl || 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view')
-            setVideoTitle(t.howToWithdraw)
-            setIsVideoModalOpen(true)
-          }}
-          className="card btn btn-ghost text-center p-4 service-card-3d hover:scale-105 transition-transform"
-        >
-          <div className="font-semibold text-sm flex flex-col items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{t.howToWithdraw}</span>
-          </div>
-        </button>
-      </div>
-
-      {/* Модальное окно с видео */}
-      <VideoModal
-        isOpen={isVideoModalOpen}
-        onClose={() => setIsVideoModalOpen(false)}
-        videoSrc={selectedVideo}
-        title={videoTitle || t.howToDeposit}
-      />
     </main>
   )
 }
