@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { createApiResponse } from '@/lib/api-helpers'
 
 interface AckItem {
   id: number
@@ -17,7 +18,10 @@ const requireTokenIfSet = (req: NextRequest) => {
 export async function POST(request: NextRequest) {
   try {
     if (!requireTokenIfSet(request)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        createApiResponse(null, 'Unauthorized'),
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
@@ -25,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'messages array is required' },
+        createApiResponse(null, 'messages array is required'),
         { status: 400 }
       )
     }
@@ -57,11 +61,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json(createApiResponse(null, undefined, 'Acknowledged'))
   } catch (error: any) {
     console.error('Operator outbox ack API error:', error)
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to ack outbox' },
+      createApiResponse(null, error.message || 'Failed to ack outbox'),
       { status: 500 }
     )
   }

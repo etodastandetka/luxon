@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createInvoice, getExchangeRates } from '@/lib/crypto-pay'
+import { createApiResponse } from '@/lib/api-helpers'
 // @ts-ignore - @koo0ki/send types may not be available
 import { CryptoPayClient, Networks } from "@koo0ki/send"
 
@@ -21,18 +22,27 @@ export async function POST(request: NextRequest) {
 
     // Пользователь вводит сумму в долларах (USD)
     if (!amountUsd) {
-      return NextResponse.json({ error: 'amountUsd is required' }, { status: 400 })
+      return NextResponse.json(
+        createApiResponse(null, 'amountUsd is required'),
+        { status: 400 }
+      )
     }
 
     const amountUsdNum = parseFloat(amountUsd)
 
     // Валидация суммы в долларах
     if (isNaN(amountUsdNum) || amountUsdNum < 1) {
-      return NextResponse.json({ error: 'Минимальная сумма: $1 USD' }, { status: 400 })
+      return NextResponse.json(
+        createApiResponse(null, 'Минимальная сумма: $1 USD'),
+        { status: 400 }
+      )
     }
     
     if (amountUsdNum > 1000) {
-      return NextResponse.json({ error: 'Максимальная сумма: $1000 USD' }, { status: 400 })
+      return NextResponse.json(
+        createApiResponse(null, 'Максимальная сумма: $1000 USD'),
+        { status: 400 }
+      )
     }
 
     // Получаем курсы валют
@@ -193,7 +203,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!invoice) {
-      return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 })
+      return NextResponse.json(
+        createApiResponse(null, 'Failed to create invoice'),
+        { status: 500 }
+      )
     }
 
     // Адаптируем ответ под формат, который ожидает клиент

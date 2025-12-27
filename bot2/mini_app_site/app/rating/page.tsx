@@ -6,6 +6,7 @@ import { getTelegramUserId } from '../../utils/telegram'
 import { getApiBase } from '../../utils/fetch'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
+import { logger } from '../../lib/logger'
 
 interface LeaderboardUser {
   userId: string
@@ -132,7 +133,7 @@ export default function RatingPage() {
         }
       }
     } catch (error) {
-      console.error('Error loading leaderboard:', error)
+      logger.error('Error loading leaderboard:', error)
     } finally {
       setLoading(false)
     }
@@ -183,50 +184,16 @@ export default function RatingPage() {
     try {
       const apiUrl = getApiBase()
       
-      // Получаем данные рефералов
-      const referralResponse = await fetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`)
-      const referralData = await referralResponse.json()
+      // Получаем данные рефералов через API users для получения списка рефералов
+      // API referral-data не возвращает список рефералов, только статистику
+      // Используем альтернативный подход - получаем топ игроков и сравниваем
+      // Для сравнения с друзьями нужно использовать другой endpoint или логику
       
-      if (referralData.success && referralData.referrals) {
-        const referrals = referralData.referrals.slice(0, 5) // Топ 5 рефералов
-        const friendsList: FriendComparison[] = []
-        
-        // Получаем статистику каждого реферала
-        for (const ref of referrals) {
-          try {
-            const refStatsResponse = await fetch(`${apiUrl}/api/transaction-history?user_id=${ref.referred_id}`)
-            const refStatsData = await refStatsResponse.json()
-            const transactions = refStatsData.data?.transactions || refStatsData.transactions || []
-            
-            const filtered = transactions.filter((t: any) => {
-              const isSuccess = t.status === 'completed' || t.status === 'approved'
-              if (activeTab === 'deposits') return isSuccess && t.type === 'deposit'
-              if (activeTab === 'withdrawals') return isSuccess && t.type === 'withdraw'
-              return isSuccess
-            })
-            
-            const refTotal = filtered.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
-            const difference = Math.abs(userTotal - refTotal)
-            const isAhead = userTotal > refTotal
-            
-            friendsList.push({
-              userId: ref.referred_id.toString(),
-              displayName: ref.referred_username ? `@${ref.referred_username}` : `Игрок #${ref.referred_id}`,
-              totalAmount: refTotal,
-              isAhead,
-              difference,
-            })
-          } catch (e) {
-            // Игнорируем ошибки для отдельных рефералов
-          }
-        }
-        
-        // Сортируем по разнице
-        friendsList.sort((a, b) => b.difference - a.difference)
-        setFriends(friendsList)
-      }
+      // Временно отключаем сравнение с друзьями, т.к. API не предоставляет список рефералов
+      // Можно добавить отдельный endpoint для получения списка рефералов с их статистикой
+      setFriends([])
     } catch (error) {
-      console.error('Error loading friends comparison:', error)
+      logger.error('Error loading friends comparison:', error)
     }
   }
 
