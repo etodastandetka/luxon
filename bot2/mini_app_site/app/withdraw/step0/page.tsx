@@ -75,7 +75,7 @@ export default function WithdrawStep0() {
           setDisabledCasinos(disabled)
         }
       } catch (error) {
-        console.error('Ошибка загрузки настроек:', error)
+        // Игнорируем ошибки
       }
     }
     checkSettings()
@@ -92,7 +92,6 @@ export default function WithdrawStep0() {
   }, [])
 
   const handleBookmakerChange = (key: string) => {
-    console.log('Bookmaker selected:', key)
     setBookmaker(key)
   }
 
@@ -102,16 +101,12 @@ export default function WithdrawStep0() {
       e.stopPropagation()
     }
     
-    console.log('Current bookmaker:', bookmaker)
     if (!bookmaker) {
       alert('Выберите букмекера')
       return
     }
     
-    // Сохраняем выбор букмекера
     localStorage.setItem('withdraw_bookmaker', bookmaker)
-    
-    console.log('Navigating to /withdraw/step1')
     router.push('/withdraw/step1')
   }
 

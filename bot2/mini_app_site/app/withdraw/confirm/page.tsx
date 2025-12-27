@@ -19,50 +19,58 @@ export default function WithdrawConfirm() {
   const router = useRouter()
 
   useEffect(() => {
-    // Перенаправляем на step5
-    router.push('/withdraw/step5')
+    // Загружаем данные из localStorage
+    const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
+    const savedBank = localStorage.getItem('withdraw_bank')
+    const savedQrPhoto = localStorage.getItem('withdraw_qr_photo')
+    const savedPhone = localStorage.getItem('withdraw_phone')
+    const savedUserId = localStorage.getItem('withdraw_user_id')
+    const savedSiteCode = localStorage.getItem('withdraw_site_code')
+    const savedAmount = localStorage.getItem('withdraw_amount')
+    
+    // Проверяем, что все данные есть
+    if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone || !savedUserId || !savedSiteCode || !savedAmount) {
+      // Если данных нет, перенаправляем на step5
+      router.push('/withdraw/step5')
+      return
+    }
+    
+    // Загружаем данные в state
+    setBookmaker(savedBookmaker)
+    setBank(savedBank)
+    setQrPhoto(savedQrPhoto)
+    setPhone(savedPhone)
+    setUserId(savedUserId)
+    setSiteCode(savedSiteCode)
+    
+    const amount = parseFloat(savedAmount)
+    if (!isNaN(amount) && amount > 0) {
+      setWithdrawAmount(amount)
+    } else {
+      // Если сумма невалидна, перенаправляем на step5
+      router.push('/withdraw/step5')
+    }
   }, [router])
 
 
   const handleConfirm = async () => {
     // Защита от повторных кликов
     if (isSubmitting) {
-      console.log('[Withdraw Confirm] ⚠️ Запрос уже отправляется, игнорируем повторный клик')
       return
     }
 
     setIsSubmitting(true)
     
     try {
-      // Получаем данные из localStorage
-      const bookmaker = localStorage.getItem('withdraw_bookmaker') || ''
-      const amountStr = localStorage.getItem('withdraw_amount') || '0'
-      
-      console.log('[Withdraw Confirm] Данные из localStorage:', {
-        bookmaker,
-        amountStr,
-        userId,
-        phone,
-        bank,
-        siteCode
-      })
-      
-      // Проверяем, что сумма валидна
-      const amount = parseFloat(amountStr)
-      if (isNaN(amount) || amount <= 0) {
-        console.error('[Withdraw Confirm] ❌ Невалидная сумма:', amountStr)
-        alert(`Ошибка: невалидная сумма вывода (${amountStr}). Вернитесь на предыдущий шаг и проверьте код.`)
+      // Используем данные из state (уже загружены из localStorage в useEffect)
+      if (!bookmaker || !withdrawAmount || withdrawAmount <= 0 || !userId || !phone || !bank || !siteCode) {
+        alert('Не все данные заполнены. Вернитесь на предыдущий шаг.')
+        router.push('/withdraw/step5')
+        setIsSubmitting(false)
         return
       }
       
-      // Проверяем, что все данные заполнены
-      if (!bookmaker || !amountStr || amountStr === '0' || !userId || !phone || !bank || !siteCode) {
-        console.error('[Withdraw Confirm] ❌ Не все поля заполнены')
-        alert('Не все поля заполнены. Проверьте данные.')
-        return
-      }
-      
-      console.log('[Withdraw Confirm] ✅ Все данные валидны, сумма:', amount, 'тип:', typeof amount)
+      const amount = withdrawAmount
 
       const base =
         typeof window === 'undefined'
@@ -74,7 +82,6 @@ export default function WithdrawConfirm() {
       // Для 888starz вывод уже выполнен на step5 (Payout сразу выполняет вывод)
       const normalizedBookmaker = bookmaker.toLowerCase()
       if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
-        console.log('🔄 Выполняем вывод для 1xbet перед созданием заявки...')
         
         const withdrawResponse = await safeFetch(`${base}/api/withdraw-execute`, {
           method: 'POST',
@@ -92,27 +99,16 @@ export default function WithdrawConfirm() {
           retryDelay: 1000
         })
 
-        console.log('📥 Ответ от withdraw-execute:', {
-          status: withdrawResponse.status,
-          statusText: withdrawResponse.statusText,
-          ok: withdrawResponse.ok
-        })
 
         // Читаем ответ один раз
         let withdrawResponseText = ''
         try {
           withdrawResponseText = await withdrawResponse.text()
         } catch (e) {
-          console.error('❌ Ошибка чтения ответа withdraw-execute:', e)
           throw new Error(`Ошибка чтения ответа: ${withdrawResponse.status}`)
         }
 
         if (!withdrawResponse.ok) {
-          console.error('❌ Ошибка выполнения вывода:', {
-            status: withdrawResponse.status,
-            statusText: withdrawResponse.statusText,
-            responseText: withdrawResponseText.substring(0, 500)
-          })
           
           // Пробуем распарсить ошибку
           let errorData: any = null
@@ -136,22 +132,18 @@ export default function WithdrawConfirm() {
           }
           withdrawData = JSON.parse(withdrawResponseText)
         } catch (parseError: any) {
-          console.error('❌ Ошибка парсинга ответа withdraw-execute:', parseError)
           throw new Error('Не удалось обработать ответ сервера при выполнении вывода.')
         }
 
         if (!withdrawData.success) {
-          console.error('❌ Ошибка выполнения вывода:', withdrawData)
           alert(`Ошибка выполнения вывода: ${withdrawData.message || withdrawData.error || 'Неизвестная ошибка'}`)
           return
         }
 
-        console.log('✅ Вывод выполнен успешно:', withdrawData)
       }
       
       // Для 888starz вывод уже выполнен на step5, просто создаем заявку
       if (normalizedBookmaker.includes('888starz') || normalizedBookmaker.includes('888') || normalizedBookmaker === '888starz') {
-        console.log('✅ Для 888starz вывод уже выполнен на step5, создаем заявку с суммой:', amount)
       }
       
       // Получаем данные пользователя Telegram
@@ -168,7 +160,6 @@ export default function WithdrawConfirm() {
             telegramUser = JSON.parse(decodeURIComponent(userParam))
           }
         } catch (e) {
-          console.log('❌ Error parsing initData:', e)
         }
       }
 
@@ -177,7 +168,6 @@ export default function WithdrawConfirm() {
       const telegramUserId = getTelegramUserId()
 
       if (!telegramUserId) {
-        console.error('❌ Telegram user ID not found!')
         alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
         return
       }
@@ -185,14 +175,12 @@ export default function WithdrawConfirm() {
       // Проверяем, не заблокирован ли пользователь
       const isBlocked = await checkUserBlocked(telegramUserId)
       if (isBlocked) {
-        console.error('❌ Пользователь заблокирован!')
         alert('Ваш аккаунт заблокирован. Вы не можете создавать заявки на вывод.')
         window.location.href = '/blocked'
         return
       }
 
       // Создаем заявку в админке
-      console.log('📤 Создаем заявку в админке...')
       
       // Получаем transactionId из localStorage если есть (для Mostbet)
       const savedTransactionId = localStorage.getItem('withdraw_transaction_id') || null
@@ -216,13 +204,6 @@ export default function WithdrawConfirm() {
         telegram_language_code: telegramUser?.language_code
       }
       
-      console.log('[Withdraw Confirm] 📤 Создание заявки с данными:', {
-        ...requestBody,
-        qr_photo: qrPhoto ? `[base64, ${qrPhoto.length} chars]` : null,
-        apiUrl: `${base}/api/payment`
-      })
-      
-      console.log('[Withdraw Confirm] 🔄 Отправка запроса на создание заявки...')
       const response = await safeFetch(`${base}/api/payment`, {
         method: 'POST',
         headers: {
@@ -234,27 +215,16 @@ export default function WithdrawConfirm() {
         retryDelay: 1000
       })
       
-      console.log('📥 Ответ от /api/payment:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      })
 
       // Читаем ответ один раз - Response можно прочитать только один раз!
       let responseText = ''
       try {
         responseText = await response.text()
       } catch (e) {
-        console.error('❌ Ошибка чтения ответа:', e)
         throw new Error(`Ошибка чтения ответа сервера: ${response.status} ${response.statusText}`)
       }
       
       if (!response.ok) {
-        console.error('❌ Ошибка создания заявки:', {
-          status: response.status,
-          statusText: response.statusText,
-          responseText: responseText.substring(0, 500) // Первые 500 символов для лога
-        })
         
         // Пробуем распарсить как JSON
         let errorData: any = null
@@ -294,12 +264,10 @@ export default function WithdrawConfirm() {
         }
         result = JSON.parse(responseText)
       } catch (parseError: any) {
-        console.error('❌ Ошибка парсинга ответа:', parseError, 'Response text:', responseText.substring(0, 200))
         throw new Error('Не удалось обработать ответ сервера. Попробуйте еще раз.')
       }
       
       if (result.success !== false) {
-        console.log('✅ Заявка на вывод создана успешно:', result)
         
         // Показываем результат
         const message = `✅ Заявка на вывод создана!\n\n🏦 Банк: ${getBankName(bank)}\n📱 Телефон: +${phone}\n🆔 ID: ${userId}\n🔑 Код: ${siteCode}\n💰 Сумма: ${amount} сом\n🆔 ID заявки: #${result.id || result.data?.id}\n\n⏳ Ожидайте обработки заявки администратором.`
@@ -322,16 +290,9 @@ export default function WithdrawConfirm() {
           router.push('/')
         }, 2000)
       } else {
-        console.error('❌ API Error:', result)
         throw new Error(`Failed to create withdraw request: ${result.error || 'Unknown error'}`)
       }
     } catch (error: any) {
-      console.error('❌ Error creating withdraw request:', {
-        error,
-        message: error?.message,
-        name: error?.name,
-        stack: error?.stack
-      })
       
       let errorMessage = 'Ошибка при создании заявки. Попробуйте еще раз.'
       

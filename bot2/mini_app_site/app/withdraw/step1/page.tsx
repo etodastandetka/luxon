@@ -19,9 +19,7 @@ export default function WithdrawStep1() {
         const base = getApiBase()
         const res = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const data = await res.json()
-        console.log('📋 Withdrawal settings from API:', data)
-        if (data && data.withdrawals && data.withdrawals.banks) {
-          // Маппим коды банков из API в коды для BankButtons
+        if (data && data.withdrawals && data.withdrawals.banks && Array.isArray(data.withdrawals.banks)) {
           const bankCodeMapping: Record<string, string> = {
             'kompanion': 'kompanion',
             'odengi': 'omoney',
@@ -32,22 +30,18 @@ export default function WithdrawStep1() {
             'demir': 'demirbank',
             'demirbank': 'demirbank'
           }
-          const mappedBanks = data.withdrawals.banks
-            .map((b: any) => {
-              const code = b.code || b
-              const mapped = bankCodeMapping[code] || code
-              console.log(`  Mapping: ${code} -> ${mapped}`)
-              return mapped
-            })
-            .filter(Boolean)
-          console.log('✅ Mapped enabled banks for withdrawals:', mappedBanks)
+          const mappedBanks: string[] = []
+          for (const b of data.withdrawals.banks) {
+            const code = b.code || b
+            const mapped = bankCodeMapping[code] || code
+            if (mapped) mappedBanks.push(mapped)
+          }
           setEnabledBanks(mappedBanks)
         } else {
-          console.warn('⚠️ No withdrawal banks in settings, will show all banks')
-          setEnabledBanks([]) // Пустой массив = фильтровать строго, не показывать ничего
+          setEnabledBanks([])
         }
       } catch (error) {
-        console.error('Ошибка загрузки настроек выводов:', error)
+        // Игнорируем ошибки
       }
     }
     loadWithdrawalSettings()

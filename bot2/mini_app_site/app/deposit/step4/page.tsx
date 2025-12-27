@@ -1202,7 +1202,6 @@ export default function DepositStep4() {
   // Функция для получения активного реквизита из админки
   const getActiveRequisite = async (): Promise<{ value: string; bank: string | null; name: string | null } | null> => {
     try {
-      // Используем наш прокси API route для избежания CORS проблем
       const response = await fetch('/api/requisites-proxy', {
         method: 'GET',
         cache: 'no-store',
@@ -1212,74 +1211,28 @@ export default function DepositStep4() {
       })
       
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Requisites API response not OK:', response.status, response.statusText, errorText)
         return null
       }
       
       const data = await response.json()
-      console.log('📋 Requisites API response:', {
-        success: data.success,
-        requisitesCount: data.requisites?.length || 0,
-        active_id: data.active_id,
-        hasRequisites: !!data.requisites
-      })
       
-      // Ищем активный реквизит по active_id или по is_active
-      if (data.success && data.requisites && Array.isArray(data.requisites) && data.requisites.length > 0) {
-        // Сначала пробуем найти по active_id
-        if (data.active_id) {
-          const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id)
-          if (activeRequisite) {
-            console.log('✅ Found active requisite by active_id:', {
-              id: activeRequisite.id,
-              value: activeRequisite.value?.slice(0, 4) + '****',
-              bank: activeRequisite.bank,
-              name: activeRequisite.name
-            })
-            return { 
-              value: activeRequisite.value, 
-              bank: activeRequisite.bank || null,
-              name: activeRequisite.name || null
-            }
-          } else {
-            console.warn('⚠️ active_id указан, но реквизит не найден:', data.active_id)
-          }
-        }
-        
-        // Если не нашли, пробуем найти по is_active
-        const activeRequisite = data.requisites.find((req: any) => req.is_active === true)
+      if (!data.success || !data.requisites || !Array.isArray(data.requisites)) {
+        return null
+      }
+      
+      // Используем active_id из ответа API
+      if (data.active_id) {
+        const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id)
         if (activeRequisite) {
-          console.log('✅ Found active requisite by is_active:', {
-            id: activeRequisite.id,
-            value: activeRequisite.value?.slice(0, 4) + '****',
-            bank: activeRequisite.bank,
-            name: activeRequisite.name
-          })
           return { 
             value: activeRequisite.value, 
             bank: activeRequisite.bank || null,
             name: activeRequisite.name || null
           }
-        } else {
-          console.warn('⚠️ Нет реквизита с is_active=true. Все реквизиты:', data.requisites.map((r: any) => ({
-            id: r.id,
-            is_active: r.is_active,
-            bank: r.bank
-          })))
         }
-      } else {
-        console.warn('⚠️ Нет реквизитов в ответе API или success=false:', {
-          success: data.success,
-          requisitesCount: data.requisites?.length || 0
-        })
       }
-    } catch (error: any) {
-      console.error('❌ Ошибка получения реквизита:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name
-      })
+    } catch (error) {
+      // Игнорируем ошибки
     }
     return null
   }
@@ -1388,28 +1341,44 @@ export default function DepositStep4() {
     return finalHash
   }
 
+  // Базовые ссылки на банки (без QR hash)
+  const getBaseBankLinks = (): Record<string, string> => ({
+    'DemirBank': 'https://retail.demirbank.kg/',
+    'O!Money': 'https://api.dengi.o.kg/',
+    'Balance.kg': 'https://balance.kg/',
+    'Bakai': 'https://bakai24.app/',
+    'MegaPay': 'https://megapay.kg/',
+    'MBank': 'https://app.mbank.kg/',
+    'demirbank': 'https://retail.demirbank.kg/',
+    'omoney': 'https://api.dengi.o.kg/',
+    'balance': 'https://balance.kg/',
+    'bakai': 'https://bakai24.app/',
+    'megapay': 'https://megapay.kg/',
+    'mbank': 'https://app.mbank.kg/'
+  })
+
   // Функция для генерации fallback QR кода
   const generateFallbackQR = async (currentBank: string) => {
     try {
-      // Получаем активный реквизит из админки
-      let requisiteData = await getActiveRequisite()
+      const requisiteData = await getActiveRequisite()
       
-      // Если реквизит не найден, показываем ошибку
+      // Если реквизит не найден, используем базовые ссылки
       if (!requisiteData) {
-        console.error('❌ Не найден активный реквизит в админке! Пожалуйста, выберите активный кошелек в админ-панели.')
-        showAlert({
-          type: 'error',
-          title: language === 'ru' ? 'Ошибка' : 'Error',
-          message: language === 'ru'
-            ? 'Активный кошелек не настроен. Обратитесь в поддержку.'
-            : 'Active wallet not configured. Please contact support.'
+        const bankLinks = getBaseBankLinks()
+        setQrData({
+          all_bank_urls: bankLinks,
+          enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
+          settings: { deposits_enabled: true }
         })
+        const bankKey = currentBank.toLowerCase()
+        const primaryKey = bankKey === 'omoney' ? 'O!Money' : 
+                          bankKey === 'balance' ? 'Balance.kg' :
+                          bankKey.charAt(0).toUpperCase() + bankKey.slice(1)
+        setPaymentUrl(bankLinks[primaryKey] || bankLinks[currentBank] || bankLinks['DemirBank'] || '')
         return
       }
       
       const { value: requisite, bank } = requisiteData
-      
-      console.log('✅ Используется активный реквизит из админки:', requisite.slice(0, 4) + '****' + requisite.slice(-4), 'Bank:', bank)
       
       // Если банк Bakai, используем другую логику генерации
       if (bank === 'BAKAI') {
@@ -1440,13 +1409,13 @@ export default function DepositStep4() {
           })
           return
         } catch (error) {
-          console.error('❌ Ошибка генерации Bakai QR:', error)
-          showAlert({
-            type: 'error',
-            title: language === 'ru' ? 'Ошибка' : 'Error',
-            message: language === 'ru'
-              ? 'Ошибка генерации QR кода для Bakai. Обратитесь в поддержку.'
-              : 'Error generating QR code for Bakai. Please contact support.'
+          // Используем базовые ссылки при ошибке
+          const bankLinks = getBaseBankLinks()
+          setPaymentUrl(bankLinks[currentBank] || bankLinks['Bakai'])
+          setQrData({
+            all_bank_urls: bankLinks,
+            enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
+            settings: { deposits_enabled: true }
           })
           return
         }
@@ -1488,7 +1457,7 @@ export default function DepositStep4() {
       const qrHash = payload + '6304' + checksum
       
       // Создаем ссылки для всех банков
-      const bankLinks = {
+      const bankLinks: Record<string, string> = {
         'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
         'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
         'Balance.kg': `https://balance.kg/#${qrHash}`,
@@ -1512,19 +1481,30 @@ export default function DepositStep4() {
           deposits_enabled: true
         }
       })
-      // Используем ключ с заглавными буквами для primary_url
-      const primaryUrlMap: Record<string, keyof typeof bankLinks> = {
-        'demirbank': 'DemirBank',
-        'omoney': 'O!Money',
-        'balance': 'Balance.kg',
-        'bakai': 'Bakai',
-        'megapay': 'MegaPay',
-        'mbank': 'MBank'
-      }
-      const primaryKey: keyof typeof bankLinks = primaryUrlMap[currentBank] || 'DemirBank'
-      setPaymentUrl(bankLinks[primaryKey] || bankLinks['DemirBank'])
+      const bankKey = currentBank.toLowerCase()
+      const primaryKey = bankKey === 'omoney' ? 'O!Money' : 
+                        bankKey === 'balance' ? 'Balance.kg' :
+                        bankKey === 'demirbank' ? 'DemirBank' :
+                        bankKey === 'bakai' ? 'Bakai' :
+                        bankKey === 'megapay' ? 'MegaPay' :
+                        bankKey === 'mbank' ? 'MBank' : 'DemirBank'
+      setPaymentUrl(bankLinks[primaryKey] || bankLinks[currentBank] || bankLinks['DemirBank'] || '')
     } catch (error) {
-      console.error('Ошибка fallback генерации:', error)
+      // В случае любой ошибки используем базовые ссылки
+      const bankLinks = getBaseBankLinks()
+      setQrData({
+        all_bank_urls: bankLinks,
+        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
+        settings: { deposits_enabled: true }
+      })
+      const bankKey = currentBank.toLowerCase()
+      const primaryKey = bankKey === 'omoney' ? 'O!Money' : 
+                        bankKey === 'balance' ? 'Balance.kg' :
+                        bankKey === 'demirbank' ? 'DemirBank' :
+                        bankKey === 'bakai' ? 'Bakai' :
+                        bankKey === 'megapay' ? 'MegaPay' :
+                        bankKey === 'mbank' ? 'MBank' : 'DemirBank'
+      setPaymentUrl(bankLinks[primaryKey] || bankLinks[currentBank] || bankLinks['DemirBank'] || '')
     }
   }
 
@@ -1559,9 +1539,7 @@ export default function DepositStep4() {
   }
 
   const generateQRCode = async (selectedBank?: string) => {
-    // Не генерируем QR для крипты
     if (paymentType === 'crypto') {
-      console.log('⚠️ generateQRCode вызван для crypto - пропускаем')
       return
     }
     try {
@@ -1581,10 +1559,7 @@ export default function DepositStep4() {
       })
 
       if (!response.ok) {
-        // Обрабатываем ошибку 429 (Too Many Requests)
         if (response.status === 429) {
-          console.warn('⚠️ Rate limit exceeded for QR generation, using fallback')
-          // Используем fallback вместо ошибки
           generateFallbackQR(currentBank)
           return
         }
@@ -1633,18 +1608,12 @@ export default function DepositStep4() {
       // Также загружаем актуальные настройки из админки для enabled_banks
       try {
         const base = getApiBase()
-        console.log('📋 Загрузка настроек платежей с:', `${base}/api/public/payment-settings`)
         const settingsRes = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
         const settingsData = await settingsRes.json()
-        console.log('📋 Настройки платежей загружены:', settingsData)
         if (settingsData && settingsData.deposits) {
           setDepositsEnabled(settingsData.deposits.enabled !== false)
-          // Настройка require_receipt_photo из админки (по умолчанию true)
-          const requirePhoto = settingsData.require_receipt_photo !== false
-          console.log('📸 Требуется фото чека:', requirePhoto)
-          setRequireReceiptPhoto(requirePhoto)
-          // Обновляем enabled_banks в qrData (маппим коды банков из админки в коды компонента)
-          if (settingsData.deposits.banks) {
+          setRequireReceiptPhoto(settingsData.require_receipt_photo !== false)
+          if (settingsData.deposits.banks && Array.isArray(settingsData.deposits.banks)) {
             const bankCodeMapping: Record<string, string> = {
               'demir': 'demirbank',
               'demirbank': 'demirbank',
@@ -1655,10 +1624,7 @@ export default function DepositStep4() {
               'mbank': 'mbank'
             }
             const mappedBanks = settingsData.deposits.banks
-              .map((b: any) => {
-                const code = b.code || b
-                return bankCodeMapping[code] || code
-              })
+              .map((b: any) => bankCodeMapping[b.code || b] || b.code || b)
               .filter(Boolean)
             setQrData((prev: any) => ({
               ...prev,
@@ -1670,11 +1636,10 @@ export default function DepositStep4() {
           }
         }
       } catch (error) {
-        console.error('Ошибка загрузки настроек платежей:', error)
+        // Игнорируем ошибки настроек
       }
     } catch (error) {
-      console.error('Ошибка генерации QR кода через API:', error)
-      // Fallback: генерируем QR код с реквизитом из админки
+      // Fallback: используем базовые ссылки
       const currentBank = selectedBank || bank
       generateFallbackQR(currentBank)
     }

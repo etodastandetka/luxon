@@ -55,8 +55,6 @@ export default function WithdrawStep5() {
     try {
       const base = getApiBase()
       
-      console.log('🔄 Проверка наличия выводов:', { bookmaker, userId })
-      
       const response = await safeFetch(`${base}/api/withdraw-check-exists?bookmaker=${encodeURIComponent(bookmaker)}&playerId=${encodeURIComponent(userId)}`, {
         timeout: 15000,
         retries: 1,
@@ -64,11 +62,6 @@ export default function WithdrawStep5() {
       })
       
       if (!response.ok) {
-        console.error('❌ Ошибка проверки наличия выводов:', {
-          status: response.status,
-          statusText: response.statusText
-        })
-        // При ошибке все равно разрешаем попробовать ввести код
         setHasWithdrawals(true)
         return
       }
@@ -90,8 +83,6 @@ export default function WithdrawStep5() {
         setHasWithdrawals(true)
       }
     } catch (error: any) {
-      console.error('Ошибка проверки наличия выводов:', error)
-      // При ошибке все равно разрешаем попробовать ввести код
       setHasWithdrawals(true)
     } finally {
       setCheckingExists(false)
@@ -131,8 +122,6 @@ export default function WithdrawStep5() {
     try {
       const base = getApiBase()
       
-      console.log('🔄 Проверка кода вывода:', { bookmaker, userId, codeLength: siteCode.trim().length })
-      
       // Только проверяем код и получаем сумму ордера (mobile.getWithdrawalAmount)
       // Вывод будет выполнен на странице подтверждения
       const response = await safeFetch(`${base}/api/withdraw-check`, {
@@ -168,15 +157,8 @@ export default function WithdrawStep5() {
             // Если не JSON, используем текст как есть
           }
         } catch (e) {
-          console.error('❌ Ошибка чтения ответа:', e)
+          // Игнорируем ошибки чтения
         }
-        
-        console.error('❌ Ошибка ответа сервера:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText: errorText.substring(0, 200),
-          errorData
-        })
         
         // Формируем понятное сообщение об ошибке
         let errorMessage = `Ошибка сервера: ${response.status}`
@@ -201,158 +183,70 @@ export default function WithdrawStep5() {
 
       const data = await response.json()
       
-      console.log('[Withdraw Step5] API Response:', JSON.stringify(data, null, 2))
-      
-      // Проверяем успешный ответ
       if (data.success) {
-        // Пытаемся извлечь amount из разных мест ответа
         let amount: number | null = null
         let alreadyExecuted = false
         
-        console.log('[Withdraw Step5] Parsing response:', {
-          hasData: !!data.data,
-          dataKeys: data.data ? Object.keys(data.data) : [],
-          dataAmount: data.data?.amount,
-          dataAlreadyExecuted: data.data?.alreadyExecuted,
-          message: data.message,
-          fullData: data
-        })
-        
-        // Вариант 1: amount в data.data.amount (основной путь для всех казино)
         if (data.data && data.data.amount !== undefined && data.data.amount !== null) {
           amount = parseFloat(String(data.data.amount))
           alreadyExecuted = data.data.alreadyExecuted === true
-          console.log('[Withdraw Step5] ✅ Found amount in data.data.amount:', amount)
-        }
-        // Вариант 2: amount напрямую в data.amount
-        else if (data.amount !== undefined && data.amount !== null) {
+        } else if (data.amount !== undefined && data.amount !== null) {
           amount = parseFloat(String(data.amount))
-          console.log('[Withdraw Step5] ✅ Found amount in data.amount:', amount)
-        }
-        // Вариант 3: amount в data.data напрямую (если это число)
-        else if (data.data && typeof data.data === 'number') {
+        } else if (data.data && typeof data.data === 'number') {
           amount = parseFloat(data.data.toString())
-          console.log('[Withdraw Step5] ✅ Found amount in data.data (number):', amount)
-        }
-        // Вариант 4: проверяем все вложенные объекты в data.data
-        else if (data.data && typeof data.data === 'object') {
-          // Ищем amount в любом вложенном поле
-          const searchForAmount = (obj: any, path = ''): number | null => {
+        } else if (data.data && typeof data.data === 'object') {
+          const searchForAmount = (obj: any): number | null => {
             if (!obj || typeof obj !== 'object') return null
             for (const key in obj) {
               const value = obj[key]
-              const currentPath = path ? `${path}.${key}` : key
               if (key.toLowerCase() === 'amount' && (typeof value === 'number' || typeof value === 'string')) {
                 const parsed = parseFloat(String(value))
-                if (!isNaN(parsed) && parsed > 0) {
-                  console.log(`[Withdraw Step5] ✅ Found amount in ${currentPath}:`, parsed)
-                  return parsed
-                }
+                if (!isNaN(parsed) && parsed > 0) return parsed
               }
               if (typeof value === 'object' && value !== null) {
-                const found = searchForAmount(value, currentPath)
+                const found = searchForAmount(value)
                 if (found !== null) return found
               }
             }
             return null
           }
-          const foundAmount = searchForAmount(data.data)
-          if (foundAmount !== null) {
-            amount = foundAmount
-          }
+          amount = searchForAmount(data.data)
         }
         
-        // Проверяем message для определения, выполнен ли вывод
         const message = (data.message || data.error || '').toLowerCase()
         if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
           alreadyExecuted = true
-          console.log('[Withdraw Step5] Withdrawal executed detected from message')
         }
         
-        // Если alreadyExecuted установлен в data.data, используем его
         if (data.data && data.data.alreadyExecuted !== undefined) {
           alreadyExecuted = data.data.alreadyExecuted === true
         }
         
-        // Валидация суммы
-        console.log('[Withdraw Step5] Amount validation:', {
-          amount,
-          isNull: amount === null,
-          isNaN: amount !== null ? isNaN(amount) : 'N/A',
-          isPositive: amount !== null ? amount > 0 : 'N/A',
-          type: typeof amount,
-          rawAmount: data.data?.amount,
-          rawAmountType: typeof data.data?.amount,
-          dataDataKeys: data.data ? Object.keys(data.data) : []
-        })
-        
-        // КРИТИЧНО: Если сумма найдена и валидна - ВСЕГДА очищаем ошибку и устанавливаем сумму
-        // НЕ устанавливаем ошибку, если сумма найдена, даже если message содержит "executed"
         if (amount !== null && !isNaN(amount) && amount > 0) {
-          console.log('[Withdraw Step5] ✅ Amount is valid, clearing error and setting amount')
-          
-          // ВАЖНО: Сначала очищаем ошибку, потом устанавливаем сумму
           setError(null)
           setWithdrawAmount(amount)
           
-          // Сохраняем в localStorage для использования при создании заявки
           const amountStr = amount.toString()
           localStorage.setItem('withdraw_amount', amountStr)
           localStorage.setItem('withdraw_site_code', siteCode.trim())
           
-          // Сохраняем transactionId если он есть (для Mostbet и других казино)
           if (data.data?.transactionId) {
             localStorage.setItem('withdraw_transaction_id', String(data.data.transactionId))
-            console.log('[Withdraw Step5] ✅ TransactionId saved:', data.data.transactionId)
           } else if (data.transactionId) {
             localStorage.setItem('withdraw_transaction_id', String(data.transactionId))
-            console.log('[Withdraw Step5] ✅ TransactionId saved (from data root):', data.transactionId)
           }
-          
-          // Проверяем, что сумма сохранилась
-          const savedAmount = localStorage.getItem('withdraw_amount')
-          console.log('[Withdraw Step5] ✅ Success - amount:', amount, 'alreadyExecuted:', alreadyExecuted)
-          console.log('[Withdraw Step5] ✅ Amount saved to localStorage:', amountStr)
-          console.log('[Withdraw Step5] ✅ Verified localStorage amount:', savedAmount)
-          console.log('[Withdraw Step5] ✅ Error cleared, amount set to:', amount)
-          
-          // Дополнительная проверка через небольшую задержку
-          setTimeout(() => {
-            const currentAmount = localStorage.getItem('withdraw_amount')
-            console.log('[Withdraw Step5] ✅ Post-set verification - localStorage amount:', currentAmount)
-            if (currentAmount !== amountStr) {
-              console.error('[Withdraw Step5] ❌ Amount mismatch! Expected:', amountStr, 'Got:', currentAmount)
-              // Пересохраняем, если не совпадает
-              localStorage.setItem('withdraw_amount', amountStr)
-            }
-          }, 50)
 
-          // УБРАНА АВТОМАТИЧЕСКАЯ ОТПРАВКА - пользователь сам нажмет кнопку "Отправить заявку" после проверки кода
+          // Переходим на страницу подтверждения после получения суммы
+          router.push('/withdraw/confirm')
         } else {
-          // Если success: true, но нет amount, проверяем message
-          console.error('[Withdraw Step5] ❌ Amount validation failed:', {
-            amount,
-            isNull: amount === null,
-            isNaN: amount !== null ? isNaN(amount) : 'N/A',
-            isPositive: amount !== null ? amount > 0 : 'N/A',
-            message,
-            dataData: data.data,
-            fullData: JSON.stringify(data, null, 2)
-          })
-          
-          // ТОЛЬКО если сумма НЕ найдена, устанавливаем ошибку
+          setWithdrawAmount(null)
           if (message.includes('executed') || message.includes('успешно') || message.includes('withdrawal executed')) {
-            // Операция успешна, но amount не найден - это критическая ошибка
-            setWithdrawAmount(null)
             setError('Вывод выполнен, но не удалось получить сумму. Обратитесь в поддержку.')
           } else {
-            setWithdrawAmount(null)
             setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
           }
         }
       } else {
-        // Ошибка от API
-        console.error('[Withdraw Step5] Error response:', data)
         setWithdrawAmount(null)
         
         // Улучшенные сообщения об ошибках

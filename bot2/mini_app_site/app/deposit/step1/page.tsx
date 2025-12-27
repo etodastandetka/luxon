@@ -50,7 +50,7 @@ export default function DepositStep1() {
         }
       } catch (error) {
         // Если ошибка - продолжаем работу с дефолтными настройками
-        console.error('Ошибка загрузки настроек:', error)
+        // Игнорируем ошибки
         // По умолчанию депозиты включены, все казино доступны
         setDepositsEnabled(true)
         setDisabledCasinos([])
