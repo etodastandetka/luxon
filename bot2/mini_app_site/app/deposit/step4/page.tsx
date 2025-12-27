@@ -221,10 +221,18 @@ export default function DepositStep4() {
             ? 'Ошибка при создании счета на оплату. Попробуйте еще раз.'
             : 'Error creating payment invoice. Please try again.'))
       
+      // Для крипты показываем более понятное сообщение об ошибке
+      const isCryptoError = errorMessage.includes('wallet') || errorMessage.includes('кошелек') || errorMessage.includes('invoice')
+      const finalMessage = isCryptoError && paymentType === 'crypto'
+        ? (language === 'ru' 
+            ? 'Ошибка при создании крипто-счета. Проверьте настройки Crypto Bot или попробуйте позже.'
+            : 'Error creating crypto invoice. Check Crypto Bot settings or try later.')
+        : userMessage
+      
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',
-        message: userMessage
+        message: finalMessage
       })
     } finally {
       setCryptoLoading(false)
@@ -1509,6 +1517,11 @@ export default function DepositStep4() {
   }
 
   const generateQRCode = async (selectedBank?: string) => {
+    // Не генерируем QR для крипты
+    if (paymentType === 'crypto') {
+      console.log('⚠️ generateQRCode вызван для crypto - пропускаем')
+      return
+    }
     try {
       const currentBank = selectedBank || bank
       
