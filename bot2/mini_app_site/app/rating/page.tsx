@@ -47,6 +47,68 @@ export default function RatingPage() {
   const router = useRouter()
   const { language } = useLanguage()
 
+  // Определяем ранг на основе суммы (перемещено выше для использования)
+  const getRankByAmount = (amount: number): { rank: string; nextRank: string; nextAmount: number } => {
+    // Пороги для рангов (можно настроить)
+    if (amount >= 100000) return { rank: 'diamond', nextRank: 'diamond', nextAmount: amount }
+    if (amount >= 50000) return { rank: 'gold', nextRank: 'diamond', nextAmount: 100000 }
+    if (amount >= 25000) return { rank: 'silver', nextRank: 'gold', nextAmount: 50000 }
+    if (amount >= 10000) return { rank: 'bronze', nextRank: 'silver', nextAmount: 25000 }
+    return { rank: 'iron', nextRank: 'bronze', nextAmount: 10000 }
+  }
+
+  // Загружаем сравнение с друзьями (перемещено выше для использования)
+  const loadFriendsComparison = async (userId: string) => {
+    try {
+      const apiUrl = getApiBase()
+      
+      // Получаем данные рефералов
+      const referralResponse = await fetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`)
+      const referralData = await referralResponse.json()
+      
+      if (referralData.success && referralData.referrals && Array.isArray(referralData.referrals)) {
+        const referrals = referralData.referrals.slice(0, 5) // Топ 5 рефералов
+        const friendsList: FriendComparison[] = []
+        
+        // Получаем статистику каждого реферала
+        for (const ref of referrals) {
+          try {
+            const refStatsResponse = await fetch(`${apiUrl}/api/transaction-history?user_id=${ref.referred_id}`)
+            const refStatsData = await refStatsResponse.json()
+            const transactions = refStatsData.data?.transactions || refStatsData.transactions || []
+            
+            const filtered = transactions.filter((t: any) => {
+              const isSuccess = t.status === 'completed' || t.status === 'approved'
+              if (activeTab === 'deposits') return isSuccess && t.type === 'deposit'
+              if (activeTab === 'withdrawals') return isSuccess && t.type === 'withdraw'
+              return isSuccess
+            })
+            
+            const refTotal = filtered.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
+            const difference = Math.abs(userTotal - refTotal)
+            const isAhead = userTotal > refTotal
+            
+            friendsList.push({
+              userId: ref.referred_id.toString(),
+              displayName: ref.displayName || (ref.referred_username ? `@${ref.referred_username}` : `Игрок #${ref.referred_id}`),
+              totalAmount: refTotal,
+              isAhead,
+              difference,
+            })
+          } catch (e) {
+            // Игнорируем ошибки для отдельных рефералов
+          }
+        }
+        
+        // Сортируем по разнице
+        friendsList.sort((a, b) => b.difference - a.difference)
+        setFriends(friendsList)
+      }
+    } catch (error) {
+      console.error('Error loading friends comparison:', error)
+    }
+  }
+
   useEffect(() => {
     loadLeaderboard()
   }, [activeTab])
@@ -168,67 +230,6 @@ export default function RatingPage() {
     }
   }
 
-  // Определяем ранг на основе суммы
-  const getRankByAmount = (amount: number): { rank: string; nextRank: string; nextAmount: number } => {
-    // Пороги для рангов (можно настроить)
-    if (amount >= 100000) return { rank: 'diamond', nextRank: 'diamond', nextAmount: amount }
-    if (amount >= 50000) return { rank: 'gold', nextRank: 'diamond', nextAmount: 100000 }
-    if (amount >= 25000) return { rank: 'silver', nextRank: 'gold', nextAmount: 50000 }
-    if (amount >= 10000) return { rank: 'bronze', nextRank: 'silver', nextAmount: 25000 }
-    return { rank: 'iron', nextRank: 'bronze', nextAmount: 10000 }
-  }
-
-  // Загружаем сравнение с друзьями
-  const loadFriendsComparison = async (userId: string) => {
-    try {
-      const apiUrl = getApiBase()
-      
-      // Получаем данные рефералов
-      const referralResponse = await fetch(`${apiUrl}/api/public/referral-data?user_id=${userId}`)
-      const referralData = await referralResponse.json()
-      
-      if (referralData.success && referralData.referrals && Array.isArray(referralData.referrals)) {
-        const referrals = referralData.referrals.slice(0, 5) // Топ 5 рефералов
-        const friendsList: FriendComparison[] = []
-        
-        // Получаем статистику каждого реферала
-        for (const ref of referrals) {
-          try {
-            const refStatsResponse = await fetch(`${apiUrl}/api/transaction-history?user_id=${ref.referred_id}`)
-            const refStatsData = await refStatsResponse.json()
-            const transactions = refStatsData.data?.transactions || refStatsData.transactions || []
-            
-            const filtered = transactions.filter((t: any) => {
-              const isSuccess = t.status === 'completed' || t.status === 'approved'
-              if (activeTab === 'deposits') return isSuccess && t.type === 'deposit'
-              if (activeTab === 'withdrawals') return isSuccess && t.type === 'withdraw'
-              return isSuccess
-            })
-            
-            const refTotal = filtered.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
-            const difference = Math.abs(userTotal - refTotal)
-            const isAhead = userTotal > refTotal
-            
-            friendsList.push({
-              userId: ref.referred_id.toString(),
-              displayName: ref.displayName || (ref.referred_username ? `@${ref.referred_username}` : `Игрок #${ref.referred_id}`),
-              totalAmount: refTotal,
-              isAhead,
-              difference,
-            })
-          } catch (e) {
-            // Игнорируем ошибки для отдельных рефералов
-          }
-        }
-        
-        // Сортируем по разнице
-        friendsList.sort((a, b) => b.difference - a.difference)
-        setFriends(friendsList)
-      }
-    } catch (error) {
-      console.error('Error loading friends comparison:', error)
-    }
-  }
 
   const translations = {
     ru: {

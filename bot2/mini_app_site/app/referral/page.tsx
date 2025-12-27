@@ -73,6 +73,9 @@ export default function ReferralPage() {
       }
       
       setIsFromBot(true)
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Telegram WebApp Debug:', {
           hasTelegram: !!(window as any).Telegram,
           hasWebApp: !!(window as any).Telegram?.WebApp,
           hasInitDataUnsafe: !!(window as any).Telegram?.WebApp?.initDataUnsafe,
