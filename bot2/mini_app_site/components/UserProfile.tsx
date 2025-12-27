@@ -35,8 +35,12 @@ export default function UserProfile() {
   }, [])
 
   // Вычисляем статистику из общих данных (без отдельного запроса)
+  // Не показываем компонент, пока данные не загружены
   const stats = useMemo<UserStats | null>(() => {
-    if (!transactions.length) return null
+    if (!transactions.length) {
+      // Если данные еще загружаются, возвращаем null чтобы не показывать пустой компонент
+      return null
+    }
     
     const deposits = transactions.filter((t: any) => 
       t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')

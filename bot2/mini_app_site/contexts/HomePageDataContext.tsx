@@ -85,18 +85,37 @@ const loadAllData = async (): Promise<HomePageData> => {
   return loadingPromise
 }
 
-export function HomePageDataProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<HomePageData>({
+// Функция для получения начального состояния из кеша
+const getInitialData = (): HomePageData => {
+  const userId = getTelegramUserId()
+  if (userId) {
+    const cacheKey = `homepage_${userId}`
+    const cached = dataCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data
+    }
+  }
+  return {
     transactions: [],
     topPlayers: [],
     loading: true,
-  })
+  }
+}
+
+export function HomePageDataProvider({ children }: { children: ReactNode }) {
+  // Инициализируем состояние из кеша синхронно, чтобы избежать двойного рендера
+  const [data, setData] = useState<HomePageData>(getInitialData)
   const loadedRef = useRef(false)
 
   useEffect(() => {
     // Увеличиваем счетчик экземпляров провайдера
     providerInstanceCount++
     const instanceId = providerInstanceCount
+
+    // Если данные уже есть в кеше, не загружаем повторно
+    if (!data.loading && data.transactions.length > 0) {
+      return
+    }
 
     // Только первый экземпляр загружает данные
     if (instanceId === 1 && !loadedRef.current) {
@@ -115,16 +134,6 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
           setData(result)
         }
       })
-    } else {
-      // Если данные уже загружены, используем кеш
-      const userId = getTelegramUserId()
-      if (userId) {
-        const cacheKey = `homepage_${userId}`
-        const cached = dataCache.get(cacheKey)
-        if (cached) {
-          setData(cached.data)
-        }
-      }
     }
 
     return () => {
