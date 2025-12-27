@@ -21,10 +21,11 @@ const HomePageDataContext = createContext<HomePageDataContextType | undefined>(u
 const dataCache = new Map<string, { data: HomePageData; timestamp: number }>()
 const CACHE_TTL = 30_000 // 30 секунд
 
-// Глобальный флаг загрузки для предотвращения дублирования
+// Глобальное состояние для предотвращения множественных загрузок
+let globalData: HomePageData | null = null
 let isLoading = false
 let loadingPromise: Promise<HomePageData> | null = null
-let providerInstanceCount = 0
+let subscribers: Set<(data: HomePageData) => void> = new Set()
 
 const loadAllData = async (): Promise<HomePageData> => {
   // Если уже идет загрузка, возвращаем существующий промис
@@ -32,15 +33,23 @@ const loadAllData = async (): Promise<HomePageData> => {
     return loadingPromise
   }
 
+  // Если данные уже загружены глобально, возвращаем их
+  if (globalData && !globalData.loading) {
+    return globalData
+  }
+
   const userId = getTelegramUserId()
   if (!userId) {
-    return { transactions: [], topPlayers: [], loading: false }
+    const emptyData = { transactions: [], topPlayers: [], loading: false }
+    globalData = emptyData
+    return emptyData
   }
 
   // Проверяем кеш
   const cacheKey = `homepage_${userId}`
   const cached = dataCache.get(cacheKey)
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    globalData = cached.data
     return cached.data
   }
 
@@ -70,12 +79,20 @@ const loadAllData = async (): Promise<HomePageData> => {
         loading: false,
       }
 
-      // Сохраняем в кеш
+      // Сохраняем в кеш и глобально
       dataCache.set(cacheKey, { data: result, timestamp: Date.now() })
+      globalData = result
+      
+      // Уведомляем всех подписчиков
+      subscribers.forEach(callback => callback(result))
+      
       return result
     } catch (error) {
       console.error('Error loading homepage data:', error)
-      return { transactions: [], topPlayers: [], loading: false }
+      const errorData = { transactions: [], topPlayers: [], loading: false }
+      globalData = errorData
+      subscribers.forEach(callback => callback(errorData))
+      return errorData
     } finally {
       isLoading = false
       loadingPromise = null
@@ -87,14 +104,21 @@ const loadAllData = async (): Promise<HomePageData> => {
 
 // Функция для получения начального состояния из кеша
 const getInitialData = (): HomePageData => {
+  // Сначала проверяем глобальные данные
+  if (globalData && !globalData.loading) {
+    return globalData
+  }
+
   const userId = getTelegramUserId()
   if (userId) {
     const cacheKey = `homepage_${userId}`
     const cached = dataCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      globalData = cached.data
       return cached.data
     }
   }
+  
   return {
     transactions: [],
     topPlayers: [],
@@ -103,46 +127,47 @@ const getInitialData = (): HomePageData => {
 }
 
 export function HomePageDataProvider({ children }: { children: ReactNode }) {
-  // Инициализируем состояние из кеша синхронно, чтобы избежать двойного рендера
+  // Инициализируем состояние из кеша синхронно
   const [data, setData] = useState<HomePageData>(getInitialData)
-  const loadedRef = useRef(false)
+  const mountedRef = useRef(true)
+  const subscribedRef = useRef(false)
 
   useEffect(() => {
-    // Увеличиваем счетчик экземпляров провайдера
-    providerInstanceCount++
-    const instanceId = providerInstanceCount
-
-    // Если данные уже есть в кеше, не загружаем повторно
+    mountedRef.current = true
+    
+    // Если данные уже загружены, не делаем ничего
     if (!data.loading && data.transactions.length > 0) {
       return
     }
 
-    // Только первый экземпляр загружает данные
-    if (instanceId === 1 && !loadedRef.current) {
-      loadedRef.current = true
-      
-      loadAllData().then(result => {
-        // Обновляем данные только если это все еще первый экземпляр
-        if (instanceId === 1) {
-          setData(result)
+    // Подписываемся на обновления (только один раз)
+    if (!subscribedRef.current) {
+      subscribedRef.current = true
+      const callback = (newData: HomePageData) => {
+        if (mountedRef.current) {
+          setData(newData)
         }
-      })
-    } else if (isLoading && loadingPromise) {
-      // Если уже идет загрузка, ждем ее
-      loadingPromise.then(result => {
-        if (instanceId === 1) {
-          setData(result)
-        }
-      })
-    }
+      }
+      subscribers.add(callback)
 
-    return () => {
-      // При размонтировании уменьшаем счетчик
-      if (instanceId === 1) {
-        providerInstanceCount = 0
+      // Если уже идет загрузка, ждем результат
+      if (isLoading && loadingPromise) {
+        loadingPromise.then(result => {
+          if (mountedRef.current) {
+            setData(result)
+          }
+        })
+      } else if (!globalData || globalData.loading) {
+        // Загружаем данные только если их еще нет
+        loadAllData()
+      }
+
+      return () => {
+        subscribers.delete(callback)
+        mountedRef.current = false
       }
     }
-  }, [])
+  }, []) // Пустой массив - выполняется только один раз
 
   const refresh = () => {
     const userId = getTelegramUserId()
@@ -150,15 +175,16 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
       const cacheKey = `homepage_${userId}`
       dataCache.delete(cacheKey)
     }
-    loadedRef.current = false
+    globalData = null
     isLoading = false
     loadingPromise = null
     setData({ transactions: [], topPlayers: [], loading: true })
     
     // Перезагружаем данные
-    const promise = loadAllData()
-    promise.then(result => {
-      setData(result)
+    loadAllData().then(result => {
+      if (mountedRef.current) {
+        setData(result)
+      }
     })
   }
 
@@ -181,4 +207,3 @@ export function useHomePageData() {
   }
   return context.data
 }
-
