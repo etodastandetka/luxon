@@ -5,8 +5,8 @@ import ServiceStatus from '../components/ServiceStatus'
 import FixedHeaderControls from '../components/FixedHeaderControls'
 import { useLanguage } from '../components/LanguageContext'
 import { useBotSettings } from '../components/SettingsLoader'
-import { initTelegramWebApp, syncWithBot, TelegramUser, getTelegramUserId } from '../utils/telegram'
-import { getApiBase } from '../utils/fetch'
+import { initTelegramWebApp, syncWithBot, TelegramUser } from '../utils/telegram'
+import { useHomePageData } from '../hooks/useHomePageData'
 import { ReferralIcon, HistoryIcon, InstructionIcon, SupportIcon } from '../components/Icons'
 
 // Загружаем компоненты динамически без лоадеров для мгновенного отображения
@@ -72,92 +72,19 @@ export default function HomePage() {
     }
   }, [language])
 
-  // Загружаем статистику пользователя (с кешем и без блока основного потока)
-  // Используем useRef для предотвращения повторных вызовов
-  const statsLoadedRef = useRef(false)
+  // Используем единый хук для загрузки всех данных главной страницы
+  const { transactions } = useHomePageData()
+  
+  // Вычисляем статистику из загруженных транзакций
   useEffect(() => {
-    if (!user || statsLoadedRef.current) return
-    statsLoadedRef.current = true
-
-    const userId = getTelegramUserId()
-    if (!userId) return
-
-    let cancelled = false
-    const CACHE_TTL = 5 * 60 * 1000 // 5 минут
-    const cacheKey = `user_stats_${userId}`
-
-    const applyStats = (stats: { deposits: number; withdraws: number }) => {
-      if (!cancelled) {
-        setUserStats(stats)
-      }
+    if (!transactions.length) return
+    
+    const stats = {
+      deposits: transactions.filter((t: any) => t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')).length,
+      withdraws: transactions.filter((t: any) => t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')).length
     }
-
-    // Быстрый ответ из кеша с коротким TTL
-    if (typeof window !== 'undefined') {
-      try {
-        const cachedRaw = sessionStorage.getItem(cacheKey)
-        if (cachedRaw) {
-          const cached = JSON.parse(cachedRaw) as { stats: { deposits: number; withdraws: number }; ts: number }
-          if (Date.now() - cached.ts < CACHE_TTL) {
-            applyStats(cached.stats)
-          }
-        }
-      } catch {
-        // игнорируем проблемы чтения кеша
-      }
-    }
-
-    const loadUserStats = async () => {
-      try {
-        const apiUrl = getApiBase()
-        const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}`, {
-          cache: 'no-store'
-        })
-        const data = await response.json()
-
-        const transactions = data.data?.transactions || data.transactions || []
-        const stats = {
-          deposits: transactions.filter((t: any) => t.type === 'deposit').length,
-          withdraws: transactions.filter((t: any) => t.type === 'withdraw').length
-        }
-
-        applyStats(stats)
-
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ stats, ts: Date.now() }))
-          } catch {
-            // молча игнорируем quota errors
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user stats:', error)
-      }
-    }
-
-    // Откладываем запрос до idle, чтобы не блокировать рендер
-    if (typeof window !== 'undefined') {
-      const idleCb = (window as any).requestIdleCallback as
-        | ((cb: () => void, opts?: { timeout: number }) => number)
-        | undefined
-      if (idleCb) {
-        const id = idleCb(() => loadUserStats(), { timeout: 1200 })
-        return () => {
-          cancelled = true
-          const cancelIdle = (window as any).cancelIdleCallback as ((handle: number) => void) | undefined
-          if (cancelIdle && id) {
-            cancelIdle(id)
-          }
-        }
-      }
-    }
-
-    const timeoutId = setTimeout(loadUserStats, 400)
-    return () => {
-      cancelled = true
-      clearTimeout(timeoutId)
-    }
-  }, [user])
+    setUserStats(stats)
+  }, [transactions])
 
   // Загружаем видео URL из API (кешируем чтобы не дергать на каждый заход)
   useEffect(() => {

@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { TelegramUser, getTelegramUser } from '../utils/telegram'
-import { getApiBase } from '../utils/fetch'
 import { useLanguage } from './LanguageContext'
 import { PremiumIcon } from './Icons'
+import { useHomePageData } from '../hooks/useHomePageData'
 
 interface UserStats {
   totalDeposits: number
@@ -14,16 +14,12 @@ interface UserStats {
   totalWithdrawAmount: number
 }
 
-// Кеш статистики в памяти (на время сессии)
-const statsCache = new Map<number, { stats: UserStats; timestamp: number }>()
-const CACHE_TTL = 60_000 // 60 секунд
 
 export default function UserProfile() {
   const [user, setUser] = useState<TelegramUser | null>(null)
-  const [stats, setStats] = useState<UserStats | null>(null)
   const router = useRouter()
   const { language } = useLanguage()
-  const statsLoadedRef = useRef(false)
+  const { transactions } = useHomePageData()
 
   // Загружаем пользователя синхронно при первом рендере для мгновенного отображения
   // Используем useRef для предотвращения повторных вызовов
@@ -35,66 +31,27 @@ export default function UserProfile() {
     const telegramUser = getTelegramUser()
     if (telegramUser && !user) {
       setUser(telegramUser)
-      // Загружаем статистику в фоне, не блокируя рендер
-      loadStats(telegramUser.id)
     }
   }, [])
 
-  const loadStats = async (userId: number) => {
-    // Проверяем кеш
-    const cached = statsCache.get(userId)
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setStats(cached.stats)
-      return
+  // Вычисляем статистику из общих данных (без отдельного запроса)
+  const stats = useMemo<UserStats | null>(() => {
+    if (!transactions.length) return null
+    
+    const deposits = transactions.filter((t: any) => 
+      t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')
+    )
+    const withdraws = transactions.filter((t: any) => 
+      t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')
+    )
+    
+    return {
+      totalDeposits: deposits.length,
+      totalWithdraws: withdraws.length,
+      totalDepositAmount: deposits.reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
+      totalWithdrawAmount: withdraws.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
     }
-
-    // Если уже загружается, не делаем повторный запрос
-    if (statsLoadedRef.current) return
-    statsLoadedRef.current = true
-
-    try {
-      const apiUrl = getApiBase()
-      // Используем лимит для быстрой загрузки - нам нужны только счетчики
-      // Для точных сумм можно сделать отдельный запрос, но для счетчиков достаточно
-      const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}&limit=1000`, {
-        cache: 'default'
-      })
-      const data = await response.json()
-      
-      const transactions = data.data?.transactions || data.transactions || []
-      
-      // Считаем только успешные транзакции (completed или approved)
-      const deposits = transactions.filter((t: any) => 
-        t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')
-      )
-      const withdraws = transactions.filter((t: any) => 
-        t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')
-      )
-      
-      const userStats: UserStats = {
-        totalDeposits: deposits.length,
-        totalWithdraws: withdraws.length,
-        totalDepositAmount: deposits
-          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
-        totalWithdrawAmount: withdraws
-          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
-      }
-      
-      // Сохраняем в кеш
-      statsCache.set(userId, { stats: userStats, timestamp: Date.now() })
-      setStats(userStats)
-    } catch (error) {
-      console.error('Error loading stats:', error)
-      setStats({
-        totalDeposits: 0,
-        totalWithdraws: 0,
-        totalDepositAmount: 0,
-        totalWithdrawAmount: 0
-      })
-    } finally {
-      statsLoadedRef.current = false
-    }
-  }
+  }, [transactions])
 
   const translations = {
     ru: {

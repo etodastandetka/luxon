@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { getTelegramUserId } from '../utils/telegram'
-import { getApiBase } from '../utils/fetch'
+import { useState, useEffect, useMemo } from 'react'
+import { useHomePageData } from '../hooks/useHomePageData'
 
 interface Achievement {
   id: string
@@ -17,28 +16,14 @@ interface Achievement {
 }
 
 export default function Achievements() {
-  const [achievements, setAchievements] = useState<Achievement[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null)
+  const { transactions, loading } = useHomePageData()
 
-  useEffect(() => {
-    loadAchievements()
-  }, [])
-
-  const loadAchievements = async () => {
-    try {
-      const userId = getTelegramUserId()
-      if (!userId) {
-        setLoading(false)
-        return
-      }
-
-      const apiUrl = getApiBase()
-      
-      // Загружаем статистику пользователя
-      const statsResponse = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}`)
-      const statsData = await statsResponse.json()
-      const transactions = statsData.data?.transactions || statsData.transactions || []
+  // Вычисляем достижения на основе загруженных транзакций
+  const achievements = useMemo<Achievement[]>(() => {
+    if (loading || !transactions.length) {
+      return []
+    }
       
       const successful = transactions.filter((t: any) => 
         t.status === 'completed' || t.status === 'approved'
@@ -146,13 +131,8 @@ export default function Achievements() {
         },
       ]
       
-      setAchievements(allAchievements)
-    } catch (error) {
-      console.error('Error loading achievements:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+      return allAchievements
+  }, [transactions, loading])
 
   if (loading) {
     return (
@@ -165,8 +145,8 @@ export default function Achievements() {
     )
   }
 
-  const unlockedCount = achievements.filter(a => a.unlocked).length
-  const totalCount = achievements.length
+  const unlockedCount = achievements?.filter(a => a.unlocked).length || 0
+  const totalCount = achievements?.length || 0
 
   return (
     <div className="card p-4">

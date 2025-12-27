@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { API_URLS } from '../config/api'
+import { useHomePageData } from '../hooks/useHomePageData'
 
 interface LeaderboardUser {
   userId: string
@@ -13,28 +12,8 @@ interface LeaderboardUser {
 }
 
 export default function RatingBlock() {
-  const [topPlayers, setTopPlayers] = useState<LeaderboardUser[]>([])
-  const [loading, setLoading] = useState(true)
   const router = useRouter()
-
-  useEffect(() => {
-    loadTopPlayers()
-  }, [])
-
-  const loadTopPlayers = async () => {
-    try {
-      const response = await fetch(`${API_URLS.LEADERBOARD}?type=deposits&limit=5`)
-      const data = await response.json()
-      
-      if (data.success && data.data?.leaderboard) {
-        setTopPlayers(data.data.leaderboard.slice(0, 5))
-      }
-    } catch (error) {
-      console.error('Error loading top players:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { topPlayers, loading } = useHomePageData()
 
   const getRankIcon = (rankType: string) => {
     switch (rankType) {
