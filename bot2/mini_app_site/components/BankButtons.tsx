@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { throttle } from '../utils/debounce'
 
 type Bank = { code: string; name: string; emoji?: string; image?: string }
-const BANKS: Bank[] = [
+const ALL_BANKS: Bank[] = [
   { code: 'kompanion', name: 'Компаньон', emoji: '💼', image: '/images/companion.png' },
   { code: 'demirbank', name: 'DemirBank', emoji: '🏦', image: '/images/demirbank.jpg' },
   { code: 'omoney', name: 'O!Money', emoji: '🟡', image: '/images/omoney.jpg' },
@@ -13,6 +13,12 @@ const BANKS: Bank[] = [
   { code: 'megapay', name: 'MegaPay', emoji: '💳', image: '/images/megapay.jpg' },
   { code: 'mbank', name: 'MBank', emoji: '📱', image: '/images/mbank.png' },
 ]
+
+// Банки для депозитов (без Компаньона)
+const DEPOSIT_BANKS: Bank[] = ALL_BANKS.filter(bank => bank.code !== 'kompanion')
+
+// Банки для выводов (все банки включая Компаньон)
+const WITHDRAWAL_BANKS: Bank[] = ALL_BANKS
 
 function BankButtons({ onPick, selected, disabled, paymentUrl, allBankUrls, enabledBanks }: { 
   onPick: (code: string) => void; 
@@ -145,10 +151,14 @@ function BankButtons({ onPick, selected, disabled, paymentUrl, allBankUrls, enab
     'odengi': 'omoney' // O!Money для выводов
   }
 
+  // Определяем список банков в зависимости от типа операции (депозит или вывод)
+  // Для депозитов исключаем Компаньон, для выводов показываем все
+  const availableBanks = isWithdrawal ? WITHDRAWAL_BANKS : DEPOSIT_BANKS
+
   // Фильтруем банки согласно настройкам
   // Если enabledBanks не передан (undefined), показываем все банки
   // Если enabledBanks передан (даже пустой массив), фильтруем строго
-  const filteredBanks = useMemo(() => BANKS.filter(bank => {
+  const filteredBanks = useMemo(() => availableBanks.filter(bank => {
     // Если enabledBanks не передан вообще - показываем все
     if (enabledBanks === undefined) {
       return true

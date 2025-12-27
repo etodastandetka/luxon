@@ -1204,40 +1204,82 @@ export default function DepositStep4() {
     try {
       const apiUrl = getApiBase()
       // Используем публичный API админ-панели
-      const response = await fetch(`${apiUrl}/api/public/requisites/list/`)
-      if (response.ok) {
-        const data = await response.json()
-        console.log('📋 Requisites data:', data)
-        // Ищем активный реквизит по active_id или по is_active
-        if (data.success && data.requisites && data.requisites.length > 0) {
-          // Сначала пробуем найти по active_id
-          if (data.active_id) {
-            const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id)
-            if (activeRequisite) {
-              console.log('✅ Found active requisite by active_id:', activeRequisite.value, 'Bank:', activeRequisite.bank)
-              return { 
-                value: activeRequisite.value, 
-                bank: activeRequisite.bank || null,
-                name: activeRequisite.name || null
-              }
-            }
-          }
-          // Если не нашли, пробуем найти по is_active
-          const activeRequisite = data.requisites.find((req: any) => req.is_active === true)
+      const response = await fetch(`${apiUrl}/api/public/requisites/list/`, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Requisites API response not OK:', response.status, response.statusText, errorText)
+        return null
+      }
+      
+      const data = await response.json()
+      console.log('📋 Requisites API response:', {
+        success: data.success,
+        requisitesCount: data.requisites?.length || 0,
+        active_id: data.active_id,
+        hasRequisites: !!data.requisites
+      })
+      
+      // Ищем активный реквизит по active_id или по is_active
+      if (data.success && data.requisites && Array.isArray(data.requisites) && data.requisites.length > 0) {
+        // Сначала пробуем найти по active_id
+        if (data.active_id) {
+          const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id)
           if (activeRequisite) {
-            console.log('✅ Found active requisite by is_active:', activeRequisite.value, 'Bank:', activeRequisite.bank)
+            console.log('✅ Found active requisite by active_id:', {
+              id: activeRequisite.id,
+              value: activeRequisite.value?.slice(0, 4) + '****',
+              bank: activeRequisite.bank,
+              name: activeRequisite.name
+            })
             return { 
               value: activeRequisite.value, 
               bank: activeRequisite.bank || null,
               name: activeRequisite.name || null
             }
+          } else {
+            console.warn('⚠️ active_id указан, но реквизит не найден:', data.active_id)
           }
         }
+        
+        // Если не нашли, пробуем найти по is_active
+        const activeRequisite = data.requisites.find((req: any) => req.is_active === true)
+        if (activeRequisite) {
+          console.log('✅ Found active requisite by is_active:', {
+            id: activeRequisite.id,
+            value: activeRequisite.value?.slice(0, 4) + '****',
+            bank: activeRequisite.bank,
+            name: activeRequisite.name
+          })
+          return { 
+            value: activeRequisite.value, 
+            bank: activeRequisite.bank || null,
+            name: activeRequisite.name || null
+          }
+        } else {
+          console.warn('⚠️ Нет реквизита с is_active=true. Все реквизиты:', data.requisites.map((r: any) => ({
+            id: r.id,
+            is_active: r.is_active,
+            bank: r.bank
+          })))
+        }
       } else {
-        console.error('❌ Requisites API response not OK:', response.status, await response.text())
+        console.warn('⚠️ Нет реквизитов в ответе API или success=false:', {
+          success: data.success,
+          requisitesCount: data.requisites?.length || 0
+        })
       }
-    } catch (error) {
-      console.error('Ошибка получения реквизита:', error)
+    } catch (error: any) {
+      console.error('❌ Ошибка получения реквизита:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      })
     }
     return null
   }
