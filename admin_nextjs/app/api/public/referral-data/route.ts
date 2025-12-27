@@ -511,6 +511,40 @@ export async function GET(request: NextRequest) {
     ]
     const nextPayoutDateFormatted = `${nextPayoutDate.getDate()} ${monthNames[nextPayoutDate.getMonth()]}`
     
+    // Получаем список рефералов пользователя для сравнения
+    const userReferrals = await prisma.botReferral.findMany({
+      where: {
+        referrer_id: userIdBigInt
+      },
+      include: {
+        referred: {
+          select: {
+            userId: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+          }
+        }
+      },
+      take: 10, // Берем топ-10 рефералов
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+    
+    const referralsList = userReferrals.map(ref => ({
+      referred_id: ref.referred_id.toString(),
+      referred_username: ref.referred?.username || null,
+      referred_firstName: ref.referred?.firstName || null,
+      referred_lastName: ref.referred?.lastName || null,
+      displayName: ref.referred?.username 
+        ? `@${ref.referred.username}` 
+        : ref.referred?.firstName 
+          ? `${ref.referred.firstName}${ref.referred.lastName ? ' ' + ref.referred.lastName : ''}`
+          : `Игрок #${ref.referred_id}`,
+      createdAt: ref.createdAt.toISOString()
+    }))
+    
     const responseData = {
       success: true,
       earned: earned,
@@ -518,6 +552,7 @@ export async function GET(request: NextRequest) {
       has_pending_withdrawal: hasPendingWithdrawal, // Есть ли pending заявка
       referral_count: activeReferralCount, // Количество рефералов, которые сделали депозиты
       total_referrals: referralCount, // Общее количество рефералов (включая тех, кто не делал депозиты)
+      referrals: referralsList, // Список рефералов пользователя
       top_players: topReferrersWithPrizes, // Топ-5 реферов
       user_rank: userRank > 0 ? userRank : null, // Место в рейтинге (null если не в топе)
       user_in_top5: userInTop5, // В топ-5 или нет

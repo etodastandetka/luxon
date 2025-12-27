@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { API_URLS } from '../config/api'
-import { logger } from '../lib/logger'
 
 interface LeaderboardUser {
   userId: string
@@ -31,7 +30,7 @@ export default function RatingBlock() {
         setTopPlayers(data.data.leaderboard.slice(0, 5))
       }
     } catch (error) {
-      logger.error('Error loading top players:', error)
+      console.error('Error loading top players:', error)
     } finally {
       setLoading(false)
     }

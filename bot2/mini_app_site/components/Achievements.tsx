@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { getTelegramUserId } from '../utils/telegram'
 import { getApiBase } from '../utils/fetch'
-import { logger } from '../lib/logger'
 
 interface Achievement {
   id: string
@@ -147,7 +146,7 @@ export default function Achievements() {
       
       setAchievements(allAchievements)
     } catch (error) {
-      logger.error('Error loading achievements:', error)
+      console.error('Error loading achievements:', error)
     } finally {
       setLoading(false)
     }
