@@ -94,7 +94,7 @@ export default function UserProfile() {
 
   return (
     <div 
-      className="card p-4 cursor-pointer hover:scale-105 transition-transform duration-200 profile-card-3d"
+      className="card p-4 cursor-pointer profile-card-3d"
       onClick={() => router.push('/profile')}
     >
       <div className="flex items-center space-x-4">

@@ -144,7 +144,7 @@ export default function HomePage() {
         <h2 className="text-lg font-semibold text-white px-1">{t.quickActions}</h2>
         <div className="grid grid-cols-2 gap-3">
           <ServiceStatus service="deposits">
-            <a href="/deposit" className="card btn btn-primary text-center p-6 action-card-3d hover:scale-105 transition-transform">
+            <a href="/deposit" className="card btn btn-primary text-center p-6 action-card-3d">
               <div className="flex flex-col items-center space-y-2">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +156,7 @@ export default function HomePage() {
             </a>
           </ServiceStatus>
           <ServiceStatus service="withdrawals">
-            <a href="/withdraw" className="card btn btn-primary text-center p-6 action-card-3d hover:scale-105 transition-transform">
+            <a href="/withdraw" className="card btn btn-primary text-center p-6 action-card-3d">
               <div className="flex flex-col items-center space-y-2">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +175,7 @@ export default function HomePage() {
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-white px-1">{t.services}</h2>
         <div className="grid grid-cols-2 gap-3">
-          <a href="/referral" className="card p-4 service-card-3d hover:scale-105 transition-transform">
+          <a href="/referral" className="card p-4 service-card-3d">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
                 <ReferralIcon className="w-5 h-5 text-green-400" />
@@ -186,7 +186,7 @@ export default function HomePage() {
               </div>
             </div>
           </a>
-          <a href="/history" className="card p-4 service-card-3d hover:scale-105 transition-transform">
+          <a href="/history" className="card p-4 service-card-3d">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                 <HistoryIcon className="w-5 h-5 text-blue-400" />
@@ -197,7 +197,7 @@ export default function HomePage() {
               </div>
             </div>
           </a>
-          <a href="/instruction" className="card p-4 service-card-3d hover:scale-105 transition-transform">
+          <a href="/instruction" className="card p-4 service-card-3d">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
                 <InstructionIcon className="w-5 h-5 text-purple-400" />
@@ -208,7 +208,7 @@ export default function HomePage() {
               </div>
             </div>
           </a>
-          <a href="/support" className="card p-4 service-card-3d hover:scale-105 transition-transform">
+          <a href="/support" className="card p-4 service-card-3d">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
                 <SupportIcon className="w-5 h-5 text-orange-400" />

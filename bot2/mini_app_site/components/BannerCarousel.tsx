@@ -77,7 +77,7 @@ export default function BannerCarousel() {
   return (
     <div className="relative w-full">
       <div 
-        className={`relative w-full rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
+        className={`relative w-full rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${
           currentBanner.link ? 'hover:shadow-lg' : ''
         }`}
         style={{ height: '180px' }}
