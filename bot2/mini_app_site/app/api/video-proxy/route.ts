@@ -68,7 +68,11 @@ export async function GET(request: NextRequest) {
     }
     
     if (!response || !response.ok) {
-      console.error('Google Drive error:', response?.status, response?.statusText, lastError)
+      // Video proxy errors are logged but don't use logger to avoid circular dependencies
+      // This is a special case for binary data streaming
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Google Drive error:', response?.status, response?.statusText, lastError)
+      }
       return NextResponse.json(
         { error: 'Failed to fetch video' },
         { status: response?.status || 500 }
@@ -126,7 +130,10 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Video proxy error:', error)
+    // Video proxy errors are logged but don't use logger to avoid circular dependencies
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Video proxy error:', error)
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -196,7 +203,10 @@ export async function HEAD(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Video proxy HEAD error:', error)
+    // Video proxy errors are logged but don't use logger to avoid circular dependencies
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Video proxy HEAD error:', error)
+    }
     return new NextResponse(null, { status: 500 })
   }
 }

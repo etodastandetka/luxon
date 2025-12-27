@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import BankButtons from '../../../components/BankButtons'
 import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
-import { getTelegramUser, syncWithBot, notifyUser, checkUserBlocked } from '../../../utils/telegram'
+import { getTelegramUser, getTelegramUserId, syncWithBot, notifyUser, checkUserBlocked } from '../../../utils/telegram'
 import { useAlert } from '../../../components/useAlert'
 import { formatKgs, formatUsdt, formatUsd } from '../../../utils/crypto-pay'
 import { safeFetch, getApiBase } from '../../../utils/fetch'
@@ -56,24 +56,8 @@ export default function DepositStep4() {
     setAmount(savedAmount)
     setPaymentType(savedPaymentType)
     
-    // Получаем Telegram ID пользователя
-    const tg = (window as any).Telegram?.WebApp
-    let telegramUserId: string | null = null
-    
-    if (tg?.initDataUnsafe?.user?.id) {
-      telegramUserId = String(tg.initDataUnsafe.user.id)
-    } else if (tg?.initData) {
-      try {
-        const params = new URLSearchParams(tg.initData)
-        const userParam = params.get('user')
-        if (userParam) {
-          const user = JSON.parse(decodeURIComponent(userParam))
-          telegramUserId = String(user.id)
-        }
-      } catch (e) {
-        console.log('❌ Error parsing initData:', e)
-      }
-    }
+    // Получаем Telegram ID пользователя (оптимизированная функция)
+    const telegramUserId = getTelegramUserId()
     
     // Проверяем, есть ли сохраненные данные предыдущей заявки
     const previousBookmaker = localStorage.getItem('previous_deposit_bookmaker') || ''
@@ -155,24 +139,8 @@ export default function DepositStep4() {
       
       const amountInUsd = parseFloat(savedAmountUsd)
       
-      // Получаем Telegram ID пользователя для payload
-      const tg = (window as any).Telegram?.WebApp
-      let telegramUserId: string | null = null
-      
-      if (tg?.initDataUnsafe?.user?.id) {
-        telegramUserId = String(tg.initDataUnsafe.user.id)
-      } else if (tg?.initData) {
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            const user = JSON.parse(decodeURIComponent(userParam))
-            telegramUserId = String(user.id)
-          }
-        } catch (e) {
-          console.log('❌ Error parsing initData:', e)
-        }
-      }
+      // Получаем Telegram ID пользователя для payload (оптимизированная функция)
+      const telegramUserId = getTelegramUserId()
       
       const payload = JSON.stringify({
         bookmaker,
@@ -363,7 +331,7 @@ export default function DepositStep4() {
     }
     
     try {
-      // Отклоняем заявку в Django API
+      // Отклоняем заявку
       const transactionId = localStorage.getItem('deposit_transaction_id')
       if (transactionId) {
         const response = await safeFetch('/api/payment', {
@@ -601,33 +569,11 @@ export default function DepositStep4() {
         throw new Error(errorMsg)
       }
 
-      // Получаем Telegram ID пользователя (пытаемся найти, но не критично)
-      let telegramUserId: string | null = null
+      // Получаем Telegram ID пользователя (оптимизированная функция)
+      let telegramUserId = getTelegramUserId()
       
-      if (tg?.initDataUnsafe?.user?.id) {
-        telegramUserId = String(tg.initDataUnsafe.user.id)
-      } else if (tg?.initData) {
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            const userData = JSON.parse(decodeURIComponent(userParam))
-            telegramUserId = String(userData.id)
-          }
-        } catch (e) {
-          console.error('Error parsing initData for telegram_user_id:', e)
-        }
-      }
-      
-      // Если Telegram ID не найден, используем из telegramUser
-      if (!telegramUserId && telegramUser?.id) {
-        telegramUserId = String(telegramUser.id)
-      }
-      
-      // Если Telegram ID все еще не найден, используем playerId как fallback
-      // Это не идеально, но лучше чем ошибка
+      // Если Telegram ID не найден, используем playerId как fallback
       if (!telegramUserId) {
-        console.warn('⚠️ Telegram user ID not found, using playerId as fallback:', playerId)
         telegramUserId = playerId || 'unknown'
       }
 
@@ -899,7 +845,7 @@ export default function DepositStep4() {
       if (!isNonCriticalError) {
         try {
           const tg = (window as any).Telegram?.WebApp
-          const telegramUserId = tg?.initDataUnsafe?.user?.id || 'unknown'
+          const telegramUserId = getTelegramUserId() || 'unknown'
           
           // Используем safeFetch для логирования ошибки, но без retry чтобы не зациклиться
           safeFetch('/api/payment', {
@@ -1166,24 +1112,8 @@ export default function DepositStep4() {
       // Очищаем таймер из localStorage, чтобы при повторном заходе не показывался
       localStorage.removeItem('deposit_timer_start')
       
-      // Получаем Telegram ID для сохранения
-      const tg = (window as any).Telegram?.WebApp
-      let telegramUserId: string | null = null
-      
-      if (tg?.initDataUnsafe?.user?.id) {
-        telegramUserId = String(tg.initDataUnsafe.user.id)
-      } else if (tg?.initData) {
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            const user = JSON.parse(decodeURIComponent(userParam))
-            telegramUserId = String(user.id)
-          }
-        } catch (e) {
-          console.log('❌ Error parsing initData:', e)
-        }
-      }
+      // Получаем Telegram ID для сохранения (оптимизированная функция)
+      const telegramUserId = getTelegramUserId()
       
       // Сохраняем текущие данные как "предыдущие" для проверки новой заявки (используем Telegram ID)
       if (telegramUserId) {
@@ -1480,7 +1410,6 @@ export default function DepositStep4() {
       const amountLen = amountStr.length.toString().padStart(2, '0')
       
       // Создаем TLV структуру до контрольной суммы (БЕЗ 6304)
-      // Структура как в Django API для совместимости
       const merchantAccountValue = (
         `0015qr.demirbank.kg` +  // Под-тег 00: домен
         `01047001` +              // Под-тег 01: короткий тип (7001)
@@ -1502,13 +1431,13 @@ export default function DepositStep4() {
       
       // Вычисляем SHA256 контрольную сумму от payload (БЕЗ 6304)
       const checksumFull = await calculateSHA256(payload)
-      // Берем последние 4 символа (как в Django API)
+      // Берем последние 4 символа
       const checksum = checksumFull.slice(-4).toLowerCase()
       
       // Полный QR хеш: payload + '6304' + checksum
       const qrHash = payload + '6304' + checksum
       
-      // Создаем ссылки для всех банков (с ключами как в Django API для совместимости)
+      // Создаем ссылки для всех банков
       const bankLinks = {
         'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
         'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,

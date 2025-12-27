@@ -1,29 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-helpers'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    console.log('🔄 Next.js API: Получен запрос на синхронизацию с ботом:', body)
-    
-    // Логируем данные синхронизации (Django API больше не используется)
-    // Просто возвращаем успех, чтобы клиент не получал ошибку
-    console.log('✅ Sync data logged:', {
+    // Log sync data (for internal tracking)
+    logger.debug('Sync data logged', {
       user: body.user?.id || body.user?.username || 'unknown',
       action: body.action || 'unknown',
       data: body.data || {}
     })
     
-    return NextResponse.json({
-      success: true,
-      message: 'Sync data received'
-    })
+    return createSuccessResponse(null, 'Sync data received')
     
-  } catch (error) {
-    console.error('❌ Next.js API error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
+  } catch (error: any) {
+    logger.error('Sync API error', error)
+    return createErrorResponse(
+      error?.message || 'Internal server error',
+      500
     )
   }
 }

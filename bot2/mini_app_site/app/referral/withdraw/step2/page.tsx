@@ -22,23 +22,8 @@ function ReferralWithdrawStep2Content() {
 
   const loadAvailableBalance = async () => {
     try {
-      const tg = (window as any).Telegram?.WebApp
-      let userId = null
-      
-      if (tg?.initDataUnsafe?.user?.id) {
-        userId = tg.initDataUnsafe.user.id
-      } else if (tg?.initData) {
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            const userData = JSON.parse(decodeURIComponent(userParam))
-            userId = userData.id
-          }
-        } catch (e) {
-          console.error('Error parsing initData:', e)
-        }
-      }
+      // Используем оптимизированную функцию для получения ID
+      const userId = getTelegramUserId()
 
       if (!userId) {
         console.error('No user ID found')

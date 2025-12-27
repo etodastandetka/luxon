@@ -1,77 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { getApiBase } from '@/config/api'
+import { createSuccessResponse } from '@/lib/api-helpers'
+import { logger } from '@/lib/logger'
 
-// В продакшене всегда используем локальный адрес админки (они на одном сервере)
-const ADMIN_API_URL = process.env.ADMIN_API_URL || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:3001' : 'http://localhost:3001')
+const ADMIN_API_URL = getApiBase()
+
+const DEFAULT_VIDEOS = {
+  deposit_video_url: 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
+  withdraw_video_url: 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view',
+}
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Next.js API: Получен запрос на загрузку видео инструкций')
     
-    // Во время сборки (build time) не делаем fetch, возвращаем дефолтные значения
+    // During build time, return default values
     if (process.env.NEXT_PHASE === 'phase-production-build') {
-      return NextResponse.json({
-        success: true,
-        data: {
-          deposit_video_url: 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
-          withdraw_video_url: 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view',
-        }
-      })
+      return createSuccessResponse(DEFAULT_VIDEOS)
     }
     
-    // Проксируем запрос к админ-панели API
+    // Proxy request to admin API
     const response = await fetch(`${ADMIN_API_URL}/api/public/video-instructions`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      // Добавляем таймаут
       signal: AbortSignal.timeout(5000)
     })
     
     if (!response.ok) {
-      console.error('❌ Admin API error:', response.status)
-      
-      // Возвращаем значения по умолчанию при ошибке
-      return NextResponse.json({
-        success: true,
-        data: {
-          deposit_video_url: 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
-          withdraw_video_url: 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view',
-        }
-      })
+      logger.error('Admin API error', response.status)
+      return createSuccessResponse(DEFAULT_VIDEOS)
     }
     
-    // Проверяем Content-Type перед парсингом JSON
+    // Check Content-Type before parsing JSON
     const contentType = response.headers.get('content-type')
     if (!contentType || !contentType.includes('application/json')) {
-      console.error('❌ Admin API returned non-JSON response:', contentType)
-      
-      // Возвращаем значения по умолчанию
-      return NextResponse.json({
-        success: true,
-        data: {
-          deposit_video_url: 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view',
-          withdraw_video_url: 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view',
-        }
-      })
+      logger.error('Admin API returned non-JSON response', contentType)
+      return createSuccessResponse(DEFAULT_VIDEOS)
     }
     
     const data = await response.json()
-    console.log('✅ Next.js API: Видео инструкции загружены успешно')
     
-    return NextResponse.json(data)
+    // If admin API returns standardized format, extract data
+    if (data.success !== undefined && data.data) {
+      return createSuccessResponse(data.data, data.message)
+    }
+    
+    // Otherwise wrap in standardized format
+    return createSuccessResponse(data)
     
   } catch (error: any) {
-    console.error('❌ Next.js API error:', error)
+    logger.error('Video instructions API error', error)
     
-    // Возвращаем значения по умолчанию при любой ошибке
-    return NextResponse.json({
-      success: true,
-      data: {
-        deposit_video_url: 'https://drive.google.com/file/d/1IiIWC7eWvDQy0BjtHkCNJiU3ehgZ9ks4/view?usp=drive_link',
-        withdraw_video_url: 'https://drive.google.com/file/d/1hKAE6dqLDPuijYwJAmK5xOoS8OX25hlH/view?usp=drive_link',
-      }
-    })
+    // Return default videos on any error
+    return createSuccessResponse(DEFAULT_VIDEOS)
   }
 }
 

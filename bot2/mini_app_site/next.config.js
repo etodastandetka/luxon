@@ -13,7 +13,10 @@ const nextConfig = {
       { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: '**' }
     ],
-    formats: ['image/avif', 'image/webp'], // Современные форматы
+    // Для старых устройств используем JPEG вместо современных форматов
+    formats: process.env.NODE_ENV === 'production' 
+      ? ['image/webp', 'image/jpeg'] // WebP с fallback на JPEG
+      : ['image/webp', 'image/jpeg'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 31536000, // Кеш изображений на 1 год (статические изображения)
@@ -31,6 +34,15 @@ const nextConfig = {
     } : false,
   },
   
+  // Совместимость со старыми браузерами
+  transpilePackages: [],
+  
+  // Экспериментальные настройки для совместимости
+  experimental: {
+    // Отключаем современные фичи для совместимости
+    esmExternals: false,
+  },
+  
   // Оптимизация бандла
   // Отключаем optimizeCss т.к. требует critters модуль
   // experimental: {
@@ -46,9 +58,6 @@ const nextConfig = {
   generateEtags: true,
   
   env: {
-    // Django API больше не используется, оставляем для совместимости
-    DJANGO_API_URL: process.env.DJANGO_API_URL || '',
-    NEXT_PUBLIC_DJANGO_API_URL: process.env.NEXT_PUBLIC_DJANGO_API_URL || '',
     // Версия приложения для проверки обновлений
     NEXT_PUBLIC_APP_VERSION: Date.now().toString()
   },

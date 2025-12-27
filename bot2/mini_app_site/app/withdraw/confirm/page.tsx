@@ -19,7 +19,7 @@ export default function WithdrawConfirm() {
   const router = useRouter()
 
   useEffect(() => {
-    // Перенаправляем на step5, так как страница подтверждения больше не используется
+    // Перенаправляем на step5
     router.push('/withdraw/step5')
   }, [router])
 
@@ -172,27 +172,8 @@ export default function WithdrawConfirm() {
         }
       }
 
-      // Получаем Telegram ID пользователя
-      let telegramUserId: string | null = null
-      
-      if (tg?.initDataUnsafe?.user?.id) {
-        telegramUserId = String(tg.initDataUnsafe.user.id)
-      } else if (tg?.initData) {
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            const userData = JSON.parse(decodeURIComponent(userParam))
-            telegramUserId = String(userData.id)
-          }
-        } catch (e) {
-          console.error('Error parsing initData for telegram_user_id:', e)
-        }
-      }
-      
-      if (!telegramUserId && telegramUser?.id) {
-        telegramUserId = String(telegramUser.id)
-      }
+      // Получаем Telegram ID пользователя (оптимизированная функция)
+      const telegramUserId = getTelegramUserId()
 
       if (!telegramUserId) {
         console.error('❌ Telegram user ID not found!')

@@ -1,17 +1,13 @@
 // Утилита для безопасного fetch с таймаутом и обработкой ошибок для мобильных браузеров
 
+import { getApiBase as getApiBaseFromConfig } from '../config/api'
+
 /**
  * Получить базовый URL для API
- * Всегда возвращает URL админки (japar.click в продакшене)
+ * Использует единую конфигурацию из config/api.ts
  */
 export function getApiBase(): string {
-  const isDevelopment = process.env.NODE_ENV === 'development'
-  
-  if (isDevelopment) {
-    return 'http://localhost:3001'
-  }
-  // Продакшен: всегда используем админку
-  return 'https://japar.click'
+  return getApiBaseFromConfig()
 }
 
 interface FetchOptions extends RequestInit {
@@ -38,18 +34,9 @@ export async function safeFetch(
 
   // Проверяем поддержку AbortController (может быть проблема на старых iOS)
   const hasAbortController = typeof AbortController !== 'undefined'
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent || '')
-  
-  console.log(`🔄 safeFetch: начало для ${url}`, {
-    hasAbortController,
-    isIOS,
-    retries,
-    timeout
-  })
+  const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent || '')
   
   for (let attempt = 0; attempt <= retries; attempt++) {
-    console.log(`🔄 safeFetch: попытка ${attempt + 1}/${retries + 1} для ${url}`)
-    
     try {
       let controller: AbortController | null = null
       let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -59,29 +46,18 @@ export async function safeFetch(
         try {
           controller = new AbortController()
           timeoutId = setTimeout(() => {
-            console.warn(`⏱️ Таймаут запроса ${url} после ${timeout}ms`)
             if (controller) {
               controller.abort()
             }
           }, timeout)
         } catch (controllerError) {
-          console.warn('⚠️ Ошибка создания AbortController:', controllerError)
-          // Продолжаем без таймаута
+          // Продолжаем без таймаута на старых устройствах
         }
-      } else {
-        console.warn('⚠️ AbortController не поддерживается, таймаут не будет работать')
       }
 
       try {
-        console.log(`📤 Отправка fetch запроса: ${url}`, {
-          method: fetchOptions.method || 'GET',
-          hasBody: !!fetchOptions.body,
-          bodySize: fetchOptions.body ? String(fetchOptions.body).length : 0,
-          hasSignal: !!controller?.signal
-        })
-        
-        const fetchOptionsWithSignal = controller?.signal 
-          ? { ...fetchOptions, signal: controller.signal }
+        const fetchOptionsWithSignal = controller && controller.signal
+          ? Object.assign({}, fetchOptions, { signal: controller.signal })
           : fetchOptions
         
         const response = await fetch(url, fetchOptionsWithSignal)
@@ -90,34 +66,21 @@ export async function safeFetch(
           clearTimeout(timeoutId)
           timeoutId = null
         }
-        console.log(`✅ Получен response от ${url}:`, {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok
-        })
         return response
       } catch (fetchError: any) {
         if (timeoutId !== null) {
           clearTimeout(timeoutId)
           timeoutId = null
         }
-        console.error(`❌ Ошибка fetch для ${url}:`, {
-          name: fetchError.name,
-          message: fetchError.message,
-          attempt: attempt + 1,
-          isIOS
-        })
         
         // Если это AbortError (таймаут), пробуем еще раз только если не iOS
         if (fetchError.name === 'AbortError') {
           lastError = new Error(`Таймаут запроса (${timeout}ms). Проверьте интернет-соединение.`)
-          // На iOS не делаем retry при AbortError, так как это может быть проблема с AbortController
+          // На iOS не делаем retry при AbortError
           if (isIOS) {
-            console.warn('🍎 iOS: AbortError, не делаем retry')
             throw lastError
           }
           if (attempt < retries) {
-            console.warn(`⏱️ Таймаут запроса, попытка ${attempt + 1}/${retries + 1}`)
             await new Promise(resolve => setTimeout(resolve, retryDelay))
             continue
           }
@@ -130,51 +93,40 @@ export async function safeFetch(
       lastError = error
       
       // Определяем тип ошибки для понятного сообщения
-      const errorMessage = error?.message || String(error)
+      const errorMessage = error && error.message ? error.message : String(error)
       const isNetworkError = 
-        errorMessage.includes('Failed to fetch') ||
-        errorMessage.includes('NetworkError') ||
-        errorMessage.includes('Network request failed') ||
-        errorMessage.includes('ERR_INTERNET_DISCONNECTED') ||
-        errorMessage.includes('ERR_NETWORK_CHANGED') ||
-        error.name === 'TypeError' && errorMessage.includes('fetch')
-      
-      console.error(`❌ Ошибка в safeFetch (попытка ${attempt + 1}/${retries + 1}):`, {
-        url,
-        errorMessage,
-        isNetworkError,
-        errorName: error.name
-      })
+        errorMessage.indexOf('Failed to fetch') !== -1 ||
+        errorMessage.indexOf('NetworkError') !== -1 ||
+        errorMessage.indexOf('Network request failed') !== -1 ||
+        errorMessage.indexOf('ERR_INTERNET_DISCONNECTED') !== -1 ||
+        errorMessage.indexOf('ERR_NETWORK_CHANGED') !== -1 ||
+        (error && error.name === 'TypeError' && errorMessage.indexOf('fetch') !== -1)
       
       // Проверяем если это ошибка 413 (Request Entity Too Large)
-      const is413Error = errorMessage.includes('413') || 
-                        errorMessage.includes('Request Entity Too Large') ||
-                        errorMessage.includes('Entity Too Large')
+      const is413Error = errorMessage.indexOf('413') !== -1 || 
+                        errorMessage.indexOf('Request Entity Too Large') !== -1 ||
+                        errorMessage.indexOf('Entity Too Large') !== -1
       if (is413Error) {
-        console.error('❌ Ошибка 413: Request Entity Too Large')
         throw new Error('Размер данных слишком большой. Пожалуйста, уменьшите размер фото или попробуйте без фото.')
       }
       
       if (isNetworkError) {
         // Для сетевых ошибок пробуем еще раз
         if (attempt < retries) {
-          console.warn(`🌐 Сетевая ошибка, попытка ${attempt + 1}/${retries + 1}:`, errorMessage)
           await new Promise(resolve => setTimeout(resolve, retryDelay))
           continue
         }
-        // Только если это действительно сетевая ошибка (не ошибка парсинга или другая)
-        // Проверяем, что это не ошибка, связанная с HTTP статусом или другими техническими деталями
+        // Только если это действительно сетевая ошибка
         const isRealNetworkIssue = 
-          !errorMessage.includes('HTTP') && 
-          !errorMessage.includes('Status:') &&
-          !errorMessage.includes('Ошибка') &&
-          !errorMessage.includes('Error') &&
-          (error.name === 'TypeError' || error.name === 'NetworkError')
+          errorMessage.indexOf('HTTP') === -1 && 
+          errorMessage.indexOf('Status:') === -1 &&
+          errorMessage.indexOf('Ошибка') === -1 &&
+          errorMessage.indexOf('Error') === -1 &&
+          (error && (error.name === 'TypeError' || error.name === 'NetworkError'))
         
         if (isRealNetworkIssue) {
           throw new Error('Нет подключения к интернету. Проверьте соединение и попробуйте снова.')
         }
-        // Если это ошибка с HTTP статусом или другая техническая ошибка, пробрасываем оригинальную ошибку
         throw error
       }
       

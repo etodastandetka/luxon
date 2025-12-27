@@ -1,13 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { getApiBase } from '@/config/api'
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-helpers'
+import { logger } from '@/lib/logger'
 
-// В продакшене всегда используем локальный адрес админки (они на одном сервере)
-const ADMIN_API_URL = process.env.ADMIN_API_URL || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:3001' : 'http://localhost:3001')
+const ADMIN_API_URL = getApiBase()
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7)
   const startTime = Date.now()
   
-  console.log(`[${requestId}] 🚀 POST /api/payment вызван`, {
+  logger.debug(`[${requestId}] POST /api/payment called`, {
     url: request.url,
     method: request.method,
     headers: Object.fromEntries(request.headers.entries()),
@@ -18,16 +20,17 @@ export async function POST(request: NextRequest) {
     let body
     try {
       body = await request.json()
-      console.log(`[${requestId}] ✅ Body успешно распарсен`)
+      logger.debug(`[${requestId}] Body parsed successfully`)
     } catch (parseError: any) {
-      console.error(`[${requestId}] ❌ Ошибка парсинга body:`, parseError)
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body', requestId },
-        { status: 400 }
+      logger.error(`[${requestId}] Failed to parse body`, parseError)
+      return createErrorResponse(
+        'Invalid JSON in request body',
+        400,
+        { requestId }
       )
     }
     
-    console.log(`[${requestId}] 🔄 Next.js API: Получен запрос на создание заявки:`, {
+    logger.debug(`[${requestId}] Payment request received`, {
       type: body.type,
       bookmaker: body.bookmaker,
       userId: body.userId || body.telegram_user_id,
@@ -52,9 +55,9 @@ export async function POST(request: NextRequest) {
       })
     })
     
-    // Проксируем запрос к админ-панели API
+    // Proxy request to admin API
     const adminApiUrl = `${ADMIN_API_URL}/api/payment`
-    console.log(`[${requestId}] 📤 Отправка запроса к Admin API: ${adminApiUrl}`, {
+    logger.debug(`[${requestId}] Sending request to Admin API`, {
       bodySize: JSON.stringify(body).length,
       bodyKeys: Object.keys(body),
       timestamp: new Date().toISOString()
@@ -62,12 +65,12 @@ export async function POST(request: NextRequest) {
     
     let response: Response
     try {
-      // Создаем AbortController для таймаута
+      // Create AbortController for timeout
       const controller = new AbortController()
       const timeoutId = setTimeout(() => {
-        console.warn(`[${requestId}] ⏱️ Таймаут запроса к Admin API`)
+        logger.warn(`[${requestId}] Request timeout to Admin API`)
         controller.abort()
-      }, 30000) // 30 секунд
+      }, 30000) // 30 seconds
       
       response = await fetch(adminApiUrl, {
         method: 'POST',
@@ -79,37 +82,37 @@ export async function POST(request: NextRequest) {
       })
       
       clearTimeout(timeoutId)
-      console.log(`[${requestId}] ✅ Получен response от Admin API`)
+      logger.debug(`[${requestId}] Response received from Admin API`)
     } catch (fetchError: any) {
       if (fetchError.name === 'AbortError') {
-        console.error(`[${requestId}] ❌ Таймаут запроса к Admin API`)
-        return NextResponse.json(
+        logger.error(`[${requestId}] Request timeout to Admin API`)
+        return createErrorResponse(
+          'Request timeout',
+          504,
           { 
-            error: 'Request timeout',
             requestId,
             details: 'Сервер не ответил вовремя. Попробуйте позже.'
-          },
-          { status: 504 }
+          }
         )
       }
-      console.error(`[${requestId}] ❌ Ошибка fetch к Admin API:`, {
+      logger.error(`[${requestId}] Fetch error to Admin API`, {
         error: fetchError,
         message: fetchError?.message,
         name: fetchError?.name,
         stack: fetchError?.stack
       })
-      return NextResponse.json(
-        { 
-          error: fetchError?.message || 'Failed to connect to admin API',
+      return createErrorResponse(
+        fetchError?.message || 'Failed to connect to admin API',
+        503,
+        {
           requestId,
           details: 'Ошибка подключения к серверу. Попробуйте позже.'
-        },
-        { status: 503 }
+        }
       )
     }
     
     const responseTime = Date.now() - startTime
-    console.log(`[${requestId}] 📥 Получен ответ от Admin API:`, {
+    logger.debug(`[${requestId}] Response from Admin API`, {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
@@ -119,7 +122,7 @@ export async function POST(request: NextRequest) {
     
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[${requestId}] ❌ Admin API error:`, {
+      logger.error(`[${requestId}] Admin API error`, {
         status: response.status,
         statusText: response.statusText,
         errorText: errorText.substring(0, 1000), // Первые 1000 символов
@@ -131,24 +134,21 @@ export async function POST(request: NextRequest) {
       let errorData
       try {
         errorData = JSON.parse(errorText)
-        console.error(`[${requestId}] ❌ Распарсенные данные ошибки:`, errorData)
+        logger.debug(`[${requestId}] Parsed error data`, errorData)
       } catch (parseError) {
-        console.error(`[${requestId}] ❌ Ошибка парсинга JSON:`, parseError)
+        logger.error(`[${requestId}] Failed to parse JSON error`, parseError)
         errorData = { error: errorText || 'Unknown error' }
       }
       
-      return NextResponse.json(
-        { 
-          error: errorData.error || errorData.message || `Admin API error: ${response.status}`,
-          details: errorData,
-          requestId: requestId
-        },
-        { status: response.status }
+      return createErrorResponse(
+        errorData.error || errorData.message || `Admin API error: ${response.status}`,
+        response.status,
+        { ...errorData, requestId }
       )
     }
     
     const data = await response.json()
-    console.log(`[${requestId}] ✅ Next.js API: Заявка создана успешно:`, {
+    logger.debug(`[${requestId}] Payment request created successfully`, {
       success: data.success,
       id: data.data?.id,
       transactionId: data.data?.id,
@@ -156,29 +156,36 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
     
-    // Для error_log просто возвращаем успех без id
+    // For error_log, just return success without id
     if (body.type === 'error_log') {
-      return NextResponse.json({
-        success: data.success,
-        message: data.message || 'Error logged successfully'
-      })
+      return createSuccessResponse(null, data.message || 'Error logged successfully')
     }
     
-    // Преобразуем ответ в формат, который ожидает клиентский сайт
+    // Transform response to format expected by client
+    // Maintain backward compatibility with transactionId/id fields
     if (data.data && data.data.id) {
-      return NextResponse.json({
-        success: true,
+      const responseData = {
+        ...data.data,
         transactionId: data.data.id,
-        id: data.data.id,
-        message: data.data.message || 'Заявка успешно создана'
-      })
+        id: data.data.id
+      }
+      return createSuccessResponse(
+        responseData,
+        data.data.message || data.message || 'Заявка успешно создана'
+      )
     }
     
-    return NextResponse.json(data)
+    // If admin API returns standardized format, pass it through
+    if (data.success !== undefined) {
+      return createSuccessResponse(data.data || data, data.message)
+    }
+    
+    // Otherwise wrap in standardized format
+    return createSuccessResponse(data)
     
   } catch (error: any) {
     const responseTime = Date.now() - startTime
-    console.error(`[${requestId}] ❌ КРИТИЧЕСКАЯ ОШИБКА Next.js API (POST):`, {
+    logger.error(`[${requestId}] Critical error in Payment API (POST)`, {
       error: error,
       errorMessage: error?.message,
       errorStack: error?.stack,
@@ -191,13 +198,13 @@ export async function POST(request: NextRequest) {
       headers: Object.fromEntries(request.headers.entries())
     })
     
-    return NextResponse.json(
-      { 
-        error: error?.message || 'Internal server error',
-        requestId: requestId,
+    return createErrorResponse(
+      error?.message || 'Internal server error',
+      500,
+      {
+        requestId,
         timestamp: new Date().toISOString()
-      },
-      { status: 500 }
+      }
     )
   }
 }
@@ -206,9 +213,7 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
     
-    console.log('🔄 Next.js API: Получен запрос на обновление заявки:', body)
-    
-    // Проксируем запрос к админ-панели API
+    // Proxy request to admin API
     const response = await fetch(`${ADMIN_API_URL}/api/payment`, {
       method: 'PUT',
       headers: {
@@ -220,22 +225,37 @@ export async function PUT(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ Admin API error:', response.status, errorText)
-      return NextResponse.json(
-        { error: `Admin API error: ${response.status} - ${errorText}` },
-        { status: response.status }
+      
+      let errorData: any
+      try {
+        errorData = JSON.parse(errorText)
+      } catch {
+        errorData = { error: errorText || `Admin API error: ${response.status}` }
+      }
+      
+      logger.error('Admin API error', response.status, errorText)
+      return createErrorResponse(
+        errorData.error || errorData.message || `Admin API error: ${response.status}`,
+        response.status,
+        errorData
       )
     }
     
     const data = await response.json()
-    console.log('✅ Next.js API: Заявка обновлена успешно:', data)
     
-    return NextResponse.json(data)
+    // If admin API returns standardized format, pass it through
+    if (data.success !== undefined) {
+      return createSuccessResponse(data.data || data, data.message)
+    }
     
-  } catch (error) {
-    console.error('❌ Next.js API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    // Otherwise wrap in standardized format
+    return createSuccessResponse(data)
+    
+  } catch (error: any) {
+    logger.error('Payment API PUT error', error)
+    return createErrorResponse(
+      error?.message || 'Internal server error',
+      500
     )
   }
 }

@@ -58,14 +58,20 @@ export default function UserProfile() {
       
       const transactions = data.data?.transactions || data.transactions || []
       
+      // Считаем только успешные транзакции (completed или approved)
+      const deposits = transactions.filter((t: any) => 
+        t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')
+      )
+      const withdraws = transactions.filter((t: any) => 
+        t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')
+      )
+      
       const userStats: UserStats = {
-        totalDeposits: transactions.filter((t: any) => t.type === 'deposit').length,
-        totalWithdraws: transactions.filter((t: any) => t.type === 'withdraw').length,
-        totalDepositAmount: transactions
-          .filter((t: any) => t.type === 'deposit')
+        totalDeposits: deposits.length,
+        totalWithdraws: withdraws.length,
+        totalDepositAmount: deposits
           .reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
-        totalWithdrawAmount: transactions
-          .filter((t: any) => t.type === 'withdraw')
+        totalWithdrawAmount: withdraws
           .reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
       }
       

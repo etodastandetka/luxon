@@ -6,9 +6,12 @@ import { LanguageProvider } from '../components/LanguageContext'
 import BottomNavigation from '../components/BottomNavigation'
 import Snowflakes from '../components/Snowflakes'
 import VersionChecker from '../components/VersionChecker'
+import OldDeviceWarning from '../components/OldDeviceWarning'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { getApiBase } from '../utils/fetch'
+import { getTelegramUserId } from '../utils/telegram'
+import { initIOSColorFixes } from '../utils/ios-color-fix'
 
 function BlockedChecker({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -20,24 +23,8 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // Получаем ID пользователя из Telegram WebApp
-    const tg = (window as any).Telegram?.WebApp
-    let userId: string | null = null
-    
-    if (tg?.initDataUnsafe?.user?.id) {
-      userId = String(tg.initDataUnsafe.user.id)
-    } else if (tg?.initData) {
-      try {
-        const params = new URLSearchParams(tg.initData)
-        const userParam = params.get('user')
-        if (userParam) {
-          const user = JSON.parse(decodeURIComponent(userParam))
-          userId = String(user.id)
-        }
-      } catch (e) {
-        // Игнорируем ошибки парсинга
-      }
-    }
+    // Получаем ID пользователя из Telegram WebApp (оптимизированная функция)
+    const userId = getTelegramUserId()
 
     // Проверяем статус пользователя и регистрируем реферала (если есть реферальный код)
     if (userId) {
@@ -62,22 +49,48 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
         try {
           const tg = (window as any).Telegram?.WebApp
           
-          // Пробуем получить startParam из разных источников
-          const startParam = tg?.startParam || 
-                           tg?.initDataUnsafe?.start_param ||
-                           (() => {
-                             // Пробуем получить из URL параметров (если мини-приложение открыто через ссылку)
-                             const urlParams = new URLSearchParams(window.location.search)
-                             return urlParams.get('start_param') || urlParams.get('ref')
-                           })()
+          // Пробуем получить startParam из разных источников (безопасный доступ)
+          let startParam: string | null = null
+          try {
+            if (tg && tg.startParam) {
+              startParam = tg.startParam
+            } else if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+              startParam = tg.initDataUnsafe.start_param
+            } else {
+              // Пробуем получить из URL параметров
+              try {
+                const urlParams = new URLSearchParams(window.location.search)
+                startParam = urlParams.get('start_param') || urlParams.get('ref')
+              } catch (e) {
+                // Fallback для старых браузеров без URLSearchParams
+                const search = window.location.search
+                if (search) {
+                  const match = search.match(/[?&](?:start_param|ref)=([^&]+)/)
+                  if (match) {
+                    startParam = decodeURIComponent(match[1])
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Игнорируем ошибки
+          }
           
-          console.log('🔍 Проверка реферального кода:', {
-            startParam,
-            tgStartParam: tg?.startParam,
-            initDataUnsafeStartParam: tg?.initDataUnsafe?.start_param,
-            userId,
-            tgObject: tg ? 'exists' : 'missing'
-          })
+          // Безопасный доступ для логирования
+          const tgStartParam = tg && tg.startParam ? tg.startParam : null
+          const initDataUnsafeStartParam = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param 
+            ? tg.initDataUnsafe.start_param 
+            : null
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Проверка реферального кода:', {
+              startParam,
+              tgStartParam,
+              initDataUnsafeStartParam,
+              userId,
+              tgObject: tg ? 'exists' : 'missing'
+            })
+          }
           
           if (startParam && startParam.startsWith('ref')) {
             const referralCode = startParam.substring(3) // Убираем 'ref'
@@ -87,7 +100,15 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
             
             if (referrerId && referrerId !== userId && /^\d+$/.test(referrerId)) {
               const apiUrl = getApiBase()
-              const user = tg?.initDataUnsafe?.user
+              // Безопасный доступ к user
+              let user: any = null
+              try {
+                if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                  user = tg.initDataUnsafe.user
+                }
+              } catch (e) {
+                // Игнорируем ошибки
+              }
               
               console.log('🔄 Регистрация реферала:', { 
                 referrerId, 
@@ -104,9 +125,9 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify({
                   referrer_id: referrerId,
                   referred_id: userId,
-                  username: user?.username || null,
-                  first_name: user?.first_name || null,
-                  last_name: user?.last_name || null,
+                  username: (user && user.username) ? user.username : null,
+                  first_name: (user && user.first_name) ? user.first_name : null,
+                  last_name: (user && user.last_name) ? user.last_name : null,
                 }),
               })
               
@@ -140,6 +161,11 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  
+  // Инициализируем исправления цветов для iOS
+  useEffect(() => {
+    initIOSColorFixes()
+  }, [])
   
   // Гарантируем, что title всегда установлен правильно
   useEffect(() => {
@@ -188,13 +214,82 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>LUX ON</title>
         <meta name="description" content="LUX ON" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <meta name="robots" content="noindex, nofollow" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
         <meta name="app-version" content={process.env.NEXT_PUBLIC_APP_VERSION || Date.now().toString()} />
+        {/* Полифиллы для старых браузеров - загружаем первыми */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Минимальные полифиллы для критических функций
+              (function() {
+                // Полифилл для Object.assign
+                if (typeof Object.assign !== 'function') {
+                  Object.assign = function(target) {
+                    if (target == null) throw new TypeError('Cannot convert undefined or null to object');
+                    var to = Object(target);
+                    for (var index = 1; index < arguments.length; index++) {
+                      var nextSource = arguments[index];
+                      if (nextSource != null) {
+                        for (var nextKey in nextSource) {
+                          if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+                            to[nextKey] = nextSource[nextKey];
+                          }
+                        }
+                      }
+                    }
+                    return to;
+                  };
+                }
+                
+                // Полифилл для Array.from
+                if (typeof Array.from !== 'function') {
+                  Array.from = function(arrayLike) {
+                    var C = this;
+                    var items = Object(arrayLike);
+                    if (arrayLike == null) throw new TypeError('Array.from requires an array-like object');
+                    var len = parseInt(items.length) || 0;
+                    var A = typeof C === 'function' ? Object(new C(len)) : new Array(len);
+                    var k = 0;
+                    while (k < len) {
+                      A[k] = items[k];
+                      k += 1;
+                    }
+                    A.length = len;
+                    return A;
+                  };
+                }
+                
+                // Полифилл для String.prototype.includes
+                if (typeof String.prototype.includes !== 'function') {
+                  String.prototype.includes = function(search, start) {
+                    if (typeof start !== 'number') start = 0;
+                    return this.indexOf(search, start) !== -1;
+                  };
+                }
+                
+                // Полифилл для Array.prototype.includes
+                if (typeof Array.prototype.includes !== 'function') {
+                  Array.prototype.includes = function(searchElement, fromIndex) {
+                    var O = Object(this);
+                    var len = parseInt(O.length) || 0;
+                    if (len === 0) return false;
+                    var n = parseInt(fromIndex) || 0;
+                    var k = n >= 0 ? n : Math.max(len + n, 0);
+                    for (; k < len; k++) {
+                      if (O[k] === searchElement) return true;
+                    }
+                    return false;
+                  };
+                }
+              })();
+            `,
+          }}
+        />
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
         {/* Preload критических изображений казино для быстрой загрузки */}
         <link rel="preload" as="image" href="/images/1xbet.jpg" />
@@ -203,6 +298,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body style={{ position: 'relative', margin: 0, padding: 0, minHeight: '100vh' }}>
         <LanguageProvider>
+          <OldDeviceWarning />
           <VersionChecker />
           <TelegramInit />
           {!shouldHideUI && <Snowflakes />}
@@ -211,7 +307,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </div>
           </BlockedChecker>
-          {!shouldHideUI && <BottomNavigation />}
         </LanguageProvider>
       </body>
     </html>

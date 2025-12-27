@@ -4,13 +4,25 @@
 
 :root { 
   color-scheme: dark; 
-  --tg-theme-bg-color: #0e1621;
+  /* Fallback цвета - будут переопределены Telegram WebApp */
+  --tg-theme-bg-color: #111827;
   --tg-theme-text-color: #ffffff;
   --tg-theme-hint-color: #999999;
   --tg-theme-link-color: #2481cc;
   --tg-theme-button-color: #2481cc;
   --tg-theme-button-text-color: #ffffff;
   --tg-theme-secondary-bg-color: #1e2732;
+  
+  /* Дополнительные цвета для совместимости */
+  --color-white: #ffffff;
+  --color-white-70: rgba(255, 255, 255, 0.7);
+  --color-white-60: rgba(255, 255, 255, 0.6);
+  --color-white-50: rgba(255, 255, 255, 0.5);
+  --color-white-40: rgba(255, 255, 255, 0.4);
+  --color-white-30: rgba(255, 255, 255, 0.3);
+  --color-white-20: rgba(255, 255, 255, 0.2);
+  --color-white-10: rgba(255, 255, 255, 0.1);
+  --color-white-5: rgba(255, 255, 255, 0.05);
 }
 
 html, body {
@@ -25,9 +37,12 @@ body {
   @apply bg-tgBg text-tgText min-h-screen;
   background: linear-gradient(135deg, #0f1b0f 0%, #1a2e1a 50%, #0f1b0f 100%);
   background-attachment: fixed;
-  color: var(--tg-theme-text-color);
+  color: var(--tg-theme-text-color, #ffffff);
+  background-color: var(--tg-theme-bg-color, #111827);
   overflow-x: hidden;
   position: relative;
+  /* Принудительно устанавливаем темные цвета для iOS */
+  -webkit-text-fill-color: var(--tg-theme-text-color, #ffffff);
 }
 
 * {
@@ -166,23 +181,52 @@ body::before {
 }
 
 .input { 
-  @apply w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-accent/60;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  caret-color: #fff;
+  @apply w-full rounded-lg px-3 py-2 outline-none;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
 }
 
 .input:focus {
-  border-color: var(--tg-theme-button-color);
-  box-shadow: 0 0 0 2px rgba(36, 129, 204, 0.2);
+  border-color: rgba(36, 129, 204, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(36, 129, 204, 0.2) !important;
 }
 
 .input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.6) !important;
 }
 
-.label { @apply text-xs text-white/60 mb-1; }
+.label { 
+  @apply text-xs mb-1;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Классы для совместимости с iOS - заменяют Tailwind opacity синтаксис */
+.text-white-70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.text-white-60 {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.text-white-50 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.text-white-40 {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.text-white-30 {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.text-white-80 {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
 
 /* Анимации */
 @keyframes fadeIn {

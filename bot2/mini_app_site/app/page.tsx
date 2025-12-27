@@ -22,6 +22,14 @@ const UserProfile = dynamic(() => import('../components/UserProfile'), {
   ssr: false
 })
 
+const RatingBlock = dynamic(() => import('../components/RatingBlock'), {
+  ssr: false
+})
+
+const Achievements = dynamic(() => import('../components/Achievements'), {
+  ssr: false
+})
+
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
@@ -362,6 +370,12 @@ export default function HomePage() {
           </a>
         </div>
       </div>
+
+      {/* Блок рейтинга */}
+      <RatingBlock />
+
+      {/* Достижения */}
+      <Achievements />
 
       {/* Видео инструкции */}
       <div className="grid grid-cols-2 gap-3">

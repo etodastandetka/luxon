@@ -120,111 +120,162 @@ declare global {
   }
 }
 
-// Получение экземпляра Telegram WebApp
+// Получение экземпляра Telegram WebApp (с проверкой совместимости)
 export const getTelegramWebApp = (): TelegramWebApp | null => {
-  if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-    return window.Telegram.WebApp
-  }
-  return null
-}
-
-// Получение данных пользователя
-export const getTelegramUser = (): TelegramUser | null => {
-  console.log('🔍 getTelegramUser: Начинаем получение данных пользователя')
-  
-  const tg = getTelegramWebApp()
-  console.log('🔍 getTelegramWebApp result:', tg)
-  
-  if (!tg) {
-    console.log('❌ Telegram WebApp не доступен')
+  if (typeof window === 'undefined') {
     return null
   }
   
-  console.log('🔍 Telegram WebApp доступен:', {
-    initData: tg.initData,
-    initDataUnsafe: tg.initDataUnsafe,
-    version: tg.version,
-    platform: tg.platform
-  })
-  
-  // Сначала пробуем получить из initDataUnsafe
-  if (tg?.initDataUnsafe?.user) {
-    console.log('✅ User from initDataUnsafe:', tg.initDataUnsafe.user)
-    return tg.initDataUnsafe.user
-  }
-  
-  // Если нет, пробуем парсить initData
-  if (tg?.initData) {
-    try {
-      console.log('🔍 Парсим initData:', tg.initData)
-      const params = new URLSearchParams(tg.initData)
-      const userParam = params.get('user')
-      console.log('🔍 userParam из initData:', userParam)
-      
-      if (userParam) {
-        const userData = JSON.parse(decodeURIComponent(userParam))
-        console.log('✅ User from initData:', userData)
-        return userData
-      }
-    } catch (e) {
-      console.log('❌ Error parsing initData:', e)
-    }
-  }
-  
-  // Пробуем получить из window.Telegram напрямую
-  if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initDataUnsafe?.user) {
-    console.log('✅ User from window.Telegram.WebApp.initDataUnsafe:', window.Telegram.WebApp.initDataUnsafe.user)
-    return window.Telegram.WebApp.initDataUnsafe.user
-  }
-  
-  // Пробуем получить из localStorage (если данные были сохранены ранее)
+  // Безопасный доступ для старых браузеров
   try {
-    const savedUser = localStorage.getItem('telegram_user')
-    if (savedUser) {
-      const userData = JSON.parse(savedUser)
-      console.log('✅ User from localStorage:', userData)
-      return userData
+    const telegram = (window as any).Telegram
+    if (telegram && telegram.WebApp) {
+      return telegram.WebApp
     }
   } catch (e) {
-    console.log('❌ Error parsing localStorage user:', e)
+    // Игнорируем ошибки доступа
   }
   
-  // Пробуем получить из cookies как последний fallback
-  try {
-    const cookies = document.cookie.split(';')
-    const cookieData: any = {}
-    
-    cookies.forEach(cookie => {
-      const [name, value] = cookie.trim().split('=')
-      if (name.startsWith('telegram_')) {
-        cookieData[name.replace('telegram_', '')] = decodeURIComponent(value)
-      }
-    })
-    
-    if (cookieData.user_id) {
-      const userData = {
-        id: parseInt(cookieData.user_id),
-        username: cookieData.username || '',
-        first_name: cookieData.first_name || '',
-        last_name: cookieData.last_name || '',
-        language_code: cookieData.language_code || 'ru',
-        is_premium: false
-      }
-      console.log('✅ User from cookies:', userData)
-      return userData
-    }
-  } catch (e) {
-    console.log('❌ Error parsing cookies:', e)
-  }
-  
-  console.log('❌ No user data found')
   return null
 }
 
-// Получение user ID
-export const getTelegramUserId = (): number | null => {
-  const user = getTelegramUser()
-  return user?.id || null
+// Кэш для данных пользователя (для производительности)
+let cachedUser: TelegramUser | null = null
+let cachedUserId: string | null = null
+let cacheTimestamp: number = 0
+const CACHE_TTL = 5 * 60 * 1000 // 5 минут
+
+// Оптимизированное получение данных пользователя (без лишних проверок и логирования)
+export const getTelegramUser = (useCache: boolean = true): TelegramUser | null => {
+  // Проверяем кэш
+  if (useCache && cachedUser && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return cachedUser
+  }
+  
+  const tg = getTelegramWebApp()
+  if (!tg) {
+    return null
+  }
+  
+  // Приоритет 1: initDataUnsafe (самый быстрый способ)
+  // Безопасный доступ для старых браузеров
+  try {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+      cachedUser = tg.initDataUnsafe.user
+      cachedUserId = String(cachedUser.id)
+      cacheTimestamp = Date.now()
+      return cachedUser
+    }
+  } catch (e) {
+    // Игнорируем ошибки доступа
+  }
+  
+  // Приоритет 2: парсинг initData (только если initDataUnsafe недоступен)
+  if (tg.initData) {
+    try {
+      const params = new URLSearchParams(tg.initData)
+      const userParam = params.get('user')
+      if (userParam) {
+        const userData = JSON.parse(decodeURIComponent(userParam))
+        cachedUser = userData
+        cachedUserId = String(userData.id)
+        cacheTimestamp = Date.now()
+        return userData
+      }
+    } catch (e) {
+      // Тихая ошибка - не логируем для производительности
+    }
+  }
+  
+  // Приоритет 3: localStorage (быстрый fallback)
+  if (typeof window !== 'undefined') {
+    try {
+      const savedUser = localStorage.getItem('telegram_user')
+      if (savedUser) {
+        const userData = JSON.parse(savedUser)
+        cachedUser = userData
+        cachedUserId = String(userData.id)
+        cacheTimestamp = Date.now()
+        return userData
+      }
+    } catch (e) {
+      // Тихая ошибка
+    }
+  }
+  
+  return null
+}
+
+// Оптимизированное получение user ID (самый быстрый способ)
+export const getTelegramUserId = (useCache: boolean = true): string | null => {
+  // Проверяем кэш ID
+  if (useCache && cachedUserId && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return cachedUserId
+  }
+  
+  const tg = getTelegramWebApp()
+  if (!tg) {
+    return null
+  }
+  
+  // Приоритет 1: initDataUnsafe (самый быстрый)
+  // Безопасный доступ для старых браузеров
+  try {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+      cachedUserId = String(tg.initDataUnsafe.user.id)
+      cachedUser = tg.initDataUnsafe.user
+      cacheTimestamp = Date.now()
+      return cachedUserId
+    }
+  } catch (e) {
+    // Игнорируем ошибки доступа
+  }
+  
+  // Приоритет 2: парсинг initData
+  if (tg.initData) {
+    try {
+      const params = new URLSearchParams(tg.initData)
+      const userParam = params.get('user')
+      if (userParam) {
+        const userData = JSON.parse(decodeURIComponent(userParam))
+        if (userData.id) {
+          cachedUserId = String(userData.id)
+          cachedUser = userData
+          cacheTimestamp = Date.now()
+          return cachedUserId
+        }
+      }
+    } catch (e) {
+      // Тихая ошибка
+    }
+  }
+  
+  // Приоритет 3: localStorage
+  if (typeof window !== 'undefined') {
+    try {
+      const savedUser = localStorage.getItem('telegram_user')
+      if (savedUser) {
+        const userData = JSON.parse(savedUser)
+        if (userData.id) {
+          cachedUserId = String(userData.id)
+          cachedUser = userData
+          cacheTimestamp = Date.now()
+          return cachedUserId
+        }
+      }
+    } catch (e) {
+      // Тихая ошибка
+    }
+  }
+  
+  return null
+}
+
+// Очистка кэша (для принудительного обновления)
+export const clearTelegramUserCache = (): void => {
+  cachedUser = null
+  cachedUserId = null
+  cacheTimestamp = 0
 }
 
 // Получение initData для отправки на сервер

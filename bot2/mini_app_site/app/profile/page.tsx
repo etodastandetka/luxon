@@ -41,21 +41,48 @@ export default function ProfilePage() {
   const loadStats = async (userId: number) => {
     try {
       const apiUrl = getApiBase()
-      const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}`)
-      const data = await response.json()
       
-      const transactions = data.data?.transactions || data.transactions || []
+      // Загружаем все транзакции (без фильтрации по статусу)
+      // Используем большой лимит, чтобы получить все транзакции
+      let allTransactions: any[] = []
+      let offset = 0
+      const limit = 1000
+      let hasMore = true
+      
+      // Загружаем все транзакции пачками
+      while (hasMore) {
+        const response = await fetch(`${apiUrl}/api/transaction-history?user_id=${userId}&limit=${limit}&offset=${offset}`)
+        const data = await response.json()
+        
+        const transactions = data.data?.transactions || data.transactions || []
+        allTransactions = allTransactions.concat(transactions)
+        
+        // Проверяем, есть ли еще транзакции
+        hasMore = data.data?.pagination?.hasMore || transactions.length === limit
+        offset += limit
+        
+        // Защита от бесконечного цикла (максимум 10 запросов = 10000 транзакций)
+        if (offset >= 10000) {
+          break
+        }
+      }
+      
+      // Считаем только успешные транзакции (completed или approved)
+      const deposits = allTransactions.filter((t: any) => 
+        t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')
+      )
+      const withdraws = allTransactions.filter((t: any) => 
+        t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')
+      )
       
       const userStats: UserStats = {
-        totalDeposits: transactions.filter((t: any) => t.type === 'deposit').length,
-        totalWithdraws: transactions.filter((t: any) => t.type === 'withdraw').length,
-        totalDepositAmount: transactions
-          .filter((t: any) => t.type === 'deposit')
+        totalDeposits: deposits.length, // Все пополнения, включая pending, failed и т.д.
+        totalWithdraws: withdraws.length, // Все выводы, включая pending, failed и т.д.
+        totalDepositAmount: deposits
           .reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
-        totalWithdrawAmount: transactions
-          .filter((t: any) => t.type === 'withdraw')
+        totalWithdrawAmount: withdraws
           .reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
-        recentTransactions: transactions.slice(0, 5)
+        recentTransactions: allTransactions.slice(0, 5)
       }
       
       setStats(userStats)

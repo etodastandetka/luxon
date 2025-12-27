@@ -61,62 +61,18 @@ export default function ReferralPage() {
   const loadReferralData = async () => {
     setLoading(true)
     setError(null)
-    let userId: string | null = null
+    
     try {
-      // Используем утилиту для получения user ID (более надежный способ)
-      // Пробуем несколько раз с задержкой, если Telegram WebApp еще не инициализирован
-      let attempts = 0
-      const maxAttempts = 10 // Увеличиваем количество попыток
-      
-      console.log('🔍 [Referral] Начинаем получение user ID...')
-      
-      while (attempts < maxAttempts && !userId) {
-        // Пробуем получить через утилиту
-        const telegramUserId = getTelegramUserId()
-        if (telegramUserId) {
-          userId = String(telegramUserId)
-          setIsFromBot(true)
-          console.log('✅ [Referral] User ID получен через getTelegramUserId:', userId)
-          break
-        }
-        
-        // Также пробуем напрямую через window
-        const tg = (window as any).Telegram?.WebApp
-        if (tg?.initDataUnsafe?.user?.id) {
-          userId = String(tg.initDataUnsafe.user.id)
-          setIsFromBot(true)
-          console.log('✅ [Referral] User ID получен через window.Telegram.WebApp:', userId)
-          break
-        }
-        
-        // Пробуем через initData
-        if (tg?.initData) {
-          try {
-            const params = new URLSearchParams(tg.initData)
-            const userParam = params.get('user')
-            if (userParam) {
-              const userData = JSON.parse(decodeURIComponent(userParam))
-              userId = String(userData.id)
-              setIsFromBot(true)
-              console.log('✅ [Referral] User ID получен через initData:', userId)
-              break
-            }
-          } catch (e) {
-            console.error('❌ [Referral] Error parsing initData:', e)
-          }
-        }
-        
-        // Если не получили, ждем немного и пробуем снова
-        if (attempts < maxAttempts - 1 && !userId) {
-          console.log(`⏳ [Referral] Попытка ${attempts + 1}/${maxAttempts}, ждем 300ms...`)
-          await new Promise(resolve => setTimeout(resolve, 300))
-        }
-        attempts++
-      }
+      // Используем оптимизированную функцию (без задержек и множественных попыток)
+      const userId = getTelegramUserId()
       
       if (!userId) {
-        console.error('❌ [Referral] Не удалось получить user ID после', maxAttempts, 'попыток')
-        console.log('🔍 [Referral] Debug info:', {
+        setError('Не удалось определить ID пользователя. Пожалуйста, откройте приложение через Telegram.')
+        setLoading(false)
+        return
+      }
+      
+      setIsFromBot(true)
           hasTelegram: !!(window as any).Telegram,
           hasWebApp: !!(window as any).Telegram?.WebApp,
           hasInitDataUnsafe: !!(window as any).Telegram?.WebApp?.initDataUnsafe,
