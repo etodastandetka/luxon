@@ -492,8 +492,9 @@ export default function WithdrawStep5() {
             const userData = JSON.parse(decodeURIComponent(userParam))
             telegramUserId = String(userData.id)
           }
-        } catch (e) {
-          console.error('Error parsing initData for telegram_user_id:', e)
+        } catch (e: any) {
+          // Игнорируем ошибки парсинга, пробуем другие способы
+          console.warn('⚠️ Error parsing initData for telegram_user_id:', e?.message || String(e))
         }
       }
       
@@ -799,8 +800,9 @@ export default function WithdrawStep5() {
             const userData = JSON.parse(decodeURIComponent(userParam))
             telegramUserId = String(userData.id)
           }
-        } catch (e) {
-          console.error('Error parsing initData for telegram_user_id:', e)
+        } catch (e: any) {
+          // Игнорируем ошибки парсинга, пробуем другие способы
+          console.warn('⚠️ Error parsing initData for telegram_user_id:', e?.message || String(e))
         }
       }
       
