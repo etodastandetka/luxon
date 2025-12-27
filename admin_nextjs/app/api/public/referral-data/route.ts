@@ -297,17 +297,13 @@ export async function GET(request: NextRequest) {
       // Получаем только количество рефералов (без include для скорости)
       prisma.botReferral.count({
         where: {
-          referrer: {
-            userId: userIdBigInt
-          }
+          referrer_id: userIdBigInt
         }
       }),
       // Получаем заработанные комиссии с агрегацией (только за текущий месяц)
       prisma.botReferralEarning.aggregate({
         where: {
-          referrer: {
-            userId: userIdBigInt
-          },
+          referrer_id: userIdBigInt,
           status: 'completed',
           createdAt: {
             gte: monthStartDate
