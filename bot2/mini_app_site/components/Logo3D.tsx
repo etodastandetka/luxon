@@ -21,10 +21,11 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
 
     const initThree = async () => {
       try {
-        // Загружаем Three.js и GLTFLoader параллельно для ускорения
-        const [THREE, { GLTFLoader }] = await Promise.all([
+        // Загружаем Three.js, GLTFLoader и MeshoptDecoder параллельно для ускорения
+        const [THREE, { GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
           import('three'),
-          import('three/examples/jsm/loaders/GLTFLoader.js')
+          import('three/examples/jsm/loaders/GLTFLoader.js'),
+          import('three/examples/jsm/libs/meshopt_decoder.module.js')
         ])
 
         if (!containerRef.current || !mounted) return
@@ -80,6 +81,10 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         
         // Load GLB model with optimized loading
         const loader = new GLTFLoader()
+        
+        // Инициализируем meshopt decoder для загрузки оптимизированных GLB файлов
+        // setMeshoptDecoder существует в runtime, но может отсутствовать в типах
+        ;(GLTFLoader as any).setMeshoptDecoder(MeshoptDecoder)
         
         // Загружаем модель с оптимизацией
         loader.load(
