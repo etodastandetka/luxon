@@ -135,7 +135,7 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         const handleResize = () => {
           if (!containerRef.current || !mounted) return
           const width = containerRef.current.clientWidth
-          const height = containerRef.current.clientHeight || 300
+          const height = containerRef.current.clientHeight || 280
           camera.aspect = width / height
           camera.updateProjectionMatrix()
           renderer.setSize(width, height)
