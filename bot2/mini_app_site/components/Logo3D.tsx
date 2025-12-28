@@ -12,14 +12,24 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
+    // Предзагружаем OBJ файл сразу при монтировании компонента
+    const link = document.createElement('link')
+    link.rel = 'prefetch'
+    link.as = 'fetch'
+    link.href = '/logo.obj'
+    document.head.appendChild(link)
+
     let animationFrameId: number
     let scene: any, camera: any, renderer: any, logoModel: any
     let mounted = true
 
     const initThree = async () => {
       try {
-        const THREE = await import('three')
-        const { OBJLoader } = await import('three/examples/jsm/loaders/OBJLoader.js')
+        // Загружаем Three.js и OBJLoader параллельно для ускорения
+        const [THREE, { OBJLoader }] = await Promise.all([
+          import('three'),
+          import('three/examples/jsm/loaders/OBJLoader.js')
+        ])
 
         if (!containerRef.current || !mounted) return
 
@@ -55,10 +65,10 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         directionalLight2.position.set(-5, -5, -5)
         scene.add(directionalLight2)
 
-        // Load OBJ model immediately (async, won't block)
+        // Load OBJ model immediately with priority
         const loader = new OBJLoader()
         
-        // Загружаем модель сразу, но асинхронно
+        // Загружаем модель сразу с высоким приоритетом
         loader.load(
           '/logo.obj',
           (object: any) => {
