@@ -95,43 +95,31 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             const object = gltf.scene
             logoModel = object
 
-            // Центрируем модель
+            // Сначала находим границы для градиента (ДО трансформаций)
             const box = new THREE.Box3().setFromObject(object)
             const center = box.getCenter(new THREE.Vector3())
             const size = box.getSize(new THREE.Vector3())
             const maxDim = Math.max(size.x, size.y, size.z)
-            const scale = 3.8 / maxDim // Увеличенный размер логотипа внутри контейнера
-
-            // Применяем трансформации сначала
-            object.position.sub(center)
-            object.scale.multiplyScalar(scale)
-            object.rotation.y = 0
+            const scale = 3.8 / maxDim
             
-            // Обновляем матрицу для применения трансформаций
-            object.updateMatrixWorld(true)
-            
-            // Теперь находим минимальную и максимальную X координату для градиента (после трансформаций)
+            // Находим минимальную и максимальную X координату ДО трансформаций
             let minX = Infinity
             let maxX = -Infinity
             object.traverse((child: any) => {
               if (child.isMesh) {
-                child.updateMatrixWorld(true)
                 const childBox = new THREE.Box3().setFromObject(child)
                 const childCenter = childBox.getCenter(new THREE.Vector3())
-                // Используем мировые координаты
-                childCenter.applyMatrix4(child.matrixWorld)
                 minX = Math.min(minX, childCenter.x)
                 maxX = Math.max(maxX, childCenter.x)
               }
             })
             const rangeX = maxX - minX
             
-            // Применяем градиент к каждой букве
+            // Применяем градиент к каждой букве (используя координаты ДО трансформаций)
             object.traverse((child: any) => {
               if (child.isMesh) {
                 const childBox = new THREE.Box3().setFromObject(child)
                 const childCenter = childBox.getCenter(new THREE.Vector3())
-                childCenter.applyMatrix4(child.matrixWorld)
                 
                 // Вычисляем позицию буквы от 0 (слева, белый) до 1 (справа, зеленый)
                 const normalizedX = rangeX > 0.001 ? (childCenter.x - minX) / rangeX : 0.5
@@ -141,6 +129,7 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
                 const green = new THREE.Color(0x22c55e)
                 const color = white.clone().lerp(green, normalizedX)
                 
+                // Переопределяем материал для применения градиента
                 child.material = new THREE.MeshPhongMaterial({
                   color: color,
                   shininess: 100,
@@ -153,6 +142,11 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
                 }
               }
             })
+
+            // Применяем трансформации ПОСЛЕ применения цветов
+            object.position.sub(center)
+            object.scale.multiplyScalar(scale)
+            object.rotation.y = 0
 
             scene.add(object)
             
