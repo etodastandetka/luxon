@@ -29,7 +29,7 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         
         // Camera setup
         const width = containerRef.current.clientWidth
-        const height = containerRef.current.clientHeight || 300
+        const height = containerRef.current.clientHeight || 280
         camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000)
         camera.position.set(0, 0, 5)
         
@@ -71,7 +71,7 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             const center = box.getCenter(new THREE.Vector3())
             const size = box.getSize(new THREE.Vector3())
             const maxDim = Math.max(size.x, size.y, size.z)
-            const scale = 4.5 / maxDim // Увеличиваем масштаб для большего размера логотипа
+            const scale = 3.2 / maxDim // Оптимальный размер логотипа
             
             object.traverse((child: any) => {
               if (child.isMesh) {
@@ -265,10 +265,10 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         ref={containerRef}
         className={`w-full ${className}`}
         style={{ 
-          height: '400px',
+          height: '280px',
           position: 'relative',
           overflow: 'hidden',
-          minHeight: '400px',
+          minHeight: '280px',
           cursor: 'grab'
         }}
         onMouseDown={(e) => {
