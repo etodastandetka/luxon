@@ -380,6 +380,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 🛡️ КРИТИЧНО: Проверяем, не был ли уже использован этот код вывода
+    const existingRequest = await prisma.request.findFirst({
+      where: {
+        withdrawalCode: code.trim(),
+        accountId: playerId,
+        bookmaker: bookmaker.toLowerCase(),
+        requestType: 'withdraw',
+        status: {
+          in: ['completed', 'auto_completed', 'pending']
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    if (existingRequest) {
+      console.error(`🚫 [Withdraw Check] DUPLICATE CODE DETECTED: Code ${code} already used in request #${existingRequest.id} (status: ${existingRequest.status}, created: ${existingRequest.createdAt})`)
+      return NextResponse.json(
+        createApiResponse(null, 'Этот код вывода уже был использован'),
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
+    }
+
     // Проверяем вывод через API казино
     const result = await processWithdraw(bookmaker, playerId, code, config)
 
