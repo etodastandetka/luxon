@@ -82,7 +82,7 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             const center = box.getCenter(new THREE.Vector3())
             const size = box.getSize(new THREE.Vector3())
             const maxDim = Math.max(size.x, size.y, size.z)
-            const scale = 3.2 / maxDim // Оптимальный размер логотипа
+            const scale = 3.8 / maxDim // Увеличенный размер логотипа внутри контейнера
             
             object.traverse((child: any) => {
               if (child.isMesh) {
