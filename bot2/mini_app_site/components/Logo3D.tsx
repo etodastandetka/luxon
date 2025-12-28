@@ -8,21 +8,9 @@ interface Logo3DProps {
 
 const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-
-    // Загружаем 3D модель только после загрузки страницы и когда компонент виден
-    const timer = setTimeout(() => {
-      setIsVisible(true)
-    }, 1000) // Задержка 1 секунда после загрузки страницы
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    if (!isVisible || typeof window === 'undefined') return
 
     let animationFrameId: number
     let scene: any, camera: any, renderer: any, logoModel: any
@@ -67,13 +55,12 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         directionalLight2.position.set(-5, -5, -5)
         scene.add(directionalLight2)
 
-        // Load OBJ model with delay to not block page loading
+        // Load OBJ model immediately (async, won't block)
         const loader = new OBJLoader()
         
-        // Загружаем модель с задержкой после инициализации сцены
-        setTimeout(() => {
-          loader.load(
-            '/logo.obj',
+        // Загружаем модель сразу, но асинхронно
+        loader.load(
+          '/logo.obj',
           (object: any) => {
             if (!mounted) return
 
@@ -143,7 +130,6 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             }
           }
         )
-        }, 500) // Задержка 500мс для неблокирующей загрузки
 
         // Handle resize
         const handleResize = () => {
@@ -272,7 +258,7 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         }
       }
     }
-  }, [isVisible])
+  }, [])
 
     return (
       <div 
