@@ -105,42 +105,54 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             // Находим минимальную и максимальную X координату ДО трансформаций
             let minX = Infinity
             let maxX = -Infinity
+            const meshes: any[] = []
+            
             object.traverse((child: any) => {
               if (child.isMesh) {
+                meshes.push(child)
                 const childBox = new THREE.Box3().setFromObject(child)
                 const childCenter = childBox.getCenter(new THREE.Vector3())
                 minX = Math.min(minX, childCenter.x)
                 maxX = Math.max(maxX, childCenter.x)
               }
             })
+            
             const rangeX = maxX - minX
+            console.log('Logo gradient setup:', { minX, maxX, rangeX, meshCount: meshes.length })
             
             // Применяем градиент к каждой букве (используя координаты ДО трансформаций)
-            object.traverse((child: any) => {
-              if (child.isMesh) {
-                const childBox = new THREE.Box3().setFromObject(child)
-                const childCenter = childBox.getCenter(new THREE.Vector3())
-                
-                // Вычисляем позицию буквы от 0 (слева, белый) до 1 (справа, зеленый)
-                const normalizedX = rangeX > 0.001 ? (childCenter.x - minX) / rangeX : 0.5
-                
-                // Создаем градиент от белого (0xffffff) к зеленому (0x22c55e)
-                const white = new THREE.Color(0xffffff)
-                const green = new THREE.Color(0x22c55e)
-                const color = white.clone().lerp(green, normalizedX)
-                
-                // Переопределяем материал для применения градиента
-                child.material = new THREE.MeshPhongMaterial({
-                  color: color,
-                  shininess: 100,
-                  specular: 0x222222
-                })
-                
-                // GLB уже имеет нормали, но на всякий случай
-                if (child.geometry.attributes.normal === undefined) {
-                  child.geometry.computeVertexNormals()
-                }
+            meshes.forEach((child: any) => {
+              const childBox = new THREE.Box3().setFromObject(child)
+              const childCenter = childBox.getCenter(new THREE.Vector3())
+              
+              // Вычисляем позицию буквы от 0 (слева, белый) до 1 (справа, зеленый)
+              const normalizedX = rangeX > 0.001 ? (childCenter.x - minX) / rangeX : 0.5
+              
+              // Создаем градиент от белого (0xffffff) к зеленому (0x22c55e)
+              const white = new THREE.Color(0xffffff)
+              const green = new THREE.Color(0x22c55e)
+              const color = white.clone().lerp(green, normalizedX)
+              
+              // Обязательно создаем новый материал для каждого меша
+              if (child.material) {
+                child.material.dispose()
               }
+              
+              child.material = new THREE.MeshPhongMaterial({
+                color: color,
+                shininess: 100,
+                specular: 0x222222
+              })
+              
+              // Убеждаемся, что материал не shared между мешами
+              child.material.needsUpdate = true
+              
+              // GLB уже имеет нормали, но на всякий случай
+              if (child.geometry.attributes.normal === undefined) {
+                child.geometry.computeVertexNormals()
+              }
+              
+              console.log(`Mesh at x=${childCenter.x.toFixed(2)}, normalized=${normalizedX.toFixed(2)}, color=#${color.getHexString()}`)
             })
 
             // Применяем трансформации ПОСЛЕ применения цветов
