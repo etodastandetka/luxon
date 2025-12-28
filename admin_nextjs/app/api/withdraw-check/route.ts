@@ -380,42 +380,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 🛡️ КРИТИЧНО: Проверяем через API, не был ли уже использован этот код вывода
-    try {
-      const internalBaseUrl = process.env.INTERNAL_API_URL || process.env.ADMIN_INTERNAL_URL
-        || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:3001' : 'http://localhost:3001')
-      
-      const checkUrl = `${internalBaseUrl}/api/withdraw-check-code?code=${encodeURIComponent(code.trim())}&playerId=${encodeURIComponent(playerId)}&bookmaker=${encodeURIComponent(bookmaker.toLowerCase())}`
-      
-      const checkResponse = await fetch(checkUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(5000)
-      })
-
-      if (checkResponse.ok) {
-        const checkData = await checkResponse.json()
-        if (checkData.data?.exists === true) {
-          console.error(`🚫 [Withdraw Check] DUPLICATE CODE DETECTED: Code ${code} already used in request #${checkData.data.requestId} (status: ${checkData.data.status})`)
-          return NextResponse.json(
-            createApiResponse(null, 'Этот код вывода уже был использован'),
-            { 
-              status: 400,
-              headers: {
-                'Access-Control-Allow-Origin': '*',
-              }
-            }
-          )
-        }
-      }
-    } catch (checkError: any) {
-      console.warn(`⚠️ [Withdraw Check] Error checking code via API:`, checkError.message)
-      // Продолжаем выполнение, если проверка не удалась
-    }
-
-    // Проверяем вывод через API казино
+    // Отправляем запрос на вывод через API казино (без проверки в базе данных)
+    // Получаем код → отправляем запрос на вывод по API выбранного казино → если сумма получена → возвращаем для подтверждения
     const result = await processWithdraw(bookmaker, playerId, code, config)
 
     if (!result.success) {
@@ -453,7 +419,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Проверяем, что amount есть и является валидным числом
-    // amount должен быть больше 0 (уже взято абсолютное значение в checkWithdrawAmountCashdesk)
+    // Если API казино вернуло сумму успешно - значит код валидный и можно переходить к подтверждению
     if (!result.amount || result.amount <= 0 || (typeof result.amount === 'number' && isNaN(result.amount))) {
       console.error(`[Withdraw Check] Amount is missing or invalid:`, {
         amount: result.amount,
