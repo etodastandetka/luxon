@@ -4,7 +4,7 @@ import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import { checkUserBlocked, getTelegramUserId } from '../../../utils/telegram'
-import { safeFetch } from '../../../utils/fetch'
+import { safeFetch, getApiBase } from '../../../utils/fetch'
 
 export default function WithdrawConfirm() {
     const [bank, setBank] = useState('')
@@ -72,11 +72,7 @@ export default function WithdrawConfirm() {
       
       const amount = withdrawAmount
 
-      const base =
-        typeof window === 'undefined'
-          ? process.env.NEXT_PUBLIC_SITE_URL ||
-            (process.env.NODE_ENV === 'production' ? 'https://luxservice.online' : 'http://localhost:3000')
-          : ''
+      const base = getApiBase()
 
       // Для 1xbet сначала выполняем вывод (mobile.withdrawal)
       // Для 888starz вывод уже выполнен на step5 (Payout сразу выполняет вывод)
@@ -137,6 +133,7 @@ export default function WithdrawConfirm() {
 
         if (!withdrawData.success) {
           alert(`Ошибка выполнения вывода: ${withdrawData.message || withdrawData.error || 'Неизвестная ошибка'}`)
+          setIsSubmitting(false)
           return
         }
 
@@ -164,11 +161,11 @@ export default function WithdrawConfirm() {
       }
 
       // Получаем Telegram ID пользователя (оптимизированная функция)
-      const { getTelegramUserId } = await import('../../../utils/telegram')
       const telegramUserId = getTelegramUserId()
 
       if (!telegramUserId) {
         alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+        setIsSubmitting(false)
         return
       }
 
@@ -269,26 +266,15 @@ export default function WithdrawConfirm() {
       
       if (result.success !== false) {
         
-        // Показываем результат
-        const message = `✅ Заявка на вывод создана!\n\n🏦 Банк: ${getBankName(bank)}\n📱 Телефон: +${phone}\n🆔 ID: ${userId}\n🔑 Код: ${siteCode}\n💰 Сумма: ${amount} сом\n🆔 ID заявки: #${result.id || result.data?.id}\n\n⏳ Ожидайте обработки заявки администратором.`
+        // Сохраняем ID заявки для страницы ожидания
+        const withdrawRequestId = result.id || result.data?.id
+        if (withdrawRequestId) {
+          localStorage.setItem('withdraw_request_id', String(withdrawRequestId))
+          localStorage.setItem('withdraw_transaction_id', String(withdrawRequestId))
+        }
         
-        alert(message)
-        
-        // Очищаем данные
-        localStorage.removeItem('withdraw_bookmaker')
-        localStorage.removeItem('withdraw_bank')
-        localStorage.removeItem('withdraw_qr_photo')
-        localStorage.removeItem('withdraw_phone')
-        localStorage.removeItem('withdraw_user_id')
-        localStorage.removeItem('withdraw_site_code')
-        localStorage.removeItem('withdraw_amount')
-        localStorage.removeItem('withdraw_transaction_id')
-        localStorage.removeItem('withdraw_request_created')
-        
-        // Перенаправляем на главную через 2 секунды
-        setTimeout(() => {
-          router.push('/')
-        }, 2000)
+        // Перенаправляем на страницу ожидания
+        router.push('/withdraw/waiting')
       } else {
         throw new Error(`Failed to create withdraw request: ${result.error || 'Unknown error'}`)
       }
