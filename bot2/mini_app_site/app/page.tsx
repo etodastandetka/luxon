@@ -176,9 +176,7 @@ export default function HomePage() {
       </div>
 
       {/* 3D Логотип */}
-      <div className="card p-4">
-        <Logo3D className="rounded-lg" />
-      </div>
+      <Logo3D className="rounded-lg" />
       
       {/* Сервисы - банковский стиль */}
       <div className="space-y-3">

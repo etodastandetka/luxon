@@ -84,7 +84,7 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             const center = box.getCenter(new THREE.Vector3())
             const size = box.getSize(new THREE.Vector3())
             const maxDim = Math.max(size.x, size.y, size.z)
-            const scale = 3 / maxDim // Масштабируем чтобы модель поместилась
+            const scale = 4.5 / maxDim // Увеличиваем масштаб для большего размера логотипа
             
             object.traverse((child: any) => {
               if (child.isMesh) {
@@ -156,24 +156,99 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         }
         window.addEventListener('resize', handleResize)
 
-        // Animation loop
+        // Переменные для ручного вращения
+        let isDragging = false
+        let previousMousePosition = { x: 0, y: 0 }
+        let rotationX = 0
+        let rotationY = 0
+
+        // Обработчики для мыши
+        const onMouseDown = (e: MouseEvent) => {
+          isDragging = true
+          previousMousePosition = { x: e.clientX, y: e.clientY }
+        }
+
+        const onMouseMove = (e: MouseEvent) => {
+          if (!isDragging || !logoModel) return
+          
+          const deltaX = e.clientX - previousMousePosition.x
+          const deltaY = e.clientY - previousMousePosition.y
+          
+          rotationY += deltaX * 0.01
+          rotationX += deltaY * 0.01
+          
+          logoModel.rotation.y = rotationY
+          logoModel.rotation.x = rotationX
+          
+          previousMousePosition = { x: e.clientX, y: e.clientY }
+        }
+
+        const onMouseUp = () => {
+          isDragging = false
+        }
+
+        // Обработчики для тач-событий
+        const onTouchStart = (e: TouchEvent) => {
+          if (e.touches.length === 1) {
+            isDragging = true
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+          }
+        }
+
+        const onTouchMove = (e: TouchEvent) => {
+          if (!isDragging || !logoModel || e.touches.length !== 1) return
+          
+          const deltaX = e.touches[0].clientX - previousMousePosition.x
+          const deltaY = e.touches[0].clientY - previousMousePosition.y
+          
+          rotationY += deltaX * 0.01
+          rotationX += deltaY * 0.01
+          
+          logoModel.rotation.y = rotationY
+          logoModel.rotation.x = rotationX
+          
+          previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        }
+
+        const onTouchEnd = () => {
+          isDragging = false
+        }
+
+        // Добавляем обработчики событий
+        if (containerRef.current) {
+          containerRef.current.addEventListener('mousedown', onMouseDown)
+          window.addEventListener('mousemove', onMouseMove)
+          window.addEventListener('mouseup', onMouseUp)
+          containerRef.current.addEventListener('touchstart', onTouchStart)
+          containerRef.current.addEventListener('touchmove', onTouchMove)
+          containerRef.current.addEventListener('touchend', onTouchEnd)
+        }
+
+        // Animation loop (без автоматического вращения)
         const animate = () => {
           if (!mounted) return
           animationFrameId = requestAnimationFrame(animate)
 
-          // Вращение на 360 градусов (медленное и плавное)
-          if (logoModel) {
-            logoModel.rotation.y += 0.005 // Медленное вращение
-          }
-
+          // Просто рендерим сцену, без автоматического вращения
           renderer.render(scene, camera)
         }
 
         animate()
 
-        return () => {
+        // Сохраняем ссылки на обработчики для cleanup
+        const cleanup = () => {
           window.removeEventListener('resize', handleResize)
+          if (containerRef.current) {
+            containerRef.current.removeEventListener('mousedown', onMouseDown)
+            window.removeEventListener('mousemove', onMouseMove)
+            window.removeEventListener('mouseup', onMouseUp)
+            containerRef.current.removeEventListener('touchstart', onTouchStart)
+            containerRef.current.removeEventListener('touchmove', onTouchMove)
+            containerRef.current.removeEventListener('touchend', onTouchEnd)
+          }
         }
+        
+        return cleanup
       } catch (error) {
         console.error('Error initializing 3D logo:', error)
       }
@@ -204,10 +279,21 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         ref={containerRef}
         className={`w-full ${className}`}
         style={{ 
-          height: '300px',
+          height: '400px',
           position: 'relative',
           overflow: 'hidden',
-          minHeight: '300px'
+          minHeight: '400px',
+          cursor: 'grab'
+        }}
+        onMouseDown={(e) => {
+          if (containerRef.current) {
+            containerRef.current.style.cursor = 'grabbing'
+          }
+        }}
+        onMouseUp={() => {
+          if (containerRef.current) {
+            containerRef.current.style.cursor = 'grab'
+          }
         }}
       >
       </div>
