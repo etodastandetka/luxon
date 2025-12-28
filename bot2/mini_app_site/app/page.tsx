@@ -17,6 +17,8 @@ import UserProfile from '../components/UserProfile'
 // Загружаем компоненты без динамической загрузки для мгновенного отображения
 import RatingBlock from '../components/RatingBlock'
 import Achievements from '../components/Achievements'
+// Загружаем 3D логотип с динамической загрузкой (тяжелый компонент)
+const Logo3D = dynamic(() => import('../components/Logo3D'), { ssr: false })
 
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
@@ -173,6 +175,10 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* 3D Логотип */}
+      <div className="card p-4">
+        <Logo3D className="rounded-lg" />
+      </div>
       
       {/* Сервисы - банковский стиль */}
       <div className="space-y-3">
