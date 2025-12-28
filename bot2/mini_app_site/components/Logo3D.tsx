@@ -102,35 +102,37 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             const maxDim = Math.max(size.x, size.y, size.z)
             const scale = 3.8 / maxDim // Увеличенный размер логотипа внутри контейнера
             
+            // Находим минимальную и максимальную X координату для градиента
+            let minX = Infinity
+            let maxX = -Infinity
+            object.traverse((child: any) => {
+              if (child.isMesh) {
+                const childBox = new THREE.Box3().setFromObject(child)
+                const childCenter = childBox.getCenter(new THREE.Vector3())
+                minX = Math.min(minX, childCenter.x)
+                maxX = Math.max(maxX, childCenter.x)
+              }
+            })
+            const rangeX = maxX - minX
+            
             object.traverse((child: any) => {
               if (child.isMesh) {
                 const childBox = new THREE.Box3().setFromObject(child)
                 const childCenter = childBox.getCenter(new THREE.Vector3())
                 
-                // Вычитаем центр модели для получения относительной позиции
-                const relativeX = childCenter.x - center.x
+                // Вычисляем позицию буквы от 0 (слева, белый) до 1 (справа, зеленый)
+                const normalizedX = rangeX > 0 ? (childCenter.x - minX) / rangeX : 0.5
                 
-                // Буквы ON находятся справа от центра слова LUXON
-                // LUX находится слева, ON - справа
-                // Если все белое, значит условие не срабатывает - упростим логику
-                // Красим все что правее центра (relativeX > 0) в зеленый
-                const isON = relativeX > 0
+                // Создаем градиент от белого (0xffffff) к зеленому (0x22c55e)
+                const white = new THREE.Color(0xffffff)
+                const green = new THREE.Color(0x22c55e)
+                const color = white.clone().lerp(green, normalizedX)
                 
-                if (isON) {
-                  // Зеленый цвет для букв ON
-                  child.material = new THREE.MeshPhongMaterial({
-                    color: 0x22c55e, // green-500
-                    shininess: 100,
-                    specular: 0x222222
-                  })
-                } else {
-                  // Белый цвет для букв LUX
-                  child.material = new THREE.MeshPhongMaterial({
-                    color: 0xffffff, // белый
-                    shininess: 100,
-                    specular: 0x222222
-                  })
-                }
+                child.material = new THREE.MeshPhongMaterial({
+                  color: color,
+                  shininess: 100,
+                  specular: 0x222222
+                })
                 
                 // GLB уже имеет нормали, но на всякий случай
                 if (child.geometry.attributes.normal === undefined) {
