@@ -101,27 +101,40 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             const size = box.getSize(new THREE.Vector3())
             const maxDim = Math.max(size.x, size.y, size.z)
             const scale = 3.8 / maxDim // Увеличенный размер логотипа внутри контейнера
+
+            // Применяем трансформации сначала
+            object.position.sub(center)
+            object.scale.multiplyScalar(scale)
+            object.rotation.y = 0
             
-            // Находим минимальную и максимальную X координату для градиента
+            // Обновляем матрицу для применения трансформаций
+            object.updateMatrixWorld(true)
+            
+            // Теперь находим минимальную и максимальную X координату для градиента (после трансформаций)
             let minX = Infinity
             let maxX = -Infinity
             object.traverse((child: any) => {
               if (child.isMesh) {
+                child.updateMatrixWorld(true)
                 const childBox = new THREE.Box3().setFromObject(child)
                 const childCenter = childBox.getCenter(new THREE.Vector3())
+                // Используем мировые координаты
+                childCenter.applyMatrix4(child.matrixWorld)
                 minX = Math.min(minX, childCenter.x)
                 maxX = Math.max(maxX, childCenter.x)
               }
             })
             const rangeX = maxX - minX
             
+            // Применяем градиент к каждой букве
             object.traverse((child: any) => {
               if (child.isMesh) {
                 const childBox = new THREE.Box3().setFromObject(child)
                 const childCenter = childBox.getCenter(new THREE.Vector3())
+                childCenter.applyMatrix4(child.matrixWorld)
                 
                 // Вычисляем позицию буквы от 0 (слева, белый) до 1 (справа, зеленый)
-                const normalizedX = rangeX > 0 ? (childCenter.x - minX) / rangeX : 0.5
+                const normalizedX = rangeX > 0.001 ? (childCenter.x - minX) / rangeX : 0.5
                 
                 // Создаем градиент от белого (0xffffff) к зеленому (0x22c55e)
                 const white = new THREE.Color(0xffffff)
@@ -140,11 +153,6 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
                 }
               }
             })
-
-            // Применяем трансформации
-            object.position.sub(center)
-            object.scale.multiplyScalar(scale)
-            object.rotation.y = 0
 
             scene.add(object)
             
