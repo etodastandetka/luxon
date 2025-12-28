@@ -62,19 +62,16 @@ export default function UserDetailPage() {
   const fetchUser = useCallback(async () => {
     try {
       setLoading(true)
-      // Убираем кэширование для актуальных данных
+      // Используем кэширование для быстрой загрузки (API кэширует на 5 секунд)
+      // При первой загрузке данные будут свежими, при повторных - из кэша
       const [userRes, photoRes] = await Promise.all([
         fetch(`/api/users/${params.userId}`, { 
-          cache: 'no-store', // Всегда получаем свежие данные
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
+          cache: 'default', // Используем кэш браузера и сервера для быстрой загрузки
+          priority: 'high', // Высокий приоритет для быстрой загрузки
         }),
         fetch(`/api/users/${params.userId}/profile-photo`, {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
+          cache: 'default',
+          priority: 'low', // Фото можно загрузить позже
         })
       ])
 
@@ -474,10 +471,12 @@ export default function UserDetailPage() {
 
       {/* Список транзакций */}
       <div className="mx-4">
-        <h3 className="text-lg font-semibold text-white mb-3">Транзакции</h3>
+        <h3 className="text-lg font-semibold text-white mb-3">
+          Транзакции ({user.transactions.length})
+        </h3>
         {user.transactions.length > 0 ? (
-          <div className="space-y-3">
-            {user.transactions.slice(0, 10).map((tx) => {
+          <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            {user.transactions.map((tx) => {
               const transactionType = (() => {
                 // Если статус pending, показываем "-"
                 if (tx.status === 'pending' || tx.status === 'processing') {

@@ -22,17 +22,41 @@ export async function GET(
     console.log(`🔍 Looking for user with ID: ${userId.toString()}`)
 
     // Сначала получаем данные пользователя из BotUser
+    // Оптимизируем запрос - выбираем только нужные поля для быстрой загрузки
     let user = await prisma.botUser.findUnique({
       where: { userId },
-      include: {
+      select: {
+        userId: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        language: true,
+        selectedBookmaker: true,
+        note: true,
+        isActive: true,
+        createdAt: true,
         referralMade: {
-          include: {
-            referred: true,
+          select: {
+            createdAt: true,
+            referred: {
+              select: {
+                userId: true,
+                username: true,
+                firstName: true,
+              },
+            },
           },
         },
         referralEarnings: {
           take: 20,
           orderBy: { createdAt: 'desc' },
+          select: {
+            amount: true,
+            commissionAmount: true,
+            bookmaker: true,
+            status: true,
+            createdAt: true,
+          },
         },
         _count: {
           select: {
@@ -48,11 +72,22 @@ export async function GET(
 
     // ВСЕГДА получаем транзакции из Request, так как это основная таблица заявок
     // Request содержит все заявки на пополнение и вывод с полной информацией
-    console.log(`🔍 Loading transactions from Request table for userId: ${userId.toString()}`)
+    // Убираем лимит - загружаем ВСЕ транзакции для полной истории
+    console.log(`🔍 Loading ALL transactions from Request table for userId: ${userId.toString()}`)
     const allRequests = await prisma.request.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: 100, // Берем больше для статистики
+      // Убираем take - загружаем все транзакции
+      select: {
+        id: true,
+        requestType: true,
+        amount: true,
+        status: true,
+        bookmaker: true,
+        processedBy: true,
+        bank: true,
+        createdAt: true,
+      },
     })
     
     console.log(`📋 Found ${allRequests.length} requests for user ${userId.toString()}`)
@@ -198,9 +233,15 @@ export async function GET(
       withdrawalsCount: responseData.transactions.filter((t: any) => t.transType === 'withdraw').length,
     })
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createApiResponse(responseData)
     )
+    
+    // Добавляем кэширование на 5 секунд для быстрой загрузки при повторных запросах
+    // Это ускорит загрузку профиля при переключении между вкладками
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
+    
+    return response
   } catch (error: any) {
     console.error(`❌ Error fetching user ${params.userId}:`, error)
     console.error('Error stack:', error.stack)
