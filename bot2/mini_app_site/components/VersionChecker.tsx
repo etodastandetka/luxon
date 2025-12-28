@@ -87,7 +87,6 @@ export default function VersionChecker() {
     return () => {
       clearInterval(interval)
       window.removeEventListener('focus', handleFocus)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
