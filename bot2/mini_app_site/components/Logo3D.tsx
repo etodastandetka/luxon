@@ -12,11 +12,12 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Предзагружаем OBJ файл сразу при монтировании компонента
+    // Предзагружаем OBJ файл с высоким приоритетом
     const link = document.createElement('link')
-    link.rel = 'prefetch'
+    link.rel = 'preload'
     link.as = 'fetch'
     link.href = '/logo.obj'
+    link.crossOrigin = 'anonymous'
     document.head.appendChild(link)
 
     let animationFrameId: number
