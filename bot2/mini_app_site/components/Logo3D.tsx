@@ -66,14 +66,29 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         directionalLight2.position.set(-5, -5, -5)
         scene.add(directionalLight2)
 
-        // Load OBJ model immediately with priority
+        // Load OBJ model with optimized loading
         const loader = new OBJLoader()
         
-        // Загружаем модель сразу с высоким приоритетом
+        // Показываем placeholder пока грузится
+        if (containerRef.current) {
+          const placeholder = document.createElement('div')
+          placeholder.className = 'flex items-center justify-center h-full text-white/30 text-sm'
+          placeholder.textContent = 'Загрузка логотипа...'
+          placeholder.id = 'logo-placeholder'
+          containerRef.current.appendChild(placeholder)
+        }
+        
+        // Загружаем модель с оптимизацией
         loader.load(
           '/logo.obj',
           (object: any) => {
             if (!mounted) return
+
+            // Удаляем placeholder
+            const placeholder = containerRef.current?.querySelector('#logo-placeholder')
+            if (placeholder) {
+              placeholder.remove()
+            }
 
             logoModel = object
 
@@ -127,10 +142,14 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             scene.add(object)
           },
           (xhr: any) => {
-            // Прогресс загрузки (опционально)
-            if (xhr.lengthComputable) {
-              const percentComplete = (xhr.loaded / xhr.total) * 100
-              console.log('Logo loading: ' + Math.round(percentComplete) + '%')
+            // Показываем прогресс загрузки
+            if (xhr.lengthComputable && containerRef.current) {
+              const percentComplete = Math.round((xhr.loaded / xhr.total) * 100)
+              const placeholder = containerRef.current.querySelector('#logo-placeholder')
+              if (placeholder) {
+                placeholder.textContent = `Загрузка логотипа... ${percentComplete}%`
+              }
+              console.log('Logo loading: ' + percentComplete + '%')
             }
           },
           (error: any) => {
