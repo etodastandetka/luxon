@@ -78,6 +78,7 @@ export async function GET(
       where: { userId },
       orderBy: { createdAt: 'desc' },
       // Убираем take - загружаем все транзакции
+      // Выбираем все нужные поля, включая username для виртуального пользователя
       select: {
         id: true,
         requestType: true,
@@ -87,6 +88,9 @@ export async function GET(
         processedBy: true,
         bank: true,
         createdAt: true,
+        username: true,
+        firstName: true,
+        lastName: true,
       },
     })
     
