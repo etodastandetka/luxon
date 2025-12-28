@@ -21,12 +21,20 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
 
     const initThree = async () => {
       try {
-        // Загружаем Three.js, GLTFLoader и MeshoptDecoder параллельно для ускорения
-        const [THREE, { GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
+        // Загружаем Three.js и GLTFLoader параллельно для ускорения
+        const [THREE, { GLTFLoader }] = await Promise.all([
           import('three'),
-          import('three/examples/jsm/loaders/GLTFLoader.js'),
-          import('three/examples/jsm/libs/meshopt_decoder.module.js')
+          import('three/examples/jsm/loaders/GLTFLoader.js')
         ])
+        
+        // Загружаем MeshoptDecoder отдельно (если нужен)
+        let MeshoptDecoder: any = null
+        try {
+          const decoderModule = await import('three/examples/jsm/libs/meshopt_decoder.module.js')
+          MeshoptDecoder = decoderModule.MeshoptDecoder
+        } catch (e) {
+          console.warn('MeshoptDecoder not available, loading without compression support')
+        }
 
         if (!containerRef.current || !mounted) return
 
@@ -83,8 +91,10 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         const loader = new GLTFLoader()
         
         // Инициализируем meshopt decoder для загрузки оптимизированных GLB файлов
-        // setMeshoptDecoder существует в runtime, но может отсутствовать в типах
-        ;(GLTFLoader as any).setMeshoptDecoder(MeshoptDecoder)
+        // Метод вызывается на экземпляре loader, а не на классе
+        if (MeshoptDecoder && loader.setMeshoptDecoder) {
+          loader.setMeshoptDecoder(MeshoptDecoder)
+        }
         
         // Загружаем модель с оптимизацией
         loader.load(
