@@ -52,6 +52,13 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         renderer.setSize(width, height)
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         
+        // Устанавливаем стили для canvas
+        renderer.domElement.style.display = 'block'
+        renderer.domElement.style.width = '100%'
+        renderer.domElement.style.height = '100%'
+        renderer.domElement.style.position = 'relative'
+        renderer.domElement.style.zIndex = '1'
+        
         containerRef.current.appendChild(renderer.domElement)
 
         // Lighting
@@ -66,17 +73,18 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         directionalLight2.position.set(-5, -5, -5)
         scene.add(directionalLight2)
 
-        // Load OBJ model with optimized loading
-        const loader = new OBJLoader()
-        
-        // Показываем placeholder пока грузится
+        // Показываем placeholder пока грузится (показываем поверх canvas)
+        let placeholder: HTMLDivElement | null = null
         if (containerRef.current) {
-          const placeholder = document.createElement('div')
-          placeholder.className = 'flex items-center justify-center h-full text-white/30 text-sm'
+          placeholder = document.createElement('div')
+          placeholder.className = 'flex items-center justify-center text-white/30 text-sm absolute inset-0 z-10'
           placeholder.textContent = 'Загрузка логотипа...'
           placeholder.id = 'logo-placeholder'
           containerRef.current.appendChild(placeholder)
         }
+        
+        // Load OBJ model with optimized loading
+        const loader = new OBJLoader()
         
         // Загружаем модель с оптимизацией
         loader.load(
@@ -84,9 +92,8 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
           (object: any) => {
             if (!mounted) return
 
-            // Удаляем placeholder
-            const placeholder = containerRef.current?.querySelector('#logo-placeholder')
-            if (placeholder) {
+            // Удаляем placeholder после загрузки
+            if (placeholder && placeholder.parentNode) {
               placeholder.remove()
             }
 
@@ -140,23 +147,30 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             object.rotation.y = 0
 
             scene.add(object)
+            
+            // Принудительно вызываем рендер после добавления модели
+            renderer.render(scene, camera)
           },
           (xhr: any) => {
             // Показываем прогресс загрузки
-            if (xhr.lengthComputable && containerRef.current) {
+            if (xhr.lengthComputable && placeholder) {
               const percentComplete = Math.round((xhr.loaded / xhr.total) * 100)
-              const placeholder = containerRef.current.querySelector('#logo-placeholder')
-              if (placeholder) {
-                placeholder.textContent = `Загрузка логотипа... ${percentComplete}%`
-              }
+              placeholder.textContent = `Загрузка логотипа... ${percentComplete}%`
               console.log('Logo loading: ' + percentComplete + '%')
             }
           },
           (error: any) => {
             console.error('Error loading logo:', error)
+            // Удаляем placeholder при ошибке
+            if (placeholder && placeholder.parentNode) {
+              placeholder.remove()
+            }
             // Fallback - показываем простое сообщение
             if (containerRef.current) {
-              containerRef.current.innerHTML = '<div class="text-white/50 text-center py-8">Logo loading error</div>'
+              const errorDiv = document.createElement('div')
+              errorDiv.className = 'text-white/50 text-center py-8 absolute inset-0 flex items-center justify-center'
+              errorDiv.textContent = 'Ошибка загрузки логотипа'
+              containerRef.current.appendChild(errorDiv)
             }
           }
         )
