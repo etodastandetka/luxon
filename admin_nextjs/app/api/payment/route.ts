@@ -472,35 +472,52 @@ export async function POST(request: NextRequest) {
       photoPreview: photoUrl ? photoUrl.substring(0, 50) + '...' : null
     })
     
-    // 🛡️ КРИТИЧНО: Для вывода проверяем, не был ли уже использован код
+    // 🛡️ КРИТИЧНО: Для вывода проверяем через API, не был ли уже использован код
     if (type === 'withdraw' && site_code) {
-      const existingWithdrawRequest = await prisma.request.findFirst({
-        where: {
-          withdrawalCode: site_code.trim(),
-          accountId: finalAccountId?.toString() || playerId || null,
-          bookmaker: bookmaker?.toLowerCase() || null,
-          requestType: 'withdraw',
-          status: {
-            in: ['pending', 'completed', 'auto_completed']
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      })
-
-      if (existingWithdrawRequest) {
-        console.error(`🚫 [Payment API] DUPLICATE WITHDRAWAL CODE: Code ${site_code.trim()} already used in request #${existingWithdrawRequest.id} (status: ${existingWithdrawRequest.status}, created: ${existingWithdrawRequest.createdAt})`)
-        const errorResponse = NextResponse.json(
-          createApiResponse(null, 'Этот код вывода уже был использован. Вы не можете создать заявку с одним и тем же кодом.'),
-          { 
-            status: 400,
+      const checkCode = site_code.trim()
+      const checkPlayerId = finalAccountId?.toString() || playerId
+      const checkBookmaker = bookmaker?.toLowerCase()
+      
+      if (checkCode && checkPlayerId && checkBookmaker) {
+        try {
+          // Проверяем через внутренний API endpoint
+          const internalBaseUrl = process.env.INTERNAL_API_URL || process.env.ADMIN_INTERNAL_URL
+            || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:3001' : 'http://localhost:3001')
+          
+          const checkUrl = `${internalBaseUrl}/api/withdraw-check-code?code=${encodeURIComponent(checkCode)}&playerId=${encodeURIComponent(checkPlayerId)}&bookmaker=${encodeURIComponent(checkBookmaker)}`
+          
+          const checkResponse = await fetch(checkUrl, {
+            method: 'GET',
             headers: {
-              'Access-Control-Allow-Origin': '*',
+              'Content-Type': 'application/json',
+            },
+            // Таймаут 5 секунд для внутреннего запроса
+            signal: AbortSignal.timeout(5000)
+          })
+
+          if (checkResponse.ok) {
+            const checkData = await checkResponse.json()
+            if (checkData.data?.exists === true) {
+              console.error(`🚫 [Payment API] DUPLICATE WITHDRAWAL CODE: Code ${checkCode} already used in request #${checkData.data.requestId} (status: ${checkData.data.status})`)
+              const errorResponse = NextResponse.json(
+                createApiResponse(null, 'Этот код вывода уже был использован. Вы не можете создать заявку с одним и тем же кодом.'),
+                { 
+                  status: 400,
+                  headers: {
+                    'Access-Control-Allow-Origin': '*',
+                  }
+                }
+              )
+              return errorResponse
             }
+          } else {
+            // Если проверка не удалась, логируем но не блокируем (fallback)
+            console.warn(`⚠️ [Payment API] Failed to check code via API, status: ${checkResponse.status}`)
           }
-        )
-        return errorResponse
+        } catch (checkError: any) {
+          // Если проверка не удалась, логируем но не блокируем создание заявки
+          console.warn(`⚠️ [Payment API] Error checking code via API:`, checkError.message)
+        }
       }
     }
     
