@@ -472,6 +472,38 @@ export async function POST(request: NextRequest) {
       photoPreview: photoUrl ? photoUrl.substring(0, 50) + '...' : null
     })
     
+    // 🛡️ КРИТИЧНО: Для вывода проверяем, не был ли уже использован код
+    if (type === 'withdraw' && site_code) {
+      const existingWithdrawRequest = await prisma.request.findFirst({
+        where: {
+          withdrawalCode: site_code.trim(),
+          accountId: finalAccountId?.toString() || playerId || null,
+          bookmaker: bookmaker?.toLowerCase() || null,
+          requestType: 'withdraw',
+          status: {
+            in: ['pending', 'completed', 'auto_completed']
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      if (existingWithdrawRequest) {
+        console.error(`🚫 [Payment API] DUPLICATE WITHDRAWAL CODE: Code ${site_code.trim()} already used in request #${existingWithdrawRequest.id} (status: ${existingWithdrawRequest.status}, created: ${existingWithdrawRequest.createdAt})`)
+        const errorResponse = NextResponse.json(
+          createApiResponse(null, 'Этот код вывода уже был использован. Вы не можете создать заявку с одним и тем же кодом.'),
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+        return errorResponse
+      }
+    }
+    
     const newRequest = await prisma.request.create({
       data: {
         userId: userIdBigInt,
