@@ -74,23 +74,15 @@ export default function VersionChecker() {
       }
     }
 
-    // Проверяем обновления сразу и затем каждые 30 секунд
-    checkForUpdates()
-    const interval = setInterval(checkForUpdates, 30000) // Каждые 30 секунд
-
-    // Также проверяем при фокусе окна (когда пользователь возвращается на вкладку)
+    // Проверяем обновления только при фокусе окна (реже, чтобы не мешать работе)
     const handleFocus = () => {
-      checkForUpdates()
+      // Задержка 2 секунды после фокуса, чтобы не мешать пользователю
+      setTimeout(checkForUpdates, 2000)
     }
     window.addEventListener('focus', handleFocus)
 
-    // Проверяем при видимости страницы
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        checkForUpdates()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+    // Проверяем обновления реже - каждые 5 минут, а не 30 секунд
+    const interval = setInterval(checkForUpdates, 300000) // Каждые 5 минут
 
     return () => {
       clearInterval(interval)

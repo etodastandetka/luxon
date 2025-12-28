@@ -77,16 +77,6 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
         directionalLight2.position.set(-5, -5, -5)
         scene.add(directionalLight2)
 
-        // Показываем placeholder пока грузится (показываем поверх canvas)
-        let placeholder: HTMLDivElement | null = null
-        if (containerRef.current) {
-          placeholder = document.createElement('div')
-          placeholder.className = 'flex items-center justify-center text-white/30 text-sm absolute inset-0 z-10'
-          placeholder.textContent = 'Загрузка логотипа...'
-          placeholder.id = 'logo-placeholder'
-          containerRef.current.appendChild(placeholder)
-        }
-        
         // Load GLB model with optimized loading
         const loader = new GLTFLoader()
         
@@ -101,11 +91,6 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
           '/logo.glb',
           (gltf: any) => {
             if (!mounted) return
-
-            // Удаляем placeholder после загрузки
-            if (placeholder && placeholder.parentNode) {
-              placeholder.remove()
-            }
 
             const object = gltf.scene
             logoModel = object
@@ -165,27 +150,9 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
             // Принудительно вызываем рендер после добавления модели
             renderer.render(scene, camera)
           },
-          (xhr: any) => {
-            // Показываем прогресс загрузки
-            if (xhr.lengthComputable && placeholder) {
-              const percentComplete = Math.round((xhr.loaded / xhr.total) * 100)
-              placeholder.textContent = `Загрузка логотипа... ${percentComplete}%`
-              console.log('Logo loading: ' + percentComplete + '%')
-            }
-          },
+          undefined, // Пропускаем progress callback
           (error: any) => {
             console.error('Error loading logo:', error)
-            // Удаляем placeholder при ошибке
-            if (placeholder && placeholder.parentNode) {
-              placeholder.remove()
-            }
-            // Fallback - показываем простое сообщение
-            if (containerRef.current) {
-              const errorDiv = document.createElement('div')
-              errorDiv.className = 'text-white/50 text-center py-8 absolute inset-0 flex items-center justify-center'
-              errorDiv.textContent = 'Ошибка загрузки логотипа'
-              containerRef.current.appendChild(errorDiv)
-            }
           }
         )
 
