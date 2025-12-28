@@ -111,21 +111,22 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
                 const relativeX = childCenter.x - center.x
                 const relativeY = childCenter.y - center.y
                 
-                // Буква O находится примерно в центре слова LUXON
+                // Буквы ON находятся справа от центра слова LUXON
+                // LUX находится слева, ON - справа
                 // Настраиваем параметры в зависимости от реальной модели
                 // Если модель разделена на отдельные меши, это сработает
-                const isO = relativeX > -0.6 && relativeX < 0.6 && 
-                           relativeY > -0.6 && relativeY < 0.6
+                // ON обычно находится справа (positive X относительно центра)
+                const isON = relativeX > 0.2
                 
-                if (isO) {
-                  // Зеленый цвет для буквы O (и символа ON внутри, если он часть O)
+                if (isON) {
+                  // Зеленый цвет для букв ON
                   child.material = new THREE.MeshPhongMaterial({
                     color: 0x22c55e, // green-500
                     shininess: 100,
                     specular: 0x222222
                   })
                 } else {
-                  // Белый цвет для остальных букв
+                  // Белый цвет для букв LUX
                   child.material = new THREE.MeshPhongMaterial({
                     color: 0xffffff, // белый
                     shininess: 100,
