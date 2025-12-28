@@ -54,17 +54,32 @@ export default function WithdrawConfirm() {
 
 
   const handleConfirm = async () => {
-    // Защита от повторных кликов
+    // 🛡️ Защита от повторных кликов
     if (isSubmitting) {
       return
     }
 
+    // Дополнительная защита через localStorage
+    const submitKey = `withdraw_submit_${userId}_${siteCode}_${withdrawAmount}`
+    const lastSubmit = localStorage.getItem(submitKey)
+    const now = Date.now()
+    
+    // Если была попытка отправки за последние 10 секунд - блокируем
+    if (lastSubmit && (now - parseInt(lastSubmit)) < 10000) {
+      alert('Заявка уже отправляется. Пожалуйста, подождите.')
+      return
+    }
+
+    // Сохраняем время попытки отправки
+    localStorage.setItem(submitKey, now.toString())
+    
     setIsSubmitting(true)
     
     try {
       // Используем данные из state (уже загружены из localStorage в useEffect)
       if (!bookmaker || !withdrawAmount || withdrawAmount <= 0 || !userId || !phone || !bank || !siteCode) {
         alert('Не все данные заполнены. Вернитесь на предыдущий шаг.')
+        localStorage.removeItem(submitKey) // Очищаем флаг при ошибке валидации
         router.push('/withdraw/step5')
         setIsSubmitting(false)
         return
@@ -133,6 +148,7 @@ export default function WithdrawConfirm() {
 
         if (!withdrawData.success) {
           alert(`Ошибка выполнения вывода: ${withdrawData.message || withdrawData.error || 'Неизвестная ошибка'}`)
+          localStorage.removeItem(submitKey) // Очищаем флаг при ошибке
           setIsSubmitting(false)
           return
         }
@@ -165,6 +181,7 @@ export default function WithdrawConfirm() {
 
       if (!telegramUserId) {
         alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+        localStorage.removeItem(submitKey) // Очищаем флаг при ошибке
         setIsSubmitting(false)
         return
       }
@@ -273,6 +290,9 @@ export default function WithdrawConfirm() {
           localStorage.setItem('withdraw_transaction_id', String(withdrawRequestId))
         }
         
+        // Очищаем флаг отправки из localStorage после успешной отправки
+        localStorage.removeItem(submitKey)
+        
         // Перенаправляем на страницу ожидания
         router.push('/withdraw/waiting')
       } else {
@@ -319,6 +339,8 @@ export default function WithdrawConfirm() {
       }
       
       alert(`Ошибка: ${errorMessage}`)
+      // Очищаем флаг отправки из localStorage при ошибке
+      localStorage.removeItem(submitKey)
     } finally {
       // Сбрасываем флаг отправки в любом случае
       setIsSubmitting(false)
