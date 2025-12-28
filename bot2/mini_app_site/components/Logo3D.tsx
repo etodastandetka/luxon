@@ -12,13 +12,8 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Предзагружаем OBJ файл с высоким приоритетом
-    const link = document.createElement('link')
-    link.rel = 'preload'
-    link.as = 'fetch'
-    link.href = '/logo.obj'
-    link.crossOrigin = 'anonymous'
-    document.head.appendChild(link)
+    // Не используем preload для очень больших файлов - это может замедлить загрузку страницы
+    // Вместо этого загружаем логотип только когда компонент готов
 
     let animationFrameId: number
     let scene: any, camera: any, renderer: any, logoModel: any
