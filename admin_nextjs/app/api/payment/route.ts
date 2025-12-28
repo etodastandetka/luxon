@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       bank
     })
 
-    // 🛡️ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: проверяем, нет ли уже такой же заявки за последние 5 минут
+    // 🛡️ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: удаляем старые дубликаты за последние 5 минут
     // Для вывода также проверяем по withdrawalCode, чтобы предотвратить повторное использование одного кода
     if (finalUserId && type && amount) {
       const whereClause: any = {
@@ -176,7 +176,8 @@ export async function POST(request: NextRequest) {
         accountId: finalAccountId || undefined,
         createdAt: {
           gte: new Date(Date.now() - 5 * 60 * 1000) // Последние 5 минут
-        }
+        },
+        status: 'pending' // Удаляем только pending заявки, чтобы не удалить уже обработанные
       }
 
       // Для вывода добавляем проверку по коду вывода
@@ -184,30 +185,13 @@ export async function POST(request: NextRequest) {
         whereClause.withdrawalCode = site_code.trim()
       }
 
-      const recentRequest = await prisma.request.findFirst({
-        where: whereClause,
-        orderBy: {
-          createdAt: 'desc'
-        }
+      // Находим и удаляем все дубликаты
+      const deletedCount = await prisma.request.deleteMany({
+        where: whereClause
       })
 
-      if (recentRequest) {
-        console.log(`⚠️ Payment API: Duplicate request detected (${type}), returning existing request:`, recentRequest.id)
-        return NextResponse.json(
-          createApiResponse({
-            id: recentRequest.id,
-            userId: recentRequest.userId.toString(),
-            type: recentRequest.requestType,
-            status: recentRequest.status,
-            amount: recentRequest.amount?.toString()
-          }, 'Заявка уже создана. Не нажимайте кнопку несколько раз.'),
-          {
-            status: 200,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
+      if (deletedCount.count > 0) {
+        console.log(`🗑️ Payment API: Deleted ${deletedCount.count} duplicate ${type} request(s) before creating new one`)
       }
     }
 
