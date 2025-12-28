@@ -82,11 +82,11 @@ const nextConfig = {
         ],
       },
       {
-        source: '/logo.obj',
+        source: '/logo.glb',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable', // Долгое кеширование для OBJ файла
+            value: 'public, max-age=31536000, immutable', // Долгое кеширование для GLB файла
           },
         ],
       },

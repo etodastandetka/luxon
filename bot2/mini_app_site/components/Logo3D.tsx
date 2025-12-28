@@ -21,10 +21,10 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
 
     const initThree = async () => {
       try {
-        // Загружаем Three.js и OBJLoader параллельно для ускорения
-        const [THREE, { OBJLoader }] = await Promise.all([
+        // Загружаем Three.js и GLTFLoader параллельно для ускорения
+        const [THREE, { GLTFLoader }] = await Promise.all([
           import('three'),
-          import('three/examples/jsm/loaders/OBJLoader.js')
+          import('three/examples/jsm/loaders/GLTFLoader.js')
         ])
 
         if (!containerRef.current || !mounted) return
@@ -78,13 +78,13 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
           containerRef.current.appendChild(placeholder)
         }
         
-        // Load OBJ model with optimized loading
-        const loader = new OBJLoader()
+        // Load GLB model with optimized loading
+        const loader = new GLTFLoader()
         
         // Загружаем модель с оптимизацией
         loader.load(
-          '/logo.obj',
-          (object: any) => {
+          '/logo.glb',
+          (gltf: any) => {
             if (!mounted) return
 
             // Удаляем placeholder после загрузки
@@ -92,6 +92,7 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
               placeholder.remove()
             }
 
+            const object = gltf.scene
             logoModel = object
 
             // Центрируем модель
@@ -132,7 +133,10 @@ const Logo3D: React.FC<Logo3DProps> = ({ className = '' }) => {
                   })
                 }
                 
-                child.geometry.computeVertexNormals()
+                // GLB уже имеет нормали, но на всякий случай
+                if (child.geometry.attributes.normal === undefined) {
+                  child.geometry.computeVertexNormals()
+                }
               }
             })
 
