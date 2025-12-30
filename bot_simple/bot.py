@@ -514,14 +514,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     # Выполняем оба запроса параллельно
                     payment_response, qr_response = await asyncio.gather(payment_task, qr_task)
                     
+                    logger.info(f"📥 Ответ от API payment: status={payment_response.status_code}")
+                    logger.info(f"📥 Ответ от API generate-qr: status={qr_response.status_code}")
+                    
                     if payment_response.status_code != 200:
                         error_text = payment_response.text
+                        logger.error(f"❌ Ошибка создания заявки: {error_text}")
                         await update.message.reply_text(f"❌ Ошибка создания заявки: {error_text[:200]}")
                         return
                     
                     result = payment_response.json()
+                    logger.info(f"📋 Результат создания заявки: {result}")
                     if result.get('success') == False:
                         error_msg = result.get('error') or 'Неизвестная ошибка'
+                        logger.error(f"❌ Заявка не создана: {error_msg}")
                         await update.message.reply_text(f"❌ Ошибка создания заявки: {error_msg}")
                         return
                     
@@ -580,10 +586,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 parse_mode='HTML'
                             )
                             # Отправляем Reply клавиатуру отдельным сообщением
-                            await update.message.reply_text(
-                                "\u200B",  # Невидимый символ (zero-width space)
-                                reply_markup=reply_markup_keyboard
-                            )
+                            try:
+                                await update.message.reply_text(
+                                    ".",
+                                    reply_markup=reply_markup_keyboard
+                                )
+                            except Exception as e:
+                                logger.error(f"❌ Ошибка при отправке Reply клавиатуры: {e}")
+                                # Если не получилось, просто отправляем клавиатуру без текста через другой метод
+                                pass
                             # Сохраняем данные для последующего обновления фото чека
                             user_states[user_id]['step'] = 'deposit_receipt_photo'
                             # Сохраняем ссылки в состоянии для последующего использования
