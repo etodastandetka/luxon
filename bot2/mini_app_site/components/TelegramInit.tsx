@@ -65,9 +65,24 @@ export default function TelegramInit() {
           
           // Готовим WebApp
           tg.ready()
+          
+          // Логируем информацию о hash для диагностики
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Telegram WebApp Debug:', {
+              hasInitData: !!tg.initData,
+              hasInitDataUnsafe: !!tg.initDataUnsafe,
+              hasHash: !!(tg.initDataUnsafe?.hash),
+              hash: tg.initDataUnsafe?.hash || 'N/A',
+              initDataLength: tg.initData?.length || 0,
+              initDataPreview: tg.initData ? tg.initData.substring(0, 100) + '...' : 'N/A'
+            })
+          }
         }
       } catch (error) {
-        // Игнорируем ошибки инициализации
+        // Логируем ошибки инициализации для диагностики
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Telegram WebApp initialization error:', error)
+        }
       }
     }
   }, [])
