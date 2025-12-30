@@ -528,16 +528,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             # Получаем ссылки на оплату через API
             try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    # Создаем заявку
-                    payment_response = await client.post(
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    # Создаем заявку и получаем QR ссылки параллельно для ускорения
+                    payment_task = client.post(
                         f"{API_URL}/api/payment",
                         json=request_body,
                         headers={"Content-Type": "application/json"}
                     )
+                    qr_task = client.post(
+                        f"{API_URL}/api/public/generate-qr",
+                        json={
+                            "amount": amount,
+                            "playerId": data['player_id'],
+                            "bank": "demirbank"  # По умолчанию, но ссылки будут для всех банков
+                        },
+                        headers={"Content-Type": "application/json"}
+                    )
+                    
+                    # Выполняем оба запроса параллельно
+                    payment_response, qr_response = await asyncio.gather(payment_task, qr_task)
                     
                     if payment_response.status_code != 200:
-                        error_text = await payment_response.text()
+                        error_text = payment_response.text
                         await update.message.reply_text(f"❌ Ошибка создания заявки: {error_text[:200]}")
                         return
                     
@@ -549,17 +561,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     
                     request_id = result.get('id') or result.get('data', {}).get('id') or 'N/A'
                     data['request_id'] = request_id
-                    
-                    # Получаем QR ссылки для всех банков
-                    qr_response = await client.post(
-                        f"{API_URL}/api/public/generate-qr",
-                        json={
-                            "amount": amount,
-                            "playerId": data['player_id'],
-                            "bank": "demirbank"  # По умолчанию, но ссылки будут для всех банков
-                        },
-                        headers={"Content-Type": "application/json"}
-                    )
                     
                     if qr_response.status_code == 200:
                         qr_data = qr_response.json()
@@ -599,6 +600,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
                             reply_markup_keyboard = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
                             
+                            # Отправляем одно сообщение с Reply клавиатурой
                             await update.message.reply_text(
                                 f"✅ <b>Заявка на пополнение создана!</b>\n\n"
                                 f"💰 <b>Сумма:</b> {amount} сом\n"
@@ -606,12 +608,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 f"🆔 <b>ID игрока:</b> {data['player_id']}\n"
                                 f"🆔 <b>ID заявки:</b> #{request_id}\n\n"
                                 f"⏰ <b>Таймер: {timer_text}</b>\n\n"
-                                f"💳 <b>Выберите банк для оплаты:</b>",
+                                f"💳 <b>Выберите банк для оплаты:</b>\n\n"
+                                f"После оплаты отправьте фото чека:",
                                 reply_markup=reply_markup,
                                 parse_mode='HTML'
                             )
+                            # Отправляем Reply клавиатуру отдельным сообщением
                             await update.message.reply_text(
-                                "После оплаты отправьте фото чека:",
+                                " ",
                                 reply_markup=reply_markup_keyboard
                             )
                             # Сохраняем данные для последующего обновления фото чека
@@ -653,7 +657,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 # Обновляем заявку с фото чека
                 request_id = data.get('request_id')
                 if request_id and request_id != 'N/A':
-                    async with httpx.AsyncClient(timeout=30.0) as client:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
                         # Обновляем заявку через PATCH
                         update_response = await client.patch(
                             f"{API_URL}/api/requests/{request_id}",
@@ -1146,27 +1150,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         # Получаем ссылки на оплату через API
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                # Создаем заявку
-                payment_response = await client.post(
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                # Создаем заявку и получаем QR ссылки параллельно для ускорения
+                payment_task = client.post(
                     f"{API_URL}/api/payment",
                     json=request_body,
                     headers={"Content-Type": "application/json"}
                 )
-                
-                if payment_response.status_code != 200:
-                    error_text = await payment_response.text()
-                    await query.edit_message_text(f"❌ Ошибка создания заявки: {error_text[:200]}")
-                    return
-                
-                result = payment_response.json()
-                if result.get('success') == False:
-                    error_msg = result.get('error') or 'Неизвестная ошибка'
-                    await query.edit_message_text(f"❌ Ошибка создания заявки: {error_msg}")
-                    return
-                
-                # Получаем QR ссылки
-                qr_response = await client.post(
+                qr_task = client.post(
                     f"{API_URL}/api/public/generate-qr",
                     json={
                         "amount": data['amount'],
@@ -1175,6 +1166,20 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                     },
                     headers={"Content-Type": "application/json"}
                 )
+                
+                # Выполняем оба запроса параллельно
+                payment_response, qr_response = await asyncio.gather(payment_task, qr_task)
+                
+                if payment_response.status_code != 200:
+                    error_text = payment_response.text
+                    await query.edit_message_text(f"❌ Ошибка создания заявки: {error_text[:200]}")
+                    return
+                
+                result = payment_response.json()
+                if result.get('success') == False:
+                    error_msg = result.get('error') or 'Неизвестная ошибка'
+                    await query.edit_message_text(f"❌ Ошибка создания заявки: {error_msg}")
+                    return
                 
                 if qr_response.status_code == 200:
                     qr_data = qr_response.json()
@@ -1424,7 +1429,7 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
             qr_photo_base64 = await get_photo_base64(context.bot, data['qr_photo_id'])
         
         # Проверяем код через API
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             check_response = await client.post(
                 f"{API_URL}/api/withdraw-check",
                 json={
@@ -1545,7 +1550,7 @@ async def submit_deposit_request(query, context: ContextTypes.DEFAULT_TYPE, user
             "source": "bot"  # Указываем, что заявка создана через бота
         }
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             payment_response = await client.post(
                 f"{API_URL}/api/payment",
                 json=request_body,
