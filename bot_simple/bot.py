@@ -509,9 +509,48 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             state['step'] = 'deposit_bank'
             user_states[user_id] = state
             
+            # Сначала создаем заявку на депозит, затем получаем ссылки
+            user = update.effective_user
+            request_body = {
+                "type": "deposit",
+                "bookmaker": data['bookmaker'],
+                "userId": str(user_id),
+                "telegram_user_id": str(user_id),
+                "amount": amount,
+                "bank": "demirbank",  # Временный банк, пользователь выберет позже
+                "account_id": data['player_id'],
+                "playerId": data['player_id'],
+                "telegram_username": user.username,
+                "telegram_first_name": user.first_name,
+                "telegram_last_name": user.last_name,
+                "source": "bot"
+            }
+            
             # Получаем ссылки на оплату через API
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
+                    # Создаем заявку
+                    payment_response = await client.post(
+                        f"{API_URL}/api/payment",
+                        json=request_body,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    
+                    if payment_response.status_code != 200:
+                        error_text = await payment_response.text()
+                        await update.message.reply_text(f"❌ Ошибка создания заявки: {error_text[:200]}")
+                        return
+                    
+                    result = payment_response.json()
+                    if result.get('success') == False:
+                        error_msg = result.get('error') or 'Неизвестная ошибка'
+                        await update.message.reply_text(f"❌ Ошибка создания заявки: {error_msg}")
+                        return
+                    
+                    request_id = result.get('id') or result.get('data', {}).get('id') or 'N/A'
+                    data['request_id'] = request_id
+                    
+                    # Получаем QR ссылки для всех банков
                     qr_response = await client.post(
                         f"{API_URL}/api/public/generate-qr",
                         json={
@@ -556,47 +595,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
                             reply_markup = InlineKeyboardMarkup(keyboard)
                             
-                            # Убираем Reply клавиатуру
+                            # Создаем Reply клавиатуру с кнопкой отмены
+                            keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
+                            reply_markup_keyboard = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+                            
                             await update.message.reply_text(
-                                f"💰 <b>Пополнение счета</b>\n\n"
-                                f"Казино: {data['bookmaker'].upper()}\n"
-                                f"ID игрока: {data['player_id']}\n"
-                                f"Сумма: {amount} сом\n\n"
+                                f"✅ <b>Заявка на пополнение создана!</b>\n\n"
+                                f"💰 <b>Сумма:</b> {amount} сом\n"
+                                f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
+                                f"🆔 <b>ID игрока:</b> {data['player_id']}\n"
+                                f"🆔 <b>ID заявки:</b> #{request_id}\n\n"
                                 f"⏰ <b>Таймер: {timer_text}</b>\n\n"
-                                f"Выберите банк для оплаты:",
+                                f"💳 <b>Выберите банк для оплаты:</b>",
                                 reply_markup=reply_markup,
                                 parse_mode='HTML'
                             )
-                            # Сохраняем данные для последующего создания заявки после выбора банка
-                            user_states[user_id]['step'] = 'deposit_bank_select'
+                            await update.message.reply_text(
+                                "После оплаты отправьте фото чека:",
+                                reply_markup=reply_markup_keyboard
+                            )
+                            # Сохраняем данные для последующего обновления фото чека
+                            user_states[user_id]['step'] = 'deposit_receipt_photo'
+                            # Сохраняем ссылки в состоянии для последующего использования
+                            user_states[user_id]['data']['bank_links'] = bank_links
+                            user_states[user_id]['data']['timer_seconds'] = timer_seconds
                             return
+                    else:
+                        await update.message.reply_text(
+                            f"❌ Ошибка при получении ссылок на оплату. Попробуйте еще раз."
+                        )
+                        return
             except Exception as e:
-                logger.error(f"❌ Ошибка при получении ссылок на оплату: {e}")
-            
-            # Если не удалось получить ссылки, показываем обычные кнопки
-            keyboard = [
-                [
-                    InlineKeyboardButton("DemirBank", callback_data="deposit_bank_demirbank"),
-                    InlineKeyboardButton("O!Money", callback_data="deposit_bank_omoney")
-                ],
-                [
-                    InlineKeyboardButton("Balance.kg", callback_data="deposit_bank_balance"),
-                    InlineKeyboardButton("Bakai", callback_data="deposit_bank_bakai")
-                ],
-                [
-                    InlineKeyboardButton("MegaPay", callback_data="deposit_bank_megapay"),
-                    InlineKeyboardButton("MBank", callback_data="deposit_bank_mbank")
-                ],
-                [InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await update.message.reply_text(
-                f"💰 <b>Пополнение счета</b>\n\nКазино: {data['bookmaker'].upper()}\nID игрока: {data['player_id']}\nСумма: {amount} сом\n\nВыберите банк для оплаты:",
-                reply_markup=reply_markup,
-                parse_mode='HTML'
-            )
-            return
+                logger.error(f"❌ Ошибка при создании заявки или получении ссылок: {e}")
+                await update.message.reply_text(
+                    f"❌ Ошибка при создании заявки. Попробуйте еще раз или обратитесь в поддержку."
+                )
+                return
         
         # Обработка отправки фото чека для депозита
         elif step == 'deposit_receipt_photo':
