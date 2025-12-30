@@ -629,16 +629,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 reply_markup=reply_markup,
                                 parse_mode='HTML'
                             )
-                            # Отправляем Reply клавиатуру отдельным сообщением
+                            # Отправляем Reply клавиатуру отдельным сообщением (без текста)
                             try:
                                 await update.message.reply_text(
-                                    ".",
+                                    "\u200B",  # Невидимый символ (zero-width space)
                                     reply_markup=reply_markup_keyboard
                                 )
                             except Exception as e:
                                 logger.error(f"❌ Ошибка при отправке Reply клавиатуры: {e}")
-                                # Если не получилось, просто отправляем клавиатуру без текста через другой метод
-                                pass
+                                # Если не получилось, пробуем с минимальным текстом
+                                try:
+                                    await update.message.reply_text(
+                                        " ",
+                                        reply_markup=reply_markup_keyboard
+                                    )
+                                except:
+                                    pass
                             # Сохраняем данные для последующего обновления фото чека
                             user_states[user_id]['step'] = 'deposit_receipt_photo'
                             # Сохраняем ссылки в состоянии для последующего использования
