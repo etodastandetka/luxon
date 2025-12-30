@@ -429,6 +429,58 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return
         
+        # Обработка отправки фото чека для депозита
+        elif step == 'deposit_receipt_photo':
+            # Проверяем, есть ли фото
+            photo_file_id = None
+            if update.message.photo:
+                photo_file_id = update.message.photo[-1].file_id
+            elif update.message.document and update.message.document.mime_type and update.message.document.mime_type.startswith('image/'):
+                photo_file_id = update.message.document.file_id
+            
+            if not photo_file_id:
+                await update.message.reply_text("❌ Пожалуйста, отправьте фото чека")
+                return
+            
+            # Получаем фото в base64
+            try:
+                await update.message.reply_text("⏳ Обрабатываю фото чека...")
+                receipt_photo_base64 = await get_photo_base64(context.bot, photo_file_id)
+                
+                # Обновляем заявку с фото чека
+                request_id = data.get('request_id')
+                if request_id and request_id != 'N/A':
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        # Обновляем заявку через PATCH
+                        update_response = await client.patch(
+                            f"{API_URL}/api/requests/{request_id}",
+                            json={
+                                "photoFileUrl": receipt_photo_base64
+                            },
+                            headers={"Content-Type": "application/json"}
+                        )
+                        
+                        if update_response.status_code == 200:
+                            await update.message.reply_text(
+                                f"✅ <b>Фото чека отправлено!</b>\n\n"
+                                f"Заявка #{request_id} обновлена.\n"
+                                f"Ожидайте обработки заявки администратором.",
+                                parse_mode='HTML',
+                                reply_markup=ReplyKeyboardRemove()
+                            )
+                        else:
+                            error_text = await update_response.text()
+                            await update.message.reply_text(f"⚠️ Фото получено, но не удалось обновить заявку: {error_text[:200]}")
+                else:
+                    await update.message.reply_text("✅ Фото чека получено!")
+                
+                # Очищаем состояние
+                del user_states[user_id]
+            except Exception as e:
+                logger.error(f"❌ Ошибка при обработке фото чека: {e}")
+                await update.message.reply_text(f"❌ Ошибка при обработке фото: {str(e)[:200]}")
+            return
+        
         # Обработка вывода
         elif step == 'withdraw_phone':
             phone = message_text.strip()
@@ -932,6 +984,15 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         
                         request_id = result.get('id') or result.get('data', {}).get('id') or 'N/A'
                         
+                        # Сохраняем request_id для последующего обновления фото чека
+                        data['request_id'] = request_id
+                        user_states[user_id]['step'] = 'deposit_receipt_photo'
+                        user_states[user_id]['data'] = data
+                        
+                        # Создаем Reply клавиатуру с кнопкой отмены
+                        keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
+                        reply_markup_keyboard = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+                        
                         await query.edit_message_text(
                             f"✅ <b>Заявка на пополнение создана!</b>\n\n"
                             f"💰 Сумма: {data['amount']} сом\n"
@@ -944,8 +1005,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                             reply_markup=reply_markup,
                             parse_mode='HTML'
                         )
-                        # Очищаем состояние
-                        del user_states[user_id]
+                        await query.message.reply_text(
+                            "После оплаты отправьте фото чека:",
+                            reply_markup=reply_markup_keyboard
+                        )
                         return
         except Exception as e:
             logger.error(f"❌ Ошибка при создании заявки или получении ссылок: {e}")
@@ -1194,7 +1257,8 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                 "site_code": data['code'],
                 "telegram_username": user.username,
                 "telegram_first_name": user.first_name,
-                "telegram_last_name": user.last_name
+                "telegram_last_name": user.last_name,
+                "source": "bot"  # Указываем, что заявка создана через бота
             }
             
             payment_response = await client.post(
@@ -1243,7 +1307,8 @@ async def submit_deposit_request(query, context: ContextTypes.DEFAULT_TYPE, user
             "playerId": data['player_id'],
             "telegram_username": user.username,
             "telegram_first_name": user.first_name,
-            "telegram_last_name": user.last_name
+            "telegram_last_name": user.last_name,
+            "source": "bot"  # Указываем, что заявка создана через бота
         }
         
         async with httpx.AsyncClient(timeout=30.0) as client:
