@@ -96,10 +96,14 @@ export async function POST(request: NextRequest) {
       console.error('Error fetching requisite:', error)
     }
     
-    // Если не нашли реквизит, возвращаем ошибку
+    // Если не нашли реквизит, возвращаем ошибку на русском языке
     if (!requisite) {
       const errorResponse = NextResponse.json(
-        { success: false, error: 'No active wallet configured. Please select an active wallet in admin panel.' },
+        { 
+          success: false, 
+          error: 'Активный кошелек не настроен.',
+          message: 'Обратитесь в поддержку.'
+        },
         { status: 400 }
       )
       errorResponse.headers.set('Access-Control-Allow-Origin', '*')

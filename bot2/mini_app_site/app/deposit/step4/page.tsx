@@ -1563,10 +1563,34 @@ export default function DepositStep4() {
           generateFallbackQR(currentBank)
           return
         }
-        throw new Error(`HTTP error! status: ${response.status}`)
+        
+        // Пытаемся получить сообщение об ошибке из ответа
+        let errorMessage = `HTTP error! status: ${response.status}`
+        try {
+          const errorData = await response.json()
+          if (errorData.error) {
+            errorMessage = errorData.error
+            if (errorData.message) {
+              errorMessage += '\n' + errorData.message
+            }
+          }
+        } catch (e) {
+          // Если не удалось распарсить JSON, используем стандартное сообщение
+        }
+        
+        // Показываем ошибку пользователю
+        alert(errorMessage)
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
+      
+      // Проверяем, есть ли ошибка в успешном ответе
+      if (!data.success && data.error) {
+        const errorMessage = data.error + (data.message ? '\n' + data.message : '')
+        alert(errorMessage)
+        throw new Error(errorMessage)
+      }
       
       // Если есть qr_hash, создаем ссылки для всех банков
       if (data.qr_hash) {

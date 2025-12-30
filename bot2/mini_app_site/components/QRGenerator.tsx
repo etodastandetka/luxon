@@ -56,6 +56,12 @@ export default function QRGenerator({ bankKey, amount, playerId, onGenerated, pa
         }
 
         const data: QRResponse = await response.json()
+        
+        // Проверяем, есть ли ошибка в ответе
+        if (!data.success && data.error) {
+          throw new Error(data.error + (data.message ? '\n' + data.message : ''))
+        }
+        
         setQrData(data)
         
         // Генерируем QR код для основной ссылки
@@ -66,7 +72,14 @@ export default function QRGenerator({ bankKey, amount, playerId, onGenerated, pa
         onGenerated(data.primary_url)
       } catch (err) {
         console.error('Error generating QR:', err)
-        setError(err instanceof Error ? err.message : 'Ошибка генерации QR кода')
+        // Извлекаем сообщение об ошибке из ответа, если это JSON
+        let errorMessage = 'Ошибка генерации QR кода'
+        if (err instanceof Error) {
+          errorMessage = err.message
+        } else if (typeof err === 'object' && err !== null && 'error' in err) {
+          errorMessage = (err as any).error || errorMessage
+        }
+        setError(errorMessage)
       } finally {
         setLoading(false)
       }
