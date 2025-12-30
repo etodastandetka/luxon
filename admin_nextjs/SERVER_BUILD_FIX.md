@@ -1,13 +1,29 @@
-# Исправление ошибки сборки на сервере
+# Исправление ошибки сборки и базы данных на сервере
 
-Если на сервере возникает ошибка:
+Если на сервере возникают ошибки:
+1. **Ошибка сборки**: `Type error: Object literal may only specify known properties, and 'source' does not exist in type 'RequestCreateInput'`
+2. **Ошибка в боте**: `The column requests.source does not exist in the current database`
+
+## КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ (выполните в первую очередь!)
+
+### Шаг 1: Добавить колонку в базу данных
+
+```bash
+# Подключитесь к базе данных PostgreSQL
+psql -U your_user -d your_database
+
+# Или используйте переменную окружения
+psql $DATABASE_URL
+
+# Выполните SQL миграцию
+\i /var/www/luxon/admin_nextjs/prisma/migrations/add_source_column.sql
+
+# Или выполните SQL напрямую:
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS source VARCHAR(20);
+\q
 ```
-Type error: Object literal may only specify known properties, and 'source' does not exist in type 'RequestCreateInput'
-```
 
-## Быстрое исправление
-
-Выполните на сервере в директории `/var/www/luxon/admin_nextjs`:
+### Шаг 2: Обновить код и пересобрать
 
 ```bash
 # 1. Обновить код
@@ -22,6 +38,18 @@ npx prisma generate
 npm run build
 
 # 4. Перезапустить PM2
+pm2 restart luxon-admin
+```
+
+## Альтернативный способ (используя Prisma db push)
+
+Если у вас есть доступ к базе данных через Prisma:
+
+```bash
+cd /var/www/luxon/admin_nextjs
+npx prisma db push
+npx prisma generate
+npm run build
 pm2 restart luxon-admin
 ```
 
