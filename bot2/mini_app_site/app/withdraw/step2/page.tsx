@@ -324,7 +324,7 @@ export default function WithdrawStep2() {
           <button 
             className="btn btn-primary flex-1"
             onClick={handleNext}
-            disabled={!bank || !qrPhotoPreview || phone.length < 12}
+            disabled={!bank || !qrPhotoPreview || phone.replace(/[^\d]/g, '').length < 12}
           >
             {t.next}
           </button>
