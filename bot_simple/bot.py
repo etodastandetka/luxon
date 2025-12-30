@@ -1708,10 +1708,10 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 
                 # Разделяем на пары (по 2 в ряд)
                 for i in range(0, len(all_banks_list), 2):
-                    if i + 1 < len(available_banks):
-                        keyboard.append([available_banks[i], available_banks[i + 1]])
+                    if i + 1 < len(all_banks_list):
+                        keyboard.append([all_banks_list[i], all_banks_list[i + 1]])
                     else:
-                        keyboard.append([available_banks[i]])
+                        keyboard.append([all_banks_list[i]])
                 
                 keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
                 reply_markup = InlineKeyboardMarkup(keyboard)
