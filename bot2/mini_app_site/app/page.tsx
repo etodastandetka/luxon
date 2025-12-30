@@ -209,10 +209,15 @@ function LuxOnSlots({
       const centerOffset = 75 // центр видимой области (150px / 2 = 75px)
       const targetSymbolIndex = 20
       const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
-      // Используем requestAnimationFrame чтобы убедиться, что DOM обновлен
-      requestAnimationFrame(() => {
-        container.style.transform = `translateY(${initialPosition}px)`
-      })
+      // Устанавливаем позицию сразу, синхронно
+      container.style.transform = `translateY(${initialPosition}px)`
+      container.style.transition = 'none'
+      // Принудительный reflow для применения стилей
+      void container.offsetHeight
+      // Восстанавливаем transition
+      setTimeout(() => {
+        container.style.transition = ''
+      }, 50)
     }
   }, [symbols])
 
@@ -1491,8 +1496,7 @@ export default function HomePage() {
           align-items: center;
           transition: transform 0.1s linear;
           will-change: transform;
-          /* Начальная позиция: символ с индексом 20 в центре */
-          transform: translateY(925px);
+          /* Начальная позиция будет установлена через JavaScript */
         }
 
         .lux-reel-spinning .lux-reel-container {
