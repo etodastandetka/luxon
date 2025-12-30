@@ -311,10 +311,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 parse_mode='HTML'
             )
             # Отправляем Reply клавиатуру отдельным сообщением (edit_message_text не поддерживает Reply клавиатуру)
-            await update.message.reply_text(
-                "\u200B",  # Невидимый символ (zero-width space)
-                reply_markup=reply_markup_keyboard
-            )
+            # Используем минимальный видимый текст вместо невидимого символа
+            try:
+                await update.message.reply_text(
+                    ".",
+                    reply_markup=reply_markup_keyboard
+                )
+            except Exception as e:
+                logger.error(f"❌ Ошибка при отправке Reply клавиатуры: {e}")
+                # Если не получилось, просто отправляем клавиатуру без текста через другой метод
+                pass
         else:
             # Начинаем диалог вывода
             user_states[user_id] = {
@@ -349,10 +355,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 parse_mode='HTML'
             )
             # Отправляем Reply клавиатуру отдельным сообщением (edit_message_text не поддерживает Reply клавиатуру)
-            await update.message.reply_text(
-                "\u200B",  # Невидимый символ (zero-width space)
-                reply_markup=reply_markup_keyboard
-            )
+            # Используем минимальный видимый текст вместо невидимого символа
+            try:
+                await update.message.reply_text(
+                    ".",
+                    reply_markup=reply_markup_keyboard
+                )
+            except Exception as e:
+                logger.error(f"❌ Ошибка при отправке Reply клавиатуры: {e}")
+                # Если не получилось, просто отправляем клавиатуру без текста через другой метод
+                pass
         return
     
     # Проверяем, есть ли активный диалог
