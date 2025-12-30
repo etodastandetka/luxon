@@ -8,6 +8,7 @@ import logging
 import re
 import httpx
 import base64
+import random
 from io import BytesIO
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -473,6 +474,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     logger.warning(f"⚠️ Сумма вне диапазона: {amount}")
                     await update.message.reply_text("❌ Сумма должна быть от 35 до 100,000 сом")
                     return
+                
+                # Добавляем случайные копейки к сумме (1-99 копеек), если сумма целая
+                if amount == int(amount):
+                    random_kopecks = random.randint(1, 99)
+                    amount = amount + (random_kopecks / 100)
+                    logger.info(f"💰 Добавлены случайные копейки: {random_kopecks}, итоговая сумма: {amount}")
             except ValueError as e:
                 logger.error(f"❌ Ошибка парсинга суммы: {e}, message_text='{message_text}'")
                 await update.message.reply_text("❌ Введите корректную сумму (число)")
