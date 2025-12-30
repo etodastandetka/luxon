@@ -171,7 +171,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             else:
                 logger.error(f"❌ Ошибка API при получении настроек канала: {response.status_code}")
                 try:
-                    error_text = await response.text()
+                    error_text = response.text
                     logger.error(f"📄 Текст ошибки: {error_text[:200]}")
                 except:
                     pass
@@ -273,6 +273,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик всех текстовых сообщений от пользователей (не команд)"""
     if not update.message or not update.message.from_user:
+        logger.warning("⚠️ handle_message: нет сообщения или пользователя")
         return
     
     user = update.message.from_user
@@ -280,13 +281,65 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     message_text = update.message.text or update.message.caption or ''
     telegram_message_id = update.message.message_id
     
+    logger.info(f"📨 handle_message: пользователь {user_id} (@{user.username}), сообщение: '{message_text[:50]}...'")
+    
     # Пропускаем команды (они обрабатываются отдельными обработчиками)
     if message_text and message_text.startswith('/'):
         logger.warning(f"⚠️ handle_message получил команду {message_text} - это не должно происходить! Пропускаем.")
         return
     
+    # Обработка отмены заявки через Reply клавиатуру (проверяем в самом начале, независимо от состояния)
+    if message_text and ("отменить заявку" in message_text.lower() or message_text.strip() == "❌ Отменить заявку"):
+        logger.info(f"🛑 Пользователь {user_id} отменил заявку через Reply-клавиатуру")
+        
+        # Останавливаем таймер если он активен
+        if user_id in active_timers:
+            try:
+                active_timers[user_id].cancel()
+                logger.info(f"⏹️ Таймер остановлен для пользователя {user_id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка при остановке таймера: {e}")
+            del active_timers[user_id]
+        
+        # Очищаем состояние
+        if user_id in user_states:
+            del user_states[user_id]
+            logger.info(f"✅ Состояние очищено для пользователя {user_id}")
+        
+        # Создаем Reply клавиатуру с кнопками
+        reply_keyboard = [
+            [
+                KeyboardButton("💰 Пополнить"),
+                KeyboardButton("💸 Вывести")
+            ]
+        ]
+        reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        
+        # Отправляем приветственное сообщение (как в /start)
+        welcome_text = f"""Привет, {user.first_name}!
+
+Пополнение | Вывод
+из букмекерских контор!
+
+📥 Пополнение — 0%
+📤 Вывод — 0%
+🕒 Работаем 24/7
+
+👨‍💻 Поддержка: @operator_luxon_bot
+💬 Чат для всех: @luxon_chat
+
+🔒 Финансовый контроль обеспечен личным отделом безопасности"""
+        
+        await update.message.reply_text(
+            welcome_text,
+            reply_markup=reply_markup
+        )
+        return
+    
     # Обработка кнопок Reply клавиатуры (должна быть ПЕРЕД проверкой user_states)
+    # Отвечаем ВСЕМ пользователям, независимо от подписки на канал
     if message_text in ["💰 Пополнить", "💸 Вывести"]:
+        logger.info(f"📨 Пользователь {user_id} нажал кнопку: {message_text}")
         if message_text == "💰 Пополнить":
             # Начинаем диалог пополнения
             user_states[user_id] = {
@@ -353,92 +406,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         step = state.get('step', '')
         data = state.get('data', {})
         
-        # Если отправлено фото, но не в состоянии withdraw_qr - показываем ошибку
-        if (update.message.photo or (update.message.document and update.message.document.mime_type and update.message.document.mime_type.startswith('image/'))) and step != 'withdraw_qr':
-            await update.message.reply_text("❌ Сейчас не требуется отправка фото. Следуйте инструкциям выше.")
-            return
-        
-        # Обработка отмены заявки через Reply клавиатуру
-        if message_text and "отменить заявку" in message_text.lower():
-            if user_id in user_states:
-                del user_states[user_id]
-            
-            # Создаем Reply клавиатуру с кнопками
-            reply_keyboard = [
-                [
-                    KeyboardButton("💰 Пополнить"),
-                    KeyboardButton("💸 Вывести")
-                ]
-            ]
-            reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
-            
-            await update.message.reply_text(
-                "❌ Заявка отменена",
-                reply_markup=reply_markup
-            )
-            return
-        
-        # Обработка кнопок Reply клавиатуры
-        if message_text in ["💰 Пополнить", "💸 Вывести"]:
-            if message_text == "💰 Пополнить":
-                # Начинаем диалог пополнения
-                user_states[user_id] = {
-                    'step': 'deposit_bookmaker',
-                    'data': {}
-                }
-                
-                keyboard = [
-                    [
-                        InlineKeyboardButton("1XBET", callback_data="deposit_bookmaker_1xbet"),
-                        InlineKeyboardButton("1WIN", callback_data="deposit_bookmaker_1win")
-                    ],
-                    [
-                        InlineKeyboardButton("MELBET", callback_data="deposit_bookmaker_melbet"),
-                        InlineKeyboardButton("MOSTBET", callback_data="deposit_bookmaker_mostbet")
-                    ],
-                    [
-                        InlineKeyboardButton("WINWIN", callback_data="deposit_bookmaker_winwin"),
-                        InlineKeyboardButton("888STARZ", callback_data="deposit_bookmaker_888starz")
-                    ],
-                    [InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                await update.message.reply_text(
-                    "💰 <b>Пополнение счета</b>\n\nВыберите казино:",
-                    reply_markup=reply_markup,
-                    parse_mode='HTML'
-                )
-            else:
-                # Начинаем диалог вывода
-                user_states[user_id] = {
-                    'step': 'withdraw_bookmaker',
-                    'data': {}
-                }
-                
-                keyboard = [
-                    [
-                        InlineKeyboardButton("1XBET", callback_data="withdraw_bookmaker_1xbet"),
-                        InlineKeyboardButton("1WIN", callback_data="withdraw_bookmaker_1win")
-                    ],
-                    [
-                        InlineKeyboardButton("MELBET", callback_data="withdraw_bookmaker_melbet"),
-                        InlineKeyboardButton("MOSTBET", callback_data="withdraw_bookmaker_mostbet")
-                    ],
-                    [
-                        InlineKeyboardButton("WINWIN", callback_data="withdraw_bookmaker_winwin"),
-                        InlineKeyboardButton("888STARZ", callback_data="withdraw_bookmaker_888starz")
-                    ],
-                    [InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                await update.message.reply_text(
-                    "💸 <b>Вывод средств</b>\n\nВыберите казино:",
-                    reply_markup=reply_markup,
-                    parse_mode='HTML'
-                )
-            return
+        # Если отправлено фото, но не в состоянии, где требуется фото - показываем ошибку
+        if (update.message.photo or (update.message.document and update.message.document.mime_type and update.message.document.mime_type.startswith('image/'))):
+            # Проверяем, требуется ли фото в текущем шаге
+            if step not in ['withdraw_qr', 'deposit_receipt_photo', 'deposit_bank']:
+                await update.message.reply_text("❌ Сейчас не требуется отправка фото. Следуйте инструкциям выше.")
+                return
         
         # Обработка пополнения
         if step == 'deposit_player_id':
@@ -1238,8 +1211,22 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     # Обработка отмены заявки
     if callback_data == "cancel_request":
+        logger.info(f"🛑 Пользователь {user_id} отменил заявку через инлайн-кнопку")
+        
+        # Останавливаем таймер если он активен
+        if user_id in active_timers:
+            try:
+                active_timers[user_id].cancel()
+                logger.info(f"⏹️ Таймер остановлен для пользователя {user_id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка при остановке таймера: {e}")
+            del active_timers[user_id]
+        
+        # Очищаем состояние
         if user_id in user_states:
             del user_states[user_id]
+            logger.info(f"✅ Состояние очищено для пользователя {user_id}")
+        
         await query.answer("Заявка отменена")
         
         # Создаем Reply клавиатуру с кнопками
@@ -1251,14 +1238,30 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         ]
         reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
         
-        # Отправляем Reply клавиатуру
+        # Отправляем приветственное сообщение (как в /start)
+        user = query.from_user
+        welcome_text = f"""Привет, {user.first_name}!
+
+Пополнение | Вывод
+из букмекерских контор!
+
+📥 Пополнение — 0%
+📤 Вывод — 0%
+🕒 Работаем 24/7
+
+👨‍💻 Поддержка: @operator_luxon_bot
+💬 Чат для всех: @luxon_chat
+
+🔒 Финансовый контроль обеспечен личным отделом безопасности"""
+        
+        # Отправляем приветственное сообщение
         try:
             await query.message.reply_text(
-                "❌ Заявка отменена",
+                welcome_text,
                 reply_markup=reply_markup
             )
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"❌ Ошибка при отправке приветственного сообщения: {e}")
         return
     
     # Обработка возврата в главное меню
@@ -1322,53 +1325,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 "Выберите действие:",
                 reply_markup=reply_markup
             )
-        return
-            pass
-        
-        inline_keyboard = [
-            [
-                InlineKeyboardButton("💰 Пополнить", callback_data="deposit"),
-                InlineKeyboardButton("💸 Вывести", callback_data="withdraw")
-            ]
-        ]
-        # Убираем сообщение "Выберите действие:" - кнопки Reply клавиатуры уже видны
-        # await query.edit_message_text(
-        #     "Выберите действие:",
-        #     reply_markup=InlineKeyboardMarkup(inline_keyboard)
-        # )
-        return
-    
-    # Обработка возврата в меню
-    if callback_data == "back_to_menu":
-        if user_id in user_states:
-            del user_states[user_id]
-        # Показываем главное меню
-        keyboard = [
-            [
-                InlineKeyboardButton("💰 Пополнить", callback_data="deposit"),
-                InlineKeyboardButton("💸 Вывести", callback_data="withdraw")
-            ]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        welcome_text = f"""Привет, {user.first_name}!
-
-Пополнение | Вывод
-из букмекерских контор!
-
-📥 Пополнение — 0%
-📤 Вывод — 0%
-🕒 Работаем 24/7
-
-👨‍💻 Поддержка: @operator_luxon_bot
-💬 Чат для всех: @luxon_chat
-
-🔒 Финансовый контроль обеспечен личным отделом безопасности"""
-        
-        await query.edit_message_text(
-            welcome_text,
-            reply_markup=reply_markup
-        )
         return
     
     # Обработка проверки подписки
@@ -1601,7 +1557,7 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
             )
             
             if check_response.status_code != 200:
-                error_text = await check_response.text()
+                error_text = check_response.text
                 await update.message.reply_text(f"❌ Ошибка проверки кода: {error_text[:200]}")
                 return
             
@@ -1636,7 +1592,7 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                 )
                 
                 if execute_response.status_code != 200:
-                    error_text = await execute_response.text()
+                    error_text = execute_response.text
                     await update.message.reply_text(f"❌ Ошибка выполнения вывода: {error_text[:200]}")
                     return
             
@@ -1682,7 +1638,7 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                     error_msg = result.get('error') or 'Неизвестная ошибка'
                     await update.message.reply_text(f"❌ Ошибка создания заявки: {error_msg}")
             else:
-                error_text = await payment_response.text()
+                error_text = payment_response.text
                 await update.message.reply_text(f"❌ Ошибка создания заявки: {error_text[:200]}")
                 
     except Exception as e:
@@ -1750,7 +1706,7 @@ async def submit_deposit_request(query, context: ContextTypes.DEFAULT_TYPE, user
                     error_msg = result.get('error') or 'Неизвестная ошибка'
                     await query.edit_message_text(f"❌ Ошибка создания заявки: {error_msg}")
             else:
-                error_text = await payment_response.text()
+                error_text = payment_response.text
                 await query.edit_message_text(f"❌ Ошибка создания заявки: {error_text[:200]}")
                 
     except Exception as e:
@@ -1808,18 +1764,8 @@ def main() -> None:
     # Добавляем обработчик всех сообщений (для сохранения в чат)
     # Важно: должен быть добавлен последним, чтобы не перехватывать команды
     from telegram.ext import MessageHandler, filters
-    # Обработчик для текстовых сообщений (не команд)
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    # Обработчик для медиа (фото, видео, документы, голосовые, аудио)
-    application.add_handler(MessageHandler(
-        filters.PHOTO | filters.VIDEO | filters.Document.ALL | filters.VOICE | filters.AUDIO,
-        handle_message
-    ))
-    # Обработчик для всех остальных сообщений (включая стикеры, локации и т.д.)
-    application.add_handler(MessageHandler(
-        ~filters.COMMAND & ~filters.TEXT & ~filters.PHOTO & ~filters.VIDEO & ~filters.Document.ALL & ~filters.VOICE & ~filters.AUDIO,
-        handle_message
-    ))
+    # Обработчик для всех сообщений кроме команд
+    application.add_handler(MessageHandler(~filters.COMMAND, handle_message))
     
     # Добавляем обработчик ошибок
     application.add_error_handler(error_handler)
