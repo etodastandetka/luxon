@@ -60,16 +60,23 @@ export default function WithdrawConfirm() {
       return
     }
 
+    // Получаем Telegram ID пользователя СРАЗУ для защиты
+    const telegramUserId = getTelegramUserId()
+    if (!telegramUserId) {
+      alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
+      return
+    }
+
     // Блокируем кнопку СРАЗУ, до всех проверок
     setIsSubmitting(true)
 
-    // Дополнительная защита через localStorage
-    const submitKey = `withdraw_submit_${userId}_${siteCode}_${withdrawAmount}`
+    // Дополнительная защита через localStorage - проверяем по userId (не по коду!)
+    const submitKey = `withdraw_submit_${telegramUserId}`
     const lastSubmit = localStorage.getItem(submitKey)
     const now = Date.now()
     
-    // Если была попытка отправки за последние 30 секунд - блокируем
-    if (lastSubmit && (now - parseInt(lastSubmit)) < 30000) {
+    // Если была попытка отправки за последние 60 секунд - блокируем
+    if (lastSubmit && (now - parseInt(lastSubmit)) < 60000) {
       alert('Заявка уже отправляется. Пожалуйста, подождите.')
       setIsSubmitting(false)
       return
@@ -77,6 +84,14 @@ export default function WithdrawConfirm() {
 
     // Сохраняем время попытки отправки
     localStorage.setItem(submitKey, now.toString())
+    
+    // Блокируем навигацию во время отправки
+    const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = 'Заявка отправляется. Пожалуйста, подождите.'
+      return 'Заявка отправляется. Пожалуйста, подождите.'
+    }
+    window.addEventListener('beforeunload', beforeUnloadHandler)
     
     try {
       // Используем данные из state (уже загружены из localStorage в useEffect)
@@ -179,15 +194,7 @@ export default function WithdrawConfirm() {
         }
       }
 
-      // Получаем Telegram ID пользователя (оптимизированная функция)
-      const telegramUserId = getTelegramUserId()
-
-      if (!telegramUserId) {
-        alert('Ошибка: не удалось определить ID пользователя. Пожалуйста, перезагрузите страницу.')
-        localStorage.removeItem(submitKey) // Очищаем флаг при ошибке
-        setIsSubmitting(false)
-        return
-      }
+      // Telegram ID уже получен в начале функции
 
       // Проверяем, не заблокирован ли пользователь
       const isBlocked = await checkUserBlocked(telegramUserId)
@@ -270,6 +277,11 @@ export default function WithdrawConfirm() {
           errorMessage = responseText
         }
         
+        // Если это ошибка о существующей pending заявке - показываем понятное сообщение
+        if (response.status === 400 && (errorMessage.includes('уже есть заявка') || errorMessage.includes('pending'))) {
+          errorMessage = 'У вас уже есть заявка на вывод в обработке. Дождитесь обработки текущей заявки перед созданием новой.'
+        }
+        
         throw new Error(errorMessage)
       }
       
@@ -295,6 +307,7 @@ export default function WithdrawConfirm() {
         
         // Очищаем флаг отправки из localStorage после успешной отправки
         localStorage.removeItem(submitKey)
+        window.removeEventListener('beforeunload', beforeUnloadHandler)
         
         // Перенаправляем на страницу ожидания
         router.push('/withdraw/waiting')
@@ -344,9 +357,11 @@ export default function WithdrawConfirm() {
       alert(`Ошибка: ${errorMessage}`)
       // Очищаем флаг отправки из localStorage при ошибке
       localStorage.removeItem(submitKey)
+      window.removeEventListener('beforeunload', beforeUnloadHandler)
     } finally {
       // Сбрасываем флаг отправки в любом случае
       setIsSubmitting(false)
+      window.removeEventListener('beforeunload', beforeUnloadHandler)
     }
   }
 

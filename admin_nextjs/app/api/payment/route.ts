@@ -166,7 +166,34 @@ export async function POST(request: NextRequest) {
     })
 
     // 🛡️ КРИТИЧНАЯ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: проверяем ДО создания заявки
-    // Если дубликат уже существует - возвращаем существующую заявку, НЕ создаем новую
+    // Для ВЫВОДА: если у пользователя уже есть pending заявка - БЛОКИРУЕМ создание новой
+    if (type === 'withdraw' && finalUserId) {
+      const existingPendingWithdraw = await prisma.request.findFirst({
+        where: {
+          userId: BigInt(finalUserId),
+          requestType: 'withdraw',
+          status: 'pending' // Проверяем ЛЮБУЮ pending заявку, независимо от времени
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      if (existingPendingWithdraw) {
+        console.error(`🚫 [Payment API] BLOCKED: User ${finalUserId} already has pending withdrawal request #${existingPendingWithdraw.id}`)
+        return NextResponse.json(
+          createApiResponse(null, `У вас уже есть заявка на вывод в обработке (ID: #${existingPendingWithdraw.id}). Дождитесь обработки текущей заявки перед созданием новой.`),
+          {
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+    }
+
+    // Проверка на точные дубликаты (одинаковые параметры за последние 2 минуты)
     if (finalUserId && type && amount) {
       const whereClause: any = {
         userId: BigInt(finalUserId),
@@ -175,7 +202,7 @@ export async function POST(request: NextRequest) {
         bookmaker: bookmaker || undefined,
         accountId: finalAccountId || undefined,
         createdAt: {
-          gte: new Date(Date.now() - 2 * 60 * 1000) // Последние 2 минуты (уменьшили для более строгой проверки)
+          gte: new Date(Date.now() - 2 * 60 * 1000) // Последние 2 минуты
         },
         status: 'pending' // Проверяем только pending заявки
       }
