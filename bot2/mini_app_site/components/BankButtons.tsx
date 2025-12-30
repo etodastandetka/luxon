@@ -29,9 +29,10 @@ function BankButtons({ onPick, selected, disabled, paymentUrl, allBankUrls, enab
   enabledBanks?: string[];
 }) {
   // Определяем, это вывод (без ссылок) или депозит (со ссылками)
-  // Проверяем не только на undefined, но и на пустые значения
-  const isWithdrawal = (!paymentUrl || paymentUrl === '') && 
-                       (!allBankUrls || Object.keys(allBankUrls).length === 0)
+  // Если allBankUrls передан (даже если пустой объект), это депозит
+  // Если paymentUrl передан (даже если пустая строка), это депозит
+  // Только если оба не переданы (undefined), это вывод
+  const isWithdrawal = allBankUrls === undefined && paymentUrl === undefined
   
   const handleBankClick = useCallback((bankCode: string) => {
     // Сначала выбираем банк

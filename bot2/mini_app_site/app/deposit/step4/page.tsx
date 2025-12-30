@@ -1264,9 +1264,7 @@ export default function DepositStep4() {
 
   // Генерируем ссылки на банки
   const generateBankLinksForNumber = () => {
-    if (!paymentByNumber) return
-    
-    // Создаем простые ссылки на банки
+    // Создаем простые ссылки на банки (всегда генерируем для депозитов)
     const bankLinks: Record<string, string> = {
       'DemirBank': 'https://retail.demirbank.kg/',
       'O!Money': 'https://api.dengi.o.kg/',
@@ -1285,11 +1283,12 @@ export default function DepositStep4() {
     setQrData({
       all_bank_urls: bankLinks,
       settings: {
-        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
+        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'], // Компаньон исключен для депозитов
         deposits_enabled: true
       }
     })
     setPaymentUrl(bankLinks['DemirBank'] || '')
+    console.log('✅ Bank links generated:', bankLinks)
   }
 
 
@@ -1767,8 +1766,8 @@ export default function DepositStep4() {
           <BankButtons 
             onPick={handleBankSelect} 
             selected={bank} 
-            paymentUrl={paymentUrl}
-            allBankUrls={qrData?.all_bank_urls}
+            paymentUrl={paymentUrl || ''}
+            allBankUrls={qrData?.all_bank_urls || {}}
             enabledBanks={qrData?.settings?.enabled_banks}
           />
         </div>
