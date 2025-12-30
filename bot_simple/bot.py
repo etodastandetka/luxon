@@ -205,10 +205,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 except ValueError:
                     logger.warning(f"⚠️ Неверный формат реферального кода: {referral_code}")
     
-    # Создаем одну кнопку для открытия главной страницы приложения
+    # Создаем кнопки для пополнения и вывода
     keyboard = [
         [
-            InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url=WEBSITE_URL))
+            InlineKeyboardButton("💰 Пополнить", callback_data="deposit"),
+            InlineKeyboardButton("💸 Вывести", callback_data="withdraw")
         ]
     ]
     
@@ -227,9 +228,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 👨‍💻 Поддержка: @operator_luxon_bot
 💬 Чат для всех: @luxon_chat
 
-🔒 Финансовый контроль обеспечен личным отделом безопасности
-
-Нажмите кнопку ниже, чтобы открыть приложение:"""
+🔒 Финансовый контроль обеспечен личным отделом безопасности"""
     
     # Отправляем текст с кнопками (как в 1xbet боте - напрямую через update.message)
     try:
@@ -453,6 +452,39 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     logger.info(f"📥 Получен callback от пользователя {user_id}: {callback_data}")
     
+    # Обработка кнопок пополнения и вывода
+    if callback_data == "deposit":
+        # Открываем страницу пополнения через WebApp
+        keyboard = [
+            [
+                InlineKeyboardButton("💰 Пополнить", web_app=WebAppInfo(url=f"{WEBSITE_URL}/deposit"))
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "💰 <b>Пополнение счета</b>\n\nВыберите казино и следуйте инструкциям для пополнения.",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+        return
+    
+    if callback_data == "withdraw":
+        # Открываем страницу вывода через WebApp
+        keyboard = [
+            [
+                InlineKeyboardButton("💸 Вывести", web_app=WebAppInfo(url=f"{WEBSITE_URL}/withdraw"))
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "💸 <b>Вывод средств</b>\n\nВыберите казино и следуйте инструкциям для вывода.",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+        return
+    
     # Обработка проверки подписки
     if callback_data and callback_data.startswith('check_sub_'):
         channel_id = callback_data.replace('check_sub_', '')
@@ -472,10 +504,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         if data.get('success'):
                             channel_username = data.get('data', {}).get('username', '')
                 
-                # Создаем одну кнопку для открытия главной страницы
+                # Создаем кнопки для пополнения и вывода
                 keyboard = [
                     [
-                        InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url=WEBSITE_URL))
+                        InlineKeyboardButton("💰 Пополнить", callback_data="deposit"),
+                        InlineKeyboardButton("💸 Вывести", callback_data="withdraw")
                     ]
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
@@ -494,9 +527,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 👨‍💻 Поддержка: @operator_luxon_bot
 💬 Чат для всех: @luxon_chat
 
-🔒 Финансовый контроль обеспечен личным отделом безопасности
-
-Нажмите кнопку ниже, чтобы открыть приложение:"""
+🔒 Финансовый контроль обеспечен личным отделом безопасности"""
                 
                 await query.edit_message_text(
                     welcome_text,
