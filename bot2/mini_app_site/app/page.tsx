@@ -202,19 +202,19 @@ function LuxOnSlots({
     
     container.appendChild(frag)
     
-    // Устанавливаем начальную позицию (если не идет анимация)
-    // Центрируем символ с индексом 20 в видимой области
+    // Всегда устанавливаем позицию после создания символов
+    const symbolHeight = 50
+    const centerOffset = 75 // центр видимой области (150px / 2 = 75px)
+    const targetSymbolIndex = 20
+    const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
+    
+    // Устанавливаем позицию сразу, синхронно
+    container.style.transform = `translateY(${initialPosition}px)`
+    container.style.transition = 'none'
+    // Принудительный reflow для применения стилей
+    void container.offsetHeight
+    // Восстанавливаем transition только если не идет анимация
     if (!finalSymbol) {
-      const symbolHeight = 50
-      const centerOffset = 75 // центр видимой области (150px / 2 = 75px)
-      const targetSymbolIndex = 20
-      const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
-      // Устанавливаем позицию сразу, синхронно
-      container.style.transform = `translateY(${initialPosition}px)`
-      container.style.transition = 'none'
-      // Принудительный reflow для применения стилей
-      void container.offsetHeight
-      // Восстанавливаем transition
       setTimeout(() => {
         container.style.transition = ''
       }, 50)
@@ -278,15 +278,17 @@ function LuxOnSlots({
             const centerOffset = 75
             const targetSymbolIndex = 20
             const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
-            // Проверяем, что позиция установлена
-            const currentTransform = container.style.transform
-            if (!currentTransform || currentTransform === 'none') {
-              container.style.transform = `translateY(${initialPosition}px)`
-            }
+            // Всегда устанавливаем позицию для гарантии
+            container.style.transform = `translateY(${initialPosition}px)`
+            container.style.transition = 'none'
+            void container.offsetHeight
+            setTimeout(() => {
+              container.style.transition = ''
+            }, 50)
           }
         }
       })
-    }, 100)
+    }, 200)
     return () => clearTimeout(timeoutId)
   }, [renderAll])
 
@@ -1496,6 +1498,8 @@ export default function HomePage() {
           align-items: center;
           transition: transform 0.1s linear;
           will-change: transform;
+          position: relative;
+          z-index: 1;
           /* Начальная позиция будет установлена через JavaScript */
         }
 
