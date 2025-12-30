@@ -14,13 +14,6 @@ import Achievements from "../components/Achievements"
 
 const Logo3D = dynamic(() => import("../components/Logo3D"), { ssr: false })
 
-declare global {
-  interface Window {
-    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
-    cancelIdleCallback?: (id: number) => void
-  }
-}
-
 function HolidayEffects() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const rafRef = useRef<number | null>(null)
