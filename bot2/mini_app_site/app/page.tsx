@@ -203,11 +203,16 @@ function LuxOnSlots({
     container.appendChild(frag)
     
     // Устанавливаем начальную позицию (если не идет анимация)
+    // Центрируем символ с индексом 20 в видимой области
     if (!finalSymbol) {
       const symbolHeight = 50
-      const centerOffset = 75
-      const initialPosition = 20 * symbolHeight - centerOffset
-      container.style.transform = `translateY(${initialPosition}px)`
+      const centerOffset = 75 // центр видимой области (150px / 2 = 75px)
+      const targetSymbolIndex = 20
+      const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
+      // Используем requestAnimationFrame чтобы убедиться, что DOM обновлен
+      requestAnimationFrame(() => {
+        container.style.transform = `translateY(${initialPosition}px)`
+      })
     }
   }, [symbols])
 
@@ -215,6 +220,21 @@ function LuxOnSlots({
     renderReel(0)
     renderReel(1)
     renderReel(2)
+    // Убеждаемся, что позиции установлены после рендера
+    setTimeout(() => {
+      reelsRef.current.forEach((reel, index) => {
+        if (reel && !spinningStatesRef.current[index]) {
+          const container = reel.querySelector('.lux-reel-container') as HTMLElement
+          if (container) {
+            const symbolHeight = 50
+            const centerOffset = 75
+            const targetSymbolIndex = 20
+            const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
+            container.style.transform = `translateY(${initialPosition}px)`
+          }
+        }
+      })
+    }, 0)
   }, [renderReel])
 
   useEffect(() => {
@@ -320,7 +340,10 @@ function LuxOnSlots({
           reel.classList.remove("lux-reel-spinning")
           const container = reel.querySelector('.lux-reel-container') as HTMLElement
           if (container) {
+            // Устанавливаем финальную позицию после анимации
             container.style.transform = `translateY(${targetPosition}px)`
+            // Убеждаемся, что стиль применен
+            container.offsetHeight // force reflow
           }
           resolve()
         }, spinDuration)
@@ -1394,6 +1417,8 @@ export default function HomePage() {
           align-items: center;
           transition: transform 0.1s linear;
           will-change: transform;
+          /* Начальная позиция: символ с индексом 20 в центре */
+          transform: translateY(925px);
         }
 
         .lux-reel-spinning .lux-reel-container {
