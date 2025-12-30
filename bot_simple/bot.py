@@ -960,10 +960,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     except:
                         pass
                     
-                    if response.status_code == 200:
+                    # Парсим JSON независимо от статуса, чтобы получить детальное сообщение об ошибке
+                    try:
                         result = response.json()
-                        logger.info(f"Ответ проверки суммы: {result}")
-                        
+                        logger.info(f"Ответ проверки суммы (статус {response.status_code}): {result}")
+                    except Exception as json_error:
+                        logger.error(f"Ошибка парсинга JSON ответа: {json_error}, статус: {response.status_code}")
+                        try:
+                            response_text = response.text[:200] if hasattr(response, 'text') else str(response.content[:200] if hasattr(response, 'content') else 'N/A')
+                            logger.error(f"Текст ответа: {response_text}")
+                        except:
+                            pass
+                        amount_check_ok = False
+                        await update.message.reply_text("⚠️ Не удалось проверить сумму вывода. Попробуйте еще раз.")
+                        # Выходим из блока try, но не из функции - обработка продолжится ниже
+                    
+                    if response.status_code == 200:
                         if result.get('success'):
                             # Парсим сумму: проверяем data.amount, data.summa, amount, summa
                             data_obj = result.get('data', {})
@@ -996,8 +1008,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             error_message = result.get('error') or result.get('message') or 'Не удалось проверить код вывода'
                             await update.message.reply_text(f"⚠️ {error_message}")
                     else:
+                        # Статус не 200 - показываем детальное сообщение об ошибке из JSON
                         amount_check_ok = False
-                        await update.message.reply_text("⚠️ Не удалось проверить сумму вывода. Попробуйте еще раз.")
+                        error_message = result.get('error') or result.get('message') or f'Ошибка сервера (статус {response.status_code})'
+                        logger.error(f"Ошибка проверки суммы вывода: статус {response.status_code}, сообщение: {error_message}, полный ответ: {result}")
+                        await update.message.reply_text(f"⚠️ {error_message}")
             except Exception as e:
                 logger.error(f"Ошибка проверки суммы вывода: {e}")
                 amount_check_ok = False
