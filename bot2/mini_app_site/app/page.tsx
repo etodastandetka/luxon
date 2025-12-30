@@ -221,20 +221,30 @@ function LuxOnSlots({
     renderReel(1)
     renderReel(2)
     // Убеждаемся, что позиции установлены после рендера
-    setTimeout(() => {
-      reelsRef.current.forEach((reel, index) => {
-        if (reel && !spinningStatesRef.current[index]) {
-          const container = reel.querySelector('.lux-reel-container') as HTMLElement
-          if (container) {
-            const symbolHeight = 50
-            const centerOffset = 75
-            const targetSymbolIndex = 20
-            const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
-            container.style.transform = `translateY(${initialPosition}px)`
+    // Используем несколько requestAnimationFrame для надежности
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        reelsRef.current.forEach((reel, index) => {
+          if (reel && !spinningStatesRef.current[index]) {
+            const container = reel.querySelector('.lux-reel-container') as HTMLElement
+            if (container) {
+              const symbolHeight = 50
+              const centerOffset = 75
+              const targetSymbolIndex = 20
+              const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
+              container.style.transform = `translateY(${initialPosition}px)`
+              container.style.transition = 'none'
+              // Принудительный reflow
+              void container.offsetHeight
+              // Восстанавливаем transition
+              setTimeout(() => {
+                container.style.transition = ''
+              }, 100)
+            }
           }
-        }
+        })
       })
-    }, 0)
+    })
   }, [renderReel])
 
   useEffect(() => {
@@ -251,7 +261,28 @@ function LuxOnSlots({
 
   useEffect(() => {
     if (typeof window === "undefined") return
+    // Рендерим все барабаны при загрузке
     renderAll()
+    // Дополнительно убеждаемся, что позиции установлены после небольшой задержки
+    const timeoutId = setTimeout(() => {
+      reelsRef.current.forEach((reel, index) => {
+        if (reel && !spinningStatesRef.current[index]) {
+          const container = reel.querySelector('.lux-reel-container') as HTMLElement
+          if (container) {
+            const symbolHeight = 50
+            const centerOffset = 75
+            const targetSymbolIndex = 20
+            const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
+            // Проверяем, что позиция установлена
+            const currentTransform = container.style.transform
+            if (!currentTransform || currentTransform === 'none') {
+              container.style.transform = `translateY(${initialPosition}px)`
+            }
+          }
+        }
+      })
+    }, 100)
+    return () => clearTimeout(timeoutId)
   }, [renderAll])
 
   useEffect(() => {
@@ -1479,13 +1510,13 @@ export default function HomePage() {
         }
 
         .lux-symbol {
-          font-size: 34px;
+          font-size: 48px;
           line-height: 1;
           height: 50px;
           min-height: 50px;
           display: grid;
           place-items: center;
-          opacity: 0.78;
+          opacity: 0.9;
           filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.30));
           flex-shrink: 0;
         }
