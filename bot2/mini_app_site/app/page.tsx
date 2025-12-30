@@ -310,7 +310,7 @@ function LuxOnSlots({
   }, [betAmount, maxWin, language, playWinSound])
 
   const spinReel = useCallback(
-    (index: number, finalSymbol: string) => {
+    (index: number, finalSymbol: string, baseSpinTime: number, stopDelay: number) => {
       const reel = reelsRef.current[index]
       if (!reel) return Promise.resolve()
       
@@ -328,7 +328,8 @@ function LuxOnSlots({
       renderReel(index, finalSymbol)
       
       // Запускаем анимацию - начинаем сверху (отрицательное значение) и опускаемся вниз
-      const spinDuration = 2000 + index * 300 + Math.random() * 500 // разная длительность для каждого барабана
+      // Все барабаны крутятся одинаковое время, но останавливаются с задержкой
+      const spinDuration = baseSpinTime + stopDelay // базовое время + задержка остановки
       const startPosition = -2000 // начальная позиция сверху
       reel.style.setProperty("--spin-duration", `${spinDuration}ms`)
       reel.style.setProperty("--start-position", `${startPosition}px`)
@@ -372,11 +373,19 @@ function LuxOnSlots({
       symbols[Math.floor(Math.random() * symbols.length)]
     ]
 
-    // Запускаем все барабаны почти одновременно, но с небольшой задержкой
+    // Базовое время вращения для всех барабанов (одинаковое)
+    const baseSpinTime = 2500 + Math.random() * 500 // 2.5-3 секунды базового вращения
+    
+    // Задержки остановки для создания эффекта последовательной остановки
+    const stopDelay1 = 0 // Первый останавливается сразу после базового времени
+    const stopDelay2 = 400 // Второй останавливается через 400мс после первого
+    const stopDelay3 = 800 // Третий останавливается через 800мс после первого (400мс после второго)
+
+    // Запускаем все барабаны одновременно, но они останавливаются последовательно
     await Promise.all([
-      spinReel(0, finalSymbols[0]),
-      new Promise(resolve => setTimeout(() => spinReel(1, finalSymbols[1]).then(resolve), 100)),
-      new Promise(resolve => setTimeout(() => spinReel(2, finalSymbols[2]).then(resolve), 200))
+      spinReel(0, finalSymbols[0], baseSpinTime, stopDelay1),
+      spinReel(1, finalSymbols[1], baseSpinTime, stopDelay2),
+      spinReel(2, finalSymbols[2], baseSpinTime, stopDelay3)
     ])
 
     stopSounds()
