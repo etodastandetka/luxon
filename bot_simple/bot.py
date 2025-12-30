@@ -577,28 +577,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             seconds = timer_seconds % 60
                             timer_text = f"{minutes:02d}:{seconds:02d}"
                             
-                            # Создаем инлайн кнопки с ссылками для всех банков (по 2 в ряд)
-                            keyboard = []
-                            bank_names = {
-                                'demirbank': 'DemirBank',
-                                'omoney': 'O!Money',
-                                'balance': 'Balance.kg',
-                                'bakai': 'Bakai',
-                                'megapay': 'MegaPay',
-                                'mbank': 'MBank'
-                            }
-                            
-                            # Собираем все доступные банки
-                            available_banks = []
-                            for bank_code, bank_name in bank_names.items():
-                                if bank_code in bank_links or bank_name in bank_links:
-                                    url = bank_links.get(bank_code) or bank_links.get(bank_name)
-                                    if url:
-                                        available_banks.append(InlineKeyboardButton(
-                                            f"💳 {bank_name}",
-                                            url=url
-                                        ))
-                            
                             # Загружаем настройки если они устарели
                             if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
                                 await load_settings()
@@ -618,7 +596,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 'mbank': 'MBank'
                             }
                             
-                            # Создаем кнопки для всех банков, но помечаем недоступные
+                            # Создаем кнопки для всех банков с URL ссылками (как на втором фото)
                             all_banks_list = []
                             for bank_key, bank_name in bank_names_map.items():
                                 # Проверяем, есть ли ссылка для этого банка
@@ -626,8 +604,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 if bank_link:
                                     is_enabled = bank_key in enabled_banks or 'demir' in bank_key.lower()
                                     if is_enabled:
-                                        all_banks_list.append(InlineKeyboardButton(bank_name, callback_data=f"deposit_bank_{bank_key}"))
+                                        # Кнопка с URL - сразу открывает ссылку на оплату
+                                        all_banks_list.append(InlineKeyboardButton(bank_name, url=bank_link))
                                     else:
+                                        # Недоступный банк - показываем, но без ссылки (callback для показа сообщения)
                                         all_banks_list.append(InlineKeyboardButton(f"{bank_name} ⚠️", callback_data=f"deposit_bank_{bank_key}_disabled"))
                             
                             # Разделяем на пары (по 2 в ряд)
@@ -1436,68 +1416,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return
     
-    # Обработка выбора банка для депозита (только сохраняем банк, заявка создастся после фото)
-    if callback_data and callback_data.startswith("deposit_bank_"):
-        bank = callback_data.replace("deposit_bank_", "").replace("_disabled", "")
-        
-        # Проверяем, доступен ли банк
-        if callback_data.endswith("_disabled"):
-            await query.answer("⚠️ Данный банк временно недоступен для пополнения", show_alert=True)
-            return
-        
-        data = user_states[user_id]['data']
-        data['bank'] = bank
-        user_states[user_id]['step'] = 'deposit_receipt_photo'  # Ожидаем фото чека
-        user_states[user_id]['data'] = data
-        
-        # Получаем ссылку для выбранного банка
-        bank_links = data.get('bank_links', {})
-        bank_names = {
-            'demirbank': 'DemirBank',
-            'omoney': 'O!Money',
-            'balance': 'Balance.kg',
-            'bakai': 'Bakai',
-            'megapay': 'MegaPay',
-            'mbank': 'MBank'
-        }
-        
-        bank_name = bank_names.get(bank, bank.upper())
-        url = bank_links.get(bank) or bank_links.get(bank_name)
-        
-        # Создаем Reply клавиатуру с кнопкой отмены
-        keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
-        reply_markup_keyboard = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
-        
-        if url:
-            # Показываем сообщение с кнопкой для оплаты
-            keyboard = [[InlineKeyboardButton(f"💳 Оплатить через {bank_name}", url=url)]]
-            keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await query.edit_message_text(
-                f"💳 <b>Банк выбран: {bank_name}</b>\n\n"
-                f"💰 <b>Сумма:</b> {data['amount']} сом\n"
-                f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
-                f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
-                f"Нажмите кнопку ниже для оплаты.\n"
-                f"После оплаты отправьте фото чека:",
-                reply_markup=reply_markup,
-                parse_mode='HTML'
-            )
-        else:
-            await query.edit_message_text(
-                f"💳 <b>Банк выбран: {bank_name}</b>\n\n"
-                f"💰 <b>Сумма:</b> {data['amount']} сом\n"
-                f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
-                f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
-                f"После оплаты отправьте фото чека:",
-                parse_mode='HTML'
-            )
-        
-        await query.message.reply_text(
-            "\u200B",
-            reply_markup=reply_markup_keyboard
-        )
+    # Обработка недоступных банков для депозита
+    if callback_data and callback_data.startswith("deposit_bank_") and callback_data.endswith("_disabled"):
+        await query.answer("⚠️ Данный банк временно недоступен для пополнения", show_alert=True)
         return
     
     # Обработка выбора банка для вывода
@@ -1779,8 +1700,10 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                     if bank_link:
                         is_enabled = bank_key in enabled_banks or 'demir' in bank_key.lower()
                         if is_enabled:
-                            all_banks_list.append(InlineKeyboardButton(bank_name, callback_data=f"deposit_bank_{bank_key}"))
+                            # Кнопка с URL - сразу открывает ссылку на оплату
+                            all_banks_list.append(InlineKeyboardButton(bank_name, url=bank_link))
                         else:
+                            # Недоступный банк - показываем, но без ссылки (callback для показа сообщения)
                             all_banks_list.append(InlineKeyboardButton(f"{bank_name} ⚠️", callback_data=f"deposit_bank_{bank_key}_disabled"))
                 
                 # Разделяем на пары (по 2 в ряд)
