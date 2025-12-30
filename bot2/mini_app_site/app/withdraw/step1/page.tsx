@@ -2,109 +2,39 @@
 import { useState, useEffect } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
-import BankButtons from '../../../components/BankButtons'
+import BookmakerGrid from '../../../components/BookmakerGrid'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getApiBase } from '../../../utils/fetch'
 
 export default function WithdrawStep1() {
-  const [bank, setBank] = useState('')
-  const [enabledBanks, setEnabledBanks] = useState<string[]>([])
-  const { language } = useLanguage()
   const router = useRouter()
-
-  // Загрузка настроек выводов
-  useEffect(() => {
-    async function loadWithdrawalSettings() {
-      try {
-        const base = getApiBase()
-        // Получаем Telegram ID пользователя для проверки админа
-        const { getTelegramUserId } = await import('../../../utils/telegram')
-        const telegramUserId = getTelegramUserId()
-        const url = telegramUserId 
-          ? `${base}/api/public/payment-settings?user_id=${telegramUserId}`
-          : `${base}/api/public/payment-settings`
-        const res = await fetch(url, { cache: 'no-store' })
-        const data = await res.json()
-        if (data && data.withdrawals && data.withdrawals.banks && Array.isArray(data.withdrawals.banks)) {
-          const bankCodeMapping: Record<string, string> = {
-            'kompanion': 'kompanion',
-            'odengi': 'omoney',
-            'bakai': 'bakai',
-            'balance': 'balance',
-            'megapay': 'megapay',
-            'mbank': 'mbank',
-            'demir': 'demirbank',
-            'demirbank': 'demirbank'
-          }
-          const mappedBanks: string[] = []
-          for (const b of data.withdrawals.banks) {
-            const code = b.code || b
-            const mapped = bankCodeMapping[code] || code
-            if (mapped) mappedBanks.push(mapped)
-          }
-          setEnabledBanks(mappedBanks)
-        } else {
-          setEnabledBanks([])
-        }
-      } catch (error) {
-        // Игнорируем ошибки
-      }
-    }
-    loadWithdrawalSettings()
-  }, [])
-
-  useEffect(() => {
-    // Проверяем, что пользователь выбрал букмекера
-    const bookmaker = localStorage.getItem('withdraw_bookmaker')
-    if (!bookmaker) {
-      router.push('/withdraw/step0')
-    }
-  }, [router])
-
-  const handleNext = (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-    
-    if (!bank) {
-      alert('Выберите банк')
-      return
-    }
-    
-    // Сохраняем выбор
-    localStorage.setItem('withdraw_bank', bank)
-    
-    // Переходим к следующему шагу
-    router.push('/withdraw/step2')
-  }
+  const { language } = useLanguage()
+  const [bookmaker, setBookmaker] = useState<string>('')
+  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
+  const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
 
   const translations = {
     ru: {
-      title: 'Вывод - Шаг 1',
-      subtitle: 'Выберите банк для вывода',
-      instruction: 'Выберите банк, на который хотите вывести средства',
+      title: 'Вывод средств',
+      selectBookmaker: 'Выберите казино',
       next: 'Далее',
       back: 'Назад'
     },
     en: {
-      title: 'Withdraw - Step 1',
-      subtitle: 'Select withdrawal bank',
-      instruction: 'Choose the bank to withdraw funds to',
+      title: 'Withdraw',
+      selectBookmaker: 'Select casino',
       next: 'Next',
       back: 'Back'
     },
     ky: {
-      title: 'Чыгаруу - 1-чи кадам',
-      subtitle: 'Чыгаруу банкын тандаңыз',
-      instruction: 'Акча чыгарууну каалаган банкты тандаңыз',
+      title: 'Акчаны чыгаруу',
+      selectBookmaker: 'Казинодо тандаңыз',
       next: 'Кийинки',
       back: 'Артка'
     },
     uz: {
-      title: 'Yechib olish - 1-qadam',
-      subtitle: 'Yechib olish bankini tanlang',
-      instruction: 'Pul yechib olishni xohlagan bankni tanlang',
+      title: 'Pulni yechib olish',
+      selectBookmaker: 'Kazinoni tanlang',
       next: 'Keyingi',
       back: 'Orqaga'
     }
@@ -112,46 +42,117 @@ export default function WithdrawStep1() {
 
   const t = translations[language as keyof typeof translations] || translations.ru
 
+  // Проверка настроек выводов и казино
+  useEffect(() => {
+    async function checkSettings() {
+      try {
+        const base = getApiBase()
+        const { getTelegramUserId } = await import('../../../utils/telegram')
+        const telegramUserId = getTelegramUserId()
+        const url = telegramUserId 
+          ? `${base}/api/public/payment-settings?user_id=${telegramUserId}`
+          : `${base}/api/public/payment-settings`
+        const res = await fetch(url, { cache: 'no-store' })
+        const data = await res.json()
+        
+        if (data && data.withdrawals) {
+          setWithdrawalsEnabled(data.withdrawals.enabled === true)
+        } else {
+          setWithdrawalsEnabled(false)
+        }
+        
+        if (data && data.casinos) {
+          const disabled: string[] = []
+          if (data.casinos['1xbet'] === false) disabled.push('1xbet')
+          if (data.casinos['1win'] === false) disabled.push('1win')
+          if (data.casinos['melbet'] === false) disabled.push('melbet')
+          if (data.casinos['mostbet'] === false) disabled.push('mostbet')
+          if (data.casinos['winwin'] === false) disabled.push('winwin')
+          if (data.casinos['888starz'] === false) disabled.push('888starz')
+          setDisabledCasinos(disabled)
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error)
+      }
+    }
+    checkSettings()
+  }, [])
+
+  // Загружаем сохраненный букмекер, если есть
+  useEffect(() => {
+    const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
+    if (savedBookmaker) {
+      setBookmaker(savedBookmaker)
+    }
+  }, [])
+
+  const handleNext = () => {
+    if (!bookmaker) {
+      alert('Выберите казино')
+      return
+    }
+    
+    localStorage.setItem('withdraw_bookmaker', bookmaker)
+    router.push('/withdraw/step2')
+  }
+
+  const handleBack = () => {
+    router.push('/')
+  }
+
+  if (!withdrawalsEnabled) {
+    return (
+      <main className="space-y-4">
+        <FixedHeaderControls />
+        <h1 className="text-xl font-bold pr-20">{t.title}</h1>
+        <div className="card text-center bg-orange-900/20 border-orange-500">
+          <div className="text-orange-300 text-lg font-semibold mb-2">
+            🔧 Технические работы
+          </div>
+          <div className="text-white/70 mb-4">
+            Вывод средств временно недоступен. Попробуйте позже.
+          </div>
+          <button
+            onClick={handleBack}
+            className="btn btn-ghost"
+          >
+            ← {t.back}
+          </button>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="space-y-4">
       <FixedHeaderControls />
-      <div className="pr-20">
-        <h1 className="text-xl font-bold">{t.title}</h1>
-      </div>
+      <h1 className="text-xl font-bold">{t.title}</h1>
       
-      <div className="card space-y-4">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold">{t.subtitle}</h2>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div className="bg-accent h-2 rounded-full" style={{width: '33%'}}></div>
-          </div>
-          <p className="text-sm text-white/70 mt-1">Шаг 2 из 6</p>
-        </div>
-        
-        <p className="text-white/80 text-center">{t.instruction}</p>
-        
-        <BankButtons 
-          onPick={setBank} 
-          selected={bank} 
-          enabledBanks={enabledBanks.length > 0 ? enabledBanks : []}
+      <section className="card space-y-3">
+        <div className="label">{t.selectBookmaker}</div>
+        <BookmakerGrid 
+          value={bookmaker} 
+          onChange={setBookmaker}
+          disabledCasinos={disabledCasinos}
         />
-        
-        <div className="flex gap-2">
-          <button 
-            className="btn btn-ghost flex-1"
-            onClick={() => router.push('/withdraw/step0')}
-          >
-            {t.back}
-          </button>
-          <button 
-            className="btn btn-primary flex-1"
-            onClick={handleNext}
-            disabled={!bank}
-          >
-            {t.next}
-          </button>
-        </div>
+      </section>
+
+      <div className="flex gap-3">
+        <button 
+          className="btn btn-ghost flex-1" 
+          onClick={handleBack}
+        >
+          {t.back}
+        </button>
+        <button 
+          className="btn btn-primary flex-1" 
+          onClick={handleNext}
+          disabled={!bookmaker}
+        >
+          {t.next}
+        </button>
       </div>
     </main>
   )
 }
+

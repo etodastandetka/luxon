@@ -6,8 +6,8 @@ export default function WithdrawPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Перенаправляем на новую страницу вывода
-    router.push('/withdraw/new')
+    // Перенаправляем на первую страницу вывода
+    router.push('/withdraw/step1')
   }, [router])
 
   return (
