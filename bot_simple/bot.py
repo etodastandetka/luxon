@@ -275,6 +275,86 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         logger.warning(f"⚠️ handle_message получил команду {message_text} - это не должно происходить! Пропускаем.")
         return
     
+    # Обработка кнопок Reply клавиатуры (должна быть ПЕРЕД проверкой user_states)
+    if message_text in ["💰 Пополнить", "💸 Вывести"]:
+        if message_text == "💰 Пополнить":
+            # Начинаем диалог пополнения
+            user_states[user_id] = {
+                'step': 'deposit_bookmaker',
+                'data': {}
+            }
+            
+            keyboard = [
+                [
+                    InlineKeyboardButton("1XBET", callback_data="deposit_bookmaker_1xbet"),
+                    InlineKeyboardButton("1WIN", callback_data="deposit_bookmaker_1win")
+                ],
+                [
+                    InlineKeyboardButton("MELBET", callback_data="deposit_bookmaker_melbet"),
+                    InlineKeyboardButton("MOSTBET", callback_data="deposit_bookmaker_mostbet")
+                ],
+                [
+                    InlineKeyboardButton("WINWIN", callback_data="deposit_bookmaker_winwin"),
+                    InlineKeyboardButton("888STARZ", callback_data="deposit_bookmaker_888starz")
+                ],
+                [InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            # Создаем Reply клавиатуру с кнопкой отмены
+            reply_keyboard = [[KeyboardButton("❌ Отменить заявку")]]
+            reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+            
+            await update.message.reply_text(
+                "💰 <b>Пополнение счета</b>\n\nВыберите казино:",
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+            # Отправляем Reply клавиатуру отдельным сообщением (edit_message_text не поддерживает Reply клавиатуру)
+            await update.message.reply_text(
+                "Используйте клавиатуру:",
+                reply_markup=reply_markup_keyboard
+            )
+        else:
+            # Начинаем диалог вывода
+            user_states[user_id] = {
+                'step': 'withdraw_bookmaker',
+                'data': {}
+            }
+            
+            keyboard = [
+                [
+                    InlineKeyboardButton("1XBET", callback_data="withdraw_bookmaker_1xbet"),
+                    InlineKeyboardButton("1WIN", callback_data="withdraw_bookmaker_1win")
+                ],
+                [
+                    InlineKeyboardButton("MELBET", callback_data="withdraw_bookmaker_melbet"),
+                    InlineKeyboardButton("MOSTBET", callback_data="withdraw_bookmaker_mostbet")
+                ],
+                [
+                    InlineKeyboardButton("WINWIN", callback_data="withdraw_bookmaker_winwin"),
+                    InlineKeyboardButton("888STARZ", callback_data="withdraw_bookmaker_888starz")
+                ],
+                [InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            # Создаем Reply клавиатуру с кнопкой отмены
+            reply_keyboard = [[KeyboardButton("❌ Отменить заявку")]]
+            reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+            
+            await update.message.reply_text(
+                "💸 <b>Вывод средств</b>\n\nВыберите казино:",
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+            # Отправляем Reply клавиатуру отдельным сообщением (edit_message_text не поддерживает Reply клавиатуру)
+            await update.message.reply_text(
+                "Используйте клавиатуру:",
+                reply_markup=reply_markup_keyboard
+            )
+        return
+    
     # Проверяем, есть ли активный диалог
     if user_id in user_states:
         state = user_states[user_id]
@@ -303,18 +383,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text(
                 "❌ Заявка отменена",
                 reply_markup=reply_markup
-            )
-            
-            # Также отправляем инлайн кнопки
-            inline_keyboard = [
-                [
-                    InlineKeyboardButton("💰 Пополнить", callback_data="deposit"),
-                    InlineKeyboardButton("💸 Вывести", callback_data="withdraw")
-                ]
-            ]
-            await update.message.reply_text(
-                "Выберите действие:",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard)
             )
             return
         
@@ -381,10 +449,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
+                # Создаем Reply клавиатуру с кнопкой отмены
+                reply_keyboard = [[KeyboardButton("❌ Отменить заявку")]]
+                reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+                
                 await update.message.reply_text(
                     "💸 <b>Вывод средств</b>\n\nВыберите казино:",
                     reply_markup=reply_markup,
                     parse_mode='HTML'
+                )
+                await update.message.reply_text(
+                    "Используйте клавиатуру:",
+                    reply_markup=reply_markup_keyboard
                 )
             return
         
@@ -766,8 +842,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    reply_text = "Выберите действие:"
-    await update.message.reply_text(reply_text, reply_markup=reply_markup)
+    # Убираем сообщение "Выберите действие:" - кнопки Reply клавиатуры уже видны
+    # await update.message.reply_text(reply_text, reply_markup=reply_markup)
 
 async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /referral для просмотра реферальной статистики"""
@@ -1194,10 +1270,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 InlineKeyboardButton("💸 Вывести", callback_data="withdraw")
             ]
         ]
-        await query.edit_message_text(
-            "Выберите действие:",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard)
-        )
+        # Убираем сообщение "Выберите действие:" - кнопки Reply клавиатуры уже видны
+        # await query.edit_message_text(
+        #     "Выберите действие:",
+        #     reply_markup=InlineKeyboardMarkup(inline_keyboard)
+        # )
         return
     
     # Обработка возврата в меню
