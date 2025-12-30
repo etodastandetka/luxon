@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import BookmakerGrid from '../../../components/BookmakerGrid'
@@ -11,6 +11,12 @@ import { safeFetch, getApiBase } from '../../../utils/fetch'
 export default function NewWithdrawPage() {
   const router = useRouter()
   const { language } = useLanguage()
+  
+  // Refs для плавной прокрутки
+  const bankSectionRef = useRef<HTMLDivElement>(null)
+  const phoneSectionRef = useRef<HTMLDivElement>(null)
+  const idSectionRef = useRef<HTMLDivElement>(null)
+  const codeSectionRef = useRef<HTMLDivElement>(null)
   
   // Состояния формы
   const [bookmaker, setBookmaker] = useState<string>('')
@@ -29,6 +35,21 @@ export default function NewWithdrawPage() {
   const [error, setError] = useState<string | null>(null)
   const [isCheckingCode, setIsCheckingCode] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState<number | null>(null)
+
+  // Функция плавной прокрутки
+  const smoothScrollTo = (element: HTMLElement | null, offset: number = 20, delay: number = 150) => {
+    if (!element) return
+    
+    setTimeout(() => {
+      const elementPosition = element.getBoundingClientRect().top
+      const offsetPosition = elementPosition + window.pageYOffset - offset
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      })
+    }, delay)
+  }
 
   // Проверка настроек выводов и казино
   useEffect(() => {
@@ -87,7 +108,7 @@ export default function NewWithdrawPage() {
     loadSettings()
   }, [])
 
-  // Автозаполнение ID из cookies
+  // Автозаполнение ID из cookies и прокрутка после выбора казино
   useEffect(() => {
     if (bookmaker) {
       const getCookie = (name: string) => {
@@ -103,8 +124,32 @@ export default function NewWithdrawPage() {
       if (savedUserId) {
         setUserId(savedUserId)
       }
+      
+      // Плавная прокрутка к выбору банка
+      smoothScrollTo(bankSectionRef.current, 20, 200)
     }
   }, [bookmaker])
+
+  // Прокрутка после выбора банка
+  useEffect(() => {
+    if (bank) {
+      smoothScrollTo(phoneSectionRef.current, 20, 200)
+    }
+  }, [bank])
+
+  // Прокрутка после загрузки QR фото
+  useEffect(() => {
+    if (qrPhotoPreview) {
+      smoothScrollTo(idSectionRef.current, 20, 300)
+    }
+  }, [qrPhotoPreview])
+
+  // Прокрутка после успешной проверки кода
+  useEffect(() => {
+    if (withdrawAmount && withdrawAmount > 0) {
+      smoothScrollTo(codeSectionRef.current, 30, 400)
+    }
+  }, [withdrawAmount])
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value
@@ -561,7 +606,7 @@ export default function NewWithdrawPage() {
   }
 
   return (
-    <main className="space-y-4">
+    <main className="space-y-4" style={{ scrollBehavior: 'smooth' }}>
       <FixedHeaderControls />
       <div className="pr-20">
         <h1 className="text-xl font-bold">{t.title}</h1>
@@ -579,7 +624,7 @@ export default function NewWithdrawPage() {
         </div>
 
         {/* Выбор банка */}
-        <div>
+        <div ref={bankSectionRef}>
           <label className="label">{t.selectBank}</label>
           <BankButtons 
             onPick={setBank} 
@@ -589,7 +634,7 @@ export default function NewWithdrawPage() {
         </div>
 
         {/* Номер телефона и QR код */}
-        <div className="space-y-3">
+        <div ref={phoneSectionRef} className="space-y-3">
           <div>
             <label className="label">{t.phone}</label>
             <input 
@@ -649,7 +694,7 @@ export default function NewWithdrawPage() {
         </div>
 
         {/* ID и код */}
-        <div className="space-y-3">
+        <div ref={idSectionRef} className="space-y-3">
           <div>
             <label className="label">{t.accountId}</label>
             <input 
@@ -661,7 +706,7 @@ export default function NewWithdrawPage() {
             />
           </div>
           
-          <div>
+          <div ref={codeSectionRef}>
             <label className="label">{t.siteCode}</label>
             <div className="flex gap-2">
               <input 
