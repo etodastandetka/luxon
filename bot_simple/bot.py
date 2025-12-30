@@ -452,19 +452,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             # Создаем инлайн кнопки с ссылками для всех банков
                             keyboard = []
                             bank_names = {
-                                'demirbank': 'DemirBank',
-                                'omoney': 'O!Money',
-                                'balance': 'Balance.kg',
-                                'bakai': 'Bakai',
-                                'megapay': 'MegaPay',
-                                'mbank': 'MBank'
+                                'demirbank': {'name': 'DemirBank', 'emoji': '🏦'},
+                                'omoney': {'name': 'O!Money', 'emoji': '💛'},
+                                'balance': {'name': 'Balance.kg', 'emoji': '⚖️'},
+                                'bakai': {'name': 'Bakai', 'emoji': '💙'},
+                                'megapay': {'name': 'MegaPay', 'emoji': '💜'},
+                                'mbank': {'name': 'MBank', 'emoji': '📱'}
                             }
                             
-                            for bank_code, bank_name in bank_names.items():
-                                if bank_code in bank_links or bank_name in bank_links:
-                                    url = bank_links.get(bank_code) or bank_links.get(bank_name)
+                            for bank_code, bank_info in bank_names.items():
+                                if bank_code in bank_links or bank_info['name'] in bank_links:
+                                    url = bank_links.get(bank_code) or bank_links.get(bank_info['name'])
                                     if url:
-                                        keyboard.append([InlineKeyboardButton(f"💳 {bank_name}", url=url)])
+                                        keyboard.append([InlineKeyboardButton(
+                                            f"{bank_info['emoji']} {bank_info['name']} 💳",
+                                            url=url
+                                        )])
                             
                             keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
                             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1040,19 +1043,22 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         # Создаем инлайн кнопки с ссылками для всех банков
                         keyboard = []
                         bank_names = {
-                            'demirbank': 'DemirBank',
-                            'omoney': 'O!Money',
-                            'balance': 'Balance.kg',
-                            'bakai': 'Bakai',
-                            'megapay': 'MegaPay',
-                            'mbank': 'MBank'
+                            'demirbank': {'name': 'DemirBank', 'emoji': '🏦'},
+                            'omoney': {'name': 'O!Money', 'emoji': '💛'},
+                            'balance': {'name': 'Balance.kg', 'emoji': '⚖️'},
+                            'bakai': {'name': 'Bakai', 'emoji': '💙'},
+                            'megapay': {'name': 'MegaPay', 'emoji': '💜'},
+                            'mbank': {'name': 'MBank', 'emoji': '📱'}
                         }
                         
-                        for bank_code, bank_name in bank_names.items():
-                            if bank_code in bank_links or bank_name in bank_links:
-                                url = bank_links.get(bank_code) or bank_links.get(bank_name)
+                        for bank_code, bank_info in bank_names.items():
+                            if bank_code in bank_links or bank_info['name'] in bank_links:
+                                url = bank_links.get(bank_code) or bank_links.get(bank_info['name'])
                                 if url:
-                                    keyboard.append([InlineKeyboardButton(f"💳 {bank_name}", url=url)])
+                                    keyboard.append([InlineKeyboardButton(
+                                        f"{bank_info['emoji']} {bank_info['name']} 💳",
+                                        url=url
+                                    )])
                         
                         keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
                         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1075,13 +1081,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         
                         await query.edit_message_text(
                             f"✅ <b>Заявка на пополнение создана!</b>\n\n"
-                            f"💰 Сумма: {data['amount']} сом\n"
-                            f"🎰 Казино: {data['bookmaker'].upper()}\n"
-                            f"🆔 ID игрока: {data['player_id']}\n"
-                            f"🏦 Банк: {bank}\n"
-                            f"🆔 ID заявки: #{request_id}\n\n"
+                            f"💰 <b>Сумма:</b> {data['amount']} сом\n"
+                            f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
+                            f"🆔 <b>ID игрока:</b> {data['player_id']}\n"
+                            f"🆔 <b>ID заявки:</b> #{request_id}\n\n"
                             f"⏰ <b>Таймер: {timer_text}</b>\n\n"
-                            f"Выберите банк для оплаты:",
+                            f"💳 <b>Выберите банк для оплаты:</b>",
                             reply_markup=reply_markup,
                             parse_mode='HTML'
                         )
