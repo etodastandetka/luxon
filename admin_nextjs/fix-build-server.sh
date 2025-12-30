@@ -12,18 +12,12 @@ git pull origin main
 # 2. Переходим в директорию админки
 cd admin_nextjs
 
-# 3. КРИТИЧНО: Добавляем колонку source в базу данных
-echo "🗄️ Добавление колонки source в базу данных..."
-if [ -n "$DATABASE_URL" ]; then
-    echo "Выполняю SQL миграцию через psql..."
-    psql "$DATABASE_URL" -c "ALTER TABLE requests ADD COLUMN IF NOT EXISTS source VARCHAR(20);" 2>/dev/null || {
-        echo "⚠️ Не удалось выполнить через psql, попробуйте вручную:"
-        echo "   psql \$DATABASE_URL -c \"ALTER TABLE requests ADD COLUMN IF NOT EXISTS source VARCHAR(20);\""
-    }
-else
-    echo "⚠️ DATABASE_URL не установлен. Выполните вручную:"
-    echo "   ALTER TABLE requests ADD COLUMN IF NOT EXISTS source VARCHAR(20);"
-fi
+# 3. КРИТИЧНО: Применяем Prisma миграцию для добавления колонки source
+echo "🗄️ Применение Prisma миграции..."
+npx prisma migrate deploy 2>/dev/null || {
+    echo "⚠️ migrate deploy не сработал, используем db push..."
+    npx prisma db push --accept-data-loss
+}
 
 # 4. Перегенерируем Prisma клиент
 echo "🔄 Перегенерация Prisma клиента..."

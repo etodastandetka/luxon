@@ -5,18 +5,21 @@
 The column requests.source does not exist in the current database
 ```
 
-## Решение (выполните на сервере)
+## Решение через Prisma (выполните на сервере)
 
 ```bash
-# 1. Добавить колонку в БД
-psql $DATABASE_URL -c "ALTER TABLE requests ADD COLUMN IF NOT EXISTS source VARCHAR(20);"
-
-# 2. Обновить код
+# 1. Обновить код
 cd /var/www/luxon
 git pull origin main
 
-# 3. Перегенерировать Prisma клиент
+# 2. Применить миграцию Prisma
 cd admin_nextjs
+npx prisma migrate deploy
+
+# Или если migrate deploy не работает, используйте db push:
+# npx prisma db push
+
+# 3. Перегенерировать Prisma клиент
 npx prisma generate
 
 # 4. Пересобрать
@@ -35,5 +38,5 @@ chmod +x fix-build-server.sh
 ./fix-build-server.sh
 ```
 
-**ВАЖНО:** Сначала выполните SQL команду для добавления колонки, иначе бот будет продолжать падать с ошибкой!
+**ВАЖНО:** Миграция Prisma автоматически добавит колонку `source` в таблицу `requests`.
 

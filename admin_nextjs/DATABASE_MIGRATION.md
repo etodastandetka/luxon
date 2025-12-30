@@ -4,11 +4,27 @@
 
 Ошибка в боте: `The column requests.source does not exist in the current database`
 
-## Решение
+## Решение через Prisma (рекомендуется)
 
-Нужно добавить колонку `source` в таблицу `requests` в базе данных PostgreSQL.
+### Способ 1: Prisma Migrate (для продакшена)
 
-## Способ 1: Через psql (рекомендуется)
+```bash
+cd /var/www/luxon/admin_nextjs
+npx prisma migrate deploy
+```
+
+Это применит все непримененные миграции из папки `prisma/migrations/`.
+
+### Способ 2: Prisma db push (быстрый способ)
+
+```bash
+cd /var/www/luxon/admin_nextjs
+npx prisma db push
+```
+
+Это автоматически синхронизирует схему Prisma с базой данных без создания файлов миграций.
+
+### Способ 3: Через psql (если Prisma не работает)
 
 ```bash
 # Подключитесь к базе данных
@@ -20,15 +36,6 @@ ALTER TABLE requests ADD COLUMN IF NOT EXISTS source VARCHAR(20);
 # Выйдите из psql
 \q
 ```
-
-## Способ 2: Через Prisma db push
-
-```bash
-cd /var/www/luxon/admin_nextjs
-npx prisma db push
-```
-
-Это автоматически синхронизирует схему Prisma с базой данных.
 
 ## Способ 3: Прямой SQL запрос
 
