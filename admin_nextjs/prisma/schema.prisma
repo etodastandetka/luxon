@@ -87,6 +87,7 @@ model Request {
   phone           String?   @db.VarChar(20)
   paymentMethod   String?   @map("payment_method") @db.VarChar(20) // 'bank', 'crypto'
   cryptoPaymentId Int?      @unique @map("crypto_payment_id")
+  source          String?   @db.VarChar(20) // 'bot' или 'mini_app'
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   processedAt     DateTime? @map("processed_at")

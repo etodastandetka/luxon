@@ -134,9 +134,18 @@ export async function GET(request: NextRequest) {
     return response
   } catch (error: any) {
     console.error('Transaction history error:', error)
+    
+    // Проверяем, является ли ошибка ошибкой подключения к базе данных
+    const errorMessage = error.message || 'Failed to fetch transaction history'
+    const isDatabaseError = errorMessage.includes('Can\'t reach database server') || 
+                           errorMessage.includes('P1001') ||
+                           errorMessage.includes('connection')
+    
     const errorResponse = NextResponse.json(
-      createApiResponse(null, error.message || 'Failed to fetch transaction history'),
-      { status: 500 }
+      createApiResponse(null, isDatabaseError 
+        ? 'Database connection error. Please try again later.' 
+        : errorMessage),
+      { status: isDatabaseError ? 503 : 500 } // 503 Service Unavailable для ошибок БД
     )
     errorResponse.headers.set('Access-Control-Allow-Origin', '*')
     return errorResponse

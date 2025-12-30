@@ -6,7 +6,6 @@ import { LanguageProvider } from '../components/LanguageContext'
 import { HomePageDataProvider } from '../contexts/HomePageDataContext'
 import BottomNavigation from '../components/BottomNavigation'
 import Snowflakes from '../components/Snowflakes'
-import VersionChecker from '../components/VersionChecker'
 import OldDeviceWarning from '../components/OldDeviceWarning'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
@@ -301,7 +300,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageProvider>
           <HomePageDataProvider>
             <OldDeviceWarning />
-            <VersionChecker />
             <TelegramInit />
             {!shouldHideUI && <Snowflakes />}
             <BlockedChecker>

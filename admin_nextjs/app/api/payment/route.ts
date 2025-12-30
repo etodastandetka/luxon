@@ -103,6 +103,9 @@ export async function POST(request: NextRequest) {
     // 🛡️ Валидация и очистка входных данных
     const sanitizedBody = sanitizeInput(body)
     
+    // Определяем источник заявки (bot или mini_app)
+    const source = sanitizedBody.source || (sanitizedBody.telegram_user_id ? 'bot' : 'mini_app')
+    
     const {
       userId,
       user_id,
@@ -556,6 +559,7 @@ export async function POST(request: NextRequest) {
         paymentMethod: payment_method || 'bank', // 'bank' или 'crypto'
         cryptoPaymentId: cryptoPaymentId,
         withdrawalCode: site_code || null, // Код ордера на вывод (для 1xbet)
+        source: source, // 'bot' или 'mini_app'
       },
     })
     
