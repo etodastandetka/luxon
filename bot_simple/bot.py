@@ -556,7 +556,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             seconds = timer_seconds % 60
                             timer_text = f"{minutes:02d}:{seconds:02d}"
                             
-                            # Создаем инлайн кнопки с ссылками для всех банков
+                            # Создаем инлайн кнопки с ссылками для всех банков (по 2 в ряд)
                             keyboard = []
                             bank_names = {
                                 'demirbank': 'DemirBank',
@@ -567,14 +567,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 'mbank': 'MBank'
                             }
                             
+                            # Собираем все доступные банки
+                            available_banks = []
                             for bank_code, bank_name in bank_names.items():
                                 if bank_code in bank_links or bank_name in bank_links:
                                     url = bank_links.get(bank_code) or bank_links.get(bank_name)
                                     if url:
-                                        keyboard.append([InlineKeyboardButton(
+                                        available_banks.append(InlineKeyboardButton(
                                             f"💳 {bank_name}",
                                             url=url
-                                        )])
+                                        ))
+                            
+                            # Разделяем на пары (по 2 в ряд)
+                            for i in range(0, len(available_banks), 2):
+                                if i + 1 < len(available_banks):
+                                    keyboard.append([available_banks[i], available_banks[i + 1]])
+                                else:
+                                    keyboard.append([available_banks[i]])
                             
                             if not keyboard:
                                 logger.warning(f"⚠️ Нет ссылок для банков, отправляю сообщение без кнопок")
