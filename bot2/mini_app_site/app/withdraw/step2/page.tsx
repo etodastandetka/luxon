@@ -209,7 +209,7 @@ export default function WithdrawStep2() {
     }
     
     const cleanPhone = phone.replace(/[^\d]/g, '')
-    if (!cleanPhone || cleanPhone.length < 12) {
+    if (!cleanPhone || cleanPhone.length < 11) {
       alert('Введите корректный номер телефона')
       return
     }
@@ -324,7 +324,7 @@ export default function WithdrawStep2() {
           <button 
             className="btn btn-primary flex-1"
             onClick={handleNext}
-            disabled={!bank || !qrPhotoPreview || phone.replace(/[^\d]/g, '').length < 12}
+            disabled={!bank || !qrPhotoPreview || phone.replace(/[^\d]/g, '').length < 11}
           >
             {t.next}
           </button>
