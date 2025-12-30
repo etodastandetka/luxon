@@ -310,9 +310,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            # Отправляем Reply клавиатуру отдельным сообщением (edit_message_text не поддерживает Reply клавиатуру)
+            # Отправляем Reply клавиатуру отдельным сообщением без текста (edit_message_text не поддерживает Reply клавиатуру)
             await update.message.reply_text(
-                "Используйте клавиатуру:",
+                " ",
                 reply_markup=reply_markup_keyboard
             )
         else:
@@ -348,9 +348,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            # Отправляем Reply клавиатуру отдельным сообщением (edit_message_text не поддерживает Reply клавиатуру)
+            # Отправляем Reply клавиатуру отдельным сообщением без текста (edit_message_text не поддерживает Reply клавиатуру)
             await update.message.reply_text(
-                "Используйте клавиатуру:",
+                " ",
                 reply_markup=reply_markup_keyboard
             )
         return
@@ -422,7 +422,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     parse_mode='HTML'
                 )
                 await update.message.reply_text(
-                    "Используйте клавиатуру:",
+                    " ",
                     reply_markup=reply_markup_keyboard
                 )
             else:
@@ -459,7 +459,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     parse_mode='HTML'
                 )
                 await update.message.reply_text(
-                    "Используйте клавиатуру:",
+                    " ",
                     reply_markup=reply_markup_keyboard
                 )
             return
