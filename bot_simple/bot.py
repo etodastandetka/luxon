@@ -462,12 +462,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
         
         elif step == 'deposit_amount':
+            logger.info(f"💰 Обработка суммы пополнения для пользователя {user_id}: message_text='{message_text}'")
             try:
                 amount = float(message_text.replace(',', '.').strip())
+                logger.info(f"💰 Сумма распознана: {amount}")
                 if amount < 35 or amount > 100000:
+                    logger.warning(f"⚠️ Сумма вне диапазона: {amount}")
                     await update.message.reply_text("❌ Сумма должна быть от 35 до 100,000 сом")
                     return
-            except ValueError:
+            except ValueError as e:
+                logger.error(f"❌ Ошибка парсинга суммы: {e}, message_text='{message_text}'")
                 await update.message.reply_text("❌ Введите корректную сумму (число)")
                 return
             
