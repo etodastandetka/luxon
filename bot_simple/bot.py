@@ -36,6 +36,12 @@ API_URL = "https://japar.click"
 # Словарь для хранения состояний пользователей
 user_states = {}
 
+# Словарь для хранения активных таймеров (user_id -> task)
+active_timers = {}
+
+# Словарь для хранения активных таймеров (user_id -> task)
+active_timers = {}
+
 async def check_channel_subscription(user_id: int, channel_id: str) -> bool:
     """Проверяет подписку пользователя на канал"""
     try:
@@ -567,7 +573,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             logger.info(f"📤 Отправляю сообщение с кнопками банков для пользователя {user_id}")
                             
                             # Отправляем сообщение с кнопками банков (заявка будет создана после отправки фото)
-                            await update.message.reply_text(
+                            timer_message = await update.message.reply_text(
                                 f"💰 <b>Пополнение счета</b>\n\n"
                                 f"💰 <b>Сумма:</b> {amount} сом\n"
                                 f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
@@ -578,6 +584,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 reply_markup=reply_markup,
                                 parse_mode='HTML'
                             )
+                            
+                            # Сохраняем данные для таймера
+                            data['timer_message_id'] = timer_message.message_id
+                            data['timer_chat_id'] = timer_message.chat.id
+                            user_states[user_id]['data'] = data
+                            
                             # Отправляем Reply клавиатуру отдельным сообщением (без видимого текста)
                             try:
                                 await update.message.reply_text(
@@ -594,11 +606,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     )
                                 except Exception as e2:
                                     logger.warning(f"⚠️ Не удалось отправить Reply клавиатуру: {e2}")
+                            
                             # Сохраняем ссылки в состоянии для последующего использования
                             user_states[user_id]['data']['bank_links'] = bank_links
                             user_states[user_id]['data']['timer_seconds'] = timer_seconds
+                            
+                            # Запускаем таймер как фоновую задачу
+                            timer_task = asyncio.create_task(
+                                update_timer(context.bot, user_id, timer_seconds, data, timer_message.message_id, timer_message.chat.id)
+                            )
+                            active_timers[user_id] = timer_task
+                            
                             # Состояние остается deposit_bank - ждем выбора банка или фото
-                            logger.info(f"✅ Сообщение с кнопками банков отправлено пользователю {user_id}")
+                            logger.info(f"✅ Сообщение с кнопками банков отправлено пользователю {user_id}, таймер запущен")
                             return
                         else:
                             logger.error(f"❌ QR данные не содержат success или data: {qr_data}")
@@ -1408,6 +1428,138 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             # Пользователь не подписан
             await query.answer("❌ Вы еще не подписались на канал. Пожалуйста, подпишитесь и попробуйте снова.", show_alert=True)
             logger.info(f"⚠️ Пользователь {user_id} не подписан на канал")
+
+async def update_timer(bot, user_id: int, total_seconds: int, data: dict, message_id: int, chat_id: int) -> None:
+    """Обновляет таймер каждую секунду и отменяет заявку при истечении"""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        remaining_seconds = total_seconds
+        
+        while remaining_seconds > 0:
+            await asyncio.sleep(1)
+            
+            # Проверяем, не была ли заявка уже создана (если создана, останавливаем таймер)
+            if user_id not in user_states:
+                logger.info(f"⏹️ Таймер остановлен для пользователя {user_id} - состояние очищено")
+                return
+            
+            current_state = user_states.get(user_id, {})
+            current_step = current_state.get('step', '')
+            
+            # Если заявка уже создана (отправлено фото), останавливаем таймер
+            if current_step != 'deposit_bank' and current_step != 'deposit_receipt_photo':
+                logger.info(f"⏹️ Таймер остановлен для пользователя {user_id} - заявка создана")
+                return
+            
+            # Вычисляем оставшееся время
+            elapsed = int(asyncio.get_event_loop().time() - start_time)
+            remaining_seconds = max(0, total_seconds - elapsed)
+            
+            # Форматируем таймер
+            minutes = remaining_seconds // 60
+            seconds = remaining_seconds % 60
+            timer_text = f"{minutes:02d}:{seconds:02d}"
+            
+            # Обновляем сообщение
+            try:
+                # Получаем актуальные данные
+                current_data = user_states.get(user_id, {}).get('data', data)
+                bank_links = current_data.get('bank_links', {})
+                
+                # Создаем кнопки банков заново
+                keyboard = []
+                bank_names = {
+                    'demirbank': 'DemirBank',
+                    'omoney': 'O!Money',
+                    'balance': 'Balance.kg',
+                    'bakai': 'Bakai',
+                    'megapay': 'MegaPay',
+                    'mbank': 'MBank'
+                }
+                
+                available_banks = []
+                for bank_code, bank_name in bank_names.items():
+                    if bank_code in bank_links or bank_name in bank_links:
+                        url = bank_links.get(bank_code) or bank_links.get(bank_name)
+                        if url:
+                            available_banks.append(InlineKeyboardButton(
+                                f"💳 {bank_name}",
+                                url=url
+                            ))
+                
+                # Разделяем на пары (по 2 в ряд)
+                for i in range(0, len(available_banks), 2):
+                    if i + 1 < len(available_banks):
+                        keyboard.append([available_banks[i], available_banks[i + 1]])
+                    else:
+                        keyboard.append([available_banks[i]])
+                
+                keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text=f"💰 <b>Пополнение счета</b>\n\n"
+                         f"💰 <b>Сумма:</b> {current_data.get('amount', 0)} сом\n"
+                         f"🎰 <b>Казино:</b> {current_data.get('bookmaker', '').upper()}\n"
+                         f"🆔 <b>ID игрока:</b> {current_data.get('player_id', '')}\n\n"
+                         f"⏰ <b>Таймер: {timer_text}</b>\n\n"
+                         f"💳 <b>Выберите банк для оплаты:</b>\n\n"
+                         f"После оплаты отправьте фото чека:",
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.warning(f"⚠️ Не удалось обновить таймер для пользователя {user_id}: {e}")
+                # Продолжаем работу таймера даже если не удалось обновить сообщение
+        
+        # Время истекло - отменяем заявку
+        if user_id in user_states:
+            logger.info(f"⏰ Таймер истек для пользователя {user_id}, отменяю заявку")
+            
+            # Очищаем состояние
+            del user_states[user_id]
+            
+            # Удаляем таймер из активных
+            if user_id in active_timers:
+                del active_timers[user_id]
+            
+            # Отправляем сообщение об отмене
+            try:
+                await bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text="⏰ <b>Пополнение отменено, время оплаты прошло</b>",
+                    parse_mode='HTML'
+                )
+                
+                # Создаем Reply клавиатуру с кнопками
+                reply_keyboard = [
+                    [
+                        KeyboardButton("💰 Пополнить"),
+                        KeyboardButton("💸 Вывести")
+                    ]
+                ]
+                reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+                
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text="❌ <b>Не переводите по старым реквизитам</b>\n\nНачните заново, нажав на <b>Пополнить</b>",
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"❌ Ошибка при отправке сообщения об отмене для пользователя {user_id}: {e}")
+    except asyncio.CancelledError:
+        logger.info(f"⏹️ Таймер отменен для пользователя {user_id}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка в таймере для пользователя {user_id}: {e}", exc_info=True)
+        # Очищаем состояние при ошибке
+        if user_id in user_states:
+            del user_states[user_id]
+        if user_id in active_timers:
+            del active_timers[user_id]
 
 async def get_photo_base64(bot, file_id: str) -> str:
     """Получает фото из Telegram и конвертирует в base64"""
