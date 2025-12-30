@@ -871,40 +871,40 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Сохраняем сообщение в админку через API (неблокирующе)
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-            payload = {
-                "message_text": message_text,
-                "message_type": message_type,
-                "media_url": media_url,
-                "telegram_message_id": telegram_message_id
-            }
-            logger.debug(f"Отправка в API: {API_URL}/api/users/{user_id}/chat/ingest")
-            logger.debug(f"Payload: {payload}")
-            
-            response = await client.post(
-                f"{API_URL}/api/users/{user_id}/chat/ingest",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
-            
-            if response.status_code == 200:
-                try:
-                    response_data = response.json()
-                    if response_data.get('success'):
-                        logger.info(f"✅ Сообщение от пользователя {user_id} сохранено в чат (ID: {response_data.get('messageId')})")
-                    else:
-                        logger.warning(f"⚠️ API вернул success=false: {response_data.get('error')}")
-                except Exception as parse_error:
-                    logger.warning(f"⚠️ Не удалось распарсить ответ API: {parse_error}")
-            else:
-                try:
-                    error_text = response.text
-                    logger.error(f"❌ Ошибка API при сохранении сообщения: {response.status_code} - {error_text[:200]}")
-                except:
-                    logger.error(f"❌ Ошибка API при сохранении сообщения: {response.status_code}")
-    except httpx.TimeoutException:
-        logger.error(f"❌ Таймаут при сохранении сообщения в чат")
-    except Exception as e:
-        logger.error(f"❌ Ошибка при сохранении сообщения в чат: {e}", exc_info=True)
+                payload = {
+                    "message_text": message_text,
+                    "message_type": message_type,
+                    "media_url": media_url,
+                    "telegram_message_id": telegram_message_id
+                }
+                logger.debug(f"Отправка в API: {API_URL}/api/users/{user_id}/chat/ingest")
+                logger.debug(f"Payload: {payload}")
+                
+                response = await client.post(
+                    f"{API_URL}/api/users/{user_id}/chat/ingest",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    try:
+                        response_data = response.json()
+                        if response_data.get('success'):
+                            logger.info(f"✅ Сообщение от пользователя {user_id} сохранено в чат (ID: {response_data.get('messageId')})")
+                        else:
+                            logger.warning(f"⚠️ API вернул success=false: {response_data.get('error')}")
+                    except Exception as parse_error:
+                        logger.warning(f"⚠️ Не удалось распарсить ответ API: {parse_error}")
+                else:
+                    try:
+                        error_text = response.text
+                        logger.error(f"❌ Ошибка API при сохранении сообщения: {response.status_code} - {error_text[:200]}")
+                    except:
+                        logger.error(f"❌ Ошибка API при сохранении сообщения: {response.status_code}")
+        except httpx.TimeoutException:
+            logger.warning(f"⚠️ Таймаут при сохранении сообщения в чат (не критично)")
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка при сохранении сообщения в чат (не критично): {e}")
     
     # Если нет активного диалога, показываем меню
     keyboard = [
