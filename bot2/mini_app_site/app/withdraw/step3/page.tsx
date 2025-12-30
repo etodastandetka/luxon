@@ -6,8 +6,156 @@ import { useLanguage } from '../../../components/LanguageContext'
 import { checkUserBlocked, getTelegramUserId } from '../../../utils/telegram'
 import { safeFetch, getApiBase } from '../../../utils/fetch'
 
+
+declare global {
+  interface Window {
+    __wbBankUiRefCount?: number
+  }
+}
+
+const __WB_BANK_UI_CSS = `:root{
+  --wb-bg0:#07150d;
+  --wb-bg1:#0b2014;
+  --wb-line:rgba(255,255,255,.14);
+  --wb-glass:rgba(255,255,255,.08);
+  --wb-glass2:rgba(255,255,255,.12);
+  --wb-shadow:0 16px 42px rgba(0,0,0,.38);
+  --wb-shadow2:0 10px 24px rgba(0,0,0,.24);
+  --wb-r:20px;
+  --wb-a1:#52d16a;
+  --wb-a2:#9ed1a8;
+}
+body{
+  background:
+    radial-gradient(900px 700px at 20% -10%, rgba(82,209,106,.20), transparent 60%),
+    radial-gradient(900px 700px at 90% 0%, rgba(78,171,63,.16), transparent 62%),
+    radial-gradient(900px 700px at 50% 110%, rgba(18,89,50,.34), transparent 58%),
+    linear-gradient(180deg,var(--wb-bg0),var(--wb-bg1));
+}
+main{
+  max-width:520px;
+  margin:0 auto;
+  padding:10px 14px 120px;
+}
+h1,h2{
+  letter-spacing:.2px;
+}
+.card{
+  border-radius:var(--wb-r);
+  border:1px solid var(--wb-line);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  box-shadow:var(--wb-shadow2);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+.card:not([class*="p-"]){
+  padding:14px;
+}
+.label{
+  color:rgba(255,255,255,.74);
+  font-size:12px;
+}
+.input{
+  border-radius:16px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.16);
+  color:rgba(255,255,255,.92);
+}
+.input:focus{
+  outline:none;
+  box-shadow:0 0 0 4px rgba(82,209,106,.14);
+  border-color:rgba(82,209,106,.42);
+}
+.btn{
+  border-radius:16px;
+  min-height:48px;
+  transition:transform 140ms ease, filter 140ms ease, background 140ms ease;
+  will-change:transform;
+}
+.btn:active{
+  transform:scale(.986);
+}
+.btn.btn-primary{
+  background:linear-gradient(135deg, rgba(78,171,63,.92), rgba(18,89,50,.92));
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:var(--wb-shadow);
+}
+.btn.btn-primary:disabled{
+  filter:saturate(.6) brightness(.9);
+}
+.btn.btn-ghost{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+}
+.wb-top{
+  padding:0 6px;
+}
+.wb-title{
+  color:rgba(255,255,255,.96);
+}
+.wb-sub{
+  color:rgba(255,255,255,.66);
+  font-size:13px;
+}
+.wb-progress{
+  width:100%;
+  height:8px;
+  background:rgba(255,255,255,.12);
+  border-radius:999px;
+  overflow:hidden;
+}
+.wb-progress > div{
+  height:100%;
+  background:linear-gradient(90deg,var(--wb-a1),var(--wb-a2));
+  border-radius:999px;
+  box-shadow:0 10px 24px rgba(82,209,106,.18);
+}
+.wb-sticky{
+  position:sticky;
+  bottom:10px;
+  z-index:5;
+}
+.wb-bar{
+  display:flex;
+  gap:10px;
+  padding:10px;
+  border-radius:18px;
+  border:1px solid var(--wb-line);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  box-shadow:var(--wb-shadow2);
+}
+@media (prefers-reduced-motion: reduce){
+  .btn{transition:none}
+}`
+
+function useBankUiTheme() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.__wbBankUiRefCount = (window.__wbBankUiRefCount || 0) + 1
+    const id = 'wb-bank-ui-v1'
+    let el = document.getElementById(id) as HTMLStyleElement | null
+    if (!el) {
+      el = document.createElement('style')
+      el.id = id
+      el.textContent = __WB_BANK_UI_CSS
+      document.head.appendChild(el)
+    }
+    return () => {
+      window.__wbBankUiRefCount = Math.max(0, (window.__wbBankUiRefCount || 1) - 1)
+      if ((window.__wbBankUiRefCount || 0) === 0) {
+        const cur = document.getElementById(id)
+        if (cur) cur.remove()
+      }
+    }
+  }, [])
+}
+
 export default function WithdrawStep3() {
-  const router = useRouter()
+  
+  useBankUiTheme()
+const router = useRouter()
   const { language } = useLanguage()
   const [userId, setUserId] = useState('')
   const [siteCode, setSiteCode] = useState('')
@@ -68,7 +216,7 @@ export default function WithdrawStep3() {
   const t = translations[language as keyof typeof translations] || translations.ru
 
   useEffect(() => {
-    // Проверяем, что пользователь прошел предыдущие шаги
+    
     const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
     const savedBank = localStorage.getItem('withdraw_bank')
     const savedQrPhoto = localStorage.getItem('withdraw_qr_photo')
@@ -84,7 +232,7 @@ export default function WithdrawStep3() {
     setQrPhoto(savedQrPhoto)
     setPhone(savedPhone)
 
-    // Автозаполнение ID из cookies
+    
     const getCookie = (name: string) => {
       const value = `; ${document.cookie}`
       const parts = value.split(`; ${name}=`)
@@ -100,11 +248,11 @@ export default function WithdrawStep3() {
     }
   }, [router])
 
-  // Автоматическая проверка кода и отправка заявки при заполнении обоих полей
+  
   useEffect(() => {
-    // Проверяем только если оба поля заполнены, нет активных операций и нет уже проверенной суммы
+    
     if (userId.trim() && siteCode.trim() && !isCheckingCode && !isSubmitting && !withdrawAmount && !error) {
-      // Небольшая задержка перед автоматической проверкой
+      
       const timer = setTimeout(() => {
         handleCheckAndSubmit()
       }, 500)
@@ -129,7 +277,7 @@ export default function WithdrawStep3() {
     try {
       const base = getApiBase()
       
-      // Проверяем код и получаем сумму
+      
       const response = await safeFetch(`${base}/api/withdraw-check`, {
         method: 'POST',
         headers: {
@@ -184,7 +332,7 @@ export default function WithdrawStep3() {
           setWithdrawAmount(amount)
           setIsCheckingCode(false)
           
-          // Автоматически отправляем заявку после успешной проверки
+          
           await submitRequest(amount)
         } else {
           setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
@@ -218,7 +366,7 @@ export default function WithdrawStep3() {
         throw new Error('Не удалось определить ID пользователя. Перезагрузите страницу.')
       }
 
-      // Проверяем, не заблокирован ли пользователь
+      
       const isBlocked = await checkUserBlocked(telegramUserId)
       if (isBlocked) {
         alert('Ваш аккаунт заблокирован. Вы не можете создавать заявки на вывод.')
@@ -226,7 +374,7 @@ export default function WithdrawStep3() {
         return
       }
 
-      // Проверяем, не отправлял ли пользователь уже заявку
+      
       const submitKey = `withdraw_submitted_${telegramUserId}`
       const hasSubmitted = localStorage.getItem(submitKey)
       if (hasSubmitted) {
@@ -235,7 +383,7 @@ export default function WithdrawStep3() {
         return
       }
 
-      // Для 1xbet сначала выполняем вывод
+      
       const normalizedBookmaker = bookmaker.toLowerCase()
       if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
         const withdrawResponse = await safeFetch(`${base}/api/withdraw-execute`, {
@@ -273,7 +421,7 @@ export default function WithdrawStep3() {
         }
       }
       
-      // Получаем данные пользователя Telegram
+      
       const tg = (window as any).Telegram?.WebApp
       let telegramUser = null
       
@@ -287,11 +435,10 @@ export default function WithdrawStep3() {
             telegramUser = JSON.parse(decodeURIComponent(userParam))
           }
         } catch (e) {
-          console.log('Error parsing initData:', e)
         }
       }
 
-      // Создаем заявку
+      
       const requestBody = {
         type: 'withdraw',
         bookmaker: bookmaker,
@@ -359,23 +506,23 @@ export default function WithdrawStep3() {
       }
       
       if (result.success !== false) {
-        // Сохраняем флаг отправки
+        
         const submitKey = `withdraw_submitted_${telegramUserId}`
         localStorage.setItem(submitKey, 'true')
         
-        // Сохраняем ID для обратной совместимости
+        
         const cookieName = `user_id_${bookmaker}`
         const expires = new Date()
         expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000))
         document.cookie = `${cookieName}=${userId}; expires=${expires.toUTCString()}; path=/`
         
-        // Очищаем данные
+        
         localStorage.removeItem('withdraw_bookmaker')
         localStorage.removeItem('withdraw_bank')
         localStorage.removeItem('withdraw_qr_photo')
         localStorage.removeItem('withdraw_phone')
         
-        // Перенаправляем на главную
+        
         router.push('/')
       } else {
         throw new Error(result.error || 'Неизвестная ошибка')
@@ -406,7 +553,7 @@ export default function WithdrawStep3() {
           </div>
         </div>
 
-        {/* ID аккаунта */}
+        
         <div ref={idSectionRef}>
           <label className="label">{t.accountId}</label>
           <input 
@@ -419,7 +566,7 @@ export default function WithdrawStep3() {
           />
         </div>
         
-        {/* Код с сайта */}
+        
         <div ref={codeSectionRef}>
           <label className="label">{t.siteCode}</label>
           <input 
@@ -436,7 +583,7 @@ export default function WithdrawStep3() {
           />
         </div>
         
-        {/* Статус проверки/отправки */}
+        
         {isCheckingCode && (
           <div className="p-3 bg-blue-900/30 border border-blue-500 rounded-lg">
             <p className="text-sm text-blue-300">⏳ {t.checking}</p>
@@ -460,7 +607,7 @@ export default function WithdrawStep3() {
           </div>
         )}
         
-        {/* Ошибка */}
+        
         {error && (
           <div className="p-3 bg-red-900/30 border border-red-500 rounded-lg">
             <p className="text-sm text-red-300 font-semibold">❌ {error}</p>
@@ -480,4 +627,3 @@ export default function WithdrawStep3() {
     </main>
   )
 }
-

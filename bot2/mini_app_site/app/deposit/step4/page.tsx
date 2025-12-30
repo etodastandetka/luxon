@@ -11,11 +11,159 @@ import { formatKgs, formatUsdt, formatUsd } from '../../../utils/crypto-pay'
 import { safeFetch, getApiBase } from '../../../utils/fetch'
 import { compressImageIfNeeded } from '../../../utils/image-compress'
 
+
+declare global {
+  interface Window {
+    __wbBankUiRefCount?: number
+  }
+}
+
+const __WB_BANK_UI_CSS = `:root{
+  --wb-bg0:#07150d;
+  --wb-bg1:#0b2014;
+  --wb-line:rgba(255,255,255,.14);
+  --wb-glass:rgba(255,255,255,.08);
+  --wb-glass2:rgba(255,255,255,.12);
+  --wb-shadow:0 16px 42px rgba(0,0,0,.38);
+  --wb-shadow2:0 10px 24px rgba(0,0,0,.24);
+  --wb-r:20px;
+  --wb-a1:#52d16a;
+  --wb-a2:#9ed1a8;
+}
+body{
+  background:
+    radial-gradient(900px 700px at 20% -10%, rgba(82,209,106,.20), transparent 60%),
+    radial-gradient(900px 700px at 90% 0%, rgba(78,171,63,.16), transparent 62%),
+    radial-gradient(900px 700px at 50% 110%, rgba(18,89,50,.34), transparent 58%),
+    linear-gradient(180deg,var(--wb-bg0),var(--wb-bg1));
+}
+main{
+  max-width:520px;
+  margin:0 auto;
+  padding:10px 14px 120px;
+}
+h1,h2{
+  letter-spacing:.2px;
+}
+.card{
+  border-radius:var(--wb-r);
+  border:1px solid var(--wb-line);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  box-shadow:var(--wb-shadow2);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+.card:not([class*="p-"]){
+  padding:14px;
+}
+.label{
+  color:rgba(255,255,255,.74);
+  font-size:12px;
+}
+.input{
+  border-radius:16px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.16);
+  color:rgba(255,255,255,.92);
+}
+.input:focus{
+  outline:none;
+  box-shadow:0 0 0 4px rgba(82,209,106,.14);
+  border-color:rgba(82,209,106,.42);
+}
+.btn{
+  border-radius:16px;
+  min-height:48px;
+  transition:transform 140ms ease, filter 140ms ease, background 140ms ease;
+  will-change:transform;
+}
+.btn:active{
+  transform:scale(.986);
+}
+.btn.btn-primary{
+  background:linear-gradient(135deg, rgba(78,171,63,.92), rgba(18,89,50,.92));
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:var(--wb-shadow);
+}
+.btn.btn-primary:disabled{
+  filter:saturate(.6) brightness(.9);
+}
+.btn.btn-ghost{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+}
+.wb-top{
+  padding:0 6px;
+}
+.wb-title{
+  color:rgba(255,255,255,.96);
+}
+.wb-sub{
+  color:rgba(255,255,255,.66);
+  font-size:13px;
+}
+.wb-progress{
+  width:100%;
+  height:8px;
+  background:rgba(255,255,255,.12);
+  border-radius:999px;
+  overflow:hidden;
+}
+.wb-progress > div{
+  height:100%;
+  background:linear-gradient(90deg,var(--wb-a1),var(--wb-a2));
+  border-radius:999px;
+  box-shadow:0 10px 24px rgba(82,209,106,.18);
+}
+.wb-sticky{
+  position:sticky;
+  bottom:10px;
+  z-index:5;
+}
+.wb-bar{
+  display:flex;
+  gap:10px;
+  padding:10px;
+  border-radius:18px;
+  border:1px solid var(--wb-line);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  box-shadow:var(--wb-shadow2);
+}
+@media (prefers-reduced-motion: reduce){
+  .btn{transition:none}
+}`
+
+function useBankUiTheme() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.__wbBankUiRefCount = (window.__wbBankUiRefCount || 0) + 1
+    const id = 'wb-bank-ui-v1'
+    let el = document.getElementById(id) as HTMLStyleElement | null
+    if (!el) {
+      el = document.createElement('style')
+      el.id = id
+      el.textContent = __WB_BANK_UI_CSS
+      document.head.appendChild(el)
+    }
+    return () => {
+      window.__wbBankUiRefCount = Math.max(0, (window.__wbBankUiRefCount || 1) - 1)
+      if ((window.__wbBankUiRefCount || 0) === 0) {
+        const cur = document.getElementById(id)
+        if (cur) cur.remove()
+      }
+    }
+  }, [])
+}
+
 export default function DepositStep4() {
-  const [bank, setBank] = useState('omoney') // По умолчанию O!Money
+  
+  useBankUiTheme()
+const [bank, setBank] = useState('omoney') 
   const [paymentUrl, setPaymentUrl] = useState('')
   const [qrData, setQrData] = useState<any>(null)
-  const [timeLeft, setTimeLeft] = useState(300) // 5 минут в секундах
+  const [timeLeft, setTimeLeft] = useState(300) 
   const [isPaid, setIsPaid] = useState(false)
   const [isCreatingRequest, setIsCreatingRequest] = useState(false)
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
@@ -25,47 +173,39 @@ export default function DepositStep4() {
   const router = useRouter()
   const { showAlert, AlertComponent } = useAlert()
 
-  // Получаем данные из предыдущих шагов
+  
   const [bookmaker, setBookmaker] = useState('')
   const [playerId, setPlayerId] = useState('')
   const [amount, setAmount] = useState(0)
   const [depositsEnabled, setDepositsEnabled] = useState(true)
-  const [requireReceiptPhoto, setRequireReceiptPhoto] = useState(true) // Фото чека всегда обязательно
+  const [requireReceiptPhoto, setRequireReceiptPhoto] = useState(true) 
   const [receiptPhoto, setReceiptPhoto] = useState<File | null>(null)
   const [receiptPhotoPreview, setReceiptPhotoPreview] = useState<string | null>(null)
   const [receiptPhotoBase64, setReceiptPhotoBase64] = useState<string | null>(null)
   const { language } = useLanguage()
 
   useEffect(() => {
-    // Загружаем данные из localStorage
     const savedBookmaker = localStorage.getItem('deposit_bookmaker') || ''
     const savedPlayerId = localStorage.getItem('deposit_user_id') || ''
     const savedAmount = parseFloat(localStorage.getItem('deposit_amount') || '0')
     const savedPaymentType = localStorage.getItem('deposit_payment_type') as 'bank' | 'crypto' || 'bank'
-    
-    console.log('📋 Загружаем данные из localStorage:', {
-      bookmaker: savedBookmaker,
-      playerId: savedPlayerId,
-      amount: savedAmount,
-      paymentType: savedPaymentType
-    })
     
     setBookmaker(savedBookmaker)
     setPlayerId(savedPlayerId)
     setAmount(savedAmount)
     setPaymentType(savedPaymentType)
     
-    // Получаем Telegram ID пользователя (оптимизированная функция)
+    
     const telegramUserId = getTelegramUserId()
     
-    // Проверяем, есть ли сохраненные данные предыдущей заявки
+    
     const previousBookmaker = localStorage.getItem('previous_deposit_bookmaker') || ''
     const previousTelegramUserId = localStorage.getItem('previous_deposit_telegram_user_id') || ''
     const previousAmount = parseFloat(localStorage.getItem('previous_deposit_amount') || '0')
     const transactionId = localStorage.getItem('deposit_transaction_id')
     
-    // Сравниваем: если Telegram ID изменился или данные изменились - это новая заявка
-    // Используем Telegram ID, а не ID казино для проверки новой заявки
+    
+    
     const isNewRequest = !previousBookmaker || 
                          !previousTelegramUserId || 
                          !telegramUserId ||
@@ -74,55 +214,53 @@ export default function DepositStep4() {
                          previousAmount !== savedAmount
     
     if (isNewRequest && telegramUserId) {
-      // Новая заявка - очищаем старые данные и запускаем новый таймер
-      console.log('🆕 Новая заявка - очищаем старые данные и запускаем новый таймер')
+      
       setIsPaid(false)
-      setTimeLeft(300) // Начинаем с 5 минут
+      setTimeLeft(300) 
       localStorage.removeItem('deposit_transaction_id')
       localStorage.removeItem('deposit_request_id')
       localStorage.removeItem('deposit_timer_start')
-      // Сохраняем текущие данные как "предыдущие" для сравнения (используем Telegram ID)
+      
       localStorage.setItem('previous_deposit_bookmaker', savedBookmaker)
       localStorage.setItem('previous_deposit_telegram_user_id', telegramUserId)
       localStorage.setItem('previous_deposit_amount', savedAmount.toString())
-      // Запускаем новый таймер
+      
       localStorage.setItem('deposit_timer_start', Date.now().toString())
       return
     }
     
-    // Если это та же заявка, проверяем статус
+    
     if (transactionId) {
-      // Если есть transaction_id, значит заявка уже создана, останавливаем таймер
+      
       setIsPaid(true)
       setTimeLeft(0)
-      localStorage.removeItem('deposit_timer_start') // Очищаем таймер
-      console.log('✅ Обнаружена существующая заявка - таймер остановлен')
+      localStorage.removeItem('deposit_timer_start') 
       return
     }
     
-    // Восстанавливаем таймер из сохраненного времени начала (только если нет заявки)
+    
     const timerStartTime = localStorage.getItem('deposit_timer_start')
     if (timerStartTime) {
       const startTime = parseInt(timerStartTime, 10)
       const now = Date.now()
-      const elapsed = Math.floor((now - startTime) / 1000) // Прошло секунд
-      const remaining = Math.max(0, 300 - elapsed) // Осталось секунд (5 минут = 300 секунд)
+      const elapsed = Math.floor((now - startTime) / 1000) 
+      const remaining = Math.max(0, 300 - elapsed) 
       setTimeLeft(remaining)
       
-      // Если время уже истекло, обрабатываем истечение
+      
       if (remaining === 0) {
-        // Вызываем через setTimeout, чтобы избежать проблем с зависимостями
+        
         setTimeout(() => {
           handleTimeExpired()
         }, 100)
       }
     } else {
-      // Если нет сохраненного времени, сохраняем текущее время
+      
       localStorage.setItem('deposit_timer_start', Date.now().toString())
     }
   }, [])
 
-  // Функция для создания крипто invoice
+  
   const createCryptoInvoice = async () => {
     if (cryptoLoading || cryptoInvoice) return
     
@@ -130,7 +268,7 @@ export default function DepositStep4() {
     try {
       const apiUrl = getApiBase()
       
-      // Для крипты берем сумму в долларах из localStorage (пользователь ввел в USD)
+      
       const savedAmountUsd = localStorage.getItem('deposit_amount_usd')
       if (!savedAmountUsd) {
         throw new Error('Сумма в долларах не найдена')
@@ -138,14 +276,14 @@ export default function DepositStep4() {
       
       const amountInUsd = parseFloat(savedAmountUsd)
       
-      // Получаем Telegram ID пользователя для payload (оптимизированная функция)
+      
       const telegramUserId = getTelegramUserId()
       
       const payload = JSON.stringify({
         bookmaker,
         playerId,
-        amount: amount, // В сомах (для пополнения в казино)
-        amount_usd: amountInUsd, // В долларах (что ввел пользователь)
+        amount: amount, 
+        amount_usd: amountInUsd, 
         telegram_user_id: telegramUserId
       })
       
@@ -155,7 +293,7 @@ export default function DepositStep4() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amountUsd: amountInUsd, // Отправляем сумму в долларах (API конвертирует в USDT)
+          amountUsd: amountInUsd, 
           asset: 'USDT',
           description: `Пополнение баланса ${bookmaker} - ID: ${playerId}`,
           payload: payload,
@@ -179,15 +317,8 @@ export default function DepositStep4() {
         
         if (data.success && data.data) {
           const invoiceData = data.data
-          console.log('✅ Crypto invoice created and saved to state:', invoiceData)
-          console.log('📋 Invoice ID (проверка всех вариантов):', {
-            invoice_id: invoiceData.invoice_id,
-            invoiceId: invoiceData.invoiceId,
-            id: invoiceData.id,
-            invoice: invoiceData.invoice
-          })
           setCryptoInvoice(invoiceData)
-          // Заявка будет создана только после нажатия кнопки "Я оплатил"
+          
         } else {
           console.error('❌ Invoice creation failed:', data)
           const errorMsg = data.error || data.message || (language === 'ru' 
@@ -220,7 +351,7 @@ export default function DepositStep4() {
             ? 'Ошибка при создании счета на оплату. Попробуйте еще раз.'
             : 'Error creating payment invoice. Please try again.'))
       
-      // Для крипты показываем более понятное сообщение об ошибке
+      
       const isCryptoError = errorMessage.includes('wallet') || errorMessage.includes('кошелек') || errorMessage.includes('invoice')
       const finalMessage = isCryptoError && paymentType === 'crypto'
         ? (language === 'ru' 
@@ -238,7 +369,7 @@ export default function DepositStep4() {
     }
   }
 
-  // Загружаем настройки пополнения по номеру
+  
   useEffect(() => {
     const loadPaymentByNumber = async () => {
       try {
@@ -261,38 +392,37 @@ export default function DepositStep4() {
     loadPaymentByNumber()
   }, [])
 
-  // Генерируем ссылки на банки или крипто invoice в зависимости от типа оплаты
+  
   useEffect(() => {
     if (bookmaker && playerId && amount > 0) {
-      // Сохраняем время начала таймера при генерации (если еще не сохранено)
+      
       if (!localStorage.getItem('deposit_timer_start')) {
         localStorage.setItem('deposit_timer_start', Date.now().toString())
       }
       
       if (paymentType === 'crypto') {
-        // Создаем крипто invoice (заявка будет создана только после нажатия "Я оплатил")
-        console.log('🔄 Создаем crypto invoice для:', { bookmaker, playerId, amount })
+        
         createCryptoInvoice().catch((error) => {
           console.error('❌ Ошибка создания crypto invoice:', error)
         })
       } else {
-        // Для банковских переводов создаем ссылки на банки
+        
         generateBankLinksForNumber()
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [bookmaker, playerId, amount, paymentType])
 
-  // Таймер обратного отсчета и проверка почты (только для банковских переводов)
+  
   useEffect(() => {
-    // Для крипты не нужен таймер
+    
     if (paymentType === 'crypto') {
       return
     }
     
     if (timeLeft > 0 && !isPaid) {
       const timer = setTimeout(() => {
-        // Вычисляем оставшееся время от сохраненного времени начала
+        
         const timerStartTime = localStorage.getItem('deposit_timer_start')
         if (timerStartTime) {
           const startTime = parseInt(timerStartTime, 10)
@@ -301,41 +431,40 @@ export default function DepositStep4() {
           const remaining = Math.max(0, 300 - elapsed)
           setTimeLeft(remaining)
           
-          // Если время истекло
+          
           if (remaining === 0) {
             handleTimeExpired()
             return
           }
         } else {
-          // Если нет сохраненного времени, уменьшаем счетчик
+          
           setTimeLeft(timeLeft - 1)
         }
       }, 1000)
       
-      // Проверяем почту каждые 10 секунд
+      
       if (timeLeft % 10 === 0) {
         checkPaymentStatus()
       }
       
         return () => clearTimeout(timer)
     } else if (timeLeft === 0 && !isPaid) {
-      // Время истекло - автоматически отклоняем заявку
+      
       handleTimeExpired()
     }
   }, [timeLeft, isPaid, paymentType])
 
-  // Проверка статуса крипто-платежа убрана - теперь проверка происходит на странице ожидания
+  
 
-  // Функция обработки истечения времени
+  
   const handleTimeExpired = async () => {
-    // Если заявка уже отправлена (нажали "Я оплатил"), не обрабатываем истечение времени
+    
     if (isPaid) {
-      console.log('⏸️ Таймер истек, но заявка уже отправлена - игнорируем')
       return
     }
     
     try {
-      // Отклоняем заявку
+      
       const transactionId = localStorage.getItem('deposit_transaction_id')
       if (transactionId) {
         const response = await safeFetch('/api/payment', {
@@ -353,16 +482,15 @@ export default function DepositStep4() {
         })
         
         if (response.ok) {
-          console.log('Заявка автоматически отклонена')
         }
       }
       
-      // Очищаем данные и перенаправляем
+      
       localStorage.removeItem('deposit_bookmaker')
       localStorage.removeItem('deposit_user_id')
       localStorage.removeItem('deposit_amount')
       localStorage.removeItem('deposit_transaction_id')
-      localStorage.removeItem('deposit_timer_start') // Очищаем таймер
+      localStorage.removeItem('deposit_timer_start') 
       localStorage.removeItem('previous_deposit_bookmaker')
       localStorage.removeItem('previous_deposit_telegram_user_id')
       localStorage.removeItem('previous_deposit_amount')
@@ -385,14 +513,14 @@ export default function DepositStep4() {
     }
   }
 
-  // Функция проверки статуса оплаты
+  
   const checkPaymentStatus = async () => {
     try {
-      // Проверяем статус заявки через API
+      
       const transactionId = localStorage.getItem('deposit_transaction_id')
       if (transactionId) {
         const base = getApiBase()
-        // Используем новый API endpoint для получения полной информации о заявке
+        
         const response = await fetch(`${base}/api/requests/${transactionId}`)
         if (response.ok) {
           const data = await response.json()
@@ -400,17 +528,17 @@ export default function DepositStep4() {
             const requestStatus = data.data.status
             const processedBy = data.data.processedBy
             
-            // Проверяем успешные статусы (включая автопополнение)
+            
             const isAutoDeposit = requestStatus === 'completed' && processedBy === 'автопополнение'
             const isManualCompleted = ['completed', 'approved', 'auto_completed', 'autodeposit_success'].includes(requestStatus)
             
             if ((isAutoDeposit || isManualCompleted) && !isPaid) {
               setIsPaid(true)
-              // Останавливаем таймер
+              
               localStorage.removeItem('deposit_timer_start')
-              // Отправляем уведомление о принятии заявки
+              
               await sendPaymentConfirmation()
-              // Перенаправляем на страницу ожидания для показа успеха
+              
               router.push('/deposit/waiting')
             }
           }
@@ -421,72 +549,37 @@ export default function DepositStep4() {
     }
   }
 
-  // Создание заявки на пополнение
+  
   const createDepositRequest = async () => {
-    console.log('🚀 createDepositRequest вызвана')
-    console.log('📋 Текущие данные:', {
-      bookmaker,
-      playerId,
-      amount,
-      paymentType,
-      bank,
-      hasReceiptPhoto: !!receiptPhoto,
-      hasCryptoInvoice: !!cryptoInvoice,
-      isPaid,
-      isCreatingRequest
-    })
-    
     try {
-      // Получаем данные пользователя Telegram (как в рефералке)
+      
       const tg = (window as any).Telegram?.WebApp
       let telegramUser = null
       
-      console.log('=== DEBUG: Telegram WebApp Data ===')
-      console.log('Telegram object:', tg)
-      console.log('initDataUnsafe:', tg?.initDataUnsafe)
-      console.log('initData:', tg?.initData)
-      console.log('user:', tg?.initDataUnsafe?.user)
-      console.log('=====================================')
       
-      // Правильный способ получения user ID из Telegram WebApp (как в рефералке)
+      
       if (tg?.initDataUnsafe?.user) {
         telegramUser = tg.initDataUnsafe.user
-        console.log('✅ User from initDataUnsafe:', telegramUser)
       } else if (tg?.initData) {
-        // Парсим initData если он есть (правильный способ)
+        
         try {
-          console.log('Parsing initData:', tg.initData)
           const params = new URLSearchParams(tg.initData)
           const userParam = params.get('user')
-          console.log('User param from initData:', userParam)
           if (userParam) {
             telegramUser = JSON.parse(decodeURIComponent(userParam))
-            console.log('✅ User from initData:', telegramUser)
           }
         } catch (e) {
-          console.log('❌ Error parsing initData:', e)
         }
       }
       
-      console.log('🔍 Итоговые данные пользователя:', telegramUser)
 
-      // Используем уже сохраненный base64 фото чека (читается сразу при загрузке)
-      // Это предотвращает race condition когда пользователь быстро меняет фото
+      
+      
       const currentReceiptPhotoBase64 = receiptPhotoBase64
       
-      console.log('📸 Фото чека для отправки:', {
-        hasFile: !!receiptPhoto,
-        hasBase64: !!currentReceiptPhotoBase64,
-        base64Length: currentReceiptPhotoBase64?.length || 0,
-        fileName: receiptPhoto?.name,
-        fileSize: receiptPhoto?.size,
-        fileType: receiptPhoto?.type
-      })
-      
-      // Если base64 не сохранен, но есть файл - читаем его (fallback)
       let finalReceiptPhotoBase64: string | null = currentReceiptPhotoBase64
       if (!finalReceiptPhotoBase64 && receiptPhoto) {
-        // Проверяем доступность FileReader
+        
         if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
           console.error('❌ FileReader недоступен в этом окружении')
           throw new Error('FileReader недоступен. Пожалуйста, используйте другой браузер или обновите страницу.')
@@ -498,17 +591,15 @@ export default function DepositStep4() {
           reader.onloadend = async () => {
             const base64String = reader.result as string
             const originalSizeKB = (base64String.length * 3) / 4 / 1024
-            console.log('📸 Фото прочитано заново, размер:', `${originalSizeKB.toFixed(2)} KB`)
             
-            // Сжимаем фото сразу после чтения
+            
             try {
               const compressed = await compressImageIfNeeded(base64String, 300)
               const compressedSizeKB = (compressed.length * 3) / 4 / 1024
-              console.log(`📸 Фото сжато при чтении: ${originalSizeKB.toFixed(2)} KB -> ${compressedSizeKB.toFixed(2)} KB`)
               resolve(compressed)
             } catch (compressError) {
               console.error('❌ Ошибка при сжатии фото при чтении:', compressError)
-              resolve(base64String) // Возвращаем оригинал если сжатие не удалось
+              resolve(base64String) 
             }
           }
           reader.onerror = (error: ProgressEvent<FileReader>) => {
@@ -519,69 +610,50 @@ export default function DepositStep4() {
         })
       }
       
-      // Всегда сжимаем фото перед отправкой, если оно есть (для всех устройств)
+      
       if (finalReceiptPhotoBase64) {
         const originalSizeKB = (finalReceiptPhotoBase64.length * 3) / 4 / 1024
-        console.log(`📸 Проверяем и сжимаем фото чека перед отправкой (текущий размер: ${originalSizeKB.toFixed(2)} KB)...`)
         
         try {
-          // Сжимаем до 300KB чтобы точно поместиться в лимит nginx (обычно 1MB)
-          // Это работает для всех устройств, не только iOS
+          
+          
           finalReceiptPhotoBase64 = await compressImageIfNeeded(finalReceiptPhotoBase64, 300)
           const compressedSizeKB = (finalReceiptPhotoBase64.length * 3) / 4 / 1024
           
           if (compressedSizeKB < originalSizeKB) {
-            console.log(`✅ Фото сжато: ${originalSizeKB.toFixed(2)} KB -> ${compressedSizeKB.toFixed(2)} KB`)
           } else {
-            console.log(`✅ Фото уже оптимального размера: ${compressedSizeKB.toFixed(2)} KB`)
           }
         } catch (compressError) {
           console.error('❌ Ошибка при сжатии фото:', compressError)
-          // Продолжаем с оригиналом если сжатие не удалось
+          
         }
       }
 
-      // Для крипты получаем сумму в долларах
+      
       const savedAmountUsd = paymentType === 'crypto' ? localStorage.getItem('deposit_amount_usd') : null
       const amountUsd = savedAmountUsd ? parseFloat(savedAmountUsd) : null
 
-      // Для крипты проверяем invoice_id (проверяем все возможные варианты)
-      let invoiceId = null
-      if (paymentType === 'crypto' && cryptoInvoice) {
-        invoiceId = cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || cryptoInvoice.id || null
-        console.log('🔍 Crypto invoice ID для заявки (проверка всех вариантов):', {
-          invoice_id: cryptoInvoice.invoice_id,
-          invoiceId: cryptoInvoice.invoiceId,
-          id: cryptoInvoice.id,
-          final: invoiceId
-        })
-        console.log('📦 Полный cryptoInvoice объект:', cryptoInvoice)
+      
+          let invoiceId = null
+          if (paymentType === 'crypto' && cryptoInvoice) {
+            invoiceId = cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || cryptoInvoice.id || null
       }
 
-      // Проверяем обязательные поля перед отправкой
-      console.log('🔍 Проверка обязательных полей:', {
-        playerId: playerId || 'MISSING',
-        bookmaker: bookmaker || 'MISSING',
-        amount: amount || 'MISSING',
-        amountValid: amount > 0,
-        hasTelegramUser: !!telegramUser
-      })
-      
       if (!playerId || !bookmaker || !amount || amount <= 0) {
         const errorMsg = `Недостаточно данных для создания заявки: playerId=${playerId}, bookmaker=${bookmaker}, amount=${amount}`
         console.error('❌', errorMsg)
         throw new Error(errorMsg)
       }
 
-      // Получаем Telegram ID пользователя (оптимизированная функция)
+      
       let telegramUserId = getTelegramUserId()
       
-      // Если Telegram ID не найден, используем playerId как fallback
+      
       if (!telegramUserId) {
         telegramUserId = playerId || 'unknown'
       }
 
-      // Проверяем, не заблокирован ли пользователь
+      
       const isBlocked = await checkUserBlocked(telegramUserId)
       if (isBlocked) {
         console.error('❌ Пользователь заблокирован! Нельзя создавать заявки.')
@@ -592,52 +664,35 @@ export default function DepositStep4() {
 
       const requestData = {
         type: 'deposit',
-        amount: amount, // В сомах (для пополнения в казино)
-        amount_usd: amountUsd, // В долларах (только для крипты)
-        // userId должен быть Telegram ID, а не ID аккаунта в казино
-        userId: telegramUserId, // Telegram ID пользователя
+        amount: amount, 
+        amount_usd: amountUsd, 
+        
+        userId: telegramUserId, 
         bookmaker: bookmaker,
         bank: bank,
-        account_id: playerId, // ID аккаунта в казино (отдельно от userId)
-        playerId: playerId, // Добавляем playerId для совместимости
-        payment_method: paymentType, // 'bank' или 'crypto'
+        account_id: playerId, 
+        playerId: playerId, 
+        payment_method: paymentType, 
         crypto_invoice_id: invoiceId,
-        // Данные пользователя Telegram (обязательно)
+        
         telegram_user_id: telegramUserId,
         telegram_username: telegramUser?.username,
         telegram_first_name: telegramUser?.first_name,
         telegram_last_name: telegramUser?.last_name,
         telegram_language_code: telegramUser?.language_code,
-        // Фото чека (если загружено) - используем сохраненный base64
+        
         receipt_photo: finalReceiptPhotoBase64,
       }
 
-      // Используем относительный URL для избежания CORS проблем на iOS внутри Telegram
+      
       const apiUrl = '/api/payment'
       
-      // Проверяем размер body
+      
       const bodyString = JSON.stringify(requestData)
-      const bodySize = new Blob([bodyString]).size
-      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
+      const bodySize = bodyString.length
+      const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
       
-      console.log('📤 Отправка заявки на пополнение:', {
-        url: apiUrl,
-        method: 'POST',
-        bodySize: `${(bodySize / 1024).toFixed(2)} KB`,
-        bodySizeBytes: bodySize,
-        requestDataKeys: Object.keys(requestData),
-        requestData: {
-          ...requestData,
-          receipt_photo: finalReceiptPhotoBase64 ? `[base64, ${finalReceiptPhotoBase64.length} chars]` : null,
-          receiptPhotoSize: finalReceiptPhotoBase64 ? finalReceiptPhotoBase64.length : 0
-        },
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        isIOS
-      })
-      
-      // Проверяем размер body и предупреждаем если слишком большой
-      const maxBodySize = 1024 * 1024 // 1MB - лимит nginx по умолчанию
+      const maxBodySize = 1024 * 1024 
       if (bodySize > maxBodySize) {
         const errorMsg = language === 'ru'
           ? `Размер данных слишком большой (${(bodySize / 1024).toFixed(2)} KB). Пожалуйста, загрузите фото меньшего размера или попробуйте без фото.`
@@ -654,7 +709,7 @@ export default function DepositStep4() {
       let response: Response
       
       try {
-        // На iOS делаем меньше retry чтобы избежать проблем
+        
         response = await safeFetch(apiUrl, {
           method: 'POST',
           headers: {
@@ -662,10 +717,9 @@ export default function DepositStep4() {
           },
           body: bodyString,
           timeout: 30000,
-          retries: isIOS ? 0 : 1, // На iOS не делаем retry
+          retries: isIOS ? 0 : 1, 
           retryDelay: 2000
         })
-        console.log('✅ Запрос отправлен успешно, получен response')
       } catch (fetchError: any) {
         console.error('❌ Ошибка при вызове safeFetch:', {
           error: fetchError,
@@ -675,9 +729,8 @@ export default function DepositStep4() {
           isIOS
         })
         
-        // Fallback: пробуем обычный fetch на iOS если safeFetch не работает
+        
         if (isIOS && (fetchError.name === 'AbortError' || fetchError.message?.includes('AbortController'))) {
-          console.log('🔄 Fallback: пробуем обычный fetch без таймаута на iOS')
           try {
             response = await fetch(apiUrl, {
               method: 'POST',
@@ -686,7 +739,6 @@ export default function DepositStep4() {
               },
               body: bodyString
             })
-            console.log('✅ Fallback fetch успешен')
           } catch (fallbackError: any) {
             console.error('❌ Fallback fetch тоже failed:', fallbackError)
             throw new Error(language === 'ru' 
@@ -697,16 +749,8 @@ export default function DepositStep4() {
           throw fetchError
         }
       }
-      const responseTime = Date.now() - startTime
       
-      console.log('📥 Получен ответ от сервера:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        responseTime: `${responseTime}ms`,
-        headers: Object.fromEntries(response.headers.entries()),
-        timestamp: new Date().toISOString()
-      })
+      const responseTime = Date.now() - startTime
       
       if (!response.ok) {
         let errorText = ''
@@ -734,13 +778,13 @@ export default function DepositStep4() {
           errorData = { error: errorText || 'Unknown error' }
         }
         
-        // Более понятное сообщение об ошибке для пользователя
+        
         let userFriendlyMessage = language === 'ru' 
           ? 'Ошибка при отправке заявки. Попробуйте еще раз.'
           : 'Error sending request. Please try again.'
         
         if (response.status === 413) {
-          // Ошибка 413 - Request Entity Too Large от nginx
+          
           userFriendlyMessage = language === 'ru'
             ? 'Фото чека слишком большое. Пожалуйста, загрузите фото меньшего размера или попробуйте без фото.'
             : 'Receipt photo is too large. Please upload a smaller photo or try without photo.'
@@ -782,23 +826,21 @@ export default function DepositStep4() {
         throw new Error(data.error || data.message || 'Failed to create request')
       }
       
-      console.log('✅ Заявка создана успешно:', data)
-      // Сохраняем ID заявки для последующего обновления статуса
+      
       const requestId = data.id || data.transactionId || (data.data && data.data.id)
       if (!requestId) {
         throw new Error('Request ID not received from server')
       }
       
       localStorage.setItem('deposit_transaction_id', String(requestId))
-      localStorage.setItem('deposit_request_id', String(requestId)) // Сохраняем request_id
+      localStorage.setItem('deposit_request_id', String(requestId)) 
       
-      // Сохраняем время начала таймера при создании заявки (если еще не сохранено)
+      
       if (!localStorage.getItem('deposit_timer_start')) {
         localStorage.setItem('deposit_timer_start', Date.now().toString())
-        console.log('⏱️ Timer start saved:', new Date().toISOString())
       }
       
-      // Синхронизируем с ботом
+      
       const telegramUserForSync = getTelegramUser()
       if (telegramUserForSync) {
         await syncWithBot(telegramUserForSync, 'deposit_request_created', {
@@ -838,8 +880,8 @@ export default function DepositStep4() {
         }
       })
       
-      // Отправляем ошибку на сервер для логирования (если возможно)
-      // Игнорируем несущественные ошибки загрузки ресурсов
+      
+      
       const isNonCriticalError = 
         errorMessage.includes('Load failed') ||
         errorMessage.includes('Failed to load') ||
@@ -851,7 +893,7 @@ export default function DepositStep4() {
           const tg = (window as any).Telegram?.WebApp
           const telegramUserId = getTelegramUserId() || 'unknown'
           
-          // Используем safeFetch для логирования ошибки, но без retry чтобы не зациклиться
+          
           safeFetch('/api/payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -868,7 +910,7 @@ export default function DepositStep4() {
               telegram_user_id: telegramUserId
             }),
             timeout: 5000,
-            retries: 0 // Не повторяем при логировании ошибки
+            retries: 0 
           }).catch(logError => {
             console.error('❌ Не удалось отправить лог ошибки:', logError)
           })
@@ -879,11 +921,11 @@ export default function DepositStep4() {
         console.warn('⚠️ Игнорируем несущественную ошибку загрузки ресурса:', errorMessage)
       }
       
-      throw error // Пробрасываем ошибку дальше
+      throw error 
     }
   }
 
-  // Отправка подтверждения оплаты (только для банковских переводов)
+  
   const sendPaymentConfirmation = async () => {
     try {
       const requestId = localStorage.getItem('deposit_request_id')
@@ -903,14 +945,13 @@ export default function DepositStep4() {
       })
       
       if (response.ok) {
-        console.log('Заявка автоматически принята')
       }
     } catch (error) {
       console.error('Ошибка обновления заявки:', error)
     }
   }
 
-  // Обработка нажатия "Я оплатил" для crypto
+  
   const handleCryptoIPaid = async () => {
     if (!cryptoInvoice) {
       showAlert({
@@ -923,9 +964,8 @@ export default function DepositStep4() {
       return
     }
 
-    // Проверяем, не создается ли уже заявка
+    
     if (isCreatingRequest || isPaid) {
-      console.log('⚠️ Заявка уже отправлена или обрабатывается (crypto):', { isPaid, isCreatingRequest })
       showAlert({
         type: 'info',
         title: language === 'ru' ? 'Информация' : 'Info',
@@ -939,27 +979,24 @@ export default function DepositStep4() {
     setIsCreatingRequest(true)
 
     try {
-      console.log('🔘 "Я оплатил" нажата для crypto, создаем заявку...')
-      console.log('📦 cryptoInvoice:', cryptoInvoice)
       
-      // Создаем заявку (cryptoInvoice уже есть в state, передается в createDepositRequest)
+      
       const requestId = await createDepositRequest()
       
-      console.log('✅ Заявка создана, requestId:', requestId)
       
-      // Сохраняем ID заявки для страницы ожидания
+      
       if (requestId) {
         localStorage.setItem('deposit_request_id', String(requestId))
       }
       
-      // Устанавливаем isPaid, чтобы предотвратить повторное нажатие
+      
       setIsPaid(true)
       
-      // Перенаправляем на страницу ожидания
+      
       router.push('/deposit/waiting')
     } catch (error: any) {
       console.error('❌ Error creating deposit request (crypto):', error)
-      // Сбрасываем флаг при ошибке, чтобы можно было попробовать снова
+      
       setIsCreatingRequest(false)
       
       const errorMessage = error?.message || String(error) || 'Неизвестная ошибка'
@@ -971,34 +1008,26 @@ export default function DepositStep4() {
           : 'Error creating request. Please try again.')
       })
     } finally {
-      // Всегда сбрасываем флаг в finally, если заявка не была успешно создана
+      
       if (!isPaid) {
         setIsCreatingRequest(false)
       }
     }
   }
 
-  // Обработка загрузки фото чека
+  
   const handleReceiptPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      console.log('📸 Загружено новое фото чека:', {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: new Date(file.lastModified).toISOString()
-      })
-      
-      // Сбрасываем предыдущие значения
       setReceiptPhoto(null)
       setReceiptPhotoPreview(null)
       setReceiptPhotoBase64(null)
       
-      // Устанавливаем файл
+      
       setReceiptPhoto(file)
       
-      // Создаем превью и сохраняем base64 сразу
-      // Проверяем доступность FileReader
+      
+      
       if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
         console.error('❌ FileReader недоступен в этом окружении')
         alert('Ошибка: FileReader недоступен. Пожалуйста, используйте другой браузер или обновите страницу.')
@@ -1009,26 +1038,23 @@ export default function DepositStep4() {
       reader.onloadend = async () => {
         const base64String = reader.result as string
         const originalSizeKB = (base64String.length * 3) / 4 / 1024
-        console.log('📸 Фото конвертировано в base64, размер:', `${originalSizeKB.toFixed(2)} KB`)
         
-        // Всегда сжимаем фото при загрузке (для всех устройств)
-        // Это предотвращает ошибку 413 и ускоряет отправку
+        
+        
         try {
           const compressedBase64 = await compressImageIfNeeded(base64String, 300)
           const compressedSizeKB = (compressedBase64.length * 3) / 4 / 1024
           
           if (compressedSizeKB < originalSizeKB) {
-            console.log(`📸 Фото сжато при загрузке: ${originalSizeKB.toFixed(2)} KB -> ${compressedSizeKB.toFixed(2)} KB`)
           } else {
-            console.log(`📸 Фото уже оптимального размера: ${compressedSizeKB.toFixed(2)} KB`)
           }
           
-          // Используем сжатое фото для превью и сохранения
+          
           setReceiptPhotoPreview(compressedBase64)
           setReceiptPhotoBase64(compressedBase64)
         } catch (compressError) {
           console.error('❌ Ошибка при сжатии фото при загрузке:', compressError)
-          // Если сжатие не удалось, используем оригинал
+          
           setReceiptPhotoPreview(base64String)
           setReceiptPhotoBase64(base64String)
         }
@@ -1043,33 +1069,13 @@ export default function DepositStep4() {
     }
   }
 
-  // Кнопка "Я оплатил" — отправляем заявку в админку только по нажатию (только для банковских переводов)
+  
   const handleIPaid = async () => {
-    console.log('🔘 handleIPaid вызвана!', {
-      paymentType,
-      isPaid,
-      isCreatingRequest,
-      requireReceiptPhoto,
-      hasReceiptPhoto: !!receiptPhoto,
-      bookmaker,
-      playerId,
-      amount,
-      bank,
-      timestamp: new Date().toISOString()
-    })
-    
-    // Для крипты используется отдельная функция handleCryptoIPaid
     if (paymentType === 'crypto') {
-      console.log('⚠️ paymentType === crypto, используем handleCryptoIPaid')
       return
     }
 
-    // Проверяем, требуется ли фото чека (проверяем и receiptPhoto и receiptPhotoBase64)
     if (requireReceiptPhoto && !receiptPhoto && !receiptPhotoBase64) {
-      console.log('❌ Требуется фото чека, но оно не загружено', {
-        hasReceiptPhoto: !!receiptPhoto,
-        hasReceiptPhotoBase64: !!receiptPhotoBase64
-      })
       showAlert({
         type: 'error',
         title: language === 'ru' ? 'Ошибка' : 'Error',
@@ -1080,9 +1086,8 @@ export default function DepositStep4() {
       return
     }
 
-    // Проверяем, не отправлена ли уже заявка или не создается ли она сейчас
+    
     if (isPaid || isCreatingRequest) {
-      console.log('⚠️ Заявка уже отправлена или обрабатывается:', { isPaid, isCreatingRequest })
       showAlert({
         type: 'info',
         title: language === 'ru' ? 'Информация' : 'Info',
@@ -1093,42 +1098,37 @@ export default function DepositStep4() {
       return
     }
 
-    // Устанавливаем флаг создания заявки СРАЗУ, чтобы предотвратить двойной клик
-    console.log('✅ Все проверки пройдены, устанавливаем isCreatingRequest=true')
+    
     setIsCreatingRequest(true)
     
     try {
-      console.log('🔄 Начинаем создание заявки через createDepositRequest()...')
       const requestId = await createDepositRequest()
-      console.log('✅ createDepositRequest вернула requestId:', requestId)
       
-      console.log('✅ Заявка создана успешно, requestId:', requestId)
       
-      // Сохраняем ID заявки для страницы ожидания
+      
       if (requestId) {
         localStorage.setItem('deposit_request_id', String(requestId))
       }
       
-      // Останавливаем таймер - устанавливаем isPaid в true
-      setIsPaid(true)
-      setTimeLeft(0) // Останавливаем таймер
       
-      // Очищаем таймер из localStorage, чтобы при повторном заходе не показывался
+      setIsPaid(true)
+      setTimeLeft(0) 
+      
+      
       localStorage.removeItem('deposit_timer_start')
       
-      // Получаем Telegram ID для сохранения (оптимизированная функция)
+      
       const telegramUserId = getTelegramUserId()
       
-      // Сохраняем текущие данные как "предыдущие" для проверки новой заявки (используем Telegram ID)
+      
       if (telegramUserId) {
         localStorage.setItem('previous_deposit_bookmaker', bookmaker)
         localStorage.setItem('previous_deposit_telegram_user_id', telegramUserId)
         localStorage.setItem('previous_deposit_amount', amount.toString())
       }
       
-      console.log('✅ Заявка создана, перенаправляем на страницу ожидания')
       
-      // Перенаправляем на страницу ожидания
+      
       router.push('/deposit/waiting')
     } catch (e: any) {
       console.error('❌ Ошибка в handleIPaid:', {
@@ -1139,13 +1139,13 @@ export default function DepositStep4() {
         currentState: { isPaid, isCreatingRequest, bookmaker, playerId, amount }
       })
       
-      // Сбрасываем флаг при ошибке, чтобы можно было попробовать снова
+      
       setIsCreatingRequest(false)
       
-      // Показываем понятное сообщение об ошибке
+      
       const errorMessage = e?.message || String(e) || 'Неизвестная ошибка'
       
-      // Определяем тип ошибки для более понятного сообщения
+      
       let userFriendlyMessage = errorMessage
       if (errorMessage.includes('интернет') || errorMessage.includes('connection') || errorMessage.includes('Таймаут') || errorMessage.includes('Failed to fetch')) {
         userFriendlyMessage = language === 'ru'
@@ -1165,10 +1165,9 @@ export default function DepositStep4() {
           : `Error submitting request.\n\n${userFriendlyMessage}\n\nPlease try again or contact support.`
       })
     } finally {
-      // Всегда сбрасываем флаг в finally, чтобы избежать блокировки
-      // Но только если заявка не была успешно создана
+      
+      
       if (!isPaid) {
-        console.log('🔄 Сбрасываем isCreatingRequest в finally')
         setIsCreatingRequest(false)
       }
     }
@@ -1182,12 +1181,12 @@ export default function DepositStep4() {
 
   const handleBankSelect = (bankKey: string) => {
     setBank(bankKey)
-    // Генерируем новые ссылки при смене банка
+    
     generateBankLinksForNumber()
   }
 
 
-  // Функция для получения активного реквизита из админки
+  
   const getActiveRequisite = async (): Promise<{ value: string; bank: string | null; name: string | null } | null> => {
     try {
       const response = await fetch('/api/requisites-proxy', {
@@ -1208,7 +1207,7 @@ export default function DepositStep4() {
         return null
       }
       
-      // Сначала пытаемся найти по active_id из ответа API
+      
       if (data.active_id) {
         const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id)
         if (activeRequisite) {
@@ -1220,7 +1219,7 @@ export default function DepositStep4() {
         }
       }
       
-      // Если active_id нет или не найден, ищем реквизит с флагом is_active: true
+      
       const activeRequisite = data.requisites.find((req: any) => req.is_active === true || req.isActive === true)
       if (activeRequisite) {
         return { 
@@ -1230,7 +1229,7 @@ export default function DepositStep4() {
         }
       }
       
-      // Если активного нет, возвращаем первый реквизит (fallback)
+      
       if (data.requisites.length > 0) {
         const firstRequisite = data.requisites[0]
         return { 
@@ -1246,7 +1245,7 @@ export default function DepositStep4() {
   }
 
 
-  // Базовые ссылки на банки
+  
   const getBaseBankLinks = (): Record<string, string> => ({
     'DemirBank': 'https://retail.demirbank.kg/',
     'O!Money': 'https://api.dengi.o.kg/',
@@ -1262,9 +1261,9 @@ export default function DepositStep4() {
     'mbank': 'https://app.mbank.kg/'
   })
 
-  // Генерируем ссылки на банки
+  
   const generateBankLinksForNumber = () => {
-    // Создаем простые ссылки на банки (всегда генерируем для депозитов)
+    
     const bankLinks: Record<string, string> = {
       'DemirBank': 'https://retail.demirbank.kg/',
       'O!Money': 'https://api.dengi.o.kg/',
@@ -1283,17 +1282,16 @@ export default function DepositStep4() {
     setQrData({
       all_bank_urls: bankLinks,
       settings: {
-        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'], // Компаньон исключен для депозитов
+        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'], 
         deposits_enabled: true
       }
     })
     setPaymentUrl(bankLinks['DemirBank'] || '')
-    console.log('✅ Bank links generated:', bankLinks)
   }
 
 
   const handleBack = () => {
-    // Анимация выхода
+    
     if (typeof window !== 'undefined' && (window as any).pageTransitionExit) {
       (window as any).pageTransitionExit()
       setTimeout(() => {
@@ -1353,7 +1351,7 @@ export default function DepositStep4() {
 
   const t = translations[language as keyof typeof translations] || translations.ru
 
-  // Если депозиты отключены, показываем сообщение о технических работах
+  
   if (!depositsEnabled) {
     return (
       <PageTransition direction="backward">
@@ -1388,7 +1386,7 @@ export default function DepositStep4() {
     <PageTransition direction="backward">
       <main className="space-y-4 min-h-screen flex flex-col">
       <FixedHeaderControls />
-      {/* Заголовок */}
+      
       <div className="text-center space-y-2 fade-in">
         <div className="pr-20">
           <h1 className="text-xl font-bold text-white">{t.title}</h1>
@@ -1396,7 +1394,7 @@ export default function DepositStep4() {
         <p className="text-sm text-white/70">{t.subtitle}</p>
       </div>
 
-      {/* Таймер (только для банковских переводов) */}
+      
       {paymentType === 'bank' && (
         <div className="card text-center pulse">
           <div className="text-3xl font-bold text-red-500 mb-2">
@@ -1406,7 +1404,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Индикатор загрузки крипто invoice */}
+      
       {paymentType === 'crypto' && cryptoLoading && (
         <div className="card text-center">
           <div className="text-white/70">
@@ -1415,7 +1413,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Сообщение об ошибке, если invoice не создан */}
+      
       {paymentType === 'crypto' && !cryptoLoading && !cryptoInvoice && (
         <div className="card text-center bg-red-900/20 border-red-500">
           <div className="text-red-500 text-lg font-semibold mb-2">
@@ -1438,7 +1436,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Debug info */}
+      
       {process.env.NODE_ENV === 'development' && (
         <div className="card text-xs text-white/50">
           <div>paymentType: {paymentType}</div>
@@ -1448,7 +1446,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Crypto Bot Invoice - открытие через Telegram WebApp API внутри Telegram */}
+      
       {paymentType === 'crypto' && cryptoInvoice && (
         <div className="card space-y-4">
           <h2 className="text-lg font-semibold text-white text-center">
@@ -1466,26 +1464,10 @@ export default function DepositStep4() {
               e.preventDefault()
               e.stopPropagation()
               
-              console.log('🔘 Button clicked!')
-              console.log('📦 cryptoInvoice:', cryptoInvoice)
               
               try {
                 const tg = (window as any).Telegram?.WebApp
                 
-                console.log('🔍 Telegram WebApp check:', {
-                  hasTelegram: !!(window as any).Telegram,
-                  hasWebApp: !!tg,
-                  hasOpenInvoice: !!(tg && tg.openInvoice),
-                  hasOpenLink: !!(tg && tg.openLink),
-                  fullTg: tg
-                })
-                
-                // Согласно документации Crypto Bot API:
-                // - bot_invoice_url используется для openInvoice() в Telegram WebApp API
-                // - mini_app_invoice_url предназначен для встраивания через iframe в Mini App
-                // - web_app_invoice_url для веб-версии
-                
-                // Проверяем наличие invoice данных
                 if (!cryptoInvoice) {
                   console.error('❌ cryptoInvoice is null or undefined')
                   showAlert({
@@ -1498,17 +1480,10 @@ export default function DepositStep4() {
                   return
                 }
                 
-                // Для открытия внутри Telegram через openInvoice() используем bot_invoice_url
+                
                 const invoiceUrl = cryptoInvoice.bot_invoice_url || 
                                   cryptoInvoice.mini_app_invoice_url || 
                                   cryptoInvoice.web_app_invoice_url
-                
-                console.log('📋 Invoice URLs:', {
-                  bot_invoice_url: cryptoInvoice.bot_invoice_url,
-                  mini_app_invoice_url: cryptoInvoice.mini_app_invoice_url,
-                  web_app_invoice_url: cryptoInvoice.web_app_invoice_url,
-                  selected: invoiceUrl
-                })
                 
                 if (!invoiceUrl) {
                   console.error('❌ No invoice URL available')
@@ -1522,25 +1497,14 @@ export default function DepositStep4() {
                   return
                 }
 
-                // Согласно документации Crypto Bot API:
-                // mini_app_invoice_url (String) - Use this URL to pay an invoice to the Telegram Mini App version
-                // Это специальный URL для использования внутри Telegram Mini App
+                
                 const miniAppUrl = cryptoInvoice.mini_app_invoice_url
                 
-                console.log('📋 Available invoice URLs:', {
-                  mini_app_invoice_url: miniAppUrl,
-                  bot_invoice_url: cryptoInvoice.bot_invoice_url,
-                  web_app_invoice_url: cryptoInvoice.web_app_invoice_url
-                })
-
-                // Приоритет 1: Используем mini_app_invoice_url через openLink (как указано в документации)
                 if (tg && tg.openLink && miniAppUrl) {
-                  console.log('✅ Using openLink() with mini_app_invoice_url (Telegram Mini App version)')
                   try {
-                    // Согласно документации, mini_app_invoice_url предназначен для Telegram Mini App
-                    // Используем openLink для открытия внутри Telegram
+                    
+                    
                     tg.openLink(miniAppUrl)
-                    console.log('✅ Invoice opened via openLink with mini_app_invoice_url')
                   } catch (error: any) {
                     console.error('❌ Error calling openLink with mini_app_invoice_url:', error)
                     showAlert({
@@ -1552,20 +1516,16 @@ export default function DepositStep4() {
                     })
                   }
                 } 
-                // Приоритет 2: Fallback на bot_invoice_url через openInvoice
+                
                 else if (tg && tg.openInvoice && cryptoInvoice.bot_invoice_url) {
-                  console.log('⚠️ Using openInvoice() with bot_invoice_url (fallback)')
                   try {
                     tg.openInvoice(cryptoInvoice.bot_invoice_url, (status: string) => {
-                      console.log('📊 Invoice payment status:', status)
                       if (status === 'paid' || status === 'completed') {
-                        console.log('✅ Payment successful!')
                         setIsPaid(true)
                         setTimeout(() => {
                           router.push('/deposit/waiting')
                         }, 1000)
                       } else if (status === 'cancelled' || status === 'failed') {
-                        console.log('⚠️ Invoice was cancelled or failed:', status)
                         showAlert({
                           type: 'info',
                           title: language === 'ru' ? 'Информация' : 'Info',
@@ -1586,9 +1546,8 @@ export default function DepositStep4() {
                     })
                   }
                 } 
-                // Приоритет 3: Fallback на web_app_invoice_url
+                
                 else if (tg && tg.openLink && cryptoInvoice.web_app_invoice_url) {
-                  console.log('⚠️ Using openLink() with web_app_invoice_url (fallback)')
                   try {
                     tg.openLink(cryptoInvoice.web_app_invoice_url)
                   } catch (error: any) {
@@ -1602,7 +1561,7 @@ export default function DepositStep4() {
                     })
                   }
                 }
-                // Приоритет 4: Последний fallback - открыть в новой вкладке
+                
                 else {
                   console.warn('⚠️ Telegram WebApp not available, using window.open fallback')
                   const fallbackUrl = miniAppUrl || cryptoInvoice.bot_invoice_url || cryptoInvoice.web_app_invoice_url
@@ -1671,7 +1630,7 @@ export default function DepositStep4() {
               : 'Invoice will open inside Telegram'}
           </div>
           
-          {/* Debug info (only in development) */}
+          
           {process.env.NODE_ENV === 'development' && cryptoInvoice && (
             <div className="text-xs text-white/30 text-center mt-2 p-2 bg-black/20 rounded">
               <div>Invoice ID: {cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || cryptoInvoice.id || 'undefined'}</div>
@@ -1683,7 +1642,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Информация о заявке */}
+      
       <div className="card space-y-3 slide-in-left delay-100">
         <h2 className="text-lg font-semibold text-white">Детали заявки</h2>
         <div className="space-y-2 text-sm">
@@ -1721,8 +1680,7 @@ export default function DepositStep4() {
       </div>
 
 
-
-      {/* Информация о пополнении по номеру */}
+      
       {paymentType === 'bank' && paymentByNumber && (
         <div className="card space-y-4 slide-in-right delay-300">
           <h2 className="text-lg font-semibold text-white">
@@ -1759,7 +1717,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Выбор банка (только для банковских переводов) */}
+      
       {paymentType === 'bank' && (
         <div className="card space-y-4 slide-in-right delay-300">
           <h2 className="text-lg font-semibold text-white">{t.selectBank}</h2>
@@ -1773,7 +1731,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Статус оплаты (только для банковских переводов, для crypto используется страница ожидания) */}
+      
       {isPaid && paymentType === 'bank' && (
         <div className="card text-center bg-green-900/20 border-green-500">
           <div className="text-green-500 text-lg font-semibold mb-2">
@@ -1785,7 +1743,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Загрузка фото чека (если требуется, только для банковских переводов) */}
+      
       {!isPaid && requireReceiptPhoto && paymentType === 'bank' && (
         <div className="card space-y-3">
           <div>
@@ -1864,11 +1822,10 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Большая кнопка "Я оплатил" (для банковских переводов) */}
+      
       {!isPaid && paymentType === 'bank' && (
         <button
           onClick={async (e) => {
-            console.log('🔘 Кнопка "Я оплатил" нажата!', {
               event: e,
               currentTarget: e.currentTarget,
               timestamp: new Date().toISOString(),
@@ -1881,7 +1838,7 @@ export default function DepositStep4() {
             e.preventDefault()
             e.stopPropagation()
             
-            // Дополнительная проверка перед вызовом
+            
             if (isPaid || isCreatingRequest) {
               console.warn('⚠️ Кнопка заблокирована:', { isPaid, isCreatingRequest })
               return
@@ -1915,20 +1872,14 @@ export default function DepositStep4() {
         </button>
       )}
 
-      {/* Большая кнопка "Я оплатил" (для crypto платежей) */}
+      
       {paymentType === 'crypto' && cryptoInvoice && !isPaid && (
         <button
           type="button"
           onClick={async (e) => {
             e.preventDefault()
             e.stopPropagation()
-            console.log('🔘 Кнопка "Я оплатил" нажата для crypto', {
-              isPaid,
-              isCreatingRequest,
-              hasCryptoInvoice: !!cryptoInvoice
-            })
             
-            // Дополнительная проверка перед вызовом
             if (isPaid || isCreatingRequest) {
               console.warn('⚠️ Кнопка заблокирована:', { isPaid, isCreatingRequest })
               return
@@ -1962,7 +1913,7 @@ export default function DepositStep4() {
         </button>
       )}
 
-      {/* Кнопка "Назад" */}
+      
       {!isPaid && (
         <button
           onClick={handleBack}
@@ -1972,7 +1923,7 @@ export default function DepositStep4() {
         </button>
       )}
 
-      {/* Инструкция для банковских переводов */}
+      
       {paymentType === 'bank' && (
         <div className="card space-y-4">
           <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>
@@ -1989,7 +1940,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Инструкция для крипты */}
+      
       {paymentType === 'crypto' && cryptoInvoice && (
         <div className="card space-y-4">
           <h2 className="text-lg font-semibold text-white">
@@ -2030,7 +1981,7 @@ export default function DepositStep4() {
         </div>
       )}
 
-      {/* Кастомный алерт */}
+      
       {AlertComponent}
     </main>
     </PageTransition>
