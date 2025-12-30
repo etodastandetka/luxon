@@ -22,6 +22,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Отключаем спам от httpx (только WARNING и ERROR)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 # Токен бота
 BOT_TOKEN = "7927891546:AAHyroAGoOIV6qKFAnZur13i8gvw2hMnJ-4"
 
