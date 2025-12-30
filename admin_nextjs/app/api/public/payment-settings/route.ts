@@ -39,6 +39,11 @@ export async function GET(request: NextRequest) {
       response.headers.set('Access-Control-Allow-Origin', '*')
       return response
     }
+    
+    // Получаем telegram_user_id из query параметров (если передан)
+    const { searchParams } = new URL(request.url)
+    const telegramUserId = searchParams.get('user_id')
+    
     // Получаем настройки из BotConfiguration
     const configs = await prisma.botConfiguration.findMany()
     const settingsMap: Record<string, any> = {}
@@ -56,16 +61,41 @@ export async function GET(request: NextRequest) {
       settingsMap[config.key] = value
     })
 
+    // Получаем список админов (telegram_user_id)
+    let adminIds = settingsMap.admin_telegram_ids || settingsMap.admin_ids || []
+    // Если это строка, пытаемся распарсить как JSON массив
+    if (typeof adminIds === 'string') {
+      try {
+        adminIds = JSON.parse(adminIds)
+      } catch {
+        // Если не JSON, разбиваем по запятой
+        adminIds = adminIds.split(',').map((id: string) => id.trim()).filter((id: string) => id.length > 0)
+      }
+    }
+    const adminIdsArray = Array.isArray(adminIds) ? adminIds : []
+    const isAdmin = telegramUserId && adminIdsArray.includes(telegramUserId.toString())
+
     // Получаем настройки депозитов
-    const depositSettings = settingsMap.deposit_settings || settingsMap.deposits || {
+    let depositSettings = settingsMap.deposit_settings || settingsMap.deposits || {
       enabled: true,
       banks: ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay']
     }
 
     // Получаем настройки выводов
-    const withdrawalSettings = settingsMap.withdrawal_settings || settingsMap.withdrawals || {
+    let withdrawalSettings = settingsMap.withdrawal_settings || settingsMap.withdrawals || {
       enabled: true,
       banks: ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
+    }
+    
+    // Если пользователь админ - всегда включаем депозиты и выводы
+    if (isAdmin) {
+      depositSettings = typeof depositSettings === 'object' 
+        ? { ...depositSettings, enabled: true }
+        : { enabled: true, banks: ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay'] }
+      
+      withdrawalSettings = typeof withdrawalSettings === 'object'
+        ? { ...withdrawalSettings, enabled: true }
+        : { enabled: true, banks: ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank'] }
     }
 
     // Получаем настройки казино

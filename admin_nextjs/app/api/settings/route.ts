@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       channel_id: typeof channelSettings === 'object' ? channelSettings.channel_id || '' : '',
       deposit_video_url: settingsMap.deposit_video_url || '',
       withdraw_video_url: settingsMap.withdraw_video_url || '',
+      admin_telegram_ids: settingsMap.admin_telegram_ids || '',
     }
 
     return NextResponse.json(createApiResponse(settings))
@@ -136,6 +137,20 @@ export async function POST(request: NextRequest) {
 
     if (body.withdraw_video_url !== undefined) {
       await updateSetting('withdraw_video_url', body.withdraw_video_url, 'URL видео инструкции по выводу')
+    }
+
+    if (body.admin_telegram_ids !== undefined) {
+      // Преобразуем строку с ID через запятую в JSON массив
+      let adminIds: string[] = []
+      if (body.admin_telegram_ids && typeof body.admin_telegram_ids === 'string') {
+        adminIds = body.admin_telegram_ids
+          .split(',')
+          .map((id: string) => id.trim())
+          .filter((id: string) => id.length > 0)
+      } else if (Array.isArray(body.admin_telegram_ids)) {
+        adminIds = body.admin_telegram_ids
+      }
+      await updateSetting('admin_telegram_ids', adminIds, 'Telegram ID админов (пополнения и выводы всегда включены)')
     }
 
     return NextResponse.json(

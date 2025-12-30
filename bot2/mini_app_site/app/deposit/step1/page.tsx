@@ -29,7 +29,13 @@ export default function DepositStep1() {
     async function checkSettings() {
       try {
         const base = getApiBase()
-        const res = await fetch(`${base}/api/public/payment-settings`, { 
+        // Получаем Telegram ID пользователя для проверки админа
+        const { getTelegramUserId } = await import('../../../utils/telegram')
+        const telegramUserId = getTelegramUserId()
+        const url = telegramUserId 
+          ? `${base}/api/public/payment-settings?user_id=${telegramUserId}`
+          : `${base}/api/public/payment-settings`
+        const res = await fetch(url, { 
           cache: 'no-store'
         })
         

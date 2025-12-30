@@ -166,8 +166,62 @@ export async function POST(request: NextRequest) {
     })
 
     // 🛡️ КРИТИЧНАЯ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: проверяем ДО создания заявки
-    // Для ВЫВОДА: если у пользователя уже есть pending заявка - БЛОКИРУЕМ создание новой
+    // Для ВЫВОДА: проверяем, включены ли выводы и нет ли уже pending заявки
     if (type === 'withdraw' && finalUserId) {
+      // Проверяем настройки выводов
+      const configs = await prisma.botConfiguration.findMany()
+      const settingsMap: Record<string, any> = {}
+      
+      configs.forEach((config) => {
+        let value: any = config.value
+        if (typeof value === 'string') {
+          try {
+            value = JSON.parse(value)
+          } catch {
+            // Если не JSON, оставляем как строку
+          }
+        }
+        settingsMap[config.key] = value
+      })
+
+      // Получаем настройки выводов
+      const withdrawalSettings = settingsMap.withdrawal_settings || settingsMap.withdrawals || {
+        enabled: true,
+        banks: []
+      }
+
+      // Получаем список админов
+      let adminIds = settingsMap.admin_telegram_ids || []
+      if (typeof adminIds === 'string') {
+        try {
+          adminIds = JSON.parse(adminIds)
+        } catch {
+          adminIds = adminIds.split(',').map((id: string) => id.trim()).filter((id: string) => id.length > 0)
+        }
+      }
+      const adminIdsArray = Array.isArray(adminIds) ? adminIds : []
+      const isAdmin = finalUserId && adminIdsArray.includes(finalUserId.toString())
+
+      // Проверяем, включены ли выводы
+      const withdrawalsEnabled = typeof withdrawalSettings === 'object' 
+        ? withdrawalSettings.enabled !== false 
+        : withdrawalSettings !== false
+
+      // Если выводы отключены и пользователь не админ - блокируем
+      if (!withdrawalsEnabled && !isAdmin) {
+        console.error(`🚫 [Payment API] BLOCKED: Withdrawals disabled for user ${finalUserId}`)
+        return NextResponse.json(
+          createApiResponse(null, 'Вывод средств временно недоступен. Попробуйте позже.'),
+          {
+            status: 403,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
+      }
+
+      // Проверяем, нет ли уже pending заявки
       const existingPendingWithdraw = await prisma.request.findFirst({
         where: {
           userId: BigInt(finalUserId),

@@ -17,7 +17,13 @@ export default function WithdrawStep1() {
     async function loadWithdrawalSettings() {
       try {
         const base = getApiBase()
-        const res = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
+        // Получаем Telegram ID пользователя для проверки админа
+        const { getTelegramUserId } = await import('../../../utils/telegram')
+        const telegramUserId = getTelegramUserId()
+        const url = telegramUserId 
+          ? `${base}/api/public/payment-settings?user_id=${telegramUserId}`
+          : `${base}/api/public/payment-settings`
+        const res = await fetch(url, { cache: 'no-store' })
         const data = await res.json()
         if (data && data.withdrawals && data.withdrawals.banks && Array.isArray(data.withdrawals.banks)) {
           const bankCodeMapping: Record<string, string> = {

@@ -58,10 +58,20 @@ export default function WithdrawStep0() {
     async function checkSettings() {
       try {
         const base = getApiBase()
-        const res = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
+        // Получаем Telegram ID пользователя для проверки админа
+        const { getTelegramUserId } = await import('../../../utils/telegram')
+        const telegramUserId = getTelegramUserId()
+        const url = telegramUserId 
+          ? `${base}/api/public/payment-settings?user_id=${telegramUserId}`
+          : `${base}/api/public/payment-settings`
+        const res = await fetch(url, { cache: 'no-store' })
         const data = await res.json()
         if (data && data.withdrawals) {
-          setWithdrawalsEnabled(data.withdrawals.enabled !== false)
+          // Проверяем enabled строго - если false, то отключено
+          setWithdrawalsEnabled(data.withdrawals.enabled === true)
+        } else {
+          // Если настройки не получены, по умолчанию отключаем
+          setWithdrawalsEnabled(false)
         }
         if (data && data.casinos) {
           // Формируем список отключенных казино

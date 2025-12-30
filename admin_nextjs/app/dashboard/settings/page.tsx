@@ -22,6 +22,7 @@ interface Settings {
   channel_id: string
   deposit_video_url: string
   withdraw_video_url: string
+  admin_telegram_ids: string
 }
 
 const DEPOSIT_BANKS = [
@@ -57,7 +58,12 @@ export default function SettingsPage() {
       const data = await response.json()
 
       if (data.success) {
-        setSettings(data.data)
+        const settingsData = data.data
+        // Преобразуем admin_telegram_ids из массива в строку для отображения
+        if (Array.isArray(settingsData.admin_telegram_ids)) {
+          settingsData.admin_telegram_ids = settingsData.admin_telegram_ids.join(', ')
+        }
+        setSettings(settingsData)
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error)
@@ -385,6 +391,32 @@ export default function SettingsPage() {
               placeholder="-1001234567890"
             />
             <p className="text-xs text-gray-400 mt-1">Введите ID канала (например: -1001234567890). Можно получить через @userinfobot</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Настройки админов */}
+      <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-4 border border-gray-700 backdrop-blur-sm">
+        <h2 className="text-base font-bold text-white mb-4">Админы</h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Telegram ID админов
+            </label>
+            <input
+              type="text"
+              value={settings.admin_telegram_ids || ''}
+              onChange={(e) => updateSetting('admin_telegram_ids', e.target.value)}
+              className="w-full bg-gray-900 text-white border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="123456789, 987654321"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Введите Telegram ID админов через запятую. Админы всегда могут пополнять и выводить, даже если функции отключены для остальных.
+            </p>
+            <p className="text-xs text-yellow-400 mt-1">
+              💡 Чтобы узнать свой Telegram ID, напишите боту @userinfobot
+            </p>
           </div>
         </div>
       </div>
