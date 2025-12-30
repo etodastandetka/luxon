@@ -159,26 +159,49 @@ function LuxOnSlots({
   const betAmount = 10
   const maxWin = 100
 
-  const reelStatesRef = useRef<string[][]>([
-    ["🍒", "🍒", "🍒", "🍋", "🍋", "🍉"],
-    ["🍒", "🍋", "🍋", "🍉", "🍒", "7️⃣"],
-    ["🍒", "7️⃣", "🍋", "🍒", "🍓", "🍋"],
-  ])
+  const spinningStatesRef = useRef<boolean[]>([false, false, false])
+  const finalPositionsRef = useRef<number[]>([0, 0, 0])
 
-  const renderReel = useCallback((index: number) => {
+  const renderReel = useCallback((index: number, finalSymbol?: string) => {
     const el = reelsRef.current[index]
     if (!el) return
-    const state = reelStatesRef.current[index]
+    
+    // Создаем длинный список символов для плавного вращения
+    const extendedSymbols: string[] = []
+    for (let i = 0; i < 50; i++) {
+      extendedSymbols.push(symbols[Math.floor(Math.random() * symbols.length)])
+    }
+    
+    // Если указан финальный символ, вставляем его в нужную позицию
+    if (finalSymbol) {
+      const targetIndex = 20 // Позиция, где будет виден символ после остановки
+      extendedSymbols[targetIndex] = finalSymbol
+      extendedSymbols[targetIndex + 1] = finalSymbol
+      extendedSymbols[targetIndex + 2] = finalSymbol
+    }
+    
+    // Создаем контейнер для символов
+    let container = el.querySelector('.lux-reel-container') as HTMLDivElement
+    if (!container) {
+      container = document.createElement("div")
+      container.className = "lux-reel-container"
+      el.innerHTML = ""
+      el.appendChild(container)
+    } else {
+      container.innerHTML = ""
+    }
+    
     const frag = document.createDocumentFragment()
-    for (let i = 0; i < state.length; i++) {
+    extendedSymbols.forEach((symbol, i) => {
       const d = document.createElement("div")
       d.className = "lux-symbol"
-      d.textContent = state[i]
+      d.textContent = symbol
+      d.setAttribute("data-index", i.toString())
       frag.appendChild(d)
-    }
-    el.innerHTML = ""
-    el.appendChild(frag)
-  }, [])
+    })
+    
+    container.appendChild(frag)
+  }, [symbols])
 
   const renderAll = useCallback(() => {
     renderReel(0)
@@ -234,13 +257,20 @@ function LuxOnSlots({
   }, [])
 
   const checkWin = useCallback(() => {
-    const s0 = reelStatesRef.current.map((r) => r[0])
-    const s1 = reelStatesRef.current.map((r) => r[1])
+    // Получаем символы из финальных позиций
+    const reel0 = reelsRef.current[0]
+    const reel1 = reelsRef.current[1]
+    const reel2 = reelsRef.current[2]
+    
+    if (!reel0 || !reel1 || !reel2) return
+    
+    const symbol0 = reel0.querySelector('[data-index="20"]')?.textContent || ""
+    const symbol1 = reel1.querySelector('[data-index="20"]')?.textContent || ""
+    const symbol2 = reel2.querySelector('[data-index="20"]')?.textContent || ""
+    
+    const win = symbol0 === symbol1 && symbol1 === symbol2
 
-    const winTop = s0[0] === s0[1] && s0[1] === s0[2]
-    const winSecond = s1[0] === s1[1] && s1[1] === s1[2]
-
-    if (winTop || winSecond) {
+    if (win) {
       const payout = Math.min(betAmount * 5, maxWin)
       setBalance((b) => b + payout)
       playWinSound()
@@ -251,30 +281,39 @@ function LuxOnSlots({
   }, [betAmount, maxWin, language, playWinSound])
 
   const spinReel = useCallback(
-    (index: number) => {
+    (index: number, finalSymbol: string) => {
       const reel = reelsRef.current[index]
       if (!reel) return Promise.resolve()
-      const base = reelStatesRef.current[index]
-      const spinCount = 12 + Math.floor(Math.random() * 7)
-      let current = 0
-
+      
+      spinningStatesRef.current[index] = true
+      reel.classList.add("lux-reel-spinning")
+      
+      // Определяем финальную позицию (в пикселях)
+      const symbolHeight = 50 // высота символа + gap
+      const targetPosition = 20 * symbolHeight // позиция 20-го символа
+      finalPositionsRef.current[index] = targetPosition
+      
+      // Устанавливаем финальный символ
+      renderReel(index, finalSymbol)
+      
+      // Запускаем анимацию
+      const spinDuration = 2000 + index * 300 + Math.random() * 500 // разная длительность для каждого барабана
+      reel.style.setProperty("--spin-duration", `${spinDuration}ms`)
+      reel.style.setProperty("--target-position", `-${targetPosition}px`)
+      
       return new Promise<void>((resolve) => {
-        const interval = window.setInterval(() => {
-          const next = base.slice()
-          next.unshift(next.pop() as string)
-          next[0] = symbols[Math.floor(Math.random() * symbols.length)]
-          reelStatesRef.current[index] = next
-          renderReel(index)
-
-          current++
-          if (current >= spinCount) {
-            window.clearInterval(interval)
-            resolve()
+        setTimeout(() => {
+          spinningStatesRef.current[index] = false
+          reel.classList.remove("lux-reel-spinning")
+          const container = reel.querySelector('.lux-reel-container') as HTMLElement
+          if (container) {
+            container.style.transform = `translateY(-${targetPosition}px)`
           }
-        }, 55 + index * 35)
+          resolve()
+        }, spinDuration)
       })
     },
-    [renderReel, symbols]
+    [renderReel]
   )
 
   const spin = useCallback(async () => {
@@ -290,14 +329,24 @@ function LuxOnSlots({
 
     playReelSound()
 
-    await spinReel(0)
-    await spinReel(1)
-    await spinReel(2)
+    // Генерируем случайные финальные символы
+    const finalSymbols = [
+      symbols[Math.floor(Math.random() * symbols.length)],
+      symbols[Math.floor(Math.random() * symbols.length)],
+      symbols[Math.floor(Math.random() * symbols.length)]
+    ]
+
+    // Запускаем все барабаны почти одновременно, но с небольшой задержкой
+    await Promise.all([
+      spinReel(0, finalSymbols[0]),
+      new Promise(resolve => setTimeout(() => spinReel(1, finalSymbols[1]).then(resolve), 100)),
+      new Promise(resolve => setTimeout(() => spinReel(2, finalSymbols[2]).then(resolve), 200))
+    ])
 
     stopSounds()
     spinningRef.current = false
     checkWin()
-  }, [balance, betAmount, language, playReelSound, spinReel, stopSounds, checkWin])
+  }, [balance, betAmount, language, playReelSound, spinReel, stopSounds, checkWin, symbols])
 
   const resetBalance = useCallback(() => {
     const v = 1000
@@ -324,16 +373,6 @@ function LuxOnSlots({
           <div className="lux-balance-val">
             {Math.max(0, Math.floor(balance)).toLocaleString("ru-RU")} <span className="lux-token">LuxToken</span>
           </div>
-        </div>
-      </div>
-
-      <div className="lux-meta">
-        <div className="lux-chip">{language === "en" ? `Bet: ${betAmount}` : `Ставка: ${betAmount}`} LuxToken</div>
-        <div className="lux-chip lux-chip-soft">
-          {language === "en" ? `Max win: ${maxWin}` : `Макс. выигрыш: ${maxWin}`} LuxToken
-        </div>
-        <div className="lux-chip lux-chip-soft">
-          {language === "en" ? "Rate: 1,000,000 = 10 som" : "Курс: 1 000 000 LuxToken = 10 сом"}
         </div>
       </div>
 
@@ -1304,22 +1343,69 @@ export default function HomePage() {
           background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.16));
           box-shadow: 0px 14px 15px -5px rgba(0, 0, 0, 0.30) inset, 1px -14px 15px -5px rgba(0, 0, 0, 0.30) inset;
           overflow: hidden;
+          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 14px 0;
+          justify-content: flex-start;
+          padding: 0;
+        }
+
+        .lux-reel::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 60px;
+          background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent);
+          z-index: 2;
+          pointer-events: none;
+        }
+
+        .lux-reel::after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 60px;
+          background: linear-gradient(0deg, rgba(0, 0, 0, 0.4), transparent);
+          z-index: 2;
+          pointer-events: none;
+        }
+
+        .lux-reel-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          transition: transform 0.1s linear;
+          will-change: transform;
+        }
+
+        .lux-reel-spinning .lux-reel-container {
+          animation: lux-reel-spin var(--spin-duration, 2000ms) cubic-bezier(0.17, 0.67, 0.12, 0.99) forwards;
+        }
+
+        @keyframes lux-reel-spin {
+          0% {
+            transform: translateY(0);
+          }
+          100% {
+            transform: translateY(var(--target-position, -1000px));
+          }
         }
 
         .lux-symbol {
           font-size: 34px;
           line-height: 1;
-          height: 40px;
+          height: 50px;
+          min-height: 50px;
           display: grid;
           place-items: center;
           opacity: 0.78;
           filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.30));
+          flex-shrink: 0;
         }
 
         .lux-controls {
