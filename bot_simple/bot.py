@@ -588,7 +588,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             keyboard = []
                             bank_names_map = {
                                 'demirbank': 'DemirBank',
-                                'demir': 'DemirBank',
                                 'omoney': 'O!Money',
                                 'balance': 'Balance.kg',
                                 'bakai': 'Bakai',
@@ -598,11 +597,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             
                             # Создаем кнопки для всех банков с URL ссылками (как на втором фото)
                             all_banks_list = []
+                            added_banks = set()  # Отслеживаем уже добавленные банки
                             for bank_key, bank_name in bank_names_map.items():
                                 # Проверяем, есть ли ссылка для этого банка
                                 bank_link = bank_links.get(bank_key) or bank_links.get(bank_name)
-                                if bank_link:
-                                    is_enabled = bank_key in enabled_banks or 'demir' in bank_key.lower()
+                                # Также проверяем варианты с 'demir' для demirbank
+                                if not bank_link and bank_key == 'demirbank':
+                                    bank_link = bank_links.get('demir') or bank_links.get('DemirBank')
+                                
+                                if bank_link and bank_name not in added_banks:
+                                    added_banks.add(bank_name)  # Помечаем банк как добавленный
+                                    is_enabled = bank_key in enabled_banks or 'demir' in bank_key.lower() or 'demirbank' in enabled_banks
                                     if is_enabled:
                                         # Кнопка с URL - сразу открывает ссылку на оплату
                                         all_banks_list.append(InlineKeyboardButton(bank_name, url=bank_link))
@@ -1686,7 +1691,6 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 keyboard = []
                 bank_names_map = {
                     'demirbank': 'DemirBank',
-                    'demir': 'DemirBank',
                     'omoney': 'O!Money',
                     'balance': 'Balance.kg',
                     'bakai': 'Bakai',
@@ -1695,10 +1699,16 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 }
                 
                 all_banks_list = []
+                added_banks = set()  # Отслеживаем уже добавленные банки
                 for bank_key, bank_name in bank_names_map.items():
                     bank_link = bank_links.get(bank_key) or bank_links.get(bank_name)
-                    if bank_link:
-                        is_enabled = bank_key in enabled_banks or 'demir' in bank_key.lower()
+                    # Также проверяем варианты с 'demir' для demirbank
+                    if not bank_link and bank_key == 'demirbank':
+                        bank_link = bank_links.get('demir') or bank_links.get('DemirBank')
+                    
+                    if bank_link and bank_name not in added_banks:
+                        added_banks.add(bank_name)  # Помечаем банк как добавленный
+                        is_enabled = bank_key in enabled_banks or 'demir' in bank_key.lower() or 'demirbank' in enabled_banks
                         if is_enabled:
                             # Кнопка с URL - сразу открывает ссылку на оплату
                             all_banks_list.append(InlineKeyboardButton(bank_name, url=bank_link))
