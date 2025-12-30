@@ -310,9 +310,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            # Отправляем Reply клавиатуру отдельным сообщением без текста (edit_message_text не поддерживает Reply клавиатуру)
+            # Отправляем Reply клавиатуру отдельным сообщением (edit_message_text не поддерживает Reply клавиатуру)
             await update.message.reply_text(
-                " ",
+                "\u200B",  # Невидимый символ (zero-width space)
                 reply_markup=reply_markup_keyboard
             )
         else:
@@ -348,9 +348,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            # Отправляем Reply клавиатуру отдельным сообщением без текста (edit_message_text не поддерживает Reply клавиатуру)
+            # Отправляем Reply клавиатуру отдельным сообщением (edit_message_text не поддерживает Reply клавиатуру)
             await update.message.reply_text(
-                " ",
+                "\u200B",  # Невидимый символ (zero-width space)
                 reply_markup=reply_markup_keyboard
             )
         return
@@ -615,7 +615,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             )
                             # Отправляем Reply клавиатуру отдельным сообщением
                             await update.message.reply_text(
-                                " ",
+                                "\u200B",  # Невидимый символ (zero-width space)
                                 reply_markup=reply_markup_keyboard
                             )
                             # Сохраняем данные для последующего обновления фото чека
