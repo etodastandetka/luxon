@@ -336,18 +336,52 @@ function LuxOnSlots({
       reel.style.setProperty("--target-position", `${targetPosition}px`)
       
       return new Promise<void>((resolve) => {
-        setTimeout(() => {
+        const container = reel.querySelector('.lux-reel-container') as HTMLElement
+        if (!container) {
           spinningStatesRef.current[index] = false
           reel.classList.remove("lux-reel-spinning")
-          const container = reel.querySelector('.lux-reel-container') as HTMLElement
-          if (container) {
-            // Устанавливаем финальную позицию после анимации
-            container.style.transform = `translateY(${targetPosition}px)`
-            // Убеждаемся, что стиль применен
-            container.offsetHeight // force reflow
-          }
           resolve()
-        }, spinDuration)
+          return
+        }
+        
+        const handleAnimationEnd = (e: AnimationEvent) => {
+          // Проверяем, что это событие от нашего контейнера
+          if (e.target !== container) return
+          
+          spinningStatesRef.current[index] = false
+          reel.classList.remove("lux-reel-spinning")
+          
+          // Устанавливаем финальную позицию после завершения анимации
+          container.style.transform = `translateY(${targetPosition}px)`
+          container.style.transition = 'none'
+          // Принудительный reflow
+          void container.offsetHeight
+          // Восстанавливаем transition для будущих анимаций
+          setTimeout(() => {
+            container.style.transition = ''
+          }, 50)
+          
+          container.removeEventListener('animationend', handleAnimationEnd as EventListener)
+          resolve()
+        }
+        
+        container.addEventListener('animationend', handleAnimationEnd as EventListener, { once: true })
+        
+        // Fallback на случай, если событие не сработает
+        setTimeout(() => {
+          if (spinningStatesRef.current[index]) {
+            spinningStatesRef.current[index] = false
+            reel.classList.remove("lux-reel-spinning")
+            container.style.transform = `translateY(${targetPosition}px)`
+            container.style.transition = 'none'
+            void container.offsetHeight
+            setTimeout(() => {
+              container.style.transition = ''
+            }, 50)
+            container.removeEventListener('animationend', handleAnimationEnd as EventListener)
+            resolve()
+          }
+        }, spinDuration + 200)
       })
     },
     [renderReel]
@@ -1432,14 +1466,15 @@ export default function HomePage() {
 
         .lux-reel-spinning .lux-reel-container {
           animation: lux-reel-spin var(--spin-duration, 2000ms) cubic-bezier(0.17, 0.67, 0.12, 0.99) forwards;
+          animation-fill-mode: forwards;
         }
 
         @keyframes lux-reel-spin {
           0% {
-            transform: translateY(var(--start-position, -2000px));
+            transform: translateY(var(--start-position, -2000px)) !important;
           }
           100% {
-            transform: translateY(var(--target-position, 0px));
+            transform: translateY(var(--target-position, 0px)) !important;
           }
         }
 
