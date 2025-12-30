@@ -4,7 +4,7 @@ import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 import { sendTelegramGroupMessage } from '@/lib/telegram-group'
 
 // Функция для отправки уведомления пользователю в Telegram
-async function sendTelegramNotification(userId: bigint, message: string) {
+async function sendTelegramNotification(userId: bigint, message: string, withMenuButton: boolean = false) {
   try {
     const botToken = process.env.BOT_TOKEN
     if (!botToken) {
@@ -13,16 +13,30 @@ async function sendTelegramNotification(userId: bigint, message: string) {
     }
 
     const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+    const body: any = {
+      chat_id: userId.toString(),
+      text: message,
+      parse_mode: 'HTML',
+    }
+
+    // Добавляем inline кнопку "В главное меню" если нужно
+    if (withMenuButton) {
+      body.reply_markup = {
+        inline_keyboard: [[
+          {
+            text: '🏠 В главное меню',
+            callback_data: 'back_to_menu'
+          }
+        ]]
+      }
+    }
+
     const response = await fetch(sendMessageUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        chat_id: userId.toString(),
-        text: message,
-        parse_mode: 'HTML',
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -252,6 +266,10 @@ export async function PATCH(
     if (body.processedAt !== undefined) {
       updateData.processedAt = body.processedAt ? new Date(body.processedAt) : null
     }
+    // Обновление фото чека
+    if (body.photoFileUrl !== undefined) {
+      updateData.photoFileUrl = body.photoFileUrl
+    }
 
     // Получаем заявку до обновления для отправки уведомления
     const requestBeforeUpdate = await prisma.request.findUnique({
@@ -283,6 +301,52 @@ export async function PATCH(
       where: { id },
       data: updateData,
     })
+
+    // Отправляем уведомления при изменении статуса
+    // Проверяем, создана ли заявка через бота (если source = 'bot' или нет source и есть userId)
+    // Для мини-приложения уведомления не отправляем (они получают уведомления через мини-приложение)
+    if (body.status && ['completed', 'rejected', 'approved'].includes(body.status)) {
+      // Проверяем источник заявки - если source = 'bot' или нет source (старые заявки), отправляем уведомление
+      const source = (requestBeforeUpdate as any).source
+      const isFromBot = source === 'bot' || !source
+      
+      if (isFromBot && requestBeforeUpdate.userId) {
+        let notificationMessage = ''
+        
+        if (body.status === 'completed' || body.status === 'approved') {
+          if (requestBeforeUpdate.requestType === 'deposit') {
+            notificationMessage = `✅ <b>Ваш баланс пополнен!</b>\n\n` +
+              `💰 Сумма: ${requestBeforeUpdate.amount} сом\n` +
+              `🎰 Казино: ${requestBeforeUpdate.bookmaker?.toUpperCase() || 'N/A'}\n` +
+              `🆔 ID заявки: #${id}`
+          } else if (requestBeforeUpdate.requestType === 'withdraw') {
+            notificationMessage = `✅ <b>Заявка на вывод одобрена!</b>\n\n` +
+              `💰 Сумма: ${requestBeforeUpdate.amount} сом\n` +
+              `🎰 Казино: ${requestBeforeUpdate.bookmaker?.toUpperCase() || 'N/A'}\n` +
+              `🆔 ID заявки: #${id}`
+          }
+        } else if (body.status === 'rejected') {
+          notificationMessage = `❌ <b>Заявка отклонена</b>\n\n` +
+            `💰 Сумма: ${requestBeforeUpdate.amount} сом\n` +
+            `🎰 Казино: ${requestBeforeUpdate.bookmaker?.toUpperCase() || 'N/A'}\n` +
+            `🆔 ID заявки: #${id}`
+          
+          if (body.statusDetail) {
+            notificationMessage += `\n\nПричина: ${body.statusDetail}`
+          }
+        }
+        
+        if (notificationMessage) {
+          // Отправляем уведомление асинхронно, не блокируя ответ
+          // Для completed/approved добавляем кнопку "В главное меню"
+          const withMenuButton = (body.status === 'completed' || body.status === 'approved')
+          sendTelegramNotification(requestBeforeUpdate.userId, notificationMessage, withMenuButton)
+            .catch(error => {
+              console.error(`❌ Failed to send notification for request ${id}:`, error)
+            })
+        }
+      }
+    }
 
     // Уведомления в группу для выводов отключены по запросу пользователя
 
