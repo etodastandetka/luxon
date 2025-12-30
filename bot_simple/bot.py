@@ -1859,21 +1859,23 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                 await start(update, context)
                 return
         
-        # Создаем заявку
+        # Создаем заявку (используем те же поля, что и в клиентском сайте)
         user = update.effective_user
         request_body = {
+            "type": "withdraw",  # Как в клиентском сайте
             "telegram_user_id": str(user_id),
-            "request_type": "withdraw",
+            "userId": str(user_id),  # Добавляем userId как в клиентском сайте
             "amount": withdraw_amount,
             "bookmaker": bookmaker,
             "bank": data['bank'],
             "phone": data['phone'],
             "account_id": data['player_id'],
+            "playerId": data['player_id'],  # Добавляем playerId как в клиентском сайте
             "telegram_username": user.username,
             "telegram_first_name": user.first_name,
             "telegram_last_name": user.last_name,
-            "receipt_photo": qr_photo_base64,
-            "withdrawal_code": data['code'],
+            "qr_photo": qr_photo_base64,  # Используем qr_photo как в клиентском сайте
+            "site_code": data['code'],  # Используем site_code как в клиентском сайте (основное поле)
             "source": "bot"
         }
         
