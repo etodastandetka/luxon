@@ -657,22 +657,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             data['timer_chat_id'] = timer_message.chat.id
                             user_states[user_id]['data'] = data
                             
-                            # Отправляем Reply клавиатуру отдельным сообщением (без видимого текста)
+                            # Отправляем Reply клавиатуру отдельным сообщением
                             try:
                                 await update.message.reply_text(
-                                    "\u200B",  # Невидимый символ (zero-width space)
+                                    "💳 Выберите банк для оплаты:",
                                     reply_markup=reply_markup_keyboard
                                 )
                             except Exception as e:
-                                logger.warning(f"⚠️ Не удалось отправить Reply клавиатуру с невидимым символом: {e}")
-                                # Если не получилось, пробуем с пробелом
-                                try:
-                                    await update.message.reply_text(
-                                        " ",
-                                        reply_markup=reply_markup_keyboard
-                                    )
-                                except Exception as e2:
-                                    logger.warning(f"⚠️ Не удалось отправить Reply клавиатуру: {e2}")
+                                logger.warning(f"⚠️ Не удалось отправить Reply клавиатуру: {e}")
                             
                             # Сохраняем ссылки в состоянии для последующего использования
                             user_states[user_id]['data']['bank_links'] = bank_links
@@ -1315,6 +1307,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await query.answer("⚠️ Данное казино временно недоступно", show_alert=True)
             return
         
+        # Проверяем, существует ли состояние пользователя
+        if user_id not in user_states:
+            user_states[user_id] = {
+                'step': 'deposit_player_id',
+                'data': {}
+            }
+        
         user_states[user_id]['data']['bookmaker'] = bookmaker
         user_states[user_id]['step'] = 'deposit_player_id'
         
@@ -1435,6 +1434,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await query.answer("⚠️ Данный банк временно недоступен для вывода", show_alert=True)
             return
         
+        # Проверяем, существует ли состояние пользователя
+        if user_id not in user_states:
+            user_states[user_id] = {
+                'step': 'withdraw_phone',
+                'data': {}
+            }
+        
         user_states[user_id]['data']['bank'] = bank
         user_states[user_id]['step'] = 'withdraw_phone'
         
@@ -1460,8 +1466,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
         reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
         
+        bookmaker_name = user_states[user_id]['data'].get('bookmaker', '').upper() if user_id in user_states else ''
         await query.message.reply_text(
-            f"💸 <b>Вывод средств</b>\n\nКазино: {user_states[user_id]['data']['bookmaker'].upper()}\nБанк: {bank}\n\nВведите номер телефона (начинается с +996):",
+            f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker_name}\nБанк: {bank}\n\nВведите номер телефона (начинается с +996):",
             parse_mode='HTML',
             reply_markup=reply_markup
         )
@@ -1655,7 +1662,10 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
             # Проверяем, не была ли заявка уже создана (если создана, останавливаем таймер)
             if user_id not in user_states:
                 logger.info(f"⏹️ Таймер остановлен для пользователя {user_id} - состояние очищено")
-                return
+                # Удаляем таймер из активных
+                if user_id in active_timers:
+                    del active_timers[user_id]
+                break  # Используем break вместо return для корректного завершения
             
             current_state = user_states.get(user_id, {})
             current_step = current_state.get('step', '')
@@ -1663,7 +1673,10 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
             # Если заявка уже создана (отправлено фото), останавливаем таймер
             if current_step != 'deposit_bank' and current_step != 'deposit_receipt_photo':
                 logger.info(f"⏹️ Таймер остановлен для пользователя {user_id} - заявка создана")
-                return
+                # Удаляем таймер из активных
+                if user_id in active_timers:
+                    del active_timers[user_id]
+                break  # Используем break вместо return для корректного завершения
             
             # Вычисляем оставшееся время
             elapsed = int(asyncio.get_event_loop().time() - start_time)
@@ -1782,11 +1795,18 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 logger.error(f"❌ Ошибка при отправке сообщения об отмене для пользователя {user_id}: {e}")
     except asyncio.CancelledError:
         logger.info(f"⏹️ Таймер отменен для пользователя {user_id}")
+        # Удаляем таймер из активных
+        if user_id in active_timers:
+            del active_timers[user_id]
     except Exception as e:
         logger.error(f"❌ Ошибка в таймере для пользователя {user_id}: {e}", exc_info=True)
         # Очищаем состояние при ошибке
         if user_id in user_states:
             del user_states[user_id]
+        if user_id in active_timers:
+            del active_timers[user_id]
+    finally:
+        # Гарантируем, что таймер удален из активных
         if user_id in active_timers:
             del active_timers[user_id]
 
