@@ -648,33 +648,35 @@ export default function NewWithdrawPage() {
           
           <div>
             <label className="label">{t.qrCode}</label>
-            <input 
-              type="file"
-              accept="image/*"
-              onChange={handleQrPhotoChange}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              id="qr-upload"
-            />
-            <label 
-              htmlFor="qr-upload"
-              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-green-400/30 rounded-xl bg-gradient-to-br from-green-900/20 to-green-800/30 hover:border-green-400/50 hover:bg-green-800/40 transition-all duration-300 cursor-pointer group"
-            >
-              <div className="flex flex-col items-center space-y-2">
-                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
-                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
+            <div className="relative">
+              <input 
+                type="file"
+                accept="image/*"
+                onChange={handleQrPhotoChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                id="qr-upload"
+              />
+              <label 
+                htmlFor="qr-upload"
+                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-green-400/30 rounded-xl bg-gradient-to-br from-green-900/20 to-green-800/30 hover:border-green-400/50 hover:bg-green-800/40 transition-all duration-300 cursor-pointer group relative"
+              >
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-white group-hover:text-green-300 transition-colors">
+                      {qrPhoto ? 'Файл выбран' : t.uploadQr}
+                    </p>
+                    <p className="text-xs text-white/60 mt-1">
+                      {qrPhoto ? qrPhoto.name : 'PNG, JPG до 10MB'}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-white group-hover:text-green-300 transition-colors">
-                    {qrPhoto ? 'Файл выбран' : t.uploadQr}
-                  </p>
-                  <p className="text-xs text-white/60 mt-1">
-                    {qrPhoto ? qrPhoto.name : 'PNG, JPG до 10MB'}
-                  </p>
-                </div>
-              </div>
-            </label>
+              </label>
+            </div>
             
             {qrPhotoPreview && (
               <div className="mt-4 p-4 bg-black/20 rounded-xl border border-green-400/20">
