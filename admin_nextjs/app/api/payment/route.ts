@@ -221,34 +221,12 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Проверяем, нет ли уже pending заявки
-      const existingPendingWithdraw = await prisma.request.findFirst({
-        where: {
-          userId: BigInt(finalUserId),
-          requestType: 'withdraw',
-          status: 'pending' // Проверяем ЛЮБУЮ pending заявку, независимо от времени
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      })
-
-      if (existingPendingWithdraw) {
-        console.error(`🚫 [Payment API] BLOCKED: User ${finalUserId} already has pending withdrawal request #${existingPendingWithdraw.id}`)
-        return NextResponse.json(
-          createApiResponse(null, `У вас уже есть заявка на вывод в обработке (ID: #${existingPendingWithdraw.id}). Дождитесь обработки текущей заявки перед созданием новой.`),
-          {
-            status: 400,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
-      }
+      // Проверка на pending заявку убрана - пользователь может отправить только один раз через фронтенд
     }
 
     // Проверка на точные дубликаты (одинаковые параметры за последние 2 минуты)
-    if (finalUserId && type && amount) {
+    // Для вывода проверка дубликатов убрана - защита на фронтенде
+    if (finalUserId && type && amount && type !== 'withdraw') {
       const whereClause: any = {
         userId: BigInt(finalUserId),
         requestType: type,
@@ -259,11 +237,6 @@ export async function POST(request: NextRequest) {
           gte: new Date(Date.now() - 2 * 60 * 1000) // Последние 2 минуты
         },
         status: 'pending' // Проверяем только pending заявки
-      }
-
-      // Для вывода добавляем проверку по коду вывода (обязательно!)
-      if (type === 'withdraw' && site_code) {
-        whereClause.withdrawalCode = site_code.trim()
       }
 
       // Проверяем существование дубликата ДО создания
@@ -563,38 +536,7 @@ export async function POST(request: NextRequest) {
       photoPreview: photoUrl ? photoUrl.substring(0, 50) + '...' : null
     })
     
-    // Дополнительная проверка кода вывода (если не была проверена выше)
-    // Эта проверка нужна для случаев, когда код был использован в более старых заявках
-    if (type === 'withdraw' && site_code) {
-      const existingWithdrawRequest = await prisma.request.findFirst({
-        where: {
-          withdrawalCode: site_code.trim(),
-          accountId: finalAccountId?.toString() || playerId || null,
-          bookmaker: bookmaker?.toLowerCase() || null,
-          requestType: 'withdraw',
-          status: {
-            in: ['completed', 'auto_completed'] // Проверяем только завершенные заявки
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      })
-
-      if (existingWithdrawRequest) {
-        console.error(`🚫 [Payment API] DUPLICATE WITHDRAWAL CODE: Code ${site_code.trim()} already used in completed request #${existingWithdrawRequest.id}`)
-        const errorResponse = NextResponse.json(
-          createApiResponse(null, 'Этот код вывода уже был использован в завершенной заявке. Используйте новый код вывода.'),
-          { 
-            status: 400,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
-        return errorResponse
-      }
-    }
+    // Проверка на дубликат кода вывода убрана - защита на фронтенде
     
     const newRequest = await prisma.request.create({
       data: {
