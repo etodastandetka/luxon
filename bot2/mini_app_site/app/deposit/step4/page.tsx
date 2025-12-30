@@ -19,7 +19,6 @@ export default function DepositStep4() {
   const [isPaid, setIsPaid] = useState(false)
   const [isCreatingRequest, setIsCreatingRequest] = useState(false)
   const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
-  const [paymentMethod, setPaymentMethod] = useState<'qr' | 'number'>('qr') // QR или по номеру
   const [paymentByNumber, setPaymentByNumber] = useState<{ phoneNumber: string; recipientName: string; bankName: string } | null>(null)
   const [cryptoInvoice, setCryptoInvoice] = useState<any>(null)
   const [cryptoLoading, setCryptoLoading] = useState(false)
@@ -262,7 +261,7 @@ export default function DepositStep4() {
     loadPaymentByNumber()
   }, [])
 
-  // Генерируем QR код или крипто invoice в зависимости от типа оплаты
+  // Генерируем ссылки на банки или крипто invoice в зависимости от типа оплаты
   useEffect(() => {
     if (bookmaker && playerId && amount > 0) {
       // Сохраняем время начала таймера при генерации (если еще не сохранено)
@@ -276,16 +275,13 @@ export default function DepositStep4() {
         createCryptoInvoice().catch((error) => {
           console.error('❌ Ошибка создания crypto invoice:', error)
         })
-      } else if (paymentMethod === 'qr') {
-        // Генерируем QR код для банковского перевода
-        generateQRCode()
-      } else if (paymentMethod === 'number') {
-        // Для пополнения по номеру создаем ссылки на банки без QR hash
+      } else {
+        // Для банковских переводов создаем ссылки на банки
         generateBankLinksForNumber()
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookmaker, playerId, amount, paymentType, paymentMethod])
+  }, [bookmaker, playerId, amount, paymentType])
 
   // Таймер обратного отсчета и проверка почты (только для банковских переводов)
   useEffect(() => {
@@ -1186,18 +1182,10 @@ export default function DepositStep4() {
 
   const handleBankSelect = (bankKey: string) => {
     setBank(bankKey)
-    // Генерируем новую ссылку при смене банка
-    generateQRCode(bankKey)
+    // Генерируем новые ссылки при смене банка
+    generateBankLinksForNumber()
   }
 
-  // Функция для генерации SHA256 контрольной суммы
-  const calculateSHA256 = async (data: string): Promise<string> => {
-    const encoder = new TextEncoder()
-    const dataBuffer = encoder.encode(data)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  }
 
   // Функция для получения активного реквизита из админки
   const getActiveRequisite = async (): Promise<{ value: string; bank: string | null; name: string | null } | null> => {
@@ -1257,111 +1245,8 @@ export default function DepositStep4() {
     return null
   }
 
-  // Функция для генерации Bakai QR кода
-  const generateBakaiQR = async (baseHash: string, amount: number): Promise<string> => {
-    // Проверяем, что base_hash содержит данные только для Bakai
-    // Если есть данные DemirBank, это ошибка конфигурации
-    if (baseHash.includes('qr.demirbank.kg') || baseHash.includes('DEMIRBANK')) {
-      throw new Error('Base_hash для Bakai содержит данные DemirBank. Проверьте настройки кошелька в админке.')
-    }
-    
-    // Проверяем, что base_hash содержит данные для Bakai
-    if (!baseHash.includes('qr.bakai.kg') && !baseHash.includes('BAKAIAPP')) {
-      throw new Error('Base_hash не содержит данные для Bakai. Проверьте настройки кошелька в админке.')
-    }
-    
-    // Конвертируем сумму в копейки
-    const amountCents = Math.round(parseFloat(String(amount)) * 100)
-    const amountStr = amountCents.toString()
-    const amountLen = amountStr.length.toString().padStart(2, '0')
-    
-    // Находим последнее поле 54 перед полем 63 (контрольная сумма)
-    // Ищем все вхождения поля 54
-    const field54Matches: Array<{ index: number; match: string; fullMatch: string }> = []
-    const field54Pattern = /54(\d{2})(\d+)/g
-    let match54
-    while ((match54 = field54Pattern.exec(baseHash)) !== null) {
-      field54Matches.push({
-        index: match54.index,
-        match: match54[0],
-        fullMatch: match54[0]
-      })
-    }
-    
-    if (field54Matches.length === 0) {
-      throw new Error('Не найдено поле 54 в base_hash')
-    }
-    
-    // Находим индекс поля 63
-    const index63 = baseHash.indexOf('6304')
-    if (index63 === -1) {
-      throw new Error('Не найдено поле 63 в base_hash')
-    }
-    
-    // Находим последнее поле 54 перед полем 63
-    const lastField54Before63 = field54Matches
-      .filter(m => m.index < index63)
-      .sort((a, b) => b.index - a.index)[0]
-    
-    if (!lastField54Before63) {
-      throw new Error('Не найдено поле 54 перед полем 63 в base_hash')
-    }
-    
-    // Заменяем последнее поле 54 на новое значение
-    const oldField54 = lastField54Before63.fullMatch // например "540510053"
-    const newField54 = `54${amountLen}${amountStr}` // например "0510053" или "046533"
-    
-    // Заменяем последнее вхождение поля 54 (перед полем 63)
-    let updatedHash = baseHash.substring(0, lastField54Before63.index) + 
-                     newField54 + 
-                     baseHash.substring(lastField54Before63.index + oldField54.length)
-    
-    // Находим поле 63 (контрольная сумма) - должно быть последнее
-    const field63Pattern = /6304([A-Fa-f0-9]{4})/
-    const last63Index = updatedHash.lastIndexOf('6304')
-    if (last63Index === -1) {
-      throw new Error('Не найдено поле 63 в base_hash после замены')
-    }
-    
-    // Извлекаем данные до последнего объекта 63 (ID "00" - "90", исключая ID 63)
-    let dataBefore63 = updatedHash.substring(0, last63Index)
-    
-    // Согласно алгоритму:
-    // 1. Все значения до объекта 63 преобразуются в строку (уже есть)
-    // 2. Декодируем процентное кодирование (%20 -> пробел и т.д.)
-    // 3. Строка переводится в массив байт с кодировкой UTF-8
-    // 4. Вычисляется SHA256 хеш от массива байт
-    // 5. Массив байт преобразуется в строку (hex)
-    // 6. Удаляются все символы "-" если есть
-    // 7. Берутся последние 4 символа
-    
-    // Декодируем процентное кодирование (%20 -> пробел и т.д.)
-    try {
-      dataBefore63 = decodeURIComponent(dataBefore63)
-    } catch (e) {
-      // Если декодирование не удалось, используем исходную строку
-      console.warn('Could not decode URI component, using original string')
-    }
-    
-    // Вычисляем SHA256 от данных до объекта 63 (уже работает с UTF-8 байтами)
-    const checksumFull = await calculateSHA256(dataBefore63)
-    
-    // Удаляем все символы "-" если есть (хотя в hex их обычно нет)
-    const checksumCleaned = checksumFull.replace(/-/g, '')
-    
-    // Берем последние 4 символа в верхнем регистре (как в примере)
-    const checksum = checksumCleaned.slice(-4).toUpperCase()
-    
-    // Заменяем последнее поле 63 (контрольная сумма)
-    const oldField63 = updatedHash.substring(last63Index, last63Index + 8) // "6304" + 4 символа
-    const newField63 = `6304${checksum}`
-    
-    const finalHash = updatedHash.substring(0, last63Index) + newField63
-    
-    return finalHash
-  }
 
-  // Базовые ссылки на банки (без QR hash)
+  // Базовые ссылки на банки
   const getBaseBankLinks = (): Record<string, string> => ({
     'DemirBank': 'https://retail.demirbank.kg/',
     'O!Money': 'https://api.dengi.o.kg/',
@@ -1377,162 +1262,11 @@ export default function DepositStep4() {
     'mbank': 'https://app.mbank.kg/'
   })
 
-  // Функция для генерации fallback QR кода
-  const generateFallbackQR = async (currentBank: string) => {
-    try {
-      const requisiteData = await getActiveRequisite()
-      
-      // Если реквизит не найден, используем базовые ссылки
-      if (!requisiteData) {
-        const bankLinks = getBaseBankLinks()
-        setQrData({
-          all_bank_urls: bankLinks,
-          enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
-          settings: { deposits_enabled: true }
-        })
-        const bankKey = currentBank.toLowerCase()
-        const primaryKey = bankKey === 'omoney' ? 'O!Money' : 
-                          bankKey === 'balance' ? 'Balance.kg' :
-                          bankKey.charAt(0).toUpperCase() + bankKey.slice(1)
-        setPaymentUrl(bankLinks[primaryKey] || bankLinks[currentBank] || bankLinks['DemirBank'] || '')
-        return
-      }
-      
-      const { value: requisite, bank } = requisiteData
-      
-      // Если банк Bakai, используем другую логику генерации
-      if (bank === 'BAKAI') {
-        try {
-          const qrHash = await generateBakaiQR(requisite, amount)
-          
-          // Создаем ссылки для всех банков
-          const bankLinks: Record<string, string> = {
-            'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
-            'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
-            'Balance.kg': `https://balance.kg/#${qrHash}`,
-            'Bakai': `https://bakai24.app/#${qrHash}`,
-            'MegaPay': `https://megapay.kg/get#${qrHash}`,
-            'MBank': `https://app.mbank.kg/qr/#${qrHash}`,
-            'demirbank': `https://retail.demirbank.kg/#${qrHash}`,
-            'omoney': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
-            'balance': `https://balance.kg/#${qrHash}`,
-            'bakai': `https://bakai24.app/#${qrHash}`,
-            'megapay': `https://megapay.kg/get#${qrHash}`,
-            'mbank': `https://app.mbank.kg/qr/#${qrHash}`
-          }
-          
-          setPaymentUrl(bankLinks[currentBank] || bankLinks['Bakai'])
-          setQrData({
-            qr_hash: qrHash,
-            all_bank_urls: bankLinks,
-            primary_url: bankLinks[currentBank] || bankLinks['Bakai']
-          })
-          return
-        } catch (error) {
-          // Используем базовые ссылки при ошибке
-          const bankLinks = getBaseBankLinks()
-          setPaymentUrl(bankLinks[currentBank] || bankLinks['Bakai'])
-          setQrData({
-            all_bank_urls: bankLinks,
-            enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
-            settings: { deposits_enabled: true }
-          })
-          return
-        }
-      }
-      
-      // Для Demir Bank используем существующую логику
-      const requisiteLen = requisite.length.toString().padStart(2, '0')
-      
-      const amountCents = Math.round(parseFloat(String(amount)) * 100)
-      const amountStr = amountCents.toString().padStart(5, '0')
-      const amountLen = amountStr.length.toString().padStart(2, '0')
-      
-      // Создаем TLV структуру до контрольной суммы (БЕЗ 6304)
-      const merchantAccountValue = (
-        `0015qr.demirbank.kg` +  // Под-тег 00: домен
-        `01047001` +              // Под-тег 01: короткий тип (7001)
-        `10${requisiteLen}${requisite}` +  // Под-тег 10: реквизит
-        `120211130212`            // Под-теги 12, 13: дополнительные поля
-      )
-      const merchantAccountLen = merchantAccountValue.length.toString().padStart(2, '0')
-      
-      // Payload БЕЗ контрольной суммы и без 6304
-      const payload = (
-        `000201` +  // 00 - Payload Format Indicator
-        `010211` +  // 01 - Point of Initiation Method (статический QR)
-        `32${merchantAccountLen}${merchantAccountValue}` +  // 32 - Merchant Account
-        `52044829` +  // 52 - Merchant Category Code
-        `5303417` +   // 53 - Transaction Currency
-        `54${amountLen}${amountStr}` +  // 54 - Amount
-        `5909DEMIRBANK`  // 59 - Merchant Name
-      )
-      
-      // Вычисляем SHA256 контрольную сумму от payload (БЕЗ 6304)
-      const checksumFull = await calculateSHA256(payload)
-      // Берем последние 4 символа
-      const checksum = checksumFull.slice(-4).toLowerCase()
-      
-      // Полный QR хеш: payload + '6304' + checksum
-      const qrHash = payload + '6304' + checksum
-      
-      // Создаем ссылки для всех банков
-      const bankLinks: Record<string, string> = {
-        'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
-        'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
-        'Balance.kg': `https://balance.kg/#${qrHash}`,
-        'Bakai': `https://bakai24.app/#${qrHash}`,
-        'MegaPay': `https://megapay.kg/get#${qrHash}`,
-        'MBank': `https://app.mbank.kg/qr/#${qrHash}`,
-        // Также добавляем варианты с нижним регистром для совместимости
-        'demirbank': `https://retail.demirbank.kg/#${qrHash}`,
-        'omoney': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
-        'balance': `https://balance.kg/#${qrHash}`,
-        'bakai': `https://bakai24.app/#${qrHash}`,
-        'megapay': `https://megapay.kg/get#${qrHash}`,
-        'mbank': `https://app.mbank.kg/qr/#${qrHash}`
-      }
-      
-      setQrData({
-        qr_hash: qrHash,
-        all_bank_urls: bankLinks,
-        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
-        settings: {
-          deposits_enabled: true
-        }
-      })
-      const bankKey = currentBank.toLowerCase()
-      const primaryKey = bankKey === 'omoney' ? 'O!Money' : 
-                        bankKey === 'balance' ? 'Balance.kg' :
-                        bankKey === 'demirbank' ? 'DemirBank' :
-                        bankKey === 'bakai' ? 'Bakai' :
-                        bankKey === 'megapay' ? 'MegaPay' :
-                        bankKey === 'mbank' ? 'MBank' : 'DemirBank'
-      setPaymentUrl(bankLinks[primaryKey] || bankLinks[currentBank] || bankLinks['DemirBank'] || '')
-    } catch (error) {
-      // В случае любой ошибки используем базовые ссылки
-      const bankLinks = getBaseBankLinks()
-      setQrData({
-        all_bank_urls: bankLinks,
-        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'],
-        settings: { deposits_enabled: true }
-      })
-      const bankKey = currentBank.toLowerCase()
-      const primaryKey = bankKey === 'omoney' ? 'O!Money' : 
-                        bankKey === 'balance' ? 'Balance.kg' :
-                        bankKey === 'demirbank' ? 'DemirBank' :
-                        bankKey === 'bakai' ? 'Bakai' :
-                        bankKey === 'megapay' ? 'MegaPay' :
-                        bankKey === 'mbank' ? 'MBank' : 'DemirBank'
-      setPaymentUrl(bankLinks[primaryKey] || bankLinks[currentBank] || bankLinks['DemirBank'] || '')
-    }
-  }
-
-  // Генерируем ссылки на банки для пополнения по номеру (без QR hash)
+  // Генерируем ссылки на банки
   const generateBankLinksForNumber = () => {
     if (!paymentByNumber) return
     
-    // Создаем простые ссылки на банки без QR hash
+    // Создаем простые ссылки на банки
     const bankLinks: Record<string, string> = {
       'DemirBank': 'https://retail.demirbank.kg/',
       'O!Money': 'https://api.dengi.o.kg/',
@@ -1558,136 +1292,6 @@ export default function DepositStep4() {
     setPaymentUrl(bankLinks['DemirBank'] || '')
   }
 
-  const generateQRCode = async (selectedBank?: string) => {
-    if (paymentType === 'crypto') {
-      return
-    }
-    try {
-      const currentBank = selectedBank || bank
-      
-      // Сначала пытаемся получить QR код с сервера
-      const response = await fetch('/api/generate-qr', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: amount,
-          bank: currentBank.toUpperCase(),
-          playerId: playerId
-        })
-      })
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          generateFallbackQR(currentBank)
-          return
-        }
-        
-        // Пытаемся получить сообщение об ошибке из ответа
-        let errorMessage = `HTTP error! status: ${response.status}`
-        try {
-          const errorData = await response.json()
-          if (errorData.error) {
-            errorMessage = errorData.error
-            if (errorData.message) {
-              errorMessage += '\n' + errorData.message
-            }
-          }
-        } catch (e) {
-          // Если не удалось распарсить JSON, используем стандартное сообщение
-        }
-        
-        // Показываем ошибку пользователю
-        alert(errorMessage)
-        throw new Error(errorMessage)
-      }
-
-      const data = await response.json()
-      
-      // Проверяем, есть ли ошибка в успешном ответе
-      if (!data.success && data.error) {
-        const errorMessage = data.error + (data.message ? '\n' + data.message : '')
-        alert(errorMessage)
-        throw new Error(errorMessage)
-      }
-      
-      // Если есть qr_hash, создаем ссылки для всех банков
-      if (data.qr_hash) {
-        const qrHash = data.qr_hash
-        // Создаем ссылки для всех банков с правильным форматом
-        const bankLinks = {
-          'DemirBank': `https://retail.demirbank.kg/#${qrHash}`,
-          'O!Money': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
-          'Balance.kg': `https://balance.kg/#${qrHash}`,
-          'Bakai': `https://bakai24.app/#${qrHash}`,
-          'MegaPay': `https://megapay.kg/get#${qrHash}`,
-          'MBank': `https://app.mbank.kg/qr/#${qrHash}`,
-          // Также добавляем варианты с нижним регистром для совместимости
-          'demirbank': `https://retail.demirbank.kg/#${qrHash}`,
-          'omoney': `https://api.dengi.o.kg/ru/qr/#${qrHash}`,
-          'balance': `https://balance.kg/#${qrHash}`,
-          'bakai': `https://bakai24.app/#${qrHash}`,
-          'megapay': `https://megapay.kg/get#${qrHash}`,
-          'mbank': `https://app.mbank.kg/qr/#${qrHash}`
-        }
-        
-        // Обновляем data с правильными ссылками
-        data.all_bank_urls = bankLinks
-        data.primary_url = bankLinks['DemirBank'] || data.primary_url
-      }
-      
-      setQrData(data)
-      // Безопасный доступ к ссылкам
-      const defaultUrl = (data.all_bank_urls as Record<string, string>)?.['DemirBank'] || 
-                        (data.all_bank_urls as Record<string, string>)?.['demirbank'] || 
-                        data.primary_url
-      setPaymentUrl(defaultUrl || '')
-      
-      // Сохраняем настройки депозитов
-      if (data.settings) {
-        setDepositsEnabled(data.settings.deposits_enabled !== false)
-      }
-      
-      // Также загружаем актуальные настройки из админки для enabled_banks
-      try {
-        const base = getApiBase()
-        const settingsRes = await fetch(`${base}/api/public/payment-settings`, { cache: 'no-store' })
-        const settingsData = await settingsRes.json()
-        if (settingsData && settingsData.deposits) {
-          setDepositsEnabled(settingsData.deposits.enabled !== false)
-          setRequireReceiptPhoto(settingsData.require_receipt_photo !== false)
-          if (settingsData.deposits.banks && Array.isArray(settingsData.deposits.banks)) {
-            const bankCodeMapping: Record<string, string> = {
-              'demir': 'demirbank',
-              'demirbank': 'demirbank',
-              'omoney': 'omoney',
-              'balance': 'balance',
-              'bakai': 'bakai',
-              'megapay': 'megapay',
-              'mbank': 'mbank'
-            }
-            const mappedBanks = settingsData.deposits.banks
-              .map((b: any) => bankCodeMapping[b.code || b] || b.code || b)
-              .filter(Boolean)
-            setQrData((prev: any) => ({
-              ...prev,
-              settings: {
-                ...prev?.settings,
-                enabled_banks: mappedBanks
-              }
-            }))
-          }
-        }
-      } catch (error) {
-        // Игнорируем ошибки настроек
-      }
-    } catch (error) {
-      // Fallback: используем базовые ссылки
-      const currentBank = selectedBank || bank
-      generateFallbackQR(currentBank)
-    }
-  }
 
   const handleBack = () => {
     // Анимация выхода
@@ -2119,39 +1723,8 @@ export default function DepositStep4() {
 
 
 
-      {/* Выбор способа оплаты (QR или по номеру) - только для банковских переводов */}
-      {paymentType === 'bank' && paymentByNumber && (
-        <div className="card space-y-4 slide-in-right delay-200">
-          <h2 className="text-lg font-semibold text-white">
-            {language === 'ru' ? 'Способ оплаты' : 'Payment method'}
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setPaymentMethod('qr')}
-              className={`py-3 px-4 rounded-lg font-medium transition-all ${
-                paymentMethod === 'qr'
-                  ? 'bg-green-700 text-white'
-                  : 'bg-gray-800 text-white/70 hover:bg-gray-700'
-              }`}
-            >
-              {language === 'ru' ? 'QR код' : 'QR Code'}
-            </button>
-            <button
-              onClick={() => setPaymentMethod('number')}
-              className={`py-3 px-4 rounded-lg font-medium transition-all ${
-                paymentMethod === 'number'
-                  ? 'bg-green-700 text-white'
-                  : 'bg-gray-800 text-white/70 hover:bg-gray-700'
-              }`}
-            >
-              {language === 'ru' ? 'По номеру' : 'By number'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Информация о пополнении по номеру */}
-      {paymentType === 'bank' && paymentMethod === 'number' && paymentByNumber && (
+      {paymentType === 'bank' && paymentByNumber && (
         <div className="card space-y-4 slide-in-right delay-300">
           <h2 className="text-lg font-semibold text-white">
             {language === 'ru' ? 'Реквизиты для перевода' : 'Transfer details'}
