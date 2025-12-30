@@ -344,10 +344,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
+                # Создаем Reply клавиатуру с кнопкой отмены
+                reply_keyboard = [[KeyboardButton("❌ Отменить заявку")]]
+                reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+                
                 await update.message.reply_text(
                     "💰 <b>Пополнение счета</b>\n\nВыберите казино:",
                     reply_markup=reply_markup,
                     parse_mode='HTML'
+                )
+                await update.message.reply_text(
+                    "Используйте клавиатуру:",
+                    reply_markup=reply_markup_keyboard
                 )
             else:
                 # Начинаем диалог вывода
@@ -885,10 +893,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
+        # Создаем Reply клавиатуру с кнопкой отмены
+        reply_keyboard = [[KeyboardButton("❌ Отменить заявку")]]
+        reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        
         await query.edit_message_text(
             "💰 <b>Пополнение счета</b>\n\nВыберите казино:",
             reply_markup=reply_markup,
             parse_mode='HTML'
+        )
+        await query.message.reply_text(
+            "Используйте клавиатуру:",
+            reply_markup=reply_markup_keyboard
         )
         return
     
@@ -916,10 +932,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
+        # Создаем Reply клавиатуру с кнопкой отмены
+        reply_keyboard = [[KeyboardButton("❌ Отменить заявку")]]
+        reply_markup_keyboard = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        
         await query.edit_message_text(
             "💸 <b>Вывод средств</b>\n\nВыберите казино:",
             reply_markup=reply_markup,
             parse_mode='HTML'
+        )
+        await query.message.reply_text(
+            "Используйте клавиатуру:",
+            reply_markup=reply_markup_keyboard
         )
         return
     
