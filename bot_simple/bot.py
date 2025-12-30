@@ -863,9 +863,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         message_type = 'sticker'
         media_url = update.message.sticker.file_id
     
-    # Сохраняем сообщение в админку через API
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+    # Пропускаем сохранение системных сообщений (кнопки отмены и т.д.)
+    system_messages = ["❌ Отменить заявку", "💰 Пополнить", "💸 Вывести"]
+    if message_text in system_messages:
+        logger.debug(f"⏭️ Пропускаю сохранение системного сообщения: {message_text}")
+    else:
+        # Сохраняем сообщение в админку через API (неблокирующе)
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
             payload = {
                 "message_text": message_text,
                 "message_type": message_type,
