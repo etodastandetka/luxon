@@ -536,9 +536,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     
                     if qr_response.status_code == 200:
                         qr_data = qr_response.json()
+                        logger.info(f"📋 Данные QR: {qr_data}")
                         if qr_data.get('success') and qr_data.get('data'):
                             bank_links = qr_data['data'].get('bankLinks', {})
                             timer_seconds = qr_data['data'].get('timerSeconds', 300)
+                            logger.info(f"🔗 Получены ссылки для банков: {list(bank_links.keys())}")
                             
                             # Форматируем таймер
                             minutes = timer_seconds // 60
@@ -565,12 +567,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                             url=url
                                         )])
                             
+                            if not keyboard:
+                                logger.warning(f"⚠️ Нет ссылок для банков, отправляю сообщение без кнопок")
+                                await update.message.reply_text(
+                                    f"✅ <b>Заявка на пополнение создана!</b>\n\n"
+                                    f"💰 <b>Сумма:</b> {amount} сом\n"
+                                    f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
+                                    f"🆔 <b>ID игрока:</b> {data['player_id']}\n"
+                                    f"🆔 <b>ID заявки:</b> #{request_id}\n\n"
+                                    f"⏰ <b>Таймер: {timer_text}</b>\n\n"
+                                    f"❌ Не удалось получить ссылки для оплаты. Обратитесь в поддержку.",
+                                    parse_mode='HTML'
+                                )
+                                user_states[user_id]['step'] = 'deposit_receipt_photo'
+                                return
+                            
                             keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
                             reply_markup = InlineKeyboardMarkup(keyboard)
                             
                             # Создаем Reply клавиатуру с кнопкой отмены
                             keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
                             reply_markup_keyboard = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+                            
+                            logger.info(f"📤 Отправляю сообщение с кнопками банков для пользователя {user_id}")
                             
                             # Отправляем одно сообщение с Reply клавиатурой
                             await update.message.reply_text(
@@ -600,8 +619,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             # Сохраняем ссылки в состоянии для последующего использования
                             user_states[user_id]['data']['bank_links'] = bank_links
                             user_states[user_id]['data']['timer_seconds'] = timer_seconds
+                            logger.info(f"✅ Сообщение с кнопками банков отправлено пользователю {user_id}")
+                            return
+                        else:
+                            logger.error(f"❌ QR данные не содержат success или data: {qr_data}")
+                            await update.message.reply_text(
+                                f"❌ Ошибка при получении ссылок на оплату. Попробуйте еще раз."
+                            )
                             return
                     else:
+                        error_text = qr_response.text
+                        logger.error(f"❌ Ошибка при получении QR ссылок: status={qr_response.status_code}, error={error_text}")
                         await update.message.reply_text(
                             f"❌ Ошибка при получении ссылок на оплату. Попробуйте еще раз."
                         )
