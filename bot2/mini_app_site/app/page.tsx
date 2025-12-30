@@ -1337,7 +1337,7 @@ export default function HomePage() {
         }
 
         .lux-reel {
-          height: 210px;
+          height: 150px;
           border-radius: 16px;
           border: 1px solid rgba(255, 255, 255, 0.14);
           background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.16));
@@ -1357,7 +1357,7 @@ export default function HomePage() {
           top: 0;
           left: 0;
           right: 0;
-          height: 60px;
+          height: 40px;
           background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent);
           z-index: 2;
           pointer-events: none;
@@ -1369,7 +1369,7 @@ export default function HomePage() {
           bottom: 0;
           left: 0;
           right: 0;
-          height: 60px;
+          height: 40px;
           background: linear-gradient(0deg, rgba(0, 0, 0, 0.4), transparent);
           z-index: 2;
           pointer-events: none;
