@@ -12,12 +12,6 @@ import UserProfile from "../components/UserProfile"
 import RatingBlock from "../components/RatingBlock"
 import Achievements from "../components/Achievements"
 
-declare global {
-  interface Window {
-    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
-    cancelIdleCallback?: (id: number) => void
-  }
-}
 
 function getCookie(name: string) {
   if (typeof document === "undefined") return null
@@ -344,9 +338,9 @@ function LuxOnSlots({
       </div>
 
       <div className="lux-reels">
-        <div className="lux-reel" ref={(el) => (reelsRef.current[0] = el)} />
-        <div className="lux-reel" ref={(el) => (reelsRef.current[1] = el)} />
-        <div className="lux-reel" ref={(el) => (reelsRef.current[2] = el)} />
+        <div className="lux-reel" ref={(el) => { reelsRef.current[0] = el }} />
+        <div className="lux-reel" ref={(el) => { reelsRef.current[1] = el }} />
+        <div className="lux-reel" ref={(el) => { reelsRef.current[2] = el }} />
         <div className="lux-line" aria-hidden="true" />
       </div>
 

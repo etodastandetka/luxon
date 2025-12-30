@@ -1826,18 +1826,8 @@ const [bank, setBank] = useState('omoney')
       {!isPaid && paymentType === 'bank' && (
         <button
           onClick={async (e) => {
-              event: e,
-              currentTarget: e.currentTarget,
-              timestamp: new Date().toISOString(),
-              isPaid,
-              isCreatingRequest,
-              requireReceiptPhoto,
-              hasReceiptPhoto: !!receiptPhoto,
-              hasReceiptPhotoBase64: !!receiptPhotoBase64
-            })
             e.preventDefault()
             e.stopPropagation()
-            
             
             if (isPaid || isCreatingRequest) {
               console.warn('⚠️ Кнопка заблокирована:', { isPaid, isCreatingRequest })
