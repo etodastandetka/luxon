@@ -544,9 +544,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     if qr_response.status_code == 200:
                         qr_data = qr_response.json()
                         logger.info(f"📋 Данные QR: {qr_data}")
-                        if qr_data.get('success') and qr_data.get('data'):
-                            bank_links = qr_data['data'].get('bankLinks', {})
-                            timer_seconds = qr_data['data'].get('timerSeconds', 300)
+                        if qr_data.get('success'):
+                            # API возвращает all_bank_urls напрямую, а не внутри data
+                            bank_links = qr_data.get('all_bank_urls', {})
+                            # Таймер по умолчанию 5 минут (300 секунд)
+                            timer_seconds = 300
                             logger.info(f"🔗 Получены ссылки для банков: {list(bank_links.keys())}")
                             
                             # Форматируем таймер
