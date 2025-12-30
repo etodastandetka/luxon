@@ -85,14 +85,6 @@ export default function WithdrawConfirm() {
     // Сохраняем время попытки отправки
     localStorage.setItem(submitKey, now.toString())
     
-    // Блокируем навигацию во время отправки
-    const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = 'Заявка отправляется. Пожалуйста, подождите.'
-      return 'Заявка отправляется. Пожалуйста, подождите.'
-    }
-    window.addEventListener('beforeunload', beforeUnloadHandler)
-    
     try {
       // Используем данные из state (уже загружены из localStorage в useEffect)
       if (!bookmaker || !withdrawAmount || withdrawAmount <= 0 || !userId || !phone || !bank || !siteCode) {
@@ -307,7 +299,6 @@ export default function WithdrawConfirm() {
         
         // Очищаем флаг отправки из localStorage после успешной отправки
         localStorage.removeItem(submitKey)
-        window.removeEventListener('beforeunload', beforeUnloadHandler)
         
         // Перенаправляем на страницу ожидания
         router.push('/withdraw/waiting')
@@ -357,11 +348,9 @@ export default function WithdrawConfirm() {
       alert(`Ошибка: ${errorMessage}`)
       // Очищаем флаг отправки из localStorage при ошибке
       localStorage.removeItem(submitKey)
-      window.removeEventListener('beforeunload', beforeUnloadHandler)
     } finally {
       // Сбрасываем флаг отправки в любом случае
       setIsSubmitting(false)
-      window.removeEventListener('beforeunload', beforeUnloadHandler)
     }
   }
 
