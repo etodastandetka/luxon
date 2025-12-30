@@ -1220,7 +1220,7 @@ export default function DepositStep4() {
         return null
       }
       
-      // Используем active_id из ответа API
+      // Сначала пытаемся найти по active_id из ответа API
       if (data.active_id) {
         const activeRequisite = data.requisites.find((req: any) => req.id === data.active_id)
         if (activeRequisite) {
@@ -1231,8 +1231,28 @@ export default function DepositStep4() {
           }
         }
       }
+      
+      // Если active_id нет или не найден, ищем реквизит с флагом is_active: true
+      const activeRequisite = data.requisites.find((req: any) => req.is_active === true || req.isActive === true)
+      if (activeRequisite) {
+        return { 
+          value: activeRequisite.value, 
+          bank: activeRequisite.bank || null,
+          name: activeRequisite.name || null
+        }
+      }
+      
+      // Если активного нет, возвращаем первый реквизит (fallback)
+      if (data.requisites.length > 0) {
+        const firstRequisite = data.requisites[0]
+        return { 
+          value: firstRequisite.value, 
+          bank: firstRequisite.bank || null,
+          name: firstRequisite.name || null
+        }
+      }
     } catch (error) {
-      // Игнорируем ошибки
+      console.error('Error fetching active requisite:', error)
     }
     return null
   }
