@@ -317,6 +317,34 @@ export async function POST(request: NextRequest) {
                 updatedAt: new Date()
               }
             })
+            
+            // Отправляем уведомление пользователю в бот
+            const source = (botRequest as any).source
+            const isFromBot = source === 'bot' || !source
+            
+            if (isFromBot && botRequest.userId) {
+              const notificationMessage = `✅ <b>Ваш баланс пополнен!</b>\n\n` +
+                `💰 Сумма: ${amountInKgs} сом\n` +
+                `🎰 Казино: ${bookmaker.toUpperCase()}\n` +
+                `🆔 ID заявки: #${botRequest.id}`
+              
+              // Отправляем уведомление напрямую
+              const botToken = process.env.BOT_TOKEN
+              if (botToken) {
+                const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+                fetch(sendMessageUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: botRequest.userId.toString(),
+                    text: notificationMessage,
+                    parse_mode: 'HTML',
+                  }),
+                }).catch(error => {
+                  console.error(`❌ Failed to send notification for request ${botRequest.id}:`, error)
+                })
+              }
+            }
           }
 
           console.log(`✅ [Crypto Auto-Deposit] SUCCESS: Request ${botRequest ? botRequest.id : 'n/a'} → autodeposit_success`)

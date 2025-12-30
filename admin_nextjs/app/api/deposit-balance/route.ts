@@ -126,6 +126,22 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Отправляем уведомление пользователю в бот, если заявка создана через бот
+    const source = (requestData as any).source
+    const isFromBot = source === 'bot' || !source
+    
+    if (isFromBot && requestData.userId) {
+      const notificationMessage = `✅ <b>Ваш баланс пополнен!</b>\n\n` +
+        `💰 Сумма: ${amount} сом\n` +
+        `🎰 Казино: ${bookmaker.toUpperCase()}\n` +
+        `🆔 ID заявки: #${requestId}`
+      
+      // Отправляем уведомление асинхронно, не блокируя ответ
+      sendTelegramNotification(requestData.userId, notificationMessage)
+        .catch(error => {
+          console.error(`❌ Failed to send notification for request ${requestId}:`, error)
+        })
+    }
 
     // Преобразуем BigInt в строки для JSON сериализации
     const serializeBigInt = (obj: any): any => {

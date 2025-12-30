@@ -274,6 +274,15 @@ export async function PATCH(
     // Получаем заявку до обновления для отправки уведомления
     const requestBeforeUpdate = await prisma.request.findUnique({
       where: { id },
+      select: {
+        id: true,
+        userId: true,
+        requestType: true,
+        amount: true,
+        bookmaker: true,
+        status: true,
+        source: true, // Добавляем source для проверки источника заявки
+      },
     })
 
     if (!requestBeforeUpdate) {
@@ -305,15 +314,17 @@ export async function PATCH(
     // Отправляем уведомления при изменении статуса
     // Проверяем, создана ли заявка через бота (если source = 'bot' или нет source и есть userId)
     // Для мини-приложения уведомления не отправляем (они получают уведомления через мини-приложение)
-    if (body.status && ['completed', 'rejected', 'approved'].includes(body.status)) {
+    // Также отправляем уведомления для статусов autodeposit_success и auto_completed
+    const successStatuses = ['completed', 'rejected', 'approved', 'autodeposit_success', 'auto_completed']
+    if (body.status && successStatuses.includes(body.status)) {
       // Проверяем источник заявки - если source = 'bot' или нет source (старые заявки), отправляем уведомление
-      const source = (requestBeforeUpdate as any).source
+      const source = requestBeforeUpdate.source
       const isFromBot = source === 'bot' || !source
       
       if (isFromBot && requestBeforeUpdate.userId) {
         let notificationMessage = ''
         
-        if (body.status === 'completed' || body.status === 'approved') {
+        if (body.status === 'completed' || body.status === 'approved' || body.status === 'autodeposit_success' || body.status === 'auto_completed') {
           if (requestBeforeUpdate.requestType === 'deposit') {
             notificationMessage = `✅ <b>Ваш баланс пополнен!</b>\n\n` +
               `💰 Сумма: ${requestBeforeUpdate.amount} сом\n` +
@@ -338,8 +349,8 @@ export async function PATCH(
         
         if (notificationMessage) {
           // Отправляем уведомление асинхронно, не блокируя ответ
-          // Для completed/approved добавляем кнопку "В главное меню"
-          const withMenuButton = (body.status === 'completed' || body.status === 'approved')
+          // Для completed/approved/autodeposit_success/auto_completed добавляем кнопку "В главное меню"
+          const withMenuButton = (body.status === 'completed' || body.status === 'approved' || body.status === 'autodeposit_success' || body.status === 'auto_completed')
           sendTelegramNotification(requestBeforeUpdate.userId, notificationMessage, withMenuButton)
             .catch(error => {
               console.error(`❌ Failed to send notification for request ${id}:`, error)

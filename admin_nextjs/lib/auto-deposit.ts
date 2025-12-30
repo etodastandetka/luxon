@@ -200,6 +200,51 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     
     console.log(`✅ [Auto-Deposit] SUCCESS: Request ${request.id} → autodeposit_success (verified)`)
 
+    // Отправляем уведомление пользователю в бот, если заявка создана через бот
+    try {
+      const fullRequest = await prisma.request.findUnique({
+        where: { id: request.id },
+        select: {
+          userId: true,
+          source: true,
+          amount: true,
+          bookmaker: true,
+        },
+      })
+      
+      if (fullRequest) {
+        const source = (fullRequest as any).source
+        const isFromBot = source === 'bot' || !source
+        
+        if (isFromBot && fullRequest.userId) {
+          const notificationMessage = `✅ <b>Ваш баланс пополнен!</b>\n\n` +
+            `💰 Сумма: ${fullRequest.amount} сом\n` +
+            `🎰 Казино: ${fullRequest.bookmaker?.toUpperCase() || 'N/A'}\n` +
+            `🆔 ID заявки: #${request.id}`
+          
+          // Импортируем функцию отправки уведомления
+          const botToken = process.env.BOT_TOKEN
+          if (botToken) {
+            const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+            fetch(sendMessageUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: fullRequest.userId.toString(),
+                text: notificationMessage,
+                parse_mode: 'HTML',
+              }),
+            }).catch(error => {
+              console.error(`❌ Failed to send notification for request ${request.id}:`, error)
+            })
+          }
+        }
+      }
+    } catch (notificationError: any) {
+      // Не блокируем выполнение если уведомление не отправилось
+      console.error(`❌ Error sending notification for request ${request.id}:`, notificationError)
+    }
+
     return {
       requestId: request.id,
       success: true,

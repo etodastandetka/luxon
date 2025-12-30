@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
-// Получение истории чата с пользователем
+// Получение истории чата с пользователем или сохраненного account_id
 export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -21,6 +21,28 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url)
+    const casinoId = searchParams.get('casino_id')
+    
+    // Если запрашивается account_id для конкретного казино
+    if (casinoId) {
+      const dataType = `casino_account_id_${casinoId.toLowerCase()}`
+      const userData = await prisma.botUserData.findUnique({
+        where: {
+          userId_dataType: {
+            userId,
+            dataType,
+          },
+        },
+      })
+      
+      return NextResponse.json(
+        createApiResponse({
+          accountId: userData?.dataValue || null,
+        })
+      )
+    }
+
+    // Иначе возвращаем историю чата
     const limit = parseInt(searchParams.get('limit') || '50')
     const channel = searchParams.get('channel') || 'bot'
 
@@ -58,6 +80,78 @@ export async function GET(
     console.error('Chat history API error:', error)
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to fetch chat history'),
+      { status: 500 }
+    )
+  }
+}
+
+// Сохранение account_id для казино
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { userId: string } }
+) {
+  try {
+    requireAuth(request)
+
+    let userId: bigint
+    try {
+      userId = BigInt(params.userId)
+    } catch (e) {
+      return NextResponse.json(
+        createApiResponse(null, 'Invalid user ID'),
+        { status: 400 }
+      )
+    }
+
+    const body = await request.json()
+    const { casino_id, account_id } = body
+
+    if (!casino_id || !account_id) {
+      return NextResponse.json(
+        createApiResponse(null, 'casino_id and account_id are required'),
+        { status: 400 }
+      )
+    }
+
+    // Убеждаемся, что пользователь существует
+    await prisma.botUser.upsert({
+      where: { userId },
+      update: {},
+      create: {
+        userId,
+        language: 'ru',
+      },
+    })
+
+    // Сохраняем account_id для казино
+    const dataType = `casino_account_id_${casino_id.toLowerCase()}`
+    await prisma.botUserData.upsert({
+      where: {
+        userId_dataType: {
+          userId,
+          dataType,
+        },
+      },
+      update: {
+        dataValue: account_id,
+      },
+      create: {
+        userId,
+        dataType,
+        dataValue: account_id,
+      },
+    })
+
+    return NextResponse.json(
+      createApiResponse({
+        success: true,
+        message: 'Account ID saved successfully',
+      })
+    )
+  } catch (error: any) {
+    console.error('Save account ID API error:', error)
+    return NextResponse.json(
+      createApiResponse(null, error.message || 'Failed to save account ID'),
       { status: 500 }
     )
   }
