@@ -165,8 +165,8 @@ export async function POST(request: NextRequest) {
       bank
     })
 
-    // 🛡️ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: удаляем старые дубликаты за последние 5 минут
-    // Для вывода также проверяем по withdrawalCode, чтобы предотвратить повторное использование одного кода
+    // 🛡️ КРИТИЧНАЯ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: проверяем ДО создания заявки
+    // Если дубликат уже существует - возвращаем существующую заявку, НЕ создаем новую
     if (finalUserId && type && amount) {
       const whereClause: any = {
         userId: BigInt(finalUserId),
@@ -175,23 +175,41 @@ export async function POST(request: NextRequest) {
         bookmaker: bookmaker || undefined,
         accountId: finalAccountId || undefined,
         createdAt: {
-          gte: new Date(Date.now() - 5 * 60 * 1000) // Последние 5 минут
+          gte: new Date(Date.now() - 2 * 60 * 1000) // Последние 2 минуты (уменьшили для более строгой проверки)
         },
-        status: 'pending' // Удаляем только pending заявки, чтобы не удалить уже обработанные
+        status: 'pending' // Проверяем только pending заявки
       }
 
-      // Для вывода добавляем проверку по коду вывода
+      // Для вывода добавляем проверку по коду вывода (обязательно!)
       if (type === 'withdraw' && site_code) {
         whereClause.withdrawalCode = site_code.trim()
       }
 
-      // Находим и удаляем все дубликаты
-      const deletedCount = await prisma.request.deleteMany({
-        where: whereClause
+      // Проверяем существование дубликата ДО создания
+      const existingRequest = await prisma.request.findFirst({
+        where: whereClause,
+        orderBy: {
+          createdAt: 'desc'
+        }
       })
 
-      if (deletedCount.count > 0) {
-        console.log(`🗑️ Payment API: Deleted ${deletedCount.count} duplicate ${type} request(s) before creating new one`)
+      if (existingRequest) {
+        console.log(`⚠️ Payment API: Duplicate request detected (${type}), returning existing request:`, existingRequest.id)
+        return NextResponse.json(
+          createApiResponse({
+            id: existingRequest.id,
+            userId: existingRequest.userId.toString(),
+            type: existingRequest.requestType,
+            status: existingRequest.status,
+            amount: existingRequest.amount?.toString()
+          }, 'Заявка уже создана. Не нажимайте кнопку несколько раз.'),
+          {
+            status: 200,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          }
+        )
       }
     }
 
@@ -464,7 +482,8 @@ export async function POST(request: NextRequest) {
       photoPreview: photoUrl ? photoUrl.substring(0, 50) + '...' : null
     })
     
-    // 🛡️ КРИТИЧНО: Для вывода проверяем, не был ли уже использован код
+    // Дополнительная проверка кода вывода (если не была проверена выше)
+    // Эта проверка нужна для случаев, когда код был использован в более старых заявках
     if (type === 'withdraw' && site_code) {
       const existingWithdrawRequest = await prisma.request.findFirst({
         where: {
@@ -473,7 +492,7 @@ export async function POST(request: NextRequest) {
           bookmaker: bookmaker?.toLowerCase() || null,
           requestType: 'withdraw',
           status: {
-            in: ['pending', 'completed', 'auto_completed']
+            in: ['completed', 'auto_completed'] // Проверяем только завершенные заявки
           }
         },
         orderBy: {
@@ -482,9 +501,9 @@ export async function POST(request: NextRequest) {
       })
 
       if (existingWithdrawRequest) {
-        console.error(`🚫 [Payment API] DUPLICATE WITHDRAWAL CODE: Code ${site_code.trim()} already used in request #${existingWithdrawRequest.id} (status: ${existingWithdrawRequest.status}, created: ${existingWithdrawRequest.createdAt})`)
+        console.error(`🚫 [Payment API] DUPLICATE WITHDRAWAL CODE: Code ${site_code.trim()} already used in completed request #${existingWithdrawRequest.id}`)
         const errorResponse = NextResponse.json(
-          createApiResponse(null, 'Этот код вывода уже был использован. Вы не можете создать заявку с одним и тем же кодом.'),
+          createApiResponse(null, 'Этот код вывода уже был использован в завершенной заявке. Используйте новый код вывода.'),
           { 
             status: 400,
             headers: {
