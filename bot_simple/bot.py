@@ -689,6 +689,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             try:
                 await update.message.reply_text("⏳ Обрабатываю фото чека...")
                 receipt_photo_base64 = await get_photo_base64(context.bot, photo_file_id)
+                logger.info(f"📤 Отправляю фото чека для заявки {data.get('request_id')}, длина base64: {len(receipt_photo_base64)}")
                 
                 # Обновляем заявку с фото чека
                 request_id = data.get('request_id')
@@ -702,6 +703,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             },
                             headers={"Content-Type": "application/json"}
                         )
+                        logger.info(f"📥 Ответ от API при обновлении фото: status={update_response.status_code}")
                         
                         if update_response.status_code == 200:
                             await update.message.reply_text(
@@ -1443,12 +1445,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def get_photo_base64(bot, file_id: str) -> str:
     """Получает фото из Telegram и конвертирует в base64"""
     try:
+        logger.info(f"📷 Начинаю загрузку фото: file_id={file_id}")
         file = await bot.get_file(file_id)
+        logger.info(f"📷 Файл получен: file_path={file.file_path}, file_size={file.file_size}")
         file_data = await file.download_as_bytearray()
+        logger.info(f"📷 Файл загружен: размер={len(file_data)} байт")
         base64_data = base64.b64encode(file_data).decode('utf-8')
-        return f"data:image/jpeg;base64,{base64_data}"
+        logger.info(f"📷 Base64 сгенерирован: длина={len(base64_data)} символов")
+        result = f"data:image/jpeg;base64,{base64_data}"
+        logger.info(f"✅ Фото успешно конвертировано в base64, итоговая длина: {len(result)} символов")
+        return result
     except Exception as e:
-        logger.error(f"❌ Ошибка при получении фото: {e}")
+        logger.error(f"❌ Ошибка при получении фото: {e}", exc_info=True)
         raise
 
 async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, data: dict) -> None:
