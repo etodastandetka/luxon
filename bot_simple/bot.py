@@ -974,7 +974,15 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not query:
         return
     
-    await query.answer()
+    # Отвечаем на callback, игнорируем ошибки для старых запросов
+    try:
+        await query.answer()
+    except Exception as e:
+        # Игнорируем ошибки "Query is too old" - это нормально для старых кнопок
+        if "too old" in str(e).lower() or "timeout" in str(e).lower():
+            logger.debug(f"⚠️ Callback query истек: {e}")
+        else:
+            logger.warning(f"⚠️ Ошибка при ответе на callback query: {e}")
     
     user = update.effective_user
     user_id = user.id
