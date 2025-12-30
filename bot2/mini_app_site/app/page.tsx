@@ -201,6 +201,14 @@ function LuxOnSlots({
     })
     
     container.appendChild(frag)
+    
+    // Устанавливаем начальную позицию (если не идет анимация)
+    if (!finalSymbol) {
+      const symbolHeight = 50
+      const centerOffset = 75
+      const initialPosition = 20 * symbolHeight - centerOffset
+      container.style.transform = `translateY(${initialPosition}px)`
+    }
   }, [symbols])
 
   const renderAll = useCallback(() => {
@@ -257,13 +265,14 @@ function LuxOnSlots({
   }, [])
 
   const checkWin = useCallback(() => {
-    // Получаем символы из финальных позиций
+    // Получаем символы из центральной позиции (индекс 20)
     const reel0 = reelsRef.current[0]
     const reel1 = reelsRef.current[1]
     const reel2 = reelsRef.current[2]
     
     if (!reel0 || !reel1 || !reel2) return
     
+    // Получаем символ из центральной позиции каждого барабана
     const symbol0 = reel0.querySelector('[data-index="20"]')?.textContent || ""
     const symbol1 = reel1.querySelector('[data-index="20"]')?.textContent || ""
     const symbol2 = reel2.querySelector('[data-index="20"]')?.textContent || ""
@@ -289,17 +298,21 @@ function LuxOnSlots({
       reel.classList.add("lux-reel-spinning")
       
       // Определяем финальную позицию (в пикселях)
-      const symbolHeight = 50 // высота символа + gap
-      const targetPosition = 20 * symbolHeight // позиция 20-го символа
+      const symbolHeight = 50 // высота символа
+      const targetSymbolIndex = 20 // индекс символа, который должен быть в центре
+      const centerOffset = 75 // центр видимой области (150px / 2 = 75px)
+      const targetPosition = targetSymbolIndex * symbolHeight - centerOffset
       finalPositionsRef.current[index] = targetPosition
       
       // Устанавливаем финальный символ
       renderReel(index, finalSymbol)
       
-      // Запускаем анимацию
+      // Запускаем анимацию - начинаем сверху (отрицательное значение) и опускаемся вниз
       const spinDuration = 2000 + index * 300 + Math.random() * 500 // разная длительность для каждого барабана
+      const startPosition = -2000 // начальная позиция сверху
       reel.style.setProperty("--spin-duration", `${spinDuration}ms`)
-      reel.style.setProperty("--target-position", `-${targetPosition}px`)
+      reel.style.setProperty("--start-position", `${startPosition}px`)
+      reel.style.setProperty("--target-position", `${targetPosition}px`)
       
       return new Promise<void>((resolve) => {
         setTimeout(() => {
@@ -307,7 +320,7 @@ function LuxOnSlots({
           reel.classList.remove("lux-reel-spinning")
           const container = reel.querySelector('.lux-reel-container') as HTMLElement
           if (container) {
-            container.style.transform = `translateY(-${targetPosition}px)`
+            container.style.transform = `translateY(${targetPosition}px)`
           }
           resolve()
         }, spinDuration)
@@ -1389,10 +1402,10 @@ export default function HomePage() {
 
         @keyframes lux-reel-spin {
           0% {
-            transform: translateY(0);
+            transform: translateY(var(--start-position, -2000px));
           }
           100% {
-            transform: translateY(var(--target-position, -1000px));
+            transform: translateY(var(--target-position, 0px));
           }
         }
 
