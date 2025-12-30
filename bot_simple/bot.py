@@ -1868,21 +1868,28 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                         headers={"Content-Type": "application/json"}
                     )
                     
-                    if execute_response.status_code != 200:
-                        error_text = execute_response.text
-                        error_data = None
+                    # Парсим JSON независимо от статуса (как в клиентском сайте)
+                    try:
+                        execute_result = execute_response.json()
+                        logger.info(f"Ответ withdraw-execute (статус {execute_response.status_code}): {execute_result}")
+                    except Exception as json_error:
+                        logger.error(f"Ошибка парсинга JSON ответа withdraw-execute: {json_error}, статус: {execute_response.status_code}")
                         try:
-                            if error_text:
-                                error_data = execute_response.json()
+                            response_text = execute_response.text[:200] if hasattr(execute_response, 'text') else str(execute_response.content[:200] if hasattr(execute_response, 'content') else 'N/A')
+                            logger.error(f"Текст ответа: {response_text}")
                         except:
                             pass
-                        
-                        error_msg = (error_data.get('error') if error_data else None) or (error_data.get('message') if error_data else None) or f"Ошибка выполнения вывода: {execute_response.status_code}"
+                        await update.message.reply_text("❌ Ошибка выполнения вывода. Попробуйте еще раз.")
+                        await start(update, context)
+                        return
+                    
+                    if execute_response.status_code != 200:
+                        error_msg = execute_result.get('error') or execute_result.get('message') or f"Ошибка выполнения вывода: {execute_response.status_code}"
+                        logger.error(f"Ошибка withdraw-execute: статус {execute_response.status_code}, сообщение: {error_msg}, полный ответ: {execute_result}")
                         await update.message.reply_text(f"❌ {error_msg}")
                         await start(update, context)
                         return
                     
-                    execute_result = execute_response.json()
                     if not execute_result.get('success'):
                         error_msg = execute_result.get('message') or execute_result.get('error') or 'Ошибка выполнения вывода'
                         await update.message.reply_text(f"❌ {error_msg}")
@@ -1921,9 +1928,30 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                 headers={"Content-Type": "application/json"}
             )
             
-            if payment_response.status_code == 200:
+            # Парсим JSON независимо от статуса, чтобы получить детальное сообщение об ошибке
+            try:
                 result = payment_response.json()
+                logger.info(f"Ответ API payment (статус {payment_response.status_code}): {result}")
+            except Exception as json_error:
+                logger.error(f"Ошибка парсинга JSON ответа payment: {json_error}, статус: {payment_response.status_code}")
+                try:
+                    response_text = payment_response.text[:200] if hasattr(payment_response, 'text') else str(payment_response.content[:200] if hasattr(payment_response, 'content') else 'N/A')
+                    logger.error(f"Текст ответа: {response_text}")
+                except:
+                    pass
+                await update.message.reply_text('❌ Ошибка создания заявки. Попробуйте еще раз.')
+                await start(update, context)
+                return
+            
+            if payment_response.status_code == 200:
                 request_id = result.get('data', {}).get('id')
+                
+                # Проверяем success (как в клиентском сайте: result.success !== false)
+                if result.get('success') is False:
+                    error_message = result.get('error') or 'Неизвестная ошибка'
+                    await update.message.reply_text(f'❌ {error_message}')
+                    await start(update, context)
+                    return
                 
                 if request_id:
                     # Форматируем сумму
@@ -1951,9 +1979,10 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                 else:
                     await update.message.reply_text('❌ Ошибка создания заявки')
             else:
-                error_text = payment_response.text
-                logger.error(f"Ошибка API payment: {payment_response.status_code}, {error_text}")
-                await update.message.reply_text('❌ Ошибка создания заявки. Попробуйте еще раз.')
+                # Статус не 200 - показываем детальное сообщение об ошибке из JSON (как в клиентском сайте)
+                error_message = result.get('error') or result.get('message') or f'Ошибка создания заявки ({payment_response.status_code})'
+                logger.error(f"Ошибка API payment: статус {payment_response.status_code}, сообщение: {error_message}, полный ответ: {result}")
+                await update.message.reply_text(f'❌ {error_message}')
         
         # Показываем главное меню
         await start(update, context)
