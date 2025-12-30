@@ -208,16 +208,18 @@ function LuxOnSlots({
     const targetSymbolIndex = 20
     const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
     
-    // Устанавливаем позицию сразу, синхронно
-    container.style.transform = `translateY(${initialPosition}px)`
-    container.style.transition = 'none'
+    // Устанавливаем позицию сразу, синхронно, с !important для гарантии
+    container.style.setProperty('transform', `translateY(${initialPosition}px)`, 'important')
+    container.style.setProperty('transition', 'none', 'important')
     // Принудительный reflow для применения стилей
     void container.offsetHeight
+    
     // Восстанавливаем transition только если не идет анимация
     if (!finalSymbol) {
+      // Используем setTimeout для восстановления transition после применения позиции
       setTimeout(() => {
-        container.style.transition = ''
-      }, 50)
+        container.style.removeProperty('transition')
+      }, 100)
     }
   }, [symbols])
 
@@ -225,31 +227,29 @@ function LuxOnSlots({
     renderReel(0)
     renderReel(1)
     renderReel(2)
-    // Убеждаемся, что позиции установлены после рендера
-    // Используем несколько requestAnimationFrame для надежности
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        reelsRef.current.forEach((reel, index) => {
-          if (reel && !spinningStatesRef.current[index]) {
-            const container = reel.querySelector('.lux-reel-container') as HTMLElement
-            if (container) {
-              const symbolHeight = 50
-              const centerOffset = 75
-              const targetSymbolIndex = 20
-              const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
-              container.style.transform = `translateY(${initialPosition}px)`
-              container.style.transition = 'none'
-              // Принудительный reflow
-              void container.offsetHeight
-              // Восстанавливаем transition
-              setTimeout(() => {
-                container.style.transition = ''
-              }, 100)
-            }
+    // Дополнительно убеждаемся, что позиции установлены после рендера
+    setTimeout(() => {
+      reelsRef.current.forEach((reel, index) => {
+        if (reel && !spinningStatesRef.current[index]) {
+          const container = reel.querySelector('.lux-reel-container') as HTMLElement
+          if (container) {
+            const symbolHeight = 50
+            const centerOffset = 75
+            const targetSymbolIndex = 20
+            const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
+            // Принудительно устанавливаем позицию с !important
+            container.style.setProperty('transform', `translateY(${initialPosition}px)`, 'important')
+            container.style.setProperty('transition', 'none', 'important')
+            // Принудительный reflow
+            void container.offsetHeight
+            // Восстанавливаем transition
+            setTimeout(() => {
+              container.style.removeProperty('transition')
+            }, 150)
           }
-        })
+        }
       })
-    })
+    }, 100)
   }, [renderReel])
 
   useEffect(() => {
@@ -1500,7 +1500,8 @@ export default function HomePage() {
           will-change: transform;
           position: relative;
           z-index: 1;
-          /* Начальная позиция будет установлена через JavaScript */
+          /* Начальная позиция: символ с индексом 20 в центре (20 * 50 - 75 = 925px) */
+          transform: translateY(925px);
         }
 
         .lux-reel-spinning .lux-reel-container {
