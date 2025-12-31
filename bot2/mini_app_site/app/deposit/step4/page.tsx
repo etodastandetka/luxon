@@ -555,20 +555,27 @@ const [bank, setBank] = useState('omoney')
       
       const tg = (window as any).Telegram?.WebApp
       let telegramUser = null
+      let initData: string | null = null
+      let initDataHash: string | null = null
       
-      
-      
-      if (tg?.initDataUnsafe?.user) {
-        telegramUser = tg.initDataUnsafe.user
-      } else if (tg?.initData) {
+      // Получаем initData и hash для валидации на сервере
+      if (tg) {
+        initData = tg.initData || null
+        initDataHash = tg.initDataUnsafe?.hash || null
         
-        try {
-          const params = new URLSearchParams(tg.initData)
-          const userParam = params.get('user')
-          if (userParam) {
-            telegramUser = JSON.parse(decodeURIComponent(userParam))
+        if (tg?.initDataUnsafe?.user) {
+          telegramUser = tg.initDataUnsafe.user
+        } else if (tg?.initData) {
+          // Парсим initData для получения user
+          try {
+            const params = new URLSearchParams(tg.initData)
+            const userParam = params.get('user')
+            if (userParam) {
+              telegramUser = JSON.parse(decodeURIComponent(userParam))
+            }
+          } catch (e) {
+            console.warn('⚠️ Не удалось распарсить user из initData:', e)
           }
-        } catch (e) {
         }
       }
       
@@ -682,6 +689,10 @@ const [bank, setBank] = useState('omoney')
         telegram_language_code: telegramUser?.language_code,
         
         receipt_photo: finalReceiptPhotoBase64,
+        
+        // Передаем initData и hash для валидации на сервере
+        initData: initData,
+        initDataHash: initDataHash,
       }
 
       
@@ -710,13 +721,16 @@ const [bank, setBank] = useState('omoney')
       
       try {
         
+        // Увеличиваем таймаут для запросов с фото (может быть большим)
+        const timeoutForRequest = finalReceiptPhotoBase64 ? 60000 : 30000 // 60 секунд для запросов с фото
+        
         response = await safeFetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: bodyString,
-          timeout: 30000,
+          timeout: timeoutForRequest,
           retries: isIOS ? 0 : 1, 
           retryDelay: 2000
         })

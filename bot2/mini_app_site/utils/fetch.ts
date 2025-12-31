@@ -74,8 +74,9 @@ export async function safeFetch(
         }
         
         // Если это AbortError (таймаут), пробуем еще раз только если не iOS
-        if (fetchError.name === 'AbortError') {
-          lastError = new Error(`Таймаут запроса (${timeout}ms). Проверьте интернет-соединение.`)
+        if (fetchError.name === 'AbortError' || fetchError.message?.includes('aborted') || fetchError.message?.includes('Timed out')) {
+          const timeoutMessage = `Таймаут запроса (${timeout}ms). ${attempt < retries ? 'Повторяю попытку...' : 'Проверьте интернет-соединение.'}`
+          lastError = new Error(timeoutMessage)
           // На iOS не делаем retry при AbortError
           if (isIOS) {
             throw lastError
