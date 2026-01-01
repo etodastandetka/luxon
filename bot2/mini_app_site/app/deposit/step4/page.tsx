@@ -407,7 +407,9 @@ const [bank, setBank] = useState('omoney')
         })
       } else {
         
-        generateBankLinksForNumber()
+        generateBankLinksForNumber().catch((error) => {
+          console.error('Error generating bank links:', error)
+        })
       }
     }
     
@@ -1196,7 +1198,9 @@ const [bank, setBank] = useState('omoney')
   const handleBankSelect = (bankKey: string) => {
     setBank(bankKey)
     
-    generateBankLinksForNumber()
+    generateBankLinksForNumber().catch((error) => {
+      console.error('Error generating bank links:', error)
+    })
   }
 
 
@@ -1276,31 +1280,93 @@ const [bank, setBank] = useState('omoney')
   })
 
   
-  const generateBankLinksForNumber = () => {
-    
-    const bankLinks: Record<string, string> = {
-      'DemirBank': 'https://retail.demirbank.kg/',
-      'O!Money': 'https://api.dengi.o.kg/',
-      'Balance.kg': 'https://balance.kg/',
-      'Bakai': 'https://bakai24.app/',
-      'MegaPay': 'https://megapay.kg/',
-      'MBank': 'https://app.mbank.kg/',
-      'demirbank': 'https://retail.demirbank.kg/',
-      'omoney': 'https://api.dengi.o.kg/',
-      'balance': 'https://balance.kg/',
-      'bakai': 'https://bakai24.app/',
-      'megapay': 'https://megapay.kg/',
-      'mbank': 'https://app.mbank.kg/'
+  const generateBankLinksForNumber = async () => {
+    if (!bookmaker || !playerId || !amount) {
+      console.warn('Missing required data for QR generation:', { bookmaker, playerId, amount })
+      return
     }
-    
-    setQrData({
-      all_bank_urls: bankLinks,
-      settings: {
-        enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'], 
-        deposits_enabled: true
+
+    try {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/public/generate-qr`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerId: playerId,
+          bank: 'demirbank', // По умолчанию, но API вернет ссылки для всех банков
+          amount: amount
+        }),
+      })
+
+      if (!response.ok) {
+        console.error('Failed to generate QR codes:', response.status)
+        // Fallback на ссылки без hash в случае ошибки
+        const bankLinks: Record<string, string> = {
+          'DemirBank': 'https://retail.demirbank.kg/',
+          'O!Money': 'https://api.dengi.o.kg/',
+          'Balance.kg': 'https://balance.kg/',
+          'Bakai': 'https://bakai24.app/',
+          'MegaPay': 'https://megapay.kg/',
+          'MBank': 'https://app.mbank.kg/',
+          'demirbank': 'https://retail.demirbank.kg/',
+          'omoney': 'https://api.dengi.o.kg/',
+          'balance': 'https://balance.kg/',
+          'bakai': 'https://bakai24.app/',
+          'megapay': 'https://megapay.kg/',
+          'mbank': 'https://app.mbank.kg/'
+        }
+        setQrData({
+          all_bank_urls: bankLinks,
+          settings: {
+            enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'], 
+            deposits_enabled: true
+          }
+        })
+        setPaymentUrl(bankLinks['DemirBank'] || '')
+        return
       }
-    })
-    setPaymentUrl(bankLinks['DemirBank'] || '')
+
+      const data = await response.json()
+      if (data.success && data.all_bank_urls) {
+        setQrData({
+          all_bank_urls: data.all_bank_urls,
+          settings: data.settings || {
+            enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'], 
+            deposits_enabled: true
+          }
+        })
+        setPaymentUrl(data.primary_url || data.all_bank_urls['DemirBank'] || data.all_bank_urls['demirbank'] || '')
+      } else {
+        console.error('QR generation failed:', data)
+      }
+    } catch (error) {
+      console.error('Error generating QR codes:', error)
+      // Fallback на ссылки без hash в случае ошибки
+      const bankLinks: Record<string, string> = {
+        'DemirBank': 'https://retail.demirbank.kg/',
+        'O!Money': 'https://api.dengi.o.kg/',
+        'Balance.kg': 'https://balance.kg/',
+        'Bakai': 'https://bakai24.app/',
+        'MegaPay': 'https://megapay.kg/',
+        'MBank': 'https://app.mbank.kg/',
+        'demirbank': 'https://retail.demirbank.kg/',
+        'omoney': 'https://api.dengi.o.kg/',
+        'balance': 'https://balance.kg/',
+        'bakai': 'https://bakai24.app/',
+        'megapay': 'https://megapay.kg/',
+        'mbank': 'https://app.mbank.kg/'
+      }
+      setQrData({
+        all_bank_urls: bankLinks,
+        settings: {
+          enabled_banks: ['demirbank', 'omoney', 'balance', 'bakai', 'megapay', 'mbank'], 
+          deposits_enabled: true
+        }
+      })
+      setPaymentUrl(bankLinks['DemirBank'] || '')
+    }
   }
 
 

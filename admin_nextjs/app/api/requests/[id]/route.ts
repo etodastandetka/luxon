@@ -13,8 +13,12 @@ async function sendTelegramNotification(userId: bigint, message: string, withMen
     }
 
     const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+    const chatId = userId.toString()
+    
+    console.log(`📤 Sending Telegram notification to chat_id: ${chatId}`)
+    
     const body: any = {
-      chat_id: userId.toString(),
+      chat_id: chatId,
       text: message,
       parse_mode: 'HTML',
     }
@@ -30,15 +34,17 @@ async function sendTelegramNotification(userId: bigint, message: string, withMen
       body: JSON.stringify(body),
     })
 
+    const responseData = await response.json()
+    
     if (!response.ok) {
-      const errorData = await response.json()
-      console.error('❌ Failed to send Telegram notification:', errorData)
+      console.error(`❌ Failed to send Telegram notification to ${chatId}:`, responseData)
       return
     }
 
-    const data = await response.json()
-    if (data.ok) {
-      console.log(`✅ Telegram notification sent to user ${userId}`)
+    if (responseData.ok) {
+      console.log(`✅ Telegram notification sent successfully to user ${userId} (chat_id: ${chatId})`)
+    } else {
+      console.error(`❌ Telegram API returned error for ${chatId}:`, responseData)
     }
   } catch (error) {
     console.error('❌ Error sending Telegram notification:', error)
@@ -339,12 +345,19 @@ export async function PATCH(
         }
         
         if (notificationMessage) {
+          console.log(`[Request ${id}] Sending notification to user ${requestBeforeUpdate.userId}, status: ${body.status}, type: ${requestBeforeUpdate.requestType}`)
           // Отправляем уведомление асинхронно, не блокируя ответ
           // Инлайн-кнопки убраны - кнопки доступны в Reply клавиатуре
           sendTelegramNotification(requestBeforeUpdate.userId, notificationMessage, false)
             .catch(error => {
               console.error(`❌ Failed to send notification for request ${id}:`, error)
             })
+        }
+      } else {
+        if (!isFromBot) {
+          console.log(`[Request ${id}] Skipping notification - not from bot (source: ${source})`)
+        } else if (!requestBeforeUpdate.userId) {
+          console.log(`[Request ${id}] Skipping notification - no userId`)
         }
       }
     }
