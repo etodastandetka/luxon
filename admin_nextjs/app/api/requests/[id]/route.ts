@@ -19,17 +19,8 @@ async function sendTelegramNotification(userId: bigint, message: string, withMen
       parse_mode: 'HTML',
     }
 
-    // Добавляем inline кнопку "В главное меню" если нужно
-    if (withMenuButton) {
-      body.reply_markup = {
-        inline_keyboard: [[
-          {
-            text: '🏠 В главное меню',
-            callback_data: 'back_to_menu'
-          }
-        ]]
-      }
-    }
+    // Инлайн-кнопки убраны - кнопки "Пополнить" и "Вывести" теперь только в Reply клавиатуре
+    // Параметр withMenuButton оставлен для совместимости, но не используется
 
     const response = await fetch(sendMessageUrl, {
       method: 'POST',
@@ -349,9 +340,8 @@ export async function PATCH(
         
         if (notificationMessage) {
           // Отправляем уведомление асинхронно, не блокируя ответ
-          // Для completed/approved/autodeposit_success/auto_completed добавляем кнопку "В главное меню"
-          const withMenuButton = (body.status === 'completed' || body.status === 'approved' || body.status === 'autodeposit_success' || body.status === 'auto_completed')
-          sendTelegramNotification(requestBeforeUpdate.userId, notificationMessage, withMenuButton)
+          // Инлайн-кнопки убраны - кнопки доступны в Reply клавиатуре
+          sendTelegramNotification(requestBeforeUpdate.userId, notificationMessage, false)
             .catch(error => {
               console.error(`❌ Failed to send notification for request ${id}:`, error)
             })

@@ -25,3 +25,7 @@ qrcode-terminal>=0.2.0
 
 
 
+
+
+
+
