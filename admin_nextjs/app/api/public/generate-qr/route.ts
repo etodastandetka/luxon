@@ -147,6 +147,8 @@ export async function POST(request: NextRequest) {
         })
       }
       
+      console.log(`🔍 Found ${field54Matches.length} field 54 matches in base_hash`)
+      
       if (field54Matches.length === 0) {
         const errorResponse = NextResponse.json(
           { success: false, error: 'Не найдено поле 54 в base_hash для Bakai' },
@@ -156,7 +158,7 @@ export async function POST(request: NextRequest) {
         return errorResponse
       }
       
-      // Находим индекс последнего поля 63
+      // Находим индекс последнего поля 63 (контрольная сумма)
       const last63Index = requisite.lastIndexOf('6304')
       if (last63Index === -1) {
         const errorResponse = NextResponse.json(
@@ -166,6 +168,8 @@ export async function POST(request: NextRequest) {
         errorResponse.headers.set('Access-Control-Allow-Origin', '*')
         return errorResponse
       }
+      
+      console.log(`🔍 Field 63 found at index ${last63Index}`)
       
       // Находим последнее поле 54 перед полем 63
       const lastField54Before63 = field54Matches
@@ -181,9 +185,13 @@ export async function POST(request: NextRequest) {
         return errorResponse
       }
       
+      console.log(`🔍 Last field 54 before 63: "${lastField54Before63.fullMatch}" at index ${lastField54Before63.index}`)
+      
       // Заменяем последнее поле 54 на новое значение
       const oldField54 = lastField54Before63.fullMatch
       const newField54 = `54${amountLen}${amountStr}`
+      
+      console.log(`💰 Updating field 54: "${oldField54}" -> "${newField54}" (amount: ${amount}, cents: ${amountCents})`)
       
       // Заменяем последнее вхождение поля 54 (перед полем 63)
       let updatedHash = requisite.substring(0, lastField54Before63.index) + 
@@ -192,6 +200,8 @@ export async function POST(request: NextRequest) {
       
       // Извлекаем данные до последнего объекта 63 (ID "00" - "90", исключая ID 63)
       let dataBefore63 = updatedHash.substring(0, last63Index)
+      
+      console.log(`🔍 Data before field 63 length: ${dataBefore63.length} chars`)
       
       // Согласно алгоритму:
       // 1. Все значения до объекта 63 преобразуются в строку (уже есть)
@@ -207,7 +217,7 @@ export async function POST(request: NextRequest) {
         dataBefore63 = decodeURIComponent(dataBefore63)
       } catch (e) {
         // Если декодирование не удалось, используем исходную строку
-        console.warn('Could not decode URI component, using original string')
+        console.warn('⚠️ Could not decode URI component, using original string')
       }
       
       // Вычисляем SHA256 от данных до объекта 63
@@ -220,10 +230,16 @@ export async function POST(request: NextRequest) {
       // Берем последние 4 символа в верхнем регистре
       const checksum = checksumCleaned.slice(-4).toUpperCase()
       
-      // Заменяем последнее поле 63 (контрольная сумма)
+      console.log(`🔐 SHA-256 checksum calculated: ${checksumFull.substring(0, 20)}...${checksumFull.slice(-4)} (last 4: ${checksum})`)
+      
+      // Заменяем последнее поле 63 (контрольная сумма) - формат: 6304 + 4 символа hex
       const newField63 = `6304${checksum}`
       qrHash = updatedHash.substring(0, last63Index) + newField63
-      console.log(`✅ BAKAI QR hash generated successfully: ${qrHash.substring(0, 20)}...${qrHash.slice(-10)}`)
+      
+      console.log(`✅ BAKAI QR hash generated successfully`)
+      console.log(`   Old field 63: ${requisite.substring(last63Index, last63Index + 8)}`)
+      console.log(`   New field 63: ${newField63}`)
+      console.log(`   Final hash preview: ${qrHash.substring(0, 30)}...${qrHash.slice(-15)}`)
     } else {
       // Для Demir Bank используем существующую логику
       // Проверяем, что реквизит - это 16 цифр
