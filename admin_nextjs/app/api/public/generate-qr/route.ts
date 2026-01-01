@@ -112,10 +112,15 @@ export async function POST(request: NextRequest) {
     
     let qrHash: string
     
+    // Логируем для отладки
+    console.log(`🔍 Processing QR generation - RequisiteBank: ${requisiteBank || 'null'}, Amount: ${amount}`)
+    
     // Если банк кошелька Bakai, используем base_hash напрямую с обновлением суммы
-    if (requisiteBank === 'BAKAI') {
-      // Проверяем, что base_hash содержит данные только для Bakai
-      if (requisite.includes('qr.demirbank.kg') || requisite.includes('DEMIRBANK')) {
+    // Сравниваем без учета регистра
+    if (requisiteBank && requisiteBank.toUpperCase() === 'BAKAI') {
+      console.log('✅ Detected BAKAI bank, using base_hash update logic')
+      // Проверяем, что base_hash не содержит данные DemirBank (это было бы ошибкой)
+      if (requisite.includes('qr.demirbank.kg') || requisite.toUpperCase().includes('DEMIRBANK')) {
         const errorResponse = NextResponse.json(
           { success: false, error: 'Base_hash для Bakai содержит данные DemirBank. Проверьте настройки кошелька в админке.' },
           { status: 400 }
@@ -124,15 +129,7 @@ export async function POST(request: NextRequest) {
         return errorResponse
       }
       
-      // Проверяем, что base_hash содержит данные для Bakai
-      if (!requisite.includes('qr.bakai.kg') && !requisite.includes('BAKAIAPP')) {
-        const errorResponse = NextResponse.json(
-          { success: false, error: 'Base_hash не содержит данные для Bakai. Проверьте настройки кошелька в админке.' },
-          { status: 400 }
-        )
-        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
-        return errorResponse
-      }
+      // Для Bakai base_hash может быть любым валидным QR-кодом, поэтому проверяем только наличие полей 54 и 63
       
       // Конвертируем сумму в копейки
       const amountCents = Math.round(amount * 100)
@@ -226,6 +223,7 @@ export async function POST(request: NextRequest) {
       // Заменяем последнее поле 63 (контрольная сумма)
       const newField63 = `6304${checksum}`
       qrHash = updatedHash.substring(0, last63Index) + newField63
+      console.log(`✅ BAKAI QR hash generated successfully: ${qrHash.substring(0, 20)}...${qrHash.slice(-10)}`)
     } else {
       // Для Demir Bank используем существующую логику
       // Проверяем, что реквизит - это 16 цифр
@@ -320,6 +318,9 @@ export async function POST(request: NextRequest) {
     }
     const primaryBank = primaryBankMap[bank.toLowerCase()] || 'DemirBank'
     const primaryUrl = bankLinks[primaryBank] || bankLinks['DemirBank']
+    
+    console.log(`✅ QR generation successful - Primary URL: ${primaryUrl.substring(0, 50)}...`)
+    console.log(`✅ Bakai URL: ${bankLinks['Bakai']?.substring(0, 50)}...`)
     
     const response = NextResponse.json({
       success: true,
