@@ -684,3 +684,94 @@ export async function getPlatformLimits(): Promise<
   return limits
 }
 
+interface PlayerCheckResult {
+  exists: boolean
+  name?: string
+  currencyId?: number
+  userId?: number
+}
+
+/**
+ * Проверка существования игрока через Cashdesk API (метод "Поиск игрока")
+ * Поддерживается только для казино с Cashdesk API: 1xbet, melbet, winwin, 888starz
+ * Для mostbet и 1win проверка недоступна
+ */
+export async function checkPlayerExists(
+  casino: '1xbet' | 'melbet' | 'winwin' | '888starz',
+  userId: string,
+  cfg: CashdeskConfig
+): Promise<PlayerCheckResult> {
+  try {
+    const crypto = require('crypto')
+    
+    console.log(`[${casino} Check Player] Checking user ID: ${userId}`)
+    console.log(`[${casino} Check Player] Config:`, {
+      hash: cfg.hash?.substring(0, 20) + '...',
+      login: cfg.login,
+      cashdeskid: cfg.cashdeskid,
+      cashierpass: '***',
+    })
+
+    // Согласно документации CashdeskBotAPI пункт 2.1:
+    // a. SHA256(hash={hash}&userid={userid}&cashdeskid={cashdeskid})
+    // b. MD5(userid={userid}&cashierpass={cashierpass}&hash={hash})
+    // c. SHA256(результаты 1 и 2 объединены)
+    
+    const step1 = `hash=${cfg.hash}&userid=${userId}&cashdeskid=${cfg.cashdeskid}`
+    const sha1 = crypto.createHash('sha256').update(step1).digest('hex')
+
+    const step2 = `userid=${userId}&cashierpass=${cfg.cashierpass}&hash=${cfg.hash}`
+    const md5Hash = crypto.createHash('md5').update(step2).digest('hex')
+
+    const combined = sha1 + md5Hash
+    const sign = crypto.createHash('sha256').update(combined).digest('hex')
+
+    // Согласно документации пункт 2.2: confirm = MD5(userId:hash)
+    const confirmStr = `${userId}:${cfg.hash}`
+    const confirm = crypto.createHash('md5').update(confirmStr).digest('hex')
+
+    const url = `https://partners.servcul.com/CashdeskBotAPI/Users/${userId}?confirm=${confirm}&cashdeskId=${cfg.cashdeskid}`
+    
+    // Basic Auth
+    const authString = `${cfg.login}:${cfg.cashierpass}`
+    const authBase64 = Buffer.from(authString).toString('base64')
+    const authHeader = `Basic ${authBase64}`
+    
+    const headers: Record<string, string> = {
+      'sign': sign,
+      'Authorization': authHeader,
+    }
+
+    console.log(`[${casino} Check Player] Request:`, {
+      url,
+      confirm,
+      sign_preview: sign.substring(0, 20) + '...',
+    })
+
+    const response = await fetch(url, { headers, method: 'GET' })
+
+    if (response.ok) {
+      const data = await response.json()
+      console.log(`[${casino} Check Player] ✅ Player exists:`, data)
+      
+      return {
+        exists: true,
+        userId: data.userId,
+        name: data.name,
+        currencyId: data.currencyId,
+      }
+    } else if (response.status === 404) {
+      console.log(`[${casino} Check Player] ❌ Player not found (404)`)
+      return { exists: false }
+    } else {
+      const errorText = await response.text()
+      console.error(`[${casino} Check Player] ❌ API error: ${response.status} ${response.statusText}`, errorText)
+      // При ошибке считаем, что игрок не найден
+      return { exists: false }
+    }
+  } catch (error: any) {
+    console.error(`[${casino} Check Player] ❌ Error:`, error.message)
+    return { exists: false }
+  }
+}
+
