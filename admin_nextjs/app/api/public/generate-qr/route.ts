@@ -78,26 +78,124 @@ export async function POST(request: NextRequest) {
       return errorResponse
     }
     
-    // Получаем активный реквизит
+    // Получаем активный реквизит с retry логикой и альтернативными способами
     let requisite = null
     let requisiteBank = null
-    try {
-      const activeRequisite = await prisma.botRequisite.findFirst({
-        where: { isActive: true }
-      })
-      if (activeRequisite) {
-        requisite = activeRequisite.value
-        requisiteBank = activeRequisite.bank
-        console.log(`✅ Using active requisite: ${activeRequisite.name || `#${activeRequisite.id}`} - Bank: ${requisiteBank || 'N/A'} - ${requisite.slice(0, 4)}****${requisite.slice(-4)}`)
-      } else {
-        console.error('❌ No active requisite found in database')
+    const maxRetries = 3
+    let lastError: any = null
+    
+    // Способ 1: Пытаемся получить через findFirst (основной способ)
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const activeRequisite = await prisma.botRequisite.findFirst({
+          where: { isActive: true }
+        })
+        if (activeRequisite) {
+          requisite = activeRequisite.value
+          requisiteBank = activeRequisite.bank
+          console.log(`✅ Using active requisite: ${activeRequisite.name || `#${activeRequisite.id}`} - Bank: ${requisiteBank || 'N/A'} - ${requisite.slice(0, 4)}****${requisite.slice(-4)}`)
+          break // Успешно получили реквизит, выходим из цикла
+        } else {
+          console.error(`❌ No active requisite found in database (attempt ${attempt}/${maxRetries})`)
+          // Если реквизит не найден, это не временная ошибка, выходим
+          break
+        }
+      } catch (error: any) {
+        lastError = error
+        const errorMessage = error?.message || String(error)
+        const isConnectionError = errorMessage.includes('timeout') || 
+                                  errorMessage.includes('ECONNREFUSED') ||
+                                  errorMessage.includes('ETIMEDOUT') ||
+                                  errorMessage.includes('Connection') ||
+                                  errorMessage.includes('P1001') || // Prisma connection error
+                                  errorMessage.includes('P1017')    // Prisma server closed connection
+        
+        console.error(`❌ Error fetching requisite (attempt ${attempt}/${maxRetries}):`, errorMessage)
+        
+        // Если это ошибка подключения и есть еще попытки, ждем и повторяем
+        if (isConnectionError && attempt < maxRetries) {
+          const delay = attempt * 200 // Экспоненциальная задержка: 200ms, 400ms, 600ms
+          console.log(`⏳ Retrying in ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        
+        // Если это не ошибка подключения или закончились попытки, пробуем альтернативный способ
+        break
       }
-    } catch (error) {
-      console.error('Error fetching requisite:', error)
     }
     
-    // Если не нашли реквизит, возвращаем ошибку на русском языке
+    // Способ 2: Если основной способ не сработал, пробуем через findMany (альтернативный способ)
     if (!requisite) {
+      console.log('🔄 Trying alternative method: findMany with filter...')
+      try {
+        const allRequisites = await prisma.botRequisite.findMany({
+          where: { isActive: true },
+          take: 1, // Берем только первый
+          orderBy: { id: 'desc' } // Берем последний созданный
+        })
+        
+        if (allRequisites.length > 0) {
+          const activeRequisite = allRequisites[0]
+          requisite = activeRequisite.value
+          requisiteBank = activeRequisite.bank
+          console.log(`✅ Using active requisite (alternative method): ${activeRequisite.name || `#${activeRequisite.id}`} - Bank: ${requisiteBank || 'N/A'} - ${requisite.slice(0, 4)}****${requisite.slice(-4)}`)
+        } else {
+          console.error('❌ No active requisite found using alternative method')
+        }
+      } catch (error: any) {
+        console.error('❌ Alternative method also failed:', error?.message || String(error))
+        lastError = error
+      }
+    }
+    
+    // Способ 3: Если и альтернативный способ не сработал, пробуем получить все и найти активный вручную
+    if (!requisite) {
+      console.log('🔄 Trying fallback method: findMany all and filter manually...')
+      try {
+        const allRequisites = await prisma.botRequisite.findMany({
+          orderBy: { id: 'desc' },
+          take: 10 // Берем последние 10 реквизитов
+        })
+        
+        const activeRequisite = allRequisites.find(r => r.isActive === true)
+        if (activeRequisite) {
+          requisite = activeRequisite.value
+          requisiteBank = activeRequisite.bank
+          console.log(`✅ Using active requisite (fallback method): ${activeRequisite.name || `#${activeRequisite.id}`} - Bank: ${requisiteBank || 'N/A'} - ${requisite.slice(0, 4)}****${requisite.slice(-4)}`)
+        } else {
+          console.error('❌ No active requisite found using fallback method')
+        }
+      } catch (error: any) {
+        console.error('❌ Fallback method also failed:', error?.message || String(error))
+        lastError = error
+      }
+    }
+    
+    // Если не нашли реквизит после всех попыток, возвращаем ошибку на русском языке
+    if (!requisite) {
+      // Логируем детали ошибки для отладки
+      if (lastError) {
+        console.error('🔍 Detailed error info:', {
+          message: lastError?.message,
+          code: lastError?.code,
+          meta: lastError?.meta,
+          stack: lastError?.stack?.split('\n').slice(0, 3)
+        })
+      }
+      
+      // Проверяем, есть ли вообще реквизиты в базе (для диагностики)
+      try {
+        const count = await prisma.botRequisite.count()
+        console.log(`📊 Total requisites in database: ${count}`)
+        if (count > 0) {
+          const anyRequisite = await prisma.botRequisite.findFirst()
+          console.log(`📊 Sample requisite isActive status: ${anyRequisite?.isActive}`)
+        }
+      } catch (e) {
+        console.error('❌ Could not check requisites count:', e)
+      }
+      
       const errorResponse = NextResponse.json(
         { 
           success: false, 

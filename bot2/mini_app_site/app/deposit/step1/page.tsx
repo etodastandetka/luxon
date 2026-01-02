@@ -167,11 +167,10 @@ const [bookmaker, setBookmaker] = useState('')
 
   
   useEffect(() => {
-    
+    // Устанавливаем банковский перевод по умолчанию, если не установлен
     const paymentType = localStorage.getItem('deposit_payment_type')
     if (!paymentType) {
-      router.push('/deposit/step0')
-      return
+      localStorage.setItem('deposit_payment_type', 'bank')
     }
     
     async function checkSettings() {

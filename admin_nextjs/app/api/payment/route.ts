@@ -113,7 +113,6 @@ export async function POST(request: NextRequest) {
       playerId,
       type, // deposit/withdraw
       amount,
-      amount_usd, // Сумма в долларах (только для крипты)
       bookmaker,
       bank,
       phone,
@@ -123,8 +122,6 @@ export async function POST(request: NextRequest) {
       telegram_last_name,
       receipt_photo, // base64 строка фото чека (для deposit)
       qr_photo, // base64 строка фото QR-кода (для withdraw)
-      payment_method, // 'bank' или 'crypto'
-      crypto_invoice_id, // ID крипто invoice
       site_code, // Код ордера на вывод (для withdraw)
       transaction_id, // ID транзакции от Mostbet API (для withdraw)
     } = sanitizedBody
@@ -418,19 +415,7 @@ export async function POST(request: NextRequest) {
       bank
     })
 
-    // Если есть crypto_invoice_id, находим крипто-платеж и связываем его
-    let cryptoPaymentId: number | null = null
-    if (payment_method === 'crypto' && crypto_invoice_id) {
-      const cryptoPayment = await prisma.cryptoPayment.findUnique({
-        where: { invoice_id: crypto_invoice_id.toString() }
-      })
-      if (cryptoPayment) {
-        cryptoPaymentId = cryptoPayment.id
-      }
-    }
-
     // Для error_log сохраняем информацию об ошибке в statusDetail
-    // Для криптоплатежей сохраняем amount_usd в statusDetail
     // Для вывода Mostbet сохраняем transaction_id в statusDetail
     let statusDetail: string | null = null
     if (type === 'error_log' && body.error) {
@@ -440,11 +425,6 @@ export async function POST(request: NextRequest) {
         timestamp: body.error.timestamp || new Date().toISOString(),
         userAgent: body.error.userAgent,
         url: body.error.url
-      })
-    } else if (payment_method === 'crypto' && amount_usd) {
-      statusDetail = JSON.stringify({
-        amount_usd: parseFloat(amount_usd),
-        amount_kgs: parseFloat(amount)
       })
     } else if (type === 'withdraw' && transaction_id) {
       // Сохраняем transaction_id от Mostbet API в statusDetail
@@ -554,10 +534,9 @@ export async function POST(request: NextRequest) {
         bank,
         phone,
         status: 'pending',
-        statusDetail: statusDetail, // Для error_log содержит JSON с информацией об ошибке, для крипты - amount_usd и amount_kgs
+        statusDetail: statusDetail, // Для error_log содержит JSON с информацией об ошибке
         photoFileUrl: photoUrl, // Сохраняем base64 фото чека (для deposit) или QR-кода (для withdraw)
-        paymentMethod: payment_method || 'bank', // 'bank' или 'crypto'
-        cryptoPaymentId: cryptoPaymentId,
+        paymentMethod: 'bank',
         withdrawalCode: site_code || null, // Код ордера на вывод (для 1xbet)
         source: source, // 'bot' или 'mini_app'
       },
@@ -569,13 +548,6 @@ export async function POST(request: NextRequest) {
       photoFileUrlLength: newRequest.photoFileUrl?.length || 0
     })
     
-    // Если есть crypto_invoice_id, обновляем крипто-платеж с request_id
-    if (payment_method === 'crypto' && crypto_invoice_id) {
-      await prisma.cryptoPayment.updateMany({
-        where: { invoice_id: crypto_invoice_id.toString() },
-        data: { request_id: newRequest.id.toString() }
-      })
-    }
 
     console.log('✅ Payment API - Request created successfully:', {
       id: newRequest.id,

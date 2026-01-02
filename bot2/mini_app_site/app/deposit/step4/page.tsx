@@ -7,7 +7,7 @@ import PageTransition from '../../../components/PageTransition'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getTelegramUser, getTelegramUserId, syncWithBot, notifyUser, checkUserBlocked } from '../../../utils/telegram'
 import { useAlert } from '../../../components/useAlert'
-import { formatKgs, formatUsdt, formatUsd } from '../../../utils/crypto-pay'
+import { formatKgs } from '../../../utils/crypto-pay'
 import { safeFetch, getApiBase } from '../../../utils/fetch'
 import { compressImageIfNeeded } from '../../../utils/image-compress'
 
@@ -166,10 +166,7 @@ const [bank, setBank] = useState('omoney')
   const [timeLeft, setTimeLeft] = useState(300) 
   const [isPaid, setIsPaid] = useState(false)
   const [isCreatingRequest, setIsCreatingRequest] = useState(false)
-  const [paymentType, setPaymentType] = useState<'bank' | 'crypto'>('bank')
   const [paymentByNumber, setPaymentByNumber] = useState<{ phoneNumber: string; recipientName: string; bankName: string } | null>(null)
-  const [cryptoInvoice, setCryptoInvoice] = useState<any>(null)
-  const [cryptoLoading, setCryptoLoading] = useState(false)
   const router = useRouter()
   const { showAlert, AlertComponent } = useAlert()
 
@@ -188,12 +185,9 @@ const [bank, setBank] = useState('omoney')
     const savedBookmaker = localStorage.getItem('deposit_bookmaker') || ''
     const savedPlayerId = localStorage.getItem('deposit_user_id') || ''
     const savedAmount = parseFloat(localStorage.getItem('deposit_amount') || '0')
-    const savedPaymentType = localStorage.getItem('deposit_payment_type') as 'bank' | 'crypto' || 'bank'
-    
     setBookmaker(savedBookmaker)
     setPlayerId(savedPlayerId)
     setAmount(savedAmount)
-    setPaymentType(savedPaymentType)
     
     
     const telegramUserId = getTelegramUserId()
@@ -260,114 +254,6 @@ const [bank, setBank] = useState('omoney')
     }
   }, [])
 
-  
-  const createCryptoInvoice = async () => {
-    if (cryptoLoading || cryptoInvoice) return
-    
-    setCryptoLoading(true)
-    try {
-      const apiUrl = getApiBase()
-      
-      
-      const savedAmountUsd = localStorage.getItem('deposit_amount_usd')
-      if (!savedAmountUsd) {
-        throw new Error('Сумма в долларах не найдена')
-      }
-      
-      const amountInUsd = parseFloat(savedAmountUsd)
-      
-      
-      const telegramUserId = getTelegramUserId()
-      
-      const payload = JSON.stringify({
-        bookmaker,
-        playerId,
-        amount: amount, 
-        amount_usd: amountInUsd, 
-        telegram_user_id: telegramUserId
-      })
-      
-      const response = await safeFetch(`${apiUrl}/api/crypto-pay/create-invoice`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amountUsd: amountInUsd, 
-          asset: 'USDT',
-          description: `Пополнение баланса ${bookmaker} - ID: ${playerId}`,
-          payload: payload,
-        }),
-        timeout: 30000,
-        retries: 1,
-        retryDelay: 2000
-      })
-      
-      if (response.ok) {
-        let data
-        try {
-          const text = await response.text()
-          data = text ? JSON.parse(text) : {}
-        } catch (parseError) {
-          console.error('❌ Ошибка парсинга JSON ответа crypto invoice:', parseError)
-          throw new Error(language === 'ru' 
-            ? 'Ошибка при обработке ответа сервера. Попробуйте еще раз.'
-            : 'Error processing server response. Please try again.')
-        }
-        
-        if (data.success && data.data) {
-          const invoiceData = data.data
-          setCryptoInvoice(invoiceData)
-          
-        } else {
-          console.error('❌ Invoice creation failed:', data)
-          const errorMsg = data.error || data.message || (language === 'ru' 
-            ? 'Не удалось создать счет на оплату'
-            : 'Failed to create payment invoice')
-          throw new Error(errorMsg)
-        }
-      } else {
-        let errorData: any = {}
-        try {
-          const text = await response.text()
-          errorData = text ? JSON.parse(text) : { error: `HTTP ${response.status}` }
-        } catch (e) {
-          errorData = { error: `HTTP ${response.status} ${response.statusText}` }
-        }
-        
-        console.error('❌ Failed to create crypto invoice:', errorData)
-        throw new Error(errorData.error || errorData.message || (language === 'ru'
-          ? 'Не удалось создать счет на оплату'
-          : 'Failed to create payment invoice'))
-      }
-    } catch (error: any) {
-      console.error('❌ Error creating crypto invoice:', error)
-      const errorMessage = error?.message || String(error)
-      const userMessage = errorMessage.includes('интернет') || errorMessage.includes('connection') || errorMessage.includes('Таймаут')
-        ? (language === 'ru' 
-            ? 'Нет подключения к интернету. Проверьте соединение и попробуйте снова.'
-            : 'No internet connection. Check your connection and try again.')
-        : (errorMessage || (language === 'ru' 
-            ? 'Ошибка при создании счета на оплату. Попробуйте еще раз.'
-            : 'Error creating payment invoice. Please try again.'))
-      
-      
-      const isCryptoError = errorMessage.includes('wallet') || errorMessage.includes('кошелек') || errorMessage.includes('invoice')
-      const finalMessage = isCryptoError && paymentType === 'crypto'
-        ? (language === 'ru' 
-            ? 'Ошибка при создании крипто-счета. Проверьте настройки Crypto Bot или попробуйте позже.'
-            : 'Error creating crypto invoice. Check Crypto Bot settings or try later.')
-        : userMessage
-      
-      showAlert({
-        type: 'error',
-        title: language === 'ru' ? 'Ошибка' : 'Error',
-        message: finalMessage
-      })
-    } finally {
-      setCryptoLoading(false)
-    }
-  }
 
   
   useEffect(() => {
@@ -400,28 +286,15 @@ const [bank, setBank] = useState('omoney')
         localStorage.setItem('deposit_timer_start', Date.now().toString())
       }
       
-      if (paymentType === 'crypto') {
-        
-        createCryptoInvoice().catch((error) => {
-          console.error('❌ Ошибка создания crypto invoice:', error)
-        })
-      } else {
-        
-        generateBankLinksForNumber().catch((error) => {
-          console.error('Error generating bank links:', error)
-        })
-      }
+      generateBankLinksForNumber().catch((error) => {
+        console.error('Error generating bank links:', error)
+      })
     }
     
-  }, [bookmaker, playerId, amount, paymentType])
+  }, [bookmaker, playerId, amount])
 
   
   useEffect(() => {
-    
-    if (paymentType === 'crypto') {
-      return
-    }
-    
     if (timeLeft > 0 && !isPaid) {
       const timer = setTimeout(() => {
         
@@ -454,7 +327,7 @@ const [bank, setBank] = useState('omoney')
       
       handleTimeExpired()
     }
-  }, [timeLeft, isPaid, paymentType])
+  }, [timeLeft, isPaid])
 
   
 
@@ -638,15 +511,6 @@ const [bank, setBank] = useState('omoney')
         }
       }
 
-      
-      const savedAmountUsd = paymentType === 'crypto' ? localStorage.getItem('deposit_amount_usd') : null
-      const amountUsd = savedAmountUsd ? parseFloat(savedAmountUsd) : null
-
-      
-          let invoiceId = null
-          if (paymentType === 'crypto' && cryptoInvoice) {
-            invoiceId = cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || cryptoInvoice.id || null
-      }
 
       if (!playerId || !bookmaker || !amount || amount <= 0) {
         const errorMsg = `Недостаточно данных для создания заявки: playerId=${playerId}, bookmaker=${bookmaker}, amount=${amount}`
@@ -674,15 +538,13 @@ const [bank, setBank] = useState('omoney')
       const requestData = {
         type: 'deposit',
         amount: amount, 
-        amount_usd: amountUsd, 
         
         userId: telegramUserId, 
         bookmaker: bookmaker,
         bank: bank,
         account_id: playerId, 
         playerId: playerId, 
-        payment_method: paymentType, 
-        crypto_invoice_id: invoiceId,
+        payment_method: 'bank',
         
         telegram_user_id: telegramUserId,
         telegram_username: telegramUser?.username,
@@ -885,7 +747,6 @@ const [bank, setBank] = useState('omoney')
           bookmaker,
           playerId,
           amount,
-          paymentType,
           isPaid,
           isCreatingRequest
         },
@@ -968,68 +829,6 @@ const [bank, setBank] = useState('omoney')
   }
 
   
-  const handleCryptoIPaid = async () => {
-    if (!cryptoInvoice) {
-      showAlert({
-        type: 'error',
-        title: language === 'ru' ? 'Ошибка' : 'Error',
-        message: language === 'ru' 
-          ? 'Invoice не загружен. Попробуйте обновить страницу.'
-          : 'Invoice not loaded. Please refresh the page.'
-      })
-      return
-    }
-
-    
-    if (isCreatingRequest || isPaid) {
-      showAlert({
-        type: 'info',
-        title: language === 'ru' ? 'Информация' : 'Info',
-        message: language === 'ru'
-          ? 'Заявка уже отправлена или обрабатывается. Пожалуйста, подождите.'
-          : 'Request already submitted or being processed. Please wait.'
-      })
-      return
-    }
-
-    setIsCreatingRequest(true)
-
-    try {
-      
-      
-      const requestId = await createDepositRequest()
-      
-      
-      
-      if (requestId) {
-        localStorage.setItem('deposit_request_id', String(requestId))
-      }
-      
-      
-      setIsPaid(true)
-      
-      
-      router.push('/deposit/waiting')
-    } catch (error: any) {
-      console.error('❌ Error creating deposit request (crypto):', error)
-      
-      setIsCreatingRequest(false)
-      
-      const errorMessage = error?.message || String(error) || 'Неизвестная ошибка'
-      showAlert({
-        type: 'error',
-        title: language === 'ru' ? 'Ошибка' : 'Error',
-        message: errorMessage || (language === 'ru' 
-          ? 'Ошибка при создании заявки. Попробуйте ещё раз.'
-          : 'Error creating request. Please try again.')
-      })
-    } finally {
-      
-      if (!isPaid) {
-        setIsCreatingRequest(false)
-      }
-    }
-  }
 
   
   const handleReceiptPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1087,10 +886,6 @@ const [bank, setBank] = useState('omoney')
 
   
   const handleIPaid = async () => {
-    if (paymentType === 'crypto') {
-      return
-    }
-
     if (requireReceiptPhoto && !receiptPhoto && !receiptPhotoBase64) {
       showAlert({
         type: 'error',
@@ -1475,7 +1270,7 @@ const [bank, setBank] = useState('omoney')
       </div>
 
       
-      {paymentType === 'bank' && (
+      {(
         <div className="card text-center pulse">
           <div className="text-3xl font-bold text-red-500 mb-2">
             {formatTime(timeLeft)}
@@ -1484,243 +1279,6 @@ const [bank, setBank] = useState('omoney')
         </div>
       )}
 
-      
-      {paymentType === 'crypto' && cryptoLoading && (
-        <div className="card text-center">
-          <div className="text-white/70">
-            {language === 'ru' ? 'Создание счета на оплату...' : 'Creating payment invoice...'}
-          </div>
-        </div>
-      )}
-
-      
-      {paymentType === 'crypto' && !cryptoLoading && !cryptoInvoice && (
-        <div className="card text-center bg-red-900/20 border-red-500">
-          <div className="text-red-500 text-lg font-semibold mb-2">
-            {language === 'ru' ? 'Ошибка создания счета' : 'Invoice creation error'}
-          </div>
-          <p className="text-sm text-white/70 mb-4">
-            {language === 'ru' 
-              ? 'Не удалось создать счет на оплату. Попробуйте обновить страницу.'
-              : 'Failed to create payment invoice. Please refresh the page.'}
-          </p>
-          <button
-            onClick={() => {
-              setCryptoLoading(true)
-              createCryptoInvoice().finally(() => setCryptoLoading(false))
-            }}
-            className="btn btn-primary"
-          >
-            {language === 'ru' ? 'Попробовать снова' : 'Try again'}
-          </button>
-        </div>
-      )}
-
-      
-      {process.env.NODE_ENV === 'development' && (
-        <div className="card text-xs text-white/50">
-          <div>paymentType: {paymentType}</div>
-          <div>cryptoInvoice: {cryptoInvoice ? '✅' : '❌'}</div>
-          <div>cryptoLoading: {cryptoLoading ? '✅' : '❌'}</div>
-          <div>isPaid: {isPaid ? '✅' : '❌'}</div>
-        </div>
-      )}
-
-      
-      {paymentType === 'crypto' && cryptoInvoice && (
-        <div className="card space-y-4">
-          <h2 className="text-lg font-semibold text-white text-center">
-            {language === 'ru' ? 'Оплата через Crypto Bot' : 'Pay via Crypto Bot'}
-          </h2>
-          <p className="text-sm text-white/70 text-center">
-            {language === 'ru' 
-              ? 'Нажмите на кнопку ниже для оплаты'
-              : 'Click the button below to pay'}
-          </p>
-          
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              
-              
-              try {
-                const tg = (window as any).Telegram?.WebApp
-                
-                if (!cryptoInvoice) {
-                  console.error('❌ cryptoInvoice is null or undefined')
-                  showAlert({
-                    type: 'error',
-                    title: language === 'ru' ? 'Ошибка' : 'Error',
-                    message: language === 'ru' 
-                      ? 'Invoice не загружен. Попробуйте обновить страницу.'
-                      : 'Invoice not loaded. Please refresh the page.'
-                  })
-                  return
-                }
-                
-                
-                const invoiceUrl = cryptoInvoice.bot_invoice_url || 
-                                  cryptoInvoice.mini_app_invoice_url || 
-                                  cryptoInvoice.web_app_invoice_url
-                
-                if (!invoiceUrl) {
-                  console.error('❌ No invoice URL available')
-                  showAlert({
-                    type: 'error',
-                    title: language === 'ru' ? 'Ошибка' : 'Error',
-                    message: language === 'ru' 
-                      ? 'Не удалось получить ссылку на счет. Попробуйте создать заявку заново.'
-                      : 'Failed to get invoice URL. Please try creating a new request.'
-                  })
-                  return
-                }
-
-                
-                const miniAppUrl = cryptoInvoice.mini_app_invoice_url
-                
-                if (tg && tg.openLink && miniAppUrl) {
-                  try {
-                    
-                    
-                    tg.openLink(miniAppUrl)
-                  } catch (error: any) {
-                    console.error('❌ Error calling openLink with mini_app_invoice_url:', error)
-                    showAlert({
-                      type: 'error',
-                      title: language === 'ru' ? 'Ошибка' : 'Error',
-                      message: language === 'ru' 
-                        ? `Ошибка при открытии invoice: ${error.message || 'Неизвестная ошибка'}`
-                        : `Error opening invoice: ${error.message || 'Unknown error'}`
-                    })
-                  }
-                } 
-                
-                else if (tg && tg.openInvoice && cryptoInvoice.bot_invoice_url) {
-                  try {
-                    tg.openInvoice(cryptoInvoice.bot_invoice_url, (status: string) => {
-                      if (status === 'paid' || status === 'completed') {
-                        setIsPaid(true)
-                        setTimeout(() => {
-                          router.push('/deposit/waiting')
-                        }, 1000)
-                      } else if (status === 'cancelled' || status === 'failed') {
-                        showAlert({
-                          type: 'info',
-                          title: language === 'ru' ? 'Информация' : 'Info',
-                          message: language === 'ru' 
-                            ? 'Оплата была отменена'
-                            : 'Payment was cancelled'
-                        })
-                      }
-                    })
-                  } catch (error: any) {
-                    console.error('❌ Error calling openInvoice:', error)
-                    showAlert({
-                      type: 'error',
-                      title: language === 'ru' ? 'Ошибка' : 'Error',
-                      message: language === 'ru' 
-                        ? `Ошибка при открытии invoice: ${error.message || 'Неизвестная ошибка'}`
-                        : `Error opening invoice: ${error.message || 'Unknown error'}`
-                    })
-                  }
-                } 
-                
-                else if (tg && tg.openLink && cryptoInvoice.web_app_invoice_url) {
-                  try {
-                    tg.openLink(cryptoInvoice.web_app_invoice_url)
-                  } catch (error: any) {
-                    console.error('❌ Error calling openLink with web_app_invoice_url:', error)
-                    showAlert({
-                      type: 'error',
-                      title: language === 'ru' ? 'Ошибка' : 'Error',
-                      message: language === 'ru' 
-                        ? `Ошибка при открытии invoice: ${error.message || 'Неизвестная ошибка'}`
-                        : `Error opening invoice: ${error.message || 'Unknown error'}`
-                    })
-                  }
-                }
-                
-                else {
-                  console.warn('⚠️ Telegram WebApp not available, using window.open fallback')
-                  const fallbackUrl = miniAppUrl || cryptoInvoice.bot_invoice_url || cryptoInvoice.web_app_invoice_url
-                  if (fallbackUrl) {
-                    try {
-                      window.open(fallbackUrl, '_blank')
-                      showAlert({
-                        type: 'info',
-                        title: language === 'ru' ? 'Информация' : 'Info',
-                        message: language === 'ru' 
-                          ? 'Invoice открыт в новой вкладке'
-                          : 'Invoice opened in new tab'
-                      })
-                    } catch (error: any) {
-                      console.error('❌ Error opening in new tab:', error)
-                      showAlert({
-                        type: 'error',
-                        title: language === 'ru' ? 'Ошибка' : 'Error',
-                        message: language === 'ru' 
-                          ? 'Не удалось открыть invoice. Попробуйте скопировать ссылку вручную.'
-                          : 'Failed to open invoice. Please copy the link manually.'
-                      })
-                    }
-                  } else {
-                    showAlert({
-                      type: 'error',
-                      title: language === 'ru' ? 'Ошибка' : 'Error',
-                      message: language === 'ru' 
-                        ? 'Не удалось получить ссылку на invoice. Попробуйте создать заявку заново.'
-                        : 'Failed to get invoice URL. Please try creating a new request.'
-                    })
-                  }
-                }
-              } catch (error) {
-                console.error('❌ Unexpected error in button click handler:', error)
-                showAlert({
-                  type: 'error',
-                  title: language === 'ru' ? 'Ошибка' : 'Error',
-                  message: language === 'ru' 
-                    ? 'Произошла неожиданная ошибка. Попробуйте обновить страницу.'
-                    : 'An unexpected error occurred. Please refresh the page.'
-                })
-              }
-            }}
-            className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!cryptoInvoice || !cryptoInvoice.bot_invoice_url}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {language === 'ru' ? 'Оплатить через Crypto Bot' : 'Pay via Crypto Bot'}
-          </button>
-          
-          <div className="text-xs text-white/50 text-center">
-            {(() => {
-              const invoiceAmount = cryptoInvoice?.amount;
-              const amountUsd = localStorage.getItem('deposit_amount_usd');
-              return language === 'ru' 
-                ? `Сумма: ${formatUsd(amountUsd || '0')} (≈ ${formatUsdt(String(invoiceAmount || '0'))} для оплаты)`
-                : `Amount: ${formatUsd(amountUsd || '0')} (≈ ${formatUsdt(String(invoiceAmount || '0'))} to pay)`;
-            })()}
-          </div>
-          <div className="text-xs text-white/40 text-center">
-            {language === 'ru' 
-              ? 'Invoice откроется внутри Telegram'
-              : 'Invoice will open inside Telegram'}
-          </div>
-          
-          
-          {process.env.NODE_ENV === 'development' && cryptoInvoice && (
-            <div className="text-xs text-white/30 text-center mt-2 p-2 bg-black/20 rounded">
-              <div>Invoice ID: {cryptoInvoice.invoice_id || cryptoInvoice.invoiceId || cryptoInvoice.id || 'undefined'}</div>
-              <div>Has bot_invoice_url: {cryptoInvoice.bot_invoice_url ? '✅' : '❌'}</div>
-              <div>Has mini_app_invoice_url: {cryptoInvoice.mini_app_invoice_url ? '✅' : '❌'}</div>
-              <div>Full invoice object: {JSON.stringify(cryptoInvoice, null, 2)}</div>
-            </div>
-          )}
-        </div>
-      )}
 
       
       <div className="card space-y-3 slide-in-left delay-100">
@@ -1737,23 +1295,7 @@ const [bank, setBank] = useState('omoney')
           <div className="flex justify-between">
             <span className="text-white/70">{t.amount}:</span>
             <div className="text-right">
-              {paymentType === 'crypto' ? (
-                <>
-                  <span className="text-white font-bold text-lg">
-                    {formatUsd(localStorage.getItem('deposit_amount_usd') || '0')}
-                  </span>
-                  <div className="text-sm text-white/60">
-                    ≈ {formatKgs(amount)} (будет пополнено в казино)
-                  </div>
-                  {cryptoInvoice && (
-                    <div className="text-xs text-white/50 mt-1">
-                      ≈ {formatUsdt(String(cryptoInvoice.amount))} для оплаты
-                    </div>
-                  )}
-                </>
-              ) : (
-                <span className="text-white font-bold text-lg">{formatKgs(amount)}</span>
-              )}
+              <span className="text-white font-bold text-lg">{formatKgs(amount)}</span>
             </div>
           </div>
         </div>
@@ -1761,7 +1303,7 @@ const [bank, setBank] = useState('omoney')
 
 
       
-      {paymentType === 'bank' && paymentByNumber && (
+      {paymentByNumber && (
         <div className="card space-y-4 slide-in-right delay-300">
           <h2 className="text-lg font-semibold text-white">
             {language === 'ru' ? 'Реквизиты для перевода' : 'Transfer details'}
@@ -1798,7 +1340,7 @@ const [bank, setBank] = useState('omoney')
       )}
 
       
-      {paymentType === 'bank' && (
+      {(
         <div className="card space-y-4 slide-in-right delay-300">
           <h2 className="text-lg font-semibold text-white">{t.selectBank}</h2>
           <BankButtons 
@@ -1812,7 +1354,7 @@ const [bank, setBank] = useState('omoney')
       )}
 
       
-      {isPaid && paymentType === 'bank' && (
+      {isPaid && (
         <div className="card text-center bg-green-900/20 border-green-500">
           <div className="text-green-500 text-lg font-semibold mb-2">
             ✅ {t.paymentComplete}
@@ -1824,7 +1366,7 @@ const [bank, setBank] = useState('omoney')
       )}
 
       
-      {!isPaid && requireReceiptPhoto && paymentType === 'bank' && (
+      {!isPaid && requireReceiptPhoto && (
         <div className="card space-y-3">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">
@@ -1903,7 +1445,7 @@ const [bank, setBank] = useState('omoney')
       )}
 
       
-      {!isPaid && paymentType === 'bank' && (
+      {!isPaid && (
         <button
           onClick={async (e) => {
             e.preventDefault()
@@ -1942,46 +1484,6 @@ const [bank, setBank] = useState('omoney')
         </button>
       )}
 
-      
-      {paymentType === 'crypto' && cryptoInvoice && !isPaid && (
-        <button
-          type="button"
-          onClick={async (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            
-            if (isPaid || isCreatingRequest) {
-              console.warn('⚠️ Кнопка заблокирована:', { isPaid, isCreatingRequest })
-              return
-            }
-            
-            try {
-              await handleCryptoIPaid()
-            } catch (error) {
-              console.error('❌ Необработанная ошибка в handleCryptoIPaid:', error)
-            }
-          }}
-          className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isPaid || isCreatingRequest}
-        >
-          {isCreatingRequest ? (
-            <>
-              <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {language === 'ru' ? 'Отправка...' : 'Sending...'}
-            </>
-          ) : (
-            <>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {t.iPaid}
-            </>
-          )}
-        </button>
-      )}
 
       
       {!isPaid && (
@@ -1994,7 +1496,7 @@ const [bank, setBank] = useState('omoney')
       )}
 
       
-      {paymentType === 'bank' && (
+      {(
         <div className="card space-y-4">
           <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>
           <div className="space-y-2">
@@ -2010,46 +1512,6 @@ const [bank, setBank] = useState('omoney')
         </div>
       )}
 
-      
-      {paymentType === 'crypto' && cryptoInvoice && (
-        <div className="card space-y-4">
-          <h2 className="text-lg font-semibold text-white">
-            {language === 'ru' ? 'Как оплатить:' : 'How to pay:'}
-          </h2>
-          <div className="space-y-2">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                1
-              </div>
-              <p className="text-sm text-white/80 leading-relaxed">
-                {language === 'ru' 
-                  ? 'Нажмите на кнопку "Оплатить через Crypto Bot" выше'
-                  : 'Click the "Pay via Crypto Bot" button above'}
-              </p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                2
-              </div>
-              <p className="text-sm text-white/80 leading-relaxed">
-                {language === 'ru' 
-                  ? 'В открывшемся Crypto Bot подтвердите оплату'
-                  : 'In the opened Crypto Bot, confirm the payment'}
-              </p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                3
-              </div>
-              <p className="text-sm text-white/80 leading-relaxed">
-                {language === 'ru' 
-                  ? 'После оплаты средства будут автоматически зачислены на ваш счет'
-                  : 'After payment, funds will be automatically credited to your account'}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       
       {AlertComponent}

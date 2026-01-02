@@ -14,7 +14,6 @@ export default function MenuPage() {
     { href: '/dashboard/payment-by-number', label: 'Пополнение по номеру', icon: '📱' },
     { href: '/dashboard/history', label: 'История транзакций', icon: '🕐' },
     { href: '/dashboard/wallet', label: 'Кошельки', icon: '💰' },
-    { href: '/dashboard/crypto', label: 'Крипто', icon: '₿' },
     { href: '/dashboard/limits', label: 'Лимиты', icon: '⚙️' },
     { href: '/dashboard/referral-withdrawals', label: 'Реф. вывод', icon: '💸' },
     { href: '/dashboard/broadcast', label: 'Рассылка', icon: '📢' },

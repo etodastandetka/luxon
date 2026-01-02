@@ -154,7 +154,7 @@ function useBankUiTheme() {
 export default function DepositStep0() {
   
   useBankUiTheme()
-const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
+const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('bank')
   
   const router = useRouter()
   const { language } = useLanguage()
@@ -221,14 +221,8 @@ const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
       e.stopPropagation()
     }
     
-    if (!paymentType) {
-      alert('Выберите способ оплаты')
-      return
-    }
-    
-    
-    localStorage.setItem('deposit_payment_type', paymentType)
-    
+    // Всегда используем банковский перевод
+    localStorage.setItem('deposit_payment_type', 'bank')
     
     router.push('/deposit/step1')
   }
@@ -284,34 +278,6 @@ const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
               </div>
             </button>
 
-            
-            <button
-              onClick={() => setPaymentType('crypto')}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                paymentType === 'crypto'
-                  ? 'border-purple-500 bg-purple-500/20'
-                  : 'border-gray-600 hover:border-gray-500'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="font-semibold text-white">{t.crypto}</div>
-                  <div className="text-sm text-white/70">{t.cryptoDesc}</div>
-                </div>
-                {paymentType === 'crypto' && (
-                  <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-            </button>
           </div>
           
 
@@ -325,7 +291,6 @@ const [paymentType, setPaymentType] = useState<'bank' | 'crypto' | ''>('')
           <button 
             className="btn btn-primary flex-1"
             onClick={handleNext}
-            disabled={!paymentType}
           >
             {t.next}
           </button>
