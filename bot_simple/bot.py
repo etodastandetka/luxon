@@ -13,7 +13,7 @@ from io import BytesIO
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
-from security import rate_limit_decorator, validate_input, sanitize_input
+from security import validate_input, sanitize_input
 import asyncio
 
 # Настройка логирования
@@ -164,7 +164,6 @@ async def send_channel_subscription_message(update: Update, channel_username: st
     except Exception as e:
         logger.error(f"❌ Ошибка при отправке сообщения о подписке: {e}")
 
-@rate_limit_decorator
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start"""
     user = update.effective_user
@@ -312,7 +311,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             logger.error(f"❌ Ошибка при отправке ответа пользователю {user_id}: {e}")
             raise
 
-@rate_limit_decorator
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик всех текстовых сообщений от пользователей (не команд)"""
     if not update.message or not update.message.from_user:
@@ -1391,7 +1389,6 @@ async def referral_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         logger.error(f"Ошибка при получении реферальной статистики: {e}")
         await update.message.reply_text("❌ Произошла ошибка при получении данных")
 
-@rate_limit_decorator
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик callback от inline кнопок"""
     query = update.callback_query
