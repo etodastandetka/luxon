@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'luxon-mini-app',
-      cwd: '/var/www/luxon/mini_app_site/app',
+      cwd: '/var/www/luxon/app',
       script: 'node_modules/.bin/next',
       args: 'start -p 3030',
       interpreter: 'none',

@@ -7,7 +7,7 @@
 
 1. **Очистите кеш Next.js:**
    ```powershell
-   cd mini_app_site\app
+   cd app
    Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
    ```
 
