@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { CHAT_CONFIG } from '@/config/app'
 
 interface ReplyTo {
   id: number
@@ -99,15 +100,16 @@ export default function ChatPage() {
   }, [params.userId, channel])
 
   useEffect(() => {
-    if (params.userId) {
+    if (!params.userId) return
+    
+    fetchChatData()
+    
+    // Обновляем чат с интервалом из конфигурации
+    const interval = setInterval(() => {
       fetchChatData()
-      // Обновляем чат с интервалом из конфигурации
-      const { CHAT_CONFIG } = await import('@/config/app')
-      const interval = setInterval(() => {
-        fetchChatData()
-      }, CHAT_CONFIG.REFRESH_INTERVAL_MS)
-      return () => clearInterval(interval)
-    }
+    }, CHAT_CONFIG.REFRESH_INTERVAL_MS)
+    
+    return () => clearInterval(interval)
   }, [params.userId, fetchChatData])
 
   useEffect(() => {
