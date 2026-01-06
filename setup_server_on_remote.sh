@@ -15,7 +15,7 @@ apt-get update && apt-get upgrade -y
 
 echo ""
 echo "2️⃣ Установка необходимых пакетов..."
-apt-get install -y curl wget git nginx certbot python3-certbot-nginx nodejs npm python3 python3-pip python3-venv pm2 build-essential postgresql-client
+apt-get install -y curl wget git nginx certbot python3-certbot-nginx nodejs npm python3 python3-pip python3-venv build-essential postgresql-client
 
 echo ""
 echo "3️⃣ Обновление Node.js до последней LTS версии..."
@@ -23,20 +23,25 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y nodejs
 
 echo ""
-echo "4️⃣ Проверка версий..."
+echo "4️⃣ Установка PM2 глобально через npm..."
+npm install -g pm2
+
+echo ""
+echo "5️⃣ Проверка версий..."
 node -v
 npm -v
 python3 --version
+pm2 -v
 
 echo ""
-echo "5️⃣ Создание структуры папок..."
+echo "6️⃣ Создание структуры папок..."
 mkdir -p $BASE_DIR
 mkdir -p /var/log/nginx
 mkdir -p /var/log/pm2
 mkdir -p $BASE_DIR/tmp/receipt_uploads
 
 echo ""
-echo "6️⃣ Клонирование репозитория..."
+echo "7️⃣ Клонирование репозитория..."
 if [ -d "$BASE_DIR/.git" ]; then
     echo "   Репозиторий уже существует, обновляю..."
     cd $BASE_DIR
@@ -48,7 +53,7 @@ else
 fi
 
 echo ""
-echo "7️⃣ Создание конфигураций nginx..."
+echo "8️⃣ Создание конфигураций nginx..."
 
 # Конфигурация для lux-on.org
 cat > /etc/nginx/sites-available/lux-on.org << 'EOF'
@@ -116,36 +121,36 @@ ln -sf /etc/nginx/sites-available/pipiska.net /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
 echo ""
-echo "8️⃣ Проверка конфигурации nginx..."
+echo "9️⃣ Проверка конфигурации nginx..."
 nginx -t
 
 echo ""
-echo "9️⃣ Перезапуск nginx..."
+echo "🔟 Перезапуск nginx..."
 systemctl restart nginx
 systemctl enable nginx
 
 echo ""
-echo "🔟 Установка зависимостей для клиентского сайта..."
+echo "1️⃣1️⃣ Установка зависимостей для клиентского сайта..."
 cd $BASE_DIR/app
 npm install
 
 echo ""
-echo "1️⃣1️⃣ Установка зависимостей для админки..."
+echo "1️⃣2️⃣ Установка зависимостей для админки..."
 cd $BASE_DIR/admin_nextjs
 npm install
 
 echo ""
-echo "1️⃣2️⃣ Сборка клиентского сайта..."
+echo "1️⃣3️⃣ Сборка клиентского сайта..."
 cd $BASE_DIR/app
 npm run build
 
 echo ""
-echo "1️⃣3️⃣ Сборка админки..."
+echo "1️⃣4️⃣ Сборка админки..."
 cd $BASE_DIR/admin_nextjs
 npm run build
 
 echo ""
-echo "1️⃣4️⃣ Настройка Python окружения для бота..."
+echo "1️⃣5️⃣ Настройка Python окружения для бота..."
 cd $BASE_DIR/bot
 if [ ! -d "venv" ]; then
     python3 -m venv venv
@@ -155,7 +160,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 echo ""
-echo "1️⃣5️⃣ Настройка PM2..."
+echo "1️⃣6️⃣ Настройка PM2..."
 
 # Остановка существующих процессов
 pm2 stop all 2>/dev/null || true
@@ -178,7 +183,7 @@ pm2 save
 pm2 startup
 
 echo ""
-echo "1️⃣6️⃣ Статус PM2 процессов..."
+echo "1️⃣7️⃣ Статус PM2 процессов..."
 pm2 status
 
 echo ""
