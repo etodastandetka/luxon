@@ -15,7 +15,7 @@ apt-get update && apt-get upgrade -y
 
 echo ""
 echo "2️⃣ Установка необходимых пакетов..."
-apt-get install -y curl wget git nginx certbot python3-certbot-nginx nodejs npm python3 python3-pip python3-venv build-essential postgresql-client
+apt-get install -y curl wget git nginx certbot python3-certbot-nginx python3 python3-pip python3-venv build-essential postgresql-client
 
 echo ""
 echo "3️⃣ Обновление Node.js до последней LTS версии..."
