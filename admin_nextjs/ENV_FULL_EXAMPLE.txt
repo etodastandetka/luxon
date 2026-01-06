@@ -1,0 +1,177 @@
+# Полная конфигурация через переменные окружения
+# Скопируйте этот файл в .env и заполните реальными значениями
+# Переименуйте: cp ENV_FULL_EXAMPLE.txt .env
+
+# ============================================
+# Домены и URL
+# ============================================
+
+# URL клиентского сайта (мини-приложения)
+MINI_APP_URL="https://lux-on.org"
+
+# URL админки (публичный)
+ADMIN_PUBLIC_URL="https://pipiska.net"
+NEXT_PUBLIC_API_URL="https://pipiska.net"
+
+# URL админки (внутренний, для межсервисных вызовов)
+ADMIN_INTERNAL_URL="http://127.0.0.1:3001"
+INTERNAL_API_URL="http://127.0.0.1:3001"
+
+# ============================================
+# Сервер
+# ============================================
+
+# Порт сервера
+PORT=3001
+ADMIN_PORT=3001
+
+# Режим работы
+NODE_ENV="production"
+
+# Отладка
+DEBUG="false"
+
+# ============================================
+# Безопасность и Rate Limiting
+# ============================================
+
+# Rate limiting
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=60
+RATE_LIMIT_BLOCK_DURATION_MS=86400000
+RATE_LIMIT_CLEANUP_INTERVAL_MS=300000
+
+# Размеры запросов
+MAX_REQUEST_SIZE_MB=5
+MAX_PARAM_LENGTH=1000
+
+# ============================================
+# База данных
+# ============================================
+
+# URL базы данных
+DATABASE_URL="postgresql://user:password@localhost:5432/luxon_admin?schema=public"
+
+# Лимиты запросов
+DEFAULT_PAGE_SIZE=10
+MAX_PAGE_SIZE=100
+CHAT_MESSAGES_LIMIT=50
+TRANSACTION_HISTORY_LIMIT=50
+
+# ============================================
+# Автопополнение
+# ============================================
+
+# Окно поиска заявок (в миллисекундах)
+AUTO_DEPOSIT_SEARCH_WINDOW_MS=300000
+AUTO_DEPOSIT_MATCH_WINDOW_MINUTES=5
+
+# Задержка уведомления о депозите
+DELAYED_NOTIFICATION_MS=60000
+
+# Таймаут проверки автопополнения
+AUTO_DEPOSIT_CHECK_TIMEOUT_MS=300000
+
+# ============================================
+# Депозиты
+# ============================================
+
+# Минимальные и максимальные суммы
+MIN_DEPOSIT_DEFAULT=35
+MIN_DEPOSIT_1WIN=100
+MAX_DEPOSIT_AMOUNT=100000
+
+# Таймаут депозита
+DEPOSIT_TIMER_DURATION_SECONDS=300
+
+# ============================================
+# Чат
+# ============================================
+
+# Интервал обновления чата
+CHAT_REFRESH_INTERVAL_MS=3000
+
+# Лимит сообщений
+CHAT_MESSAGES_LIMIT=50
+
+# ============================================
+# Файлы
+# ============================================
+
+# Максимальный размер файла
+MAX_FILE_SIZE_MB=10
+MAX_FILE_SIZE_BYTES=10485760
+
+# Разрешенные типы файлов (через запятую)
+ALLOWED_FILE_TYPES="image/jpeg,image/png,image/gif,image/webp,video/mp4"
+
+# ============================================
+# Реферальная система
+# ============================================
+
+# Процент реферала
+REFERRAL_PERCENTAGE=5
+
+# Минимальный вывод
+REFERRAL_MIN_PAYOUT=100
+
+# Призы за места
+REFERRAL_PRIZE_1ST_PLACE=10000
+REFERRAL_PRIZE_2ND_PLACE=5000
+REFERRAL_PRIZE_3RD_PLACE=2500
+REFERRAL_PRIZE_4TH_PLACE=1500
+REFERRAL_PRIZE_5TH_PLACE=1000
+
+# Общий призовой фонд
+REFERRAL_TOTAL_PRIZE_POOL=20000
+
+# День выплаты
+REFERRAL_PAYOUT_DAY_OF_MONTH=21
+
+# Лимиты
+TOP_PLAYERS_LIMIT=10
+LEADERBOARD_LIMIT=100
+
+# ============================================
+# Таймеры и интервалы
+# ============================================
+
+# Интервалы обновления
+DASHBOARD_REFRESH_INTERVAL_MS=5000
+REQUESTS_CHECK_INTERVAL_MS=3000
+REFRESH_INTERVAL_MS=5000
+
+# ============================================
+# API
+# ============================================
+
+# Таймауты и повторные попытки
+EXTERNAL_API_TIMEOUT_MS=30000
+API_RETRY_ATTEMPTS=3
+API_RETRY_DELAY_MS=1000
+
+# ============================================
+# Telegram Bot
+# ============================================
+
+BOT_TOKEN="your-telegram-bot-token"
+
+# ============================================
+# JWT
+# ============================================
+
+JWT_SECRET="your-secret-key-change-in-production"
+
+# ============================================
+# Пользователи
+# ============================================
+
+USERS_PER_PAGE=10
+
+# ============================================
+# Security Config
+# ============================================
+
+QR_RATE_LIMIT_MAX_REQUESTS=10
+QR_RATE_LIMIT_WINDOW_MS=60000
+

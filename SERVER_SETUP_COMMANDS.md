@@ -57,11 +57,42 @@ python3 --version
 
 ## Шаг 4: Выполнение скрипта настройки
 
+### Вариант А: Создать скрипт на сервере
+
 ```bash
 cd /var/www/luxon
-chmod +x setup_server_on_remote.sh
-bash setup_server_on_remote.sh
+cat > setup.sh << 'SCRIPT_EOF'
+#!/bin/bash
+set -e
+BASE_DIR="/var/www/luxon"
+
+echo "🚀 Начинаем настройку..."
+apt-get update && apt-get upgrade -y
+apt-get install -y curl wget git nginx certbot python3-certbot-nginx nodejs npm python3 python3-pip python3-venv pm2 build-essential postgresql-client
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
+
+mkdir -p /var/log/nginx /var/log/pm2 $BASE_DIR/tmp/receipt_uploads
+
+cd $BASE_DIR/app && npm install && npm run build
+cd $BASE_DIR/admin_nextjs && npm install && npm run build
+cd $BASE_DIR/bot && python3 -m venv venv && source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
+
+# Настройка nginx (см. ниже команды для конфигов)
+# Настройка PM2
+cd $BASE_DIR/app && pm2 start ecosystem.config.js
+cd $BASE_DIR/admin_nextjs && pm2 start ecosystem.config.js
+cd $BASE_DIR/bot && pm2 start ecosystem.config.js
+pm2 save
+SCRIPT_EOF
+
+chmod +x setup.sh
+bash setup.sh
 ```
+
+### Вариант Б: Выполнить команды вручную (рекомендуется)
+
+Смотрите раздел "Ручная настройка" ниже ⬇️
 
 ---
 
