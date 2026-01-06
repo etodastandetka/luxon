@@ -6,6 +6,7 @@ import {
   containsSQLInjection,
   getClientIP 
 } from '@/lib/security'
+import { SECURITY_CONFIG } from '@/config/app'
 
 // Публичный эндпоинт для получения данных реферальной программы (без авторизации)
 export async function OPTIONS() {
@@ -28,8 +29,8 @@ export async function GET(request: NextRequest) {
 
     // Rate limiting (строгий для публичного endpoint)
     const rateLimitResult = rateLimit({ 
-      maxRequests: 20, 
-      windowMs: 60 * 1000,
+      maxRequests: Math.floor(SECURITY_CONFIG.RATE_LIMIT_MAX_REQUESTS / 3), // Строже для публичного endpoint
+      windowMs: SECURITY_CONFIG.RATE_LIMIT_WINDOW_MS,
       keyGenerator: (req) => `referral_data:${getClientIP(req)}`
     })(request)
     if (rateLimitResult) {

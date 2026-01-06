@@ -101,10 +101,11 @@ export default function ChatPage() {
   useEffect(() => {
     if (params.userId) {
       fetchChatData()
-      // Обновляем чат каждые 3 секунды
+      // Обновляем чат с интервалом из конфигурации
+      const { CHAT_CONFIG } = await import('@/config/app')
       const interval = setInterval(() => {
         fetchChatData()
-      }, 3000)
+      }, CHAT_CONFIG.REFRESH_INTERVAL_MS)
       return () => clearInterval(interval)
     }
   }, [params.userId, fetchChatData])

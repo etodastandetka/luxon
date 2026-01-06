@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
+import { DATABASE_CONFIG } from '@/config/app'
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,7 +9,10 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const limit = Math.min(
+      parseInt(searchParams.get('limit') || DATABASE_CONFIG.DEFAULT_PAGE_SIZE.toString()),
+      DATABASE_CONFIG.MAX_PAGE_SIZE
+    )
     const skip = (page - 1) * limit
     const search = searchParams.get('search')
 

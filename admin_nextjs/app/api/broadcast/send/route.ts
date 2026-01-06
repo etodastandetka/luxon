@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { getMiniAppUrl } from '@/config/domains'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,8 +29,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // URL мини-приложения для кнопки
-    const miniAppUrl = process.env.MINI_APP_URL || 'https://luxon.dad'
+    // URL мини-приложения для кнопки (из централизованной конфигурации)
+    const miniAppUrl = getMiniAppUrl()
 
     // Получаем всех пользователей
     const users = await prisma.botUser.findMany({

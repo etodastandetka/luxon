@@ -6,6 +6,7 @@ import { useLanguage } from '../../../components/LanguageContext'
 import BankButtons from '../../../components/BankButtons'
 import { getApiBase, safeFetch } from '../../../utils/fetch'
 import { getTelegramUserId } from '../../../utils/telegram'
+import { DEPOSIT_CONFIG } from '../../../config/app'
 
 declare global {
   interface Window {
@@ -161,7 +162,7 @@ function DepositStep3Content() {
   const [loading, setLoading] = useState(false)
   const [paymentUrls, setPaymentUrls] = useState<Record<string, string>>({})
   const [enabledBanks, setEnabledBanks] = useState<string[]>([])
-  const [timeLeft, setTimeLeft] = useState(300) // 5 минут в секундах
+  const [timeLeft, setTimeLeft] = useState(DEPOSIT_CONFIG.TIMEOUT_SECONDS)
   const [timerStarted, setTimerStarted] = useState(false)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
@@ -175,7 +176,7 @@ function DepositStep3Content() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     
-    const TIMER_DURATION = 300 // 5 минут в секундах
+    const TIMER_DURATION = DEPOSIT_CONFIG.TIMEOUT_SECONDS
     const TIMER_KEY = `deposit_timer_${bookmaker}_${accountId}_${amount}`
     
     // Проверяем, есть ли сохраненный таймер
@@ -708,7 +709,7 @@ function DepositStep3Content() {
   }
 
   // Вычисление прогресса таймера (0-100%)
-  const timerProgress = (300 - timeLeft) / 300 * 100
+  const timerProgress = (DEPOSIT_CONFIG.TIMEOUT_SECONDS - timeLeft) / DEPOSIT_CONFIG.TIMEOUT_SECONDS * 100
 
   // Если время истекло, показываем страницу истечения времени
   if (timeLeft <= 0) {

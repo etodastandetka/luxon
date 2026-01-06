@@ -1,33 +1,13 @@
 /**
  * Unified API Configuration
  * Centralized configuration for all API endpoints
- * Uses environment variables for flexibility
+ * Uses environment variables and centralized domain config
  */
 
-/**
- * Get the base URL for the admin API
- * Priority:
- * 1. NEXT_PUBLIC_ADMIN_API_URL (for client-side)
- * 2. ADMIN_API_URL (for server-side)
- * 3. Environment-based defaults
- */
-function getAdminApiBaseUrl(): string {
-  // Client-side: use NEXT_PUBLIC_ prefix
-  if (typeof window !== 'undefined') {
-    return process.env.NEXT_PUBLIC_ADMIN_API_URL || 
-           (process.env.NODE_ENV === 'development' 
-             ? 'http://localhost:3001' 
-             : 'https://japar.click')
-  }
-  
-  // Server-side: can use non-public env vars
-  return process.env.ADMIN_API_URL || 
-         (process.env.NODE_ENV === 'production' 
-           ? 'http://127.0.0.1:3001'  // Internal server communication
-           : 'http://localhost:3001')
-}
+import { getAdminApiUrl } from './domains'
 
-const ADMIN_API_BASE_URL = getAdminApiBaseUrl()
+// Используем централизованную конфигурацию доменов
+const ADMIN_API_BASE_URL = getAdminApiUrl()
 
 /**
  * API endpoint URLs

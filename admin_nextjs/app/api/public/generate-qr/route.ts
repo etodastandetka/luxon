@@ -29,9 +29,10 @@ export async function POST(request: NextRequest) {
     if (protectionResult) return protectionResult
 
     // Rate limiting (строгий для публичного endpoint)
+    const { SECURITY_CONFIG } = await import('@/config/app')
     const rateLimitResult = rateLimit({ 
-      maxRequests: 20, 
-      windowMs: 60 * 1000,
+      maxRequests: Math.floor(SECURITY_CONFIG.RATE_LIMIT_MAX_REQUESTS / 3), // Строже для публичного endpoint
+      windowMs: SECURITY_CONFIG.RATE_LIMIT_WINDOW_MS,
       keyGenerator: (req) => `generate_qr:${getClientIP(req)}`
     })(request)
     if (rateLimitResult) {

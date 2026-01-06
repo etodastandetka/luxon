@@ -43,7 +43,7 @@ export async function GET(
     }
 
     // Иначе возвращаем историю чата
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const limit = parseInt(searchParams.get('limit') || DATABASE_CONFIG.CHAT_MESSAGES_LIMIT.toString())
     const channel = searchParams.get('channel') || 'bot'
 
     let messages

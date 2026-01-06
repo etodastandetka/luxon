@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { SECURITY_CONFIG } from '@/config/app'
 
 /**
  * 🛡️ Комплексная система защиты от DDoS и атак
@@ -14,7 +15,7 @@ interface RateLimitEntry {
 
 const rateLimitStore = new Map<string, RateLimitEntry>()
 
-// Очистка старых записей каждые 5 минут
+// Очистка старых записей (из конфигурации)
 setInterval(() => {
   const now = Date.now()
   for (const [key, entry] of rateLimitStore.entries()) {
@@ -22,7 +23,7 @@ setInterval(() => {
       rateLimitStore.delete(key)
     }
   }
-}, 5 * 60 * 1000)
+}, SECURITY_CONFIG.RATE_LIMIT_CLEANUP_INTERVAL_MS)
 
 /**
  * Получает IP адрес из запроса (с учетом Cloudflare и прокси)
@@ -180,7 +181,7 @@ export function hasSuspiciousParams(searchParams: URLSearchParams): boolean {
       return true
     }
     // Проверяем длинные параметры (возможная инъекция)
-    if (value.length > 1000) {
+    if (value.length > SECURITY_CONFIG.MAX_PARAM_LENGTH) {
       return true
     }
   }
@@ -209,9 +210,9 @@ export interface RateLimitOptions {
 
 export function rateLimit(options: RateLimitOptions = {}) {
   const {
-    windowMs = 60 * 1000, // 1 минута
-    maxRequests = 60,
-    blockDurationMs = 24 * 60 * 60 * 1000, // 24 часа по умолчанию
+    windowMs = SECURITY_CONFIG.RATE_LIMIT_WINDOW_MS,
+    maxRequests = SECURITY_CONFIG.RATE_LIMIT_MAX_REQUESTS,
+    blockDurationMs = SECURITY_CONFIG.RATE_LIMIT_BLOCK_DURATION_MS,
     keyGenerator = (req) => `rate_limit:${getClientIP(req)}:${req.nextUrl.pathname}`,
   } = options
 
@@ -483,7 +484,7 @@ export function protectAPI(request: NextRequest): NextResponse | null {
 
   // 6. Проверка размера запроса
   const contentLength = request.headers.get('content-length')
-  if (!validateRequestSize(contentLength, 5 * 1024 * 1024)) { // Уменьшили до 5MB
+  if (!validateRequestSize(contentLength, SECURITY_CONFIG.MAX_REQUEST_SIZE_BYTES)) {
     console.warn(`🚫 Request too large from ${ip}`)
     return NextResponse.json(
       { error: 'Payload too large', message: 'Request body exceeds maximum size' },

@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { AUTO_DEPOSIT_CONFIG } from '@/config/app'
 
 /**
  * ЕДИНСТВЕННАЯ функция автопополнения - работает только здесь
@@ -9,10 +10,10 @@ import { prisma } from './prisma'
 export async function matchAndProcessPayment(paymentId: number, amount: number) {
   console.log(`🔍 [Auto-Deposit] matchAndProcessPayment called: paymentId=${paymentId}, amount=${amount}`)
   
-  // Ищем заявки на пополнение со статусом pending за последние 5 минут
+  // Ищем заявки на пополнение со статусом pending за последние N минут (из конфигурации)
   // Это защищает от случайного пополнения если пользователь не пополнял
   // И предотвращает обработку старых заявок с одинаковыми суммами
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+  const searchWindowAgo = new Date(Date.now() - AUTO_DEPOSIT_CONFIG.REQUEST_SEARCH_WINDOW_MS)
 
   // Оптимизированный поиск заявок - минимум запросов для максимальной скорости
   // Ищем ТОЛЬКО за последние 5 минут чтобы избежать случайного пополнения старых заявок
@@ -20,7 +21,7 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     where: {
       requestType: 'deposit',
       status: 'pending',
-      createdAt: { gte: fiveMinutesAgo }, // Только последние 5 минут
+      createdAt: { gte: searchWindowAgo }, // Только последние N минут (из конфигурации)
       incomingPayments: { none: { isProcessed: true } },
     },
     orderBy: { createdAt: 'asc' },

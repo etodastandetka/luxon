@@ -9,6 +9,8 @@ import {
   containsXSS,
   getClientIP 
 } from '@/lib/security'
+import { getAdminInternalUrl, getAdminPublicUrl } from '@/config/domains'
+import { AUTO_DEPOSIT_CONFIG, DEPOSIT_CONFIG } from '@/config/app'
 
 /**
  * Планирует отложенное уведомление о депозите через минуту
@@ -17,23 +19,15 @@ import {
  * Если сервер перезагрузится, уведомление не отправится (но это нормально)
  */
 function scheduleDelayedNotification(requestId: number) {
-  // Используем setTimeout для вызова endpoint через минуту
+  // Используем setTimeout для вызова endpoint через N минут (из конфигурации)
   // ВАЖНО: Это работает только если сервер не перезагрузится
   setTimeout(async () => {
     try {
-      // Используем внутренний вызов API через абсолютный URL
-      // Определяем базовый URL в зависимости от окружения
-      const internalBaseUrl = process.env.INTERNAL_API_URL || process.env.ADMIN_INTERNAL_URL
-      let baseUrl = internalBaseUrl
-        || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:3001' : 'http://localhost:3001')
+      // Используем централизованную конфигурацию доменов
+      // Приоритет: внутренний URL (для локальных вызовов), затем публичный
+      const baseUrl = getAdminInternalUrl() || getAdminPublicUrl()
       
-      // Если явно указан публичный URL и нет внутреннего - используем его как запасной вариант
-      const publicApiUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? 'https://japar.click' : '')
-      if (!baseUrl && publicApiUrl) {
-        baseUrl = publicApiUrl
-      }
-      
-      console.log(`⏰ [Delayed Notification] Sending notification for request ${requestId} after 1 minute delay`)
+      console.log(`⏰ [Delayed Notification] Sending notification for request ${requestId} after delay`)
       
       const response = await fetch(`${baseUrl}/api/notifications/delayed-deposit?requestId=${requestId}`, {
         method: 'GET',
@@ -71,7 +65,7 @@ function scheduleDelayedNotification(requestId: number) {
       const errorStack = error.stack ? `\nStack: ${error.stack.substring(0, 500)}` : ''
       console.error(`❌ [Delayed Notification] Error sending notification for request ${requestId}: ${errorMessage}${errorStack}`)
     }
-  }, 60 * 1000) // 1 минута = 60 секунд
+  }, AUTO_DEPOSIT_CONFIG.DELAYED_NOTIFICATION_MS)
 }
 
 // API для создания заявок из внешних источников (мини-приложение, бот и т.д.)
@@ -89,9 +83,10 @@ export async function OPTIONS() {
 export async function POST(request: NextRequest) {
   try {
     // 🛡️ Rate limiting для payment endpoint (критичный)
+    const { SECURITY_CONFIG } = await import('@/config/app')
     const rateLimitResult = rateLimit({ 
-      maxRequests: 20, 
-      windowMs: 60 * 1000,
+      maxRequests: Math.floor(SECURITY_CONFIG.RATE_LIMIT_MAX_REQUESTS / 3), // Строже для критичного endpoint
+      windowMs: SECURITY_CONFIG.RATE_LIMIT_WINDOW_MS,
       keyGenerator: (req) => `payment:${getClientIP(req)}`
     })(request)
     if (rateLimitResult) {
@@ -314,11 +309,11 @@ export async function POST(request: NextRequest) {
       const amountNum = parseFloat(amount)
       if (!isNaN(amountNum)) {
         const normalizedBookmaker = (bookmaker || '').toLowerCase()
-        let minDeposit = 35 // По умолчанию минимальный депозит 35 сом
+        let minDeposit = DEPOSIT_CONFIG.MIN_DEPOSIT_AMOUNT
         
-        // Для 1win минимальный депозит 100 сом
+        // Для 1win минимальный депозит из конфигурации
         if (normalizedBookmaker.includes('1win') || normalizedBookmaker === '1win') {
-          minDeposit = 100
+          minDeposit = DEPOSIT_CONFIG.MIN_DEPOSIT_AMOUNT_1WIN
         }
         
         if (amountNum < minDeposit) {
@@ -334,9 +329,9 @@ export async function POST(request: NextRequest) {
           return errorResponse
         }
         
-        if (amountNum > 100000) {
+        if (amountNum > DEPOSIT_CONFIG.MAX_DEPOSIT_AMOUNT) {
           const errorResponse = NextResponse.json(
-            createApiResponse(null, 'Максимальная сумма депозита: 100000 сом'),
+            createApiResponse(null, `Максимальная сумма депозита: ${DEPOSIT_CONFIG.MAX_DEPOSIT_AMOUNT} сом`),
             { 
               status: 400,
               headers: {
@@ -566,16 +561,16 @@ export async function POST(request: NextRequest) {
       // Ищем необработанные входящие платежи с точным совпадением суммы
       // Делаем это СИНХРОННО (await) чтобы автопополнение сработало мгновенно
       try {
-        // Ищем входящие платежи только за последние 5 минут
-        // Это защищает от случайного пополнения если пользователь не пополнял
-        const incomingPayments = await prisma.incomingPayment.findMany({
-          where: {
-            isProcessed: false,
-            amount: requestAmount,
-            paymentDate: {
-              gte: new Date(Date.now() - 5 * 60 * 1000) // Только последние 5 минут
-            }
-          },
+      // Ищем входящие платежи только за последние N минут (из конфигурации)
+      // Это защищает от случайного пополнения если пользователь не пополнял
+      const incomingPayments = await prisma.incomingPayment.findMany({
+        where: {
+          isProcessed: false,
+          amount: requestAmount,
+          paymentDate: {
+            gte: new Date(Date.now() - AUTO_DEPOSIT_CONFIG.REQUEST_SEARCH_WINDOW_MS)
+          }
+        },
           orderBy: {
             paymentDate: 'desc' // Берем самый свежий
           },
@@ -603,13 +598,13 @@ export async function POST(request: NextRequest) {
           }
         } else {
           console.log(`ℹ️ [Auto-Deposit] No matching incoming payments yet for request ${newRequest.id} (amount: ${requestAmount})`)
-          // Автопополнение не сработало - отправим уведомление через минуту
+          // Автопополнение не сработало - отправим уведомление через N минут (из конфигурации)
           scheduleDelayedNotification(newRequest.id)
         }
       } catch (error: any) {
         console.error(`❌ [Auto-Deposit] Error checking incoming payments for request ${newRequest.id}:`, error.message)
         // Не блокируем создание заявки если проверка не удалась
-        // Отправим уведомление через минуту на всякий случай
+        // Отправим уведомление через N минут на всякий случай
         scheduleDelayedNotification(newRequest.id)
       }
     }
