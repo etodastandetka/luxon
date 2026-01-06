@@ -5,12 +5,13 @@ import ServiceStatus from "../components/ServiceStatus"
 import FixedHeaderControls from "../components/FixedHeaderControls"
 import { useLanguage } from "../components/LanguageContext"
 import { useBotSettings } from "../components/SettingsLoader"
-import { initTelegramWebApp, syncWithBot, TelegramUser } from "../utils/telegram"
+import { initTelegramWebApp, syncWithBot, TelegramUser, getTelegramUser } from "../utils/telegram"
 import { useHomePageData } from "../hooks/useHomePageData"
 import { ReferralIcon, HistoryIcon, InstructionIcon, SupportIcon } from "../components/Icons"
 import UserProfile from "../components/UserProfile"
 import RatingBlock from "../components/RatingBlock"
 import Achievements from "../components/Achievements"
+import TelegramLoginWidget from "../components/TelegramLoginWidget"
 
 
 function getCookie(name: string) {
@@ -527,17 +528,40 @@ export default function HomePage() {
 
   const userInitialized = useRef(false)
   useEffect(() => {
-    if (userInitialized.current) return
-    userInitialized.current = true
-
+    // Сначала пробуем через мини-приложение
     const telegramUser = initTelegramWebApp()
     if (telegramUser) {
-      setUser(telegramUser)
-      syncWithBot(telegramUser, "app_opened", {
-        page: "home",
-        language,
-      }).catch(() => {})
+      if (!userInitialized.current) {
+        userInitialized.current = true
+        setUser(telegramUser)
+        syncWithBot(telegramUser, "app_opened", {
+          page: "home",
+          language,
+        }).catch(() => {})
+      }
+    } else {
+      // Если не через мини-приложение, проверяем localStorage (виджет авторизации)
+      const savedUser = getTelegramUser(false) // Не используем кэш
+      if (savedUser && !user) {
+        setUser(savedUser)
+      }
     }
+  }, [language, user])
+
+  // Слушаем сообщения от окна авторизации (для виджета)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'telegram_auth_success' && event.data?.user) {
+        setUser(event.data.user)
+        // Обновляем localStorage через функцию getTelegramUser (она использует localStorage)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('telegram_user', JSON.stringify(event.data.user))
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
   }, [])
 
   const greeting = useMemo(() => {
@@ -613,6 +637,19 @@ export default function HomePage() {
       <FixedHeaderControls />
 
       <div className="wb-wrap space-y-6">
+        {!user && (
+          <section className="wb-section" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+            <h2 className="wb-h2" style={{ marginBottom: '1rem' }}>
+              {language === 'en' ? 'Sign in with Telegram' : 'Вход через Telegram'}
+            </h2>
+            <p className="wb-p" style={{ marginBottom: '1.5rem', opacity: 0.8 }}>
+              {language === 'en' 
+                ? 'Please sign in to continue' 
+                : 'Пожалуйста, войдите, чтобы продолжить'}
+            </p>
+            <TelegramLoginWidget botName="Lux_on_bot" />
+          </section>
+        )}
         <UserProfile />
 
         <section className="wb-hero">

@@ -300,28 +300,19 @@ model ChatMessage {
   mediaUrl          String?  @map("media_url") @db.Text
   direction         String   @default("in") @db.VarChar(10) // 'in' - от пользователя, 'out' - от админа
   telegramMessageId BigInt?  @map("telegram_message_id") @db.BigInt
-  channel           String   @default("bot") @db.VarChar(20) // bot | operator
+  channel           String   @default("bot") @db.VarChar(20) // bot
+  replyToId         Int?     @map("reply_to_id") // ID сообщения, на которое отвечаем
+  editedAt          DateTime? @map("edited_at") // Время последнего редактирования
+  isDeleted         Boolean  @default(false) @map("is_deleted") // Флаг удаления
   createdAt         DateTime @default(now()) @map("created_at")
+
+  replyTo           ChatMessage? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies           ChatMessage[] @relation("MessageReplies")
 
   @@index([userId, createdAt])
   @@index([channel, userId, createdAt])
+  @@index([replyToId])
   @@map("chat_messages")
-}
-
-// Operator Messages (отдельный канал через операторский аккаунт)
-model OperatorMessage {
-  id                Int      @id @default(autoincrement())
-  userId            BigInt   @map("user_id") @db.BigInt
-  messageText       String?  @map("message_text") @db.Text
-  messageType       String   @default("text") @map("message_type") @db.VarChar(20)
-  mediaUrl          String?  @map("media_url") @db.Text
-  direction         String   @default("in") @db.VarChar(10) // 'in' - от пользователя, 'out' - от оператора
-  telegramMessageId BigInt?  @map("telegram_message_id") @db.BigInt
-  createdAt         DateTime @default(now()) @map("created_at")
-
-  @@index([userId, createdAt])
-  @@index([direction, telegramMessageId])
-  @@map("operator_messages")
 }
 
 // Broadcast Messages

@@ -686,8 +686,10 @@ export async function getPlatformLimits(): Promise<
 
 interface PlayerCheckResult {
   exists: boolean
-  name?: string
-  currencyId?: number
+  firstName?: string | null
+  lastName?: string | null
+  name?: string | null  // Полное имя (firstName + lastName) для обратной совместимости
+  currencyId?: number | null
   userId?: number
 }
 
@@ -752,13 +754,43 @@ export async function checkPlayerExists(
 
     if (response.ok) {
       const data = await response.json()
-      console.log(`[${casino} Check Player] ✅ Player exists:`, data)
+      console.log(`[${casino} Check Player] API response:`, data)
       
-      return {
-        exists: true,
-        userId: data.userId,
-        name: data.name,
-        currencyId: data.currencyId,
+      // Проверяем, что userId существует и не равен 0 (0 означает, что игрок не найден)
+      const userId = data.userId ?? data.UserId ?? 0
+      
+      // Также проверяем наличие имени или фамилии - если они есть, игрок найден
+      const firstName = data.firstName ?? data.FirstName ?? data.first_name ?? data.First_Name ?? null
+      const lastName = data.lastName ?? data.LastName ?? data.last_name ?? data.Last_Name ?? null
+      const fullName = data.name ?? data.Name ?? null
+      
+      if (userId && userId !== 0) {
+        // Игрок найден - userId валидный
+        const name = fullName || (firstName && lastName ? `${firstName} ${lastName}`.trim() : firstName || lastName || null)
+        console.log(`[${casino} Check Player] ✅ Player exists:`, { userId, firstName, lastName, name, currencyId: data.currencyId ?? data.CurrencyId })
+        return {
+          exists: true,
+          userId: userId,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          name: name,
+          currencyId: data.currencyId ?? data.CurrencyId ?? null,
+        }
+      } else if (firstName || lastName || fullName) {
+        // Игрок найден - есть имя/фамилия, но userId = 0 (возможно, API возвращает так)
+        const name = fullName || (firstName && lastName ? `${firstName} ${lastName}`.trim() : firstName || lastName || null)
+        console.log(`[${casino} Check Player] ✅ Player exists (by name):`, { firstName, lastName, name, currencyId: data.currencyId ?? data.CurrencyId })
+        return {
+          exists: true,
+          userId: userId || undefined,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          name: name,
+          currencyId: data.currencyId ?? data.CurrencyId ?? null,
+        }
+      } else {
+        console.log(`[${casino} Check Player] ❌ Player not found (UserId is 0 and no name)`)
+        return { exists: false }
       }
     } else if (response.status === 404) {
       console.log(`[${casino} Check Player] ❌ Player not found (404)`)

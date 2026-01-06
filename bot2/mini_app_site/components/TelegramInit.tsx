@@ -3,8 +3,11 @@ import { useEffect } from 'react'
 
 export default function TelegramInit() {
   useEffect(() => {
-    // Инициализация Telegram WebApp
-    if (typeof window !== 'undefined') {
+    // Загружаем скрипт Telegram WebApp только на клиенте
+    if (typeof window === 'undefined') return
+
+    // Функция инициализации Telegram WebApp
+    const initializeTelegramWebApp = () => {
       try {
         const telegram = (window as any).Telegram
         if (telegram && telegram.WebApp) {
@@ -83,6 +86,42 @@ export default function TelegramInit() {
         if (process.env.NODE_ENV === 'development') {
           console.error('❌ Telegram WebApp initialization error:', error)
         }
+      }
+    }
+
+    // Проверяем, не загружен ли уже скрипт
+    if ((window as any).Telegram?.WebApp) {
+      // Скрипт уже загружен, инициализируем
+      initializeTelegramWebApp()
+      return
+    }
+
+    // Загружаем скрипт динамически
+    const scriptId = 'telegram-web-app-script'
+    if (document.getElementById(scriptId)) {
+      // Скрипт уже в процессе загрузки, ждем
+      const checkInterval = setInterval(() => {
+        if ((window as any).Telegram?.WebApp) {
+          clearInterval(checkInterval)
+          initializeTelegramWebApp()
+        }
+      }, 50)
+      return () => clearInterval(checkInterval)
+    }
+
+    const script = document.createElement('script')
+    script.id = scriptId
+    script.src = 'https://telegram.org/js/telegram-web-app.js'
+    script.async = true
+    script.onload = () => {
+      initializeTelegramWebApp()
+    }
+    document.head.appendChild(script)
+
+    return () => {
+      const existingScript = document.getElementById(scriptId)
+      if (existingScript) {
+        existingScript.remove()
       }
     }
   }, [])

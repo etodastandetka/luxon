@@ -5,6 +5,15 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
+interface ReplyTo {
+  id: number
+  messageText: string | null
+  messageType: string
+  mediaUrl: string | null
+  direction: string
+  isDeleted?: boolean
+}
+
 interface ChatMessage {
   id: number
   userId: string
@@ -13,6 +22,10 @@ interface ChatMessage {
   direction: string
   createdAt: string
   mediaUrl?: string | null
+  replyToId?: number | null
+  replyTo?: ReplyTo | null
+  editedAt?: string | null
+  isDeleted?: boolean
 }
 
 interface UserInfo {
@@ -35,8 +48,13 @@ export default function ChatPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
+  const [replyingToId, setReplyingToId] = useState<number | null>(null)
+  const [zoomImage, setZoomImage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -45,9 +63,7 @@ export default function ChatPage() {
   const fetchChatData = useCallback(async () => {
     try {
       const [chatRes, userRes, photoRes] = await Promise.all([
-        channel === 'operator'
-          ? fetch(`/api/operator-chat/history/${params.userId}`)
-          : fetch(`/api/users/${params.userId}/chat?channel=${channel}`),
+        fetch(`/api/users/${params.userId}/chat?channel=${channel}`),
         fetch(`/api/users/${params.userId}`),
         fetch(`/api/users/${params.userId}/profile-photo`)
       ])
@@ -59,7 +75,7 @@ export default function ChatPage() {
       if (chatData.success && chatData.data.messages) {
         // Разворачиваем, чтобы старые были сверху
         const reversedMessages = [...chatData.data.messages].reverse()
-        console.log(`📨 Chat: Загружено ${reversedMessages.length} сообщений, из них входящих: ${reversedMessages.filter(m => m.direction === 'in').length}`)
+        console.log(`📨 Chat: Загружено ${reversedMessages.length} сообщений`)
         setMessages(reversedMessages)
       } else {
         console.warn('⚠️ Chat: Не удалось загрузить сообщения:', chatData)
@@ -85,7 +101,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (params.userId) {
       fetchChatData()
-      // Обновляем чат каждые 3 секунды для более быстрого получения новых сообщений
+      // Обновляем чат каждые 3 секунды
       const interval = setInterval(() => {
         fetchChatData()
       }, 3000)
@@ -99,6 +115,19 @@ export default function ChatPage() {
       scrollToBottom()
     }, 100)
   }, [messages, scrollToBottom])
+
+  // Исправление проблемы с клавиатурой на мобильных
+  useEffect(() => {
+    const handleResize = () => {
+      // Прокручиваем вниз при изменении размера (когда появляется/скрывается клавиатура)
+      setTimeout(() => {
+        scrollToBottom()
+      }, 300)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [scrollToBottom])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -143,11 +172,12 @@ export default function ChatPage() {
         formData.append('file', selectedFile)
         formData.append('fileType', selectedFile.type)
       }
+      if (replyingToId) {
+        formData.append('replyToId', replyingToId.toString())
+      }
 
       const response = await fetch(
-        channel === 'operator'
-          ? `/api/operator-chat/send/${params.userId}`
-          : `/api/users/${params.userId}/send-message?channel=${channel}`,
+        `/api/users/${params.userId}/send-message?channel=${channel}`,
         {
           method: 'POST',
           body: formData,
@@ -158,9 +188,12 @@ export default function ChatPage() {
 
       if (data.success) {
         setNewMessage('')
+        setReplyingToId(null)
         removeFile()
         // Обновляем чат
         await fetchChatData()
+        // Фокус на поле ввода
+        inputRef.current?.focus()
       } else {
         alert(data.error || 'Ошибка при отправке сообщения')
       }
@@ -169,6 +202,55 @@ export default function ChatPage() {
       alert('Ошибка при отправке сообщения')
     } finally {
       setSending(false)
+    }
+  }
+
+  const editMessage = async (messageId: number, newText: string) => {
+    try {
+      const response = await fetch(
+        `/api/users/${params.userId}/messages/${messageId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageText: newText }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (data.success) {
+        setEditingMessageId(null)
+        await fetchChatData()
+      } else {
+        alert(data.error || 'Ошибка при редактировании сообщения')
+      }
+    } catch (error) {
+      console.error('Failed to edit message:', error)
+      alert('Ошибка при редактировании сообщения')
+    }
+  }
+
+  const deleteMessage = async (messageId: number) => {
+    if (!confirm('Удалить это сообщение?')) return
+
+    try {
+      const response = await fetch(
+        `/api/users/${params.userId}/messages/${messageId}`,
+        {
+          method: 'DELETE',
+        }
+      )
+
+      const data = await response.json()
+
+      if (data.success) {
+        await fetchChatData()
+      } else {
+        alert(data.error || 'Ошибка при удалении сообщения')
+      }
+    } catch (error) {
+      console.error('Failed to delete message:', error)
+      alert('Ошибка при удалении сообщения')
     }
   }
 
@@ -185,6 +267,16 @@ export default function ChatPage() {
     } else {
       return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     }
+  }
+
+  const getReplyPreview = (replyTo: ReplyTo) => {
+    if (replyTo.isDeleted) {
+      return 'Сообщение удалено'
+    }
+    if (replyTo.mediaUrl) {
+      return `📎 ${replyTo.messageType === 'photo' ? 'Фото' : replyTo.messageType === 'video' ? 'Видео' : replyTo.messageType === 'voice' ? 'Голосовое' : 'Файл'}`
+    }
+    return replyTo.messageText || 'Медиа'
   }
 
   if (loading) {
@@ -204,200 +296,365 @@ export default function ChatPage() {
   const displayName = user.firstName || user.username || `ID: ${user.userId}`
 
   return (
-    <div className="flex flex-col h-full max-h-full">
-      {/* Хедер */}
-      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-        <button
-          onClick={() => router.back()}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+    <>
+      {/* Модальное окно для увеличенного фото */}
+      {zoomImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={() => setZoomImage(null)}
         >
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <Link
-          href={`/dashboard/users/${user.userId}`}
-          prefetch={false}
-          className="flex items-center space-x-3 flex-1 ml-4"
-        >
-          {user.photoUrl ? (
-            <div className="w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0">
-              <Image
-                src={user.photoUrl}
-                alt={displayName}
-                fill
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">{displayName}</p>
-            {user.username && (
-              <p className="text-xs text-gray-400 truncate">@{user.username}</p>
-            )}
-            <p className="text-xs text-green-500">онлайн</p>
+          <button
+            onClick={() => setZoomImage(null)}
+            className="absolute top-4 right-4 text-white text-2xl font-bold hover:text-gray-300"
+          >
+            ✕
+          </button>
+          <div className="relative max-w-full max-h-full">
+            <Image
+              src={zoomImage}
+              alt="Zoomed"
+              width={1200}
+              height={1200}
+              className="max-w-full max-h-[90vh] object-contain"
+              unoptimized
+            />
           </div>
-        </Link>
-        <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-          </svg>
-        </button>
-      </div>
+        </div>
+      )}
 
-      {/* Сообщения */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-green-950 to-green-900 min-h-0">
-        {messages.length === 0 ? (
-          <div className="text-center text-gray-400 py-12">
-            <p>Нет сообщений</p>
-            <p className="text-sm mt-2">Начните общение</p>
-          </div>
-        ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.direction === 'out' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                  message.direction === 'out'
-                    ? 'bg-green-500 text-black'
-                    : 'bg-gray-700 text-white'
-                }`}
-              >
-                {message.mediaUrl && (
-                  <div className="mb-2 rounded-lg overflow-hidden">
-                    {message.messageType === 'photo' ? (
-                      <div className="relative w-full h-64">
-                        <Image 
-                          src={message.mediaUrl} 
-                          alt="Photo" 
-                          fill
-                          className="object-cover rounded-lg"
-                        />
-                      </div>
-                    ) : message.messageType === 'video' ? (
-                      <video 
-                        src={message.mediaUrl} 
-                        controls 
-                        className="w-full max-h-64 rounded-lg"
-                      />
-                    ) : message.messageType === 'audio' || message.messageType === 'voice' ? (
-                      <audio
-                        src={message.mediaUrl}
-                        controls
-                        className="w-full"
-                      />
-                    ) : (
-                      <a
-                        href={message.mediaUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center space-x-2 text-sm underline"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
-                        </svg>
-                        <span>Файл</span>
-                      </a>
-                    )}
-                  </div>
-                )}
-                {message.messageText && (
-                  <p className="text-sm whitespace-pre-wrap break-words">{message.messageText}</p>
-                )}
-                <p className={`text-xs mt-1 ${message.direction === 'out' ? 'text-gray-800' : 'text-gray-400'}`}>
-                  {formatDate(message.createdAt)}
-                </p>
-              </div>
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Поле ввода */}
-      <div className="p-4 bg-gray-800 border-t border-gray-700 flex-shrink-0">
-        {/* Preview выбранного файла */}
-        {previewUrl && selectedFile && (
-          <div className="mb-2 relative">
-            {selectedFile.type.startsWith('image/') ? (
-              <div className="relative w-full h-32">
-                <Image 
-                  src={previewUrl} 
-                  alt="Preview" 
-                  fill
-                  className="object-cover rounded-lg"
-                />
-                <button
-                  onClick={removeFile}
-                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ) : selectedFile.type.startsWith('video/') ? (
-              <div className="relative">
-                <video 
-                  src={previewUrl} 
-                  controls 
-                  className="w-full max-h-32 rounded-lg"
-                />
-                <button
-                  onClick={removeFile}
-                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ) : null}
-          </div>
-        )}
-        <div className="flex items-center space-x-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="image/*,video/*,audio/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+      <div className="flex flex-col h-full max-h-full">
+        {/* Хедер */}
+        <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+          <button
+            onClick={() => router.back()}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
           >
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            placeholder="Введите сообщение..."
-            className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            disabled={sending}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={sending || (!newMessage.trim() && !selectedFile)}
-            className="p-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          <Link
+            href={`/dashboard/users/${user.userId}`}
+            prefetch={false}
+            className="flex items-center space-x-3 flex-1 ml-4"
           >
-            <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+            {user.photoUrl ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden relative flex-shrink-0">
+                <Image
+                  src={user.photoUrl}
+                  alt={displayName}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{displayName}</p>
+              {user.username && (
+                <p className="text-xs text-gray-400 truncate">@{user.username}</p>
+              )}
+              <p className="text-xs text-green-500">онлайн</p>
+            </div>
+          </Link>
+        </div>
+
+        {/* Сообщения */}
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-green-950 to-green-900 min-h-0"
+        >
+          {messages.length === 0 ? (
+            <div className="text-center text-gray-400 py-12">
+              <p>Нет сообщений</p>
+              <p className="text-sm mt-2">Начните общение</p>
+            </div>
+          ) : (
+            messages.map((message) => {
+              if (message.isDeleted) {
+                return (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.direction === 'out' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className="px-4 py-2 rounded-2xl bg-gray-800 text-gray-500 text-sm italic">
+                      Сообщение удалено
+                    </div>
+                  </div>
+                )
+              }
+
+              const isEditing = editingMessageId === message.id
+              const isOutgoing = message.direction === 'out'
+
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'} group`}
+                >
+                  <div className="relative">
+                    <div
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                        isOutgoing
+                          ? 'bg-green-500 text-black'
+                          : 'bg-gray-700 text-white'
+                      }`}
+                    >
+                      {/* Ответ на сообщение */}
+                      {message.replyTo && (
+                        <div className={`mb-2 pb-2 border-l-2 ${
+                          isOutgoing ? 'border-gray-800' : 'border-gray-500'
+                        } pl-2 text-xs opacity-75`}>
+                          <div className="font-semibold">
+                            {message.replyTo.direction === 'out' ? 'Вы' : displayName}
+                          </div>
+                          <div className="truncate">{getReplyPreview(message.replyTo)}</div>
+                        </div>
+                      )}
+
+                      {/* Медиа */}
+                      {message.mediaUrl && (
+                        <div className="mb-2 rounded-lg overflow-hidden">
+                          {message.messageType === 'photo' ? (
+                            <div 
+                              className="relative w-full h-64 cursor-pointer"
+                              onClick={() => setZoomImage(message.mediaUrl!)}
+                            >
+                              <Image 
+                                src={message.mediaUrl} 
+                                alt="Photo" 
+                                fill
+                                className="object-cover rounded-lg"
+                                unoptimized
+                              />
+                            </div>
+                          ) : message.messageType === 'video' ? (
+                            <div className="relative w-full">
+                              <video 
+                                src={message.mediaUrl} 
+                                controls 
+                                className="w-full max-h-96 rounded-lg"
+                                preload="metadata"
+                              />
+                            </div>
+                          ) : message.messageType === 'audio' || message.messageType === 'voice' ? (
+                            <div className="flex items-center space-x-2">
+                              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                              </svg>
+                              <audio
+                                src={message.mediaUrl}
+                                controls
+                                className="flex-1"
+                              />
+                            </div>
+                          ) : (
+                            <a
+                              href={message.mediaUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center space-x-2 text-sm underline p-2 bg-gray-800 rounded"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
+                              </svg>
+                              <span>Файл</span>
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Текст сообщения */}
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            defaultValue={message.messageText || ''}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                editMessage(message.id, e.currentTarget.value)
+                              } else if (e.key === 'Escape') {
+                                setEditingMessageId(null)
+                              }
+                            }}
+                            className="w-full bg-gray-800 text-white rounded px-2 py-1 text-sm"
+                            autoFocus
+                          />
+                          <div className="flex space-x-2 text-xs">
+                            <button
+                              onClick={() => editMessage(message.id, (document.querySelector('input[type="text"]') as HTMLInputElement)?.value || '')}
+                              className="text-green-400 hover:text-green-300"
+                            >
+                              Сохранить
+                            </button>
+                            <button
+                              onClick={() => setEditingMessageId(null)}
+                              className="text-gray-400 hover:text-gray-300"
+                            >
+                              Отмена
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {message.messageText && (
+                            <p className="text-sm whitespace-pre-wrap break-words">{message.messageText}</p>
+                          )}
+                          <div className="flex items-center justify-between mt-1">
+                            <p className={`text-xs ${isOutgoing ? 'text-gray-800' : 'text-gray-400'}`}>
+                              {formatDate(message.createdAt)}
+                              {message.editedAt && ' (изменено)'}
+                            </p>
+                            {isOutgoing && (
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1 ml-2">
+                                <button
+                                  onClick={() => setEditingMessageId(message.id)}
+                                  className="text-xs hover:underline"
+                                  title="Редактировать"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => deleteMessage(message.id)}
+                                  className="text-xs hover:underline"
+                                  title="Удалить"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Кнопка ответа для входящих сообщений */}
+                    {!isOutgoing && (
+                      <button
+                        onClick={() => setReplyingToId(message.id)}
+                        className="absolute -left-8 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-gray-700 rounded hover:bg-gray-600"
+                        title="Ответить"
+                      >
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Поле ввода */}
+        <div className="p-4 bg-gray-800 border-t border-gray-700 flex-shrink-0">
+          {/* Preview ответа */}
+          {replyingToId && (() => {
+            const replyToMessage = messages.find(m => m.id === replyingToId)
+            return replyToMessage ? (
+              <div className="mb-2 p-2 bg-gray-700 rounded-lg flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-gray-400">Ответ на:</div>
+                  <div className="text-sm text-white truncate">{getReplyPreview(replyToMessage as any)}</div>
+                </div>
+                <button
+                  onClick={() => setReplyingToId(null)}
+                  className="ml-2 text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null
+          })()}
+
+          {/* Preview выбранного файла */}
+          {previewUrl && selectedFile && (
+            <div className="mb-2 relative">
+              {selectedFile.type.startsWith('image/') ? (
+                <div className="relative w-full h-32">
+                  <Image 
+                    src={previewUrl} 
+                    alt="Preview" 
+                    fill
+                    className="object-cover rounded-lg"
+                  />
+                  <button
+                    onClick={removeFile}
+                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : selectedFile.type.startsWith('video/') ? (
+                <div className="relative">
+                  <video 
+                    src={previewUrl} 
+                    controls 
+                    className="w-full max-h-32 rounded-lg"
+                  />
+                  <button
+                    onClick={removeFile}
+                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+          <div className="flex items-end space-x-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*,video/*,audio/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+            <input
+              ref={inputRef}
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendMessage()
+                }
+              }}
+              placeholder="Введите сообщение..."
+              className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={sending}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={sending || (!newMessage.trim() && !selectedFile)}
+              className="p-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
-

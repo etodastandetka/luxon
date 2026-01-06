@@ -290,7 +290,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `,
           }}
         />
-        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        {/* Telegram WebApp скрипт загружается через TelegramInit компонент на клиенте */}
         {/* Preload критических изображений казино для быстрой загрузки */}
         <link rel="preload" as="image" href="/images/1xbet.jpg" />
         <link rel="preload" as="image" href="/images/1win.jpg" />

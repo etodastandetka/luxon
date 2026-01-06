@@ -49,7 +49,32 @@ export async function GET(
     let messages
     try {
       messages = await prisma.chatMessage.findMany({
-        where: { userId, channel },
+        where: { 
+          userId, 
+          channel,
+          isDeleted: false,
+          // Фильтруем команды пользователя (сообщения, начинающиеся с /)
+          NOT: [
+            { 
+              AND: [
+                { direction: 'in' },
+                { messageText: { startsWith: '/' } }
+              ]
+            }
+          ]
+        },
+        include: {
+          replyTo: {
+            select: {
+              id: true,
+              messageText: true,
+              messageType: true,
+              mediaUrl: true,
+              direction: true,
+              isDeleted: true,
+            }
+          }
+        },
         orderBy: { createdAt: 'desc' },
         take: limit,
       })
@@ -58,7 +83,30 @@ export async function GET(
       if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
         console.warn('⚠️ Channel column not found, querying messages without channel filter')
         messages = await prisma.chatMessage.findMany({
-          where: { userId },
+          where: { 
+            userId,
+            isDeleted: false,
+            // Фильтруем команды пользователя
+            NOT: [
+              { 
+                AND: [
+                  { direction: 'in' },
+                  { messageText: { startsWith: '/' } }
+                ]
+              }
+            ]
+          },
+          include: {
+            replyTo: {
+              select: {
+                id: true,
+                messageText: true,
+                messageType: true,
+                mediaUrl: true,
+                direction: true,
+              }
+            }
+          },
           orderBy: { createdAt: 'desc' },
           take: limit,
         })
@@ -73,6 +121,10 @@ export async function GET(
           ...msg,
           userId: msg.userId.toString(),
           telegramMessageId: msg.telegramMessageId?.toString(),
+          replyTo: msg.replyTo ? {
+            ...msg.replyTo,
+            userId: msg.replyTo.userId?.toString(),
+          } : null,
         })),
       })
     )

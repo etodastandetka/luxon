@@ -2,12 +2,13 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function WithdrawPage() {
+export default function DepositPage() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace('/withdraw/step1')
+    router.replace('/deposit/step1')
   }, [router])
 
   return null
 }
+

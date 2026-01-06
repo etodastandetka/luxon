@@ -47,12 +47,18 @@ export async function POST(
     let mediaUrl: string | null = null
     let messageType = 'text'
 
+    let replyToId: number | null = null
+
     if (contentType.includes('multipart/form-data')) {
       // Обрабатываем FormData
       const formData = await request.formData()
       message = formData.get('message') as string | null
       file = formData.get('file') as File | null
       fileType = formData.get('fileType') as string | null
+      const replyToIdStr = formData.get('replyToId') as string | null
+      if (replyToIdStr) {
+        replyToId = parseInt(replyToIdStr)
+      }
 
       if (!message?.trim() && !file) {
         return NextResponse.json(
@@ -114,12 +120,27 @@ export async function POST(
         const arrayBuffer = await file.arrayBuffer()
         const blob = new Blob([arrayBuffer], { type: fileType || 'application/octet-stream' })
 
+        // Получаем telegramMessageId сообщения, на которое отвечаем
+        let replyToTelegramMessageId: number | undefined
+        if (replyToId) {
+          const replyToMessage = await prisma.chatMessage.findUnique({
+            where: { id: replyToId },
+            select: { telegramMessageId: true },
+          })
+          if (replyToMessage?.telegramMessageId) {
+            replyToTelegramMessageId = Number(replyToMessage.telegramMessageId)
+          }
+        }
+
         // Создаем FormData для Telegram API
         const telegramFormData = new FormData()
         telegramFormData.append('chat_id', userId.toString())
         if (message?.trim()) {
           // caption поддерживается photo/video/audio/document
           telegramFormData.append('caption', message)
+        }
+        if (replyToTelegramMessageId) {
+          telegramFormData.append('reply_to_message_id', replyToTelegramMessageId.toString())
         }
 
         let apiEndpoint = `https://api.telegram.org/bot${botToken}/sendMessage`
@@ -214,6 +235,7 @@ export async function POST(
           telegramMessageId,
           mediaUrl,
           channel,
+          replyToId: replyToId || undefined,
         },
       })
     } catch (error: any) {

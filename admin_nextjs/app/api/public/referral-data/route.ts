@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { 
-  protectAPI, 
   rateLimit, 
   sanitizeInput, 
   containsSQLInjection,
@@ -22,24 +21,10 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   try {
-    // 🛡️ МАКСИМАЛЬНАЯ ЗАЩИТА (но разрешаем Telegram WebApp)
-    // Для публичного API referral-data ослабляем защиту, т.к. запросы идут из Telegram WebApp
-    const userAgent = request.headers.get('user-agent') || ''
-    const isTelegramWebApp = userAgent.includes('Telegram') || request.headers.get('x-telegram-bot-api-secret-token')
-    
-    // Если это не Telegram WebApp, применяем защиту
-    if (!isTelegramWebApp) {
-      const protectionResult = protectAPI(request)
-      if (protectionResult) {
-        // Добавляем CORS заголовки к ответу защиты
-        protectionResult.headers.set('Access-Control-Allow-Origin', '*')
-        console.log('🚫 [Referral Data API] Запрос заблокирован защитой:', {
-          userAgent,
-          ip: getClientIP(request)
-        })
-        return protectionResult
-      }
-    }
+    // 🛡️ ПУБЛИЧНЫЙ API - защита отключена для корректной работы из браузера
+    // Для публичного API referral-data отключаем protectAPI, т.к. запросы идут из браузера
+    // (Telegram WebApp открывается в браузере и не всегда имеет правильный user-agent)
+    // Защита обеспечивается через rate limiting и валидацию входных данных
 
     // Rate limiting (строгий для публичного endpoint)
     const rateLimitResult = rateLimit({ 
@@ -58,6 +43,7 @@ export async function GET(request: NextRequest) {
     const topOnly = searchParams.get('top_only') === 'true'
     
     const clientIP = getClientIP(request)
+    const userAgent = request.headers.get('user-agent') || ''
     
     console.log('📋 [Referral Data API] Запрос данных рефералов:', { 
       userId, 
