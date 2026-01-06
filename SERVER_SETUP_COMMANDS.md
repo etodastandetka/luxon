@@ -8,20 +8,13 @@ ssh root@147.45.99.111
 
 ---
 
-## Шаг 1: Создание папок и настройка прав
+## Шаг 1: Создание папок для логов
 
 ```bash
-# Создание папки
-mkdir -p /var/www/luxon
-
-# Установка прав
-chown -R root:root /var/www/luxon
-chmod -R 755 /var/www
-
-# Создание папок для логов
+# Создание папок для логов (папка luxon создастся при клонировании)
+mkdir -p /var/www
 mkdir -p /var/log/nginx
 mkdir -p /var/log/pm2
-mkdir -p /var/www/luxon/tmp/receipt_uploads
 ```
 
 ---
@@ -32,6 +25,11 @@ mkdir -p /var/www/luxon/tmp/receipt_uploads
 cd /var/www
 git clone https://github.com/etodastandetka/ls.git luxon
 cd /var/www/luxon
+
+# Установка прав после клонирования
+chown -R root:root /var/www/luxon
+chmod -R 755 /var/www
+mkdir -p /var/www/luxon/tmp/receipt_uploads
 ```
 
 ---
