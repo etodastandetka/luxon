@@ -10,7 +10,7 @@ async function optimizeGLB() {
     // Проверяем наличие файла
     if (!fs.existsSync(inputPath)) {
       console.error('❌ Файл logo.glb не найден в папке public/');
-      console.log('Пожалуйста, убедитесь, что файл logo.glb находится в папке bot2/mini_app_site/public/');
+      console.log('Пожалуйста, убедитесь, что файл logo.glb находится в папке mini_app_site/app/public/');
       process.exit(1);
     }
     

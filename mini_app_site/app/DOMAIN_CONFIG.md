@@ -16,7 +16,7 @@
 
 ## Пример настройки
 
-Создайте файл `.env.local` в директории `bot2/mini_app_site/`:
+Создайте файл `.env.local` в директории `mini_app_site/app/`:
 
 ```env
 # URL админки API
