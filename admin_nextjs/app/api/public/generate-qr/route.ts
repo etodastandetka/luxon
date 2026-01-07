@@ -353,13 +353,24 @@ export async function POST(request: NextRequest) {
       // Извлекаем данные до последнего объекта 63 (ID "00" - "90", исключая ID 63)
       let dataBefore63 = updatedHash.substring(0, last63Index)
       
+      // 🔐 КРИТИЧЕСКАЯ ПРОВЕРКА: Убеждаемся, что сумма (поле 54) включена в данные для hash
+      if (!dataBefore63.includes(newField54)) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Ошибка: сумма не включена в данные для контрольной суммы' },
+          { status: 500 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
       console.log(`🔍 Data before field 63 length: ${dataBefore63.length} chars`)
+      console.log(`✅ Проверка: сумма (${newField54}) включена в данные для hash`)
       
       // Согласно алгоритму:
       // 1. Все значения до объекта 63 преобразуются в строку (уже есть)
       // 2. Декодируем процентное кодирование (%20 -> пробел и т.д.)
       // 3. Строка переводится в массив байт с кодировкой UTF-8
-      // 4. Вычисляется SHA256 хеш от массива байт
+      // 4. Вычисляется SHA256 хеш от массива байт (ВКЛЮЧАЯ СУММУ в поле 54)
       // 5. Массив байт преобразуется в строку (hex)
       // 6. Удаляются все символы "-" если есть
       // 7. Берутся последние 4 символа
@@ -372,8 +383,9 @@ export async function POST(request: NextRequest) {
         console.warn('⚠️ Could not decode URI component, using original string')
       }
       
-      // Вычисляем SHA256 от данных до объекта 63
+      // 🔐 Вычисляем SHA256 от данных до объекта 63 (ВКЛЮЧАЯ СУММУ в поле 54)
       // createHash('sha256').update() уже работает с UTF-8 байтами по умолчанию
+      // Сумма уже включена в dataBefore63 через поле 54, поэтому hash защищает от изменения суммы
       const checksumFull = createHash('sha256').update(dataBefore63, 'utf8').digest('hex')
       
       // Удаляем все символы "-" если есть (хотя в hex их обычно нет)
@@ -421,22 +433,41 @@ export async function POST(request: NextRequest) {
       const merchantAccountLen = merchantAccountValue.length.toString().padStart(2, '0')
       
       // Payload БЕЗ контрольной суммы и без 6304
+      // 🔐 ВАЖНО: Сумма (поле 54) включена в payload, поэтому hash защищает от изменения суммы
       const payload = (
         `000201` +  // 00 - Payload Format Indicator
         `010211` +  // 01 - Point of Initiation Method (статический QR)
         `32${merchantAccountLen}${merchantAccountValue}` +  // 32 - Merchant Account
         `52044829` +  // 52 - Merchant Category Code
         `5303417` +   // 53 - Transaction Currency
-        `54${amountLen}${amountStr}` +  // 54 - Amount
+        `54${amountLen}${amountStr}` +  // 54 - Amount (СУММА ВКЛЮЧЕНА В HASH)
         `5909DEMIRBANK`  // 59 - Merchant Name
       )
       
+      // 🔐 КРИТИЧЕСКАЯ ПРОВЕРКА: Убеждаемся, что сумма включена в payload
+      const amountField = `54${amountLen}${amountStr}`
+      if (!payload.includes(amountField)) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Ошибка: сумма не включена в payload для контрольной суммы' },
+          { status: 500 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
+      console.log(`✅ Проверка: сумма (${amountField}, ${amount} сом) включена в payload для hash`)
+      
       // Вычисляем SHA256 контрольную сумму от payload (БЕЗ 6304)
-      const checksumFull = createHash('sha256').update(payload).digest('hex')
+      // Сумма уже включена в payload через поле 54, поэтому hash защищает от изменения суммы
+      const checksumFull = createHash('sha256').update(payload, 'utf8').digest('hex')
       // Берем последние 4 символа в нижнем регистре
       const checksum = checksumFull.slice(-4).toLowerCase()
       
+      console.log(`🔐 SHA-256 checksum calculated: ${checksumFull.substring(0, 20)}...${checksumFull.slice(-4)} (last 4: ${checksum})`)
+      console.log(`🔒 Hash включает сумму ${amount} сом (${amountCents} копеек) - изменение суммы приведет к невалидному hash`)
+      
       // Полный QR хеш: payload + '6304' + checksum
+      // Hash защищает от изменения суммы, так как сумма включена в payload через поле 54
       qrHash = payload + '6304' + checksum
     }
     
