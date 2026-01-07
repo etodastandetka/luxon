@@ -526,7 +526,7 @@ export async function POST(request: NextRequest) {
         console.warn('⚠️ [Payment API] Не удалось получить данные пользователя из BotUser:', error.message)
       }
     }
-    
+
     console.log('💾 Payment API - Saving to database:', {
       userId: userIdBigInt.toString(),
       username: finalUsername,

@@ -149,9 +149,9 @@ export async function GET(request: NextRequest) {
       }
       
       return {
-        id: r.id.toString(),
-        user_id: r.userId.toString(),
-        account_id: r.accountId || '',
+      id: r.id.toString(),
+      user_id: r.userId.toString(),
+      account_id: r.accountId || '',
         user_display_name: displayName || 'Unknown',
         username: r.username || userDataMap[r.userId.toString()]?.username || '',
         first_name: r.firstName || userDataMap[r.userId.toString()]?.firstName || '',

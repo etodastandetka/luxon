@@ -59,6 +59,14 @@ export const AUTO_DEPOSIT_CONFIG = {
   // Окно поиска заявок (в миллисекундах)
   REQUEST_SEARCH_WINDOW_MS: parseInt(process.env.AUTO_DEPOSIT_SEARCH_WINDOW_MS || '300000', 10), // 5 минут
   
+  // Максимальный "возраст" заявки (после создания), когда её ещё можно автосопоставлять с платежом
+  // По умолчанию 8 часов (покрывает кейсы с задержкой оплаты ночью)
+  MAX_REQUEST_AGE_MS: parseInt(process.env.AUTO_DEPOSIT_MAX_REQUEST_AGE_MS || String(8 * 60 * 60 * 1000), 10),
+
+  // Максимальная задержка прихода платежа после создания заявки, чтобы считать его валидным для автопополнения
+  // По умолчанию 8 часов
+  PAYMENT_DATE_MAX_DELAY_MS: parseInt(process.env.AUTO_DEPOSIT_PAYMENT_MAX_DELAY_MS || String(8 * 60 * 60 * 1000), 10),
+  
   // Задержка уведомления о депозите (в миллисекундах)
   DELAYED_NOTIFICATION_MS: parseInt(process.env.DELAYED_NOTIFICATION_MS || '60000', 10), // 1 минута
   

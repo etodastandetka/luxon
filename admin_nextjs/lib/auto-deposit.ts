@@ -82,7 +82,7 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     
     // Дополнительная проверка: заявка должна быть создана не более 5 минут назад
     const requestAge = Date.now() - req.createdAt.getTime()
-    const maxAge = 5 * 60 * 1000 // 5 минут
+    const maxAge = AUTO_DEPOSIT_CONFIG.MAX_REQUEST_AGE_MS
     if (requestAge > maxAge) {
       console.log(`⚠️ [Auto-Deposit] Request ${req.id} is too old (${Math.floor(requestAge / 1000)}s), skipping`)
       return false
@@ -90,7 +90,7 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     
     // Проверяем, что платеж поступил не слишком давно (максимум 10 минут после создания заявки)
     const paymentDelay = paymentDate.getTime() - req.createdAt.getTime()
-    const maxPaymentDelay = 10 * 60 * 1000 // 10 минут
+    const maxPaymentDelay = AUTO_DEPOSIT_CONFIG.PAYMENT_DATE_MAX_DELAY_MS
     if (paymentDelay > maxPaymentDelay) {
       const minutesDelay = Math.floor(paymentDelay / 60000)
       console.log(`⚠️ [Auto-Deposit] Payment ${paymentId} arrived ${minutesDelay} minutes after request ${req.id} (too late), skipping`)

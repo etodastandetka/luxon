@@ -76,24 +76,24 @@ const resolveSettingsFromApi = (data: any): BotSettings | null => {
 
 const loadSettingsOnce = async (): Promise<BotSettings> => {
   try {
-    const apiUrl = getApiBase()
-    const response = await fetch(`${apiUrl}/api/public/payment-settings`, { cache: 'no-store' })
+  const apiUrl = getApiBase()
+  const response = await fetch(`${apiUrl}/api/public/payment-settings`, { cache: 'no-store' })
 
-    if (!response.ok) {
+  if (!response.ok) {
       // Не бросаем ошибку, возвращаем fallback
       console.warn(`⚠️ Settings API returned ${response.status}, using fallback settings`)
       return FALLBACK_SETTINGS
-    }
+  }
 
-    const data = await response.json()
-    const resolved = resolveSettingsFromApi(data)
-    if (!resolved) {
+  const data = await response.json()
+  const resolved = resolveSettingsFromApi(data)
+  if (!resolved) {
       // Не бросаем ошибку, возвращаем fallback
       console.warn('⚠️ Could not resolve settings from API response, using fallback settings', data)
       return FALLBACK_SETTINGS
-    }
+  }
 
-    return resolved
+  return resolved
   } catch (error) {
     // Не бросаем ошибку дальше, возвращаем fallback
     console.warn('⚠️ Error loading settings, using fallback:', error)
