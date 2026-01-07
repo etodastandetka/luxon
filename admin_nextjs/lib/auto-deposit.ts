@@ -170,7 +170,8 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     
     // После успешного пополнения - атомарно обновляем все в одной транзакции
     // ВАЖНО: Если пополнение успешно, статус ОБЯЗАТЕЛЬНО должен обновиться на autodeposit_success
-    // ВАЖНО: Используем транзакцию чтобы гарантировать что статус ОБЯЗАТЕЛЬНО обновится
+    // ВАЖНО: Платеж ОБЯЗАТЕЛЬНО должен быть привязан к заявке
+    // ВАЖНО: Используем транзакцию чтобы гарантировать что все обновится атомарно
     const updateResult = await prisma.$transaction(async (tx) => {
       // Проверяем текущее состояние заявки и платежа
       const [currentRequest, currentPayment] = await Promise.all([
@@ -180,20 +181,20 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
         }),
         tx.incomingPayment.findUnique({
           where: { id: paymentId },
-          select: { isProcessed: true },
+          select: { isProcessed: true, requestId: true },
         }),
       ])
       
       // КРИТИЧЕСКИ ВАЖНО: Если платеж уже обработан - пропускаем (защита от двойного пополнения)
       if (currentPayment?.isProcessed) {
-        console.log(`⚠️ [Auto-Deposit] Payment ${paymentId} already processed, skipping`)
-        return { skipped: true }
+        console.log(`⚠️ [Auto-Deposit] Payment ${paymentId} already processed (requestId: ${currentPayment.requestId}), skipping`)
+        return { skipped: true, reason: 'payment_already_processed' }
       }
       
-      // Если заявка уже обработана автопополнением - пропускаем (защита от двойного пополнения)
+      // Если заявка уже обработана автопополнением - все равно привязываем платеж
       if (currentRequest?.processedBy === 'автопополнение' || currentRequest?.status === 'autodeposit_success') {
-        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already processed by autodeposit (status: ${currentRequest?.status}), skipping`)
-        // Но все равно помечаем платеж как обработанный
+        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already processed by autodeposit (status: ${currentRequest?.status}), but linking payment anyway`)
+        // ВСЕГДА привязываем платеж к заявке, даже если заявка уже обработана
         await tx.incomingPayment.update({
           where: { id: paymentId },
           data: {
@@ -201,21 +202,14 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
             isProcessed: true,
           },
         })
-        return { skipped: true }
+        console.log(`✅ [Auto-Deposit] Payment ${paymentId} linked to request ${request.id} (request already processed)`)
+        return { skipped: true, reason: 'request_already_processed', paymentLinked: true }
       }
       
-      // ВАЖНО: Если пополнение уже выполнено успешно, но статус еще не обновлен - ОБЯЗАТЕЛЬНО обновляем
-      // Даже если заявка уже не pending (например, была изменена вручную), но пополнение успешно - обновляем статус
-      // Исключение: если заявка уже completed/approved - не трогаем (возможно, обработана вручную)
-      const shouldUpdateStatus = 
-        currentRequest?.status === 'pending' || 
-        currentRequest?.status === 'api_error' ||
-        currentRequest?.status === 'deposit_failed' ||
-        !currentRequest?.processedBy // Если нет processedBy, значит не обработана
-      
-      if (!shouldUpdateStatus && (currentRequest?.status === 'completed' || currentRequest?.status === 'approved')) {
-        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already completed/approved (status: ${currentRequest?.status}), but deposit was successful. Marking payment as processed.`)
-        // Помечаем платеж как обработанный, но не меняем статус заявки
+      // Если заявка уже completed/approved вручную - все равно привязываем платеж
+      if (currentRequest?.status === 'completed' || currentRequest?.status === 'approved') {
+        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already completed/approved (status: ${currentRequest?.status}), but deposit was successful. Linking payment.`)
+        // ВСЕГДА привязываем платеж к заявке
         await tx.incomingPayment.update({
           where: { id: paymentId },
           data: {
@@ -223,10 +217,12 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
             isProcessed: true,
           },
         })
-        return { skipped: true }
+        console.log(`✅ [Auto-Deposit] Payment ${paymentId} linked to request ${request.id} (request was manually completed)`)
+        return { skipped: true, reason: 'request_manually_completed', paymentLinked: true }
       }
       
       // Обновляем заявку и платеж атомарно - ВАЖНО: это должно обязательно выполниться
+      console.log(`🔄 [Auto-Deposit] Updating request ${request.id} and payment ${paymentId} in transaction...`)
       const [updatedRequest, updatedPayment] = await Promise.all([
         tx.request.update({
           where: { id: request.id },
@@ -247,27 +243,48 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
         }),
       ])
       
-      console.log(`✅ [Auto-Deposit] Transaction: Request ${request.id} status updated to autodeposit_success (was: ${currentRequest?.status})`)
-      console.log(`✅ [Auto-Deposit] Transaction: Payment ${paymentId} marked as processed`)
+      console.log(`✅ [Auto-Deposit] Transaction SUCCESS: Request ${request.id} status updated to autodeposit_success (was: ${currentRequest?.status})`)
+      console.log(`✅ [Auto-Deposit] Transaction SUCCESS: Payment ${paymentId} linked to request ${request.id} and marked as processed`)
       
       return { updatedRequest, updatedPayment, skipped: false }
     })
     
-    // Проверяем что транзакция действительно обновила статус
+    // Проверяем результат транзакции
     if (updateResult?.skipped) {
-      console.log(`⚠️ [Auto-Deposit] Transaction skipped for request ${request.id}`)
-      return null
+      const reason = updateResult.reason || 'unknown'
+      const paymentLinked = updateResult.paymentLinked || false
+      
+      if (paymentLinked) {
+        console.log(`✅ [Auto-Deposit] Payment ${paymentId} linked to request ${request.id} (skipped status update: ${reason})`)
+        // Платеж привязан, но статус не обновлен - это нормально если заявка уже обработана
+        return {
+          requestId: request.id,
+          success: true,
+          paymentLinked: true,
+          statusUpdated: false,
+          reason
+        }
+      } else {
+        console.log(`⚠️ [Auto-Deposit] Transaction skipped for request ${request.id} (reason: ${reason})`)
+        return null
+      }
     }
     
-    if (!updateResult?.updatedRequest) {
-      console.error(`❌ [Auto-Deposit] Transaction failed to update request ${request.id}`)
-      throw new Error('Failed to update request status in transaction')
+    if (!updateResult?.updatedRequest || !updateResult?.updatedPayment) {
+      console.error(`❌ [Auto-Deposit] Transaction failed to update request ${request.id} or payment ${paymentId}`)
+      throw new Error('Failed to update request status or payment in transaction')
     }
     
     // Дополнительная проверка что статус действительно обновился
     let verifyRequest = await prisma.request.findUnique({
       where: { id: request.id },
       select: { status: true, processedBy: true },
+    })
+    
+    // Проверяем что платеж привязан
+    let verifyPayment = await prisma.incomingPayment.findUnique({
+      where: { id: paymentId },
+      select: { requestId: true, isProcessed: true },
     })
     
     // КРИТИЧЕСКАЯ ЗАЩИТА: Если статус не обновился, пытаемся обновить вручную
@@ -306,6 +323,28 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
       }
     } else {
       console.log(`✅ [Auto-Deposit] SUCCESS: Request ${request.id} → autodeposit_success (verified)`)
+    }
+    
+    // Проверяем что платеж привязан
+    if (!verifyPayment?.requestId || verifyPayment.requestId !== request.id) {
+      console.error(`❌ [Auto-Deposit] CRITICAL: Payment ${paymentId} not linked to request ${request.id} (requestId: ${verifyPayment?.requestId})`)
+      console.log(`🔄 [Auto-Deposit] Attempting manual payment link for payment ${paymentId}...`)
+      
+      try {
+        await prisma.incomingPayment.update({
+          where: { id: paymentId },
+          data: {
+            requestId: request.id,
+            isProcessed: true,
+          },
+        })
+        console.log(`✅ [Auto-Deposit] Manual payment link successful: Payment ${paymentId} → Request ${request.id}`)
+      } catch (paymentLinkError: any) {
+        console.error(`❌ [Auto-Deposit] Manual payment link error:`, paymentLinkError.message)
+        throw new Error(`Failed to link payment: ${paymentLinkError.message}`)
+      }
+    } else {
+      console.log(`✅ [Auto-Deposit] SUCCESS: Payment ${paymentId} linked to request ${request.id} (verified)`)
     }
 
     // Отправляем уведомление пользователю в бот, если заявка создана через бот
@@ -353,9 +392,41 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
       console.error(`❌ Error sending notification for request ${request.id}:`, notificationError)
     }
 
+    // Финальная проверка что все обновлено
+    const finalCheck = await prisma.request.findUnique({
+      where: { id: request.id },
+      select: { status: true, processedBy: true },
+    })
+    
+    const finalPaymentCheck = await prisma.incomingPayment.findUnique({
+      where: { id: paymentId },
+      select: { requestId: true, isProcessed: true },
+    })
+    
+    const statusOk = finalCheck?.status === 'autodeposit_success'
+    const paymentOk = finalPaymentCheck?.requestId === request.id && finalPaymentCheck?.isProcessed === true
+    
+    console.log(`📊 [Auto-Deposit] Final check for request ${request.id}:`, {
+      status: finalCheck?.status,
+      statusOk,
+      paymentLinked: paymentOk,
+      paymentRequestId: finalPaymentCheck?.requestId
+    })
+    
+    if (!statusOk || !paymentOk) {
+      console.error(`❌ [Auto-Deposit] FINAL CHECK FAILED:`, {
+        statusOk,
+        paymentOk,
+        currentStatus: finalCheck?.status,
+        paymentRequestId: finalPaymentCheck?.requestId
+      })
+    }
+    
     return {
       requestId: request.id,
-      success: true,
+      success: statusOk && paymentOk,
+      statusUpdated: statusOk,
+      paymentLinked: paymentOk,
     }
   } catch (error: any) {
     console.error(`❌ [Auto-Deposit] FAILED for request ${request.id}:`, error.message)

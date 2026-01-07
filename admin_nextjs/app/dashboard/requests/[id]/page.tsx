@@ -128,6 +128,56 @@ export default function RequestDetailPage() {
     }
   }
 
+  // Функция для загрузки фото заявки
+  const fetchRequestPhoto = useCallback((requestId: string) => {
+    // Проверяем, что фото еще не загружено
+    if (photoLoadedRef.current || !isMountedRef.current) {
+      return
+    }
+    
+    fetch(`/api/requests/${requestId}/photo`, {
+      cache: 'no-store', // Не кэшируем - фото может появиться позже
+      next: { revalidate: 0 }, // Всегда проверяем актуальность
+    })
+      .then(res => {
+        if (!res.ok) return { success: false }
+        return res.json()
+      })
+      .then(photoData => {
+        // Проверяем еще раз, что фото не загружено (защита от дублирования)
+        if (photoLoadedRef.current || !isMountedRef.current) {
+          return
+        }
+        
+        if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
+          const photoUrl = String(photoData.data.photoFileUrl).trim()
+          // Валидируем URL перед использованием
+          if (isValidPhotoUrl(photoUrl)) {
+            setRequest(prev => {
+              if (!prev) return null
+              // Если фото уже есть, не меняем его
+              if (prev.photoFileUrl) return prev
+              
+              photoLoadedRef.current = true // Отмечаем, что фото загружено
+              setPhotoError(false) // Сбрасываем ошибку
+              console.log('✅ [Request Detail] Фото успешно загружено при обновлении:', photoUrl.substring(0, 50) + '...')
+              return {
+                ...prev,
+                photoFileUrl: photoUrl
+              }
+            })
+          } else {
+            console.warn('⚠️ [Request Detail] Невалидный URL фото при обновлении:', photoUrl, 'Type:', typeof photoUrl, 'Length:', photoUrl?.length)
+            setPhotoError(true)
+          }
+        }
+      })
+      .catch((error) => {
+        // Тихая ошибка - просто не показываем фото
+        console.error('❌ [Request Detail] Ошибка загрузки фото при обновлении:', error)
+      })
+  }, [])
+
   // Вспомогательная функция для обновления заявки с сохранением photoFileUrl
   const updateRequestPreservingPhoto = useCallback((newRequestData: RequestDetail | ((prev: RequestDetail | null) => RequestDetail | null)) => {
     setRequest(prev => {
@@ -144,6 +194,24 @@ export default function RequestDetailPage() {
       // Сохраняем существующий photoFileUrl, если новый null или undefined
       if (prev.photoFileUrl && (!newRequest.photoFileUrl || newRequest.photoFileUrl === null)) {
         return { ...newRequest, photoFileUrl: prev.photoFileUrl }
+      }
+      
+      // Если фото появилось в новых данных, но его не было раньше - загружаем его
+      if (newRequest.photoFileUrl && !prev.photoFileUrl && isValidPhotoUrl(newRequest.photoFileUrl)) {
+        photoLoadedRef.current = true
+        setPhotoError(false)
+        console.log('✅ [Request Detail] Фото найдено в обновленных данных')
+      }
+      
+      // Если фото нет в новых данных, но заявка еще pending - проверяем фото отдельно
+      if (!newRequest.photoFileUrl && newRequest.status === 'pending' && !photoLoadedRef.current) {
+        const requestId = Array.isArray(params.id) ? params.id[0] : params.id
+        if (requestId) {
+          // Загружаем фото асинхронно, не блокируя обновление
+          setTimeout(() => {
+            fetchRequestPhoto(requestId)
+          }, 100)
+        }
       }
       
       return newRequest
@@ -215,14 +283,14 @@ export default function RequestDetailPage() {
             // Убираем loading СРАЗУ после установки данных (не ждем фото)
               setLoading(false)
             
-            // Загружаем фото ТОЛЬКО один раз при первой загрузке заявки
-            // При автообновлениях (showLoading = false) не загружаем фото повторно
+            // Загружаем фото если его еще нет - ВСЕГДА, не только при первой загрузке
+            // Это важно для случаев, когда фото было добавлено после открытия страницы
             // Загружаем фото ПАРАЛЛЕЛЬНО с основными данными для ускорения, без показа лоадера
-            if (showLoading && !photoLoadedRef.current) {
+            if (!photoLoadedRef.current && !requestData.photoFileUrl) {
               // Загружаем фото сразу, без задержки - параллельно с основным контентом
               fetch(`/api/requests/${requestId}/photo`, {
-                cache: 'force-cache', // Используем кэш для ускорения
-                next: { revalidate: 10 }, // Перевалидируем каждые 10 секунд
+                cache: 'no-store', // Не кэшируем - фото может появиться позже
+                next: { revalidate: 0 }, // Всегда проверяем актуальность
               })
                 .then(res => {
                   if (!res.ok) return { success: false }
@@ -245,6 +313,7 @@ export default function RequestDetailPage() {
                         
                         photoLoadedRef.current = true // Отмечаем, что фото загружено
                         setPhotoError(false) // Сбрасываем ошибку
+                        console.log('✅ [Request Detail] Фото успешно загружено:', photoUrl.substring(0, 50) + '...')
                         return {
                           ...prev,
                           photoFileUrl: photoUrl
@@ -254,11 +323,19 @@ export default function RequestDetailPage() {
                       console.warn('⚠️ [Request Detail] Невалидный URL фото:', photoUrl, 'Type:', typeof photoUrl, 'Length:', photoUrl?.length)
                       setPhotoError(true)
                     }
+                  } else {
+                    // Если фото нет в ответе, это нормально - просто не показываем его
+                    console.log('ℹ️ [Request Detail] Фото не найдено для заявки', requestId)
                   }
                 })
-                .catch(() => {
-                  // Тихая ошибка - просто не показываем фото
+                .catch((error) => {
+                  // Логируем ошибку для отладки
+                  console.error('❌ [Request Detail] Ошибка загрузки фото:', error)
                 })
+            } else if (requestData.photoFileUrl) {
+              // Если фото уже есть в основных данных, просто отмечаем что оно загружено
+              photoLoadedRef.current = true
+              setPhotoError(false)
             }
             
             // Интервал автообновления управляется в основном useEffect
@@ -441,20 +518,31 @@ export default function RequestDetailPage() {
           .then(data => {
             if (data.success && isMountedRef.current) {
               updateRequestPreservingPhoto(data.data)
+              
+              // Проверяем фото при автообновлении, если его еще нет
+              if (!photoLoadedRef.current && !data.data.photoFileUrl) {
+                fetchRequestPhoto(requestId)
+              }
             }
           })
-          .catch(() => {})
+          .catch(() => {
+            // Тихая ошибка
+          })
+        
+        // Также проверяем фото отдельно при автообновлении
+        if (!photoLoadedRef.current) {
+          fetchRequestPhoto(requestId)
+        }
       }
     }, interval)
-
+    
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [request?.status, params.id]) // request используется только для получения status
+  }, [request?.status, params.id, fetchRequestPhoto, updateRequestPreservingPhoto])
 
   // Закрываем меню при клике вне его
   useEffect(() => {

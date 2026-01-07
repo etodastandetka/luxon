@@ -717,11 +717,12 @@ export async function POST(request: NextRequest) {
           // Это гарантирует что автопополнение произойдет секунду в секунду
           const result = await matchAndProcessPayment(payment.id, requestAmount)
           
-          if (result && result.success) {
+          if (result && (result.success || result.paymentLinked)) {
             console.log(`✅ [Auto-Deposit] INSTANT auto-deposit completed for request ${newRequest.id} with payment ${payment.id}`)
+            console.log(`   Status updated: ${result.statusUpdated !== false}, Payment linked: ${result.paymentLinked !== false}`)
             // Автопополнение сработало - уведомление НЕ отправляем
           } else {
-            console.log(`ℹ️ [Auto-Deposit] Auto-deposit check completed for request ${newRequest.id}`)
+            console.log(`ℹ️ [Auto-Deposit] Auto-deposit check completed for request ${newRequest.id}, but no match found`)
             // Автопополнение не сработало - отправим уведомление через минуту
             scheduleDelayedNotification(newRequest.id)
           }

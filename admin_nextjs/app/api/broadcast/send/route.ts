@@ -18,22 +18,66 @@ export async function POST(request: NextRequest) {
 
     const contentType = request.headers.get('content-type') || ''
     
-    // Если это FormData (содержит multipart/form-data)
-    if (contentType.includes('multipart/form-data')) {
-      const formData = await request.formData()
-      message = (formData.get('message') as string) || ''
-      const photo = formData.get('photo') as File | null
-      
-      if (photo && photo.size > 0) {
-        photoFile = photo
-        const arrayBuffer = await photo.arrayBuffer()
-        photoBuffer = Buffer.from(arrayBuffer)
-        photoMimeType = photo.type || 'image/jpeg'
+    try {
+      // Если это FormData (содержит multipart/form-data)
+      if (contentType.includes('multipart/form-data')) {
+        const formData = await request.formData()
+        const messageField = formData.get('message')
+        message = typeof messageField === 'string' ? messageField : (messageField?.toString() || '')
+        
+        const photo = formData.get('photo')
+        
+        // Проверяем что photo существует, это File, и имеет размер > 0
+        if (photo && photo instanceof File && photo.size > 0) {
+          photoFile = photo
+          try {
+            const arrayBuffer = await photo.arrayBuffer()
+            photoBuffer = Buffer.from(arrayBuffer)
+            photoMimeType = photo.type || 'image/jpeg'
+            console.log(`📷 [Broadcast] Photo loaded: ${photo.name}, size: ${photo.size} bytes, type: ${photoMimeType}`)
+          } catch (photoError: any) {
+            console.error(`❌ [Broadcast] Failed to process photo:`, photoError.message)
+            // Продолжаем без фото, если не удалось обработать
+            photoBuffer = null
+            photoFile = null
+          }
+        } else {
+          console.log(`ℹ️ [Broadcast] No photo in FormData or photo is empty`)
+        }
+      } else {
+        // JSON - только текст
+        try {
+          const body = await request.json()
+          message = body.message || ''
+        } catch (jsonError: any) {
+          // Если не JSON, пробуем FormData (на случай если content-type не установлен правильно)
+          try {
+            const formData = await request.formData()
+            const messageField = formData.get('message')
+            message = typeof messageField === 'string' ? messageField : (messageField?.toString() || '')
+            
+            const photo = formData.get('photo') as File | null
+            if (photo && photo.size > 0 && photo instanceof File) {
+              photoFile = photo
+              const arrayBuffer = await photo.arrayBuffer()
+              photoBuffer = Buffer.from(arrayBuffer)
+              photoMimeType = photo.type || 'image/jpeg'
+            }
+          } catch (formDataError: any) {
+            console.error('❌ [Broadcast] Failed to parse request body:', formDataError.message)
+            return NextResponse.json(
+              createApiResponse(null, 'Неверный формат запроса. Ожидается JSON или FormData.'),
+              { status: 400 }
+            )
+          }
+        }
       }
-    } else {
-      // JSON - только текст
-      const body = await request.json()
-      message = body.message || ''
+    } catch (error: any) {
+      console.error('❌ [Broadcast] Error parsing request:', error.message)
+      return NextResponse.json(
+        createApiResponse(null, `Ошибка обработки запроса: ${error.message}`),
+        { status: 400 }
+      )
     }
 
     if (!message || !message.trim()) {
@@ -45,19 +89,26 @@ export async function POST(request: NextRequest) {
 
     const botToken = process.env.BOT_TOKEN
 
+    console.log(`🔑 [Broadcast] BOT_TOKEN check: ${botToken ? 'exists' : 'missing'}, length: ${botToken?.length || 0}`)
+
     if (!botToken) {
       console.error('❌ [Broadcast] BOT_TOKEN is not configured in environment variables')
       return NextResponse.json(
-        createApiResponse(null, 'BOT_TOKEN not configured'),
+        createApiResponse(null, 'BOT_TOKEN not configured in server environment'),
         { status: 500 }
       )
     }
 
     // Проверяем формат токена (обычно это числа:буквы, минимум 10 символов)
     if (botToken.length < 10 || !botToken.includes(':')) {
-      console.error(`❌ [Broadcast] BOT_TOKEN format is invalid (length: ${botToken.length}, contains ':'): ${botToken.includes(':')}`)
+      const tokenPreview = botToken.substring(0, 5) + '...' + botToken.substring(botToken.length - 3)
+      console.error(`❌ [Broadcast] BOT_TOKEN format is invalid:`, {
+        length: botToken.length,
+        hasColon: botToken.includes(':'),
+        preview: tokenPreview
+      })
       return NextResponse.json(
-        createApiResponse(null, 'BOT_TOKEN format is invalid'),
+        createApiResponse(null, `BOT_TOKEN format is invalid (length: ${botToken.length}, expected format: number:letters)`),
         { status: 500 }
       )
     }
@@ -384,7 +435,11 @@ export async function POST(request: NextRequest) {
       })
     )
   } catch (error: any) {
-    console.error('Broadcast API error:', error)
+    console.error('❌ [Broadcast] API error:', {
+      message: error.message,
+      stack: error.stack?.substring(0, 500),
+      name: error.name
+    })
     return NextResponse.json(
       createApiResponse(null, error.message || 'Failed to send broadcast'),
       { status: 500 }

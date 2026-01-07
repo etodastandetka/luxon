@@ -8,14 +8,20 @@ async function sendTelegramNotification(userId: bigint, message: string, withMen
   try {
     const botToken = process.env.BOT_TOKEN
     if (!botToken) {
-      console.warn('⚠️ BOT_TOKEN not configured, skipping Telegram notification')
-      return
+      console.error('❌ [Telegram Notification] BOT_TOKEN not configured, skipping notification')
+      throw new Error('BOT_TOKEN not configured')
+    }
+
+    // Проверяем формат токена
+    if (botToken.length < 10 || !botToken.includes(':')) {
+      console.error(`❌ [Telegram Notification] BOT_TOKEN format is invalid (length: ${botToken.length})`)
+      throw new Error('BOT_TOKEN format is invalid')
     }
 
     const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
     const chatId = userId.toString()
     
-    console.log(`📤 Sending Telegram notification to chat_id: ${chatId}`)
+    console.log(`📤 [Telegram Notification] Sending to chat_id: ${chatId}, message length: ${message.length}`)
     
     const body: any = {
       chat_id: chatId,
@@ -37,17 +43,29 @@ async function sendTelegramNotification(userId: bigint, message: string, withMen
     const responseData = await response.json()
     
     if (!response.ok) {
-      console.error(`❌ Failed to send Telegram notification to ${chatId}:`, responseData)
-      return
+      console.error(`❌ [Telegram Notification] HTTP error for ${chatId}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        errorCode: responseData.error_code,
+        description: responseData.description
+      })
+      throw new Error(`Telegram API error: ${responseData.description || response.statusText}`)
     }
 
     if (responseData.ok) {
-      console.log(`✅ Telegram notification sent successfully to user ${userId} (chat_id: ${chatId})`)
+      console.log(`✅ [Telegram Notification] Sent successfully to user ${userId} (chat_id: ${chatId})`)
+      return true
     } else {
-      console.error(`❌ Telegram API returned error for ${chatId}:`, responseData)
+      console.error(`❌ [Telegram Notification] API returned error for ${chatId}:`, responseData)
+      throw new Error(`Telegram API error: ${responseData.description || 'Unknown error'}`)
     }
-  } catch (error) {
-    console.error('❌ Error sending Telegram notification:', error)
+  } catch (error: any) {
+    console.error('❌ [Telegram Notification] Error sending notification:', {
+      userId: userId.toString(),
+      error: error.message,
+      stack: error.stack?.substring(0, 200)
+    })
+    throw error // Пробрасываем ошибку дальше для обработки
   }
 }
 
@@ -309,16 +327,12 @@ export async function PATCH(
     })
 
     // Отправляем уведомления при изменении статуса
-    // Проверяем, создана ли заявка через бота (если source = 'bot' или нет source и есть userId)
-    // Для мини-приложения уведомления не отправляем (они получают уведомления через мини-приложение)
-    // Также отправляем уведомления для статусов autodeposit_success и auto_completed
+    // ВАЖНО: Отправляем уведомления для ВСЕХ заявок с userId (и из бота, и из мини-приложения)
+    // Пользователи должны получать уведомления независимо от источника заявки
     const successStatuses = ['completed', 'rejected', 'approved', 'autodeposit_success', 'auto_completed']
     if (body.status && successStatuses.includes(body.status)) {
-      // Проверяем источник заявки - если source = 'bot' или нет source (старые заявки), отправляем уведомление
-      const source = requestBeforeUpdate.source
-      const isFromBot = source === 'bot' || !source
-      
-      if (isFromBot && requestBeforeUpdate.userId) {
+      // Отправляем уведомление если есть userId (независимо от source)
+      if (requestBeforeUpdate.userId) {
         let notificationMessage = ''
         
         if (body.status === 'completed' || body.status === 'approved' || body.status === 'autodeposit_success' || body.status === 'auto_completed') {
@@ -345,20 +359,22 @@ export async function PATCH(
         }
         
         if (notificationMessage) {
-          console.log(`[Request ${id}] Sending notification to user ${requestBeforeUpdate.userId}, status: ${body.status}, type: ${requestBeforeUpdate.requestType}`)
-          // Отправляем уведомление асинхронно, не блокируя ответ
-          // Инлайн-кнопки убраны - кнопки доступны в Reply клавиатуре
+          const source = requestBeforeUpdate.source || 'unknown'
+          console.log(`📤 [Request ${id}] Sending notification to user ${requestBeforeUpdate.userId}, status: ${body.status}, type: ${requestBeforeUpdate.requestType}, source: ${source}`)
+          
+          // Отправляем уведомление с обработкой ошибок
           sendTelegramNotification(requestBeforeUpdate.userId, notificationMessage, false)
-            .catch(error => {
-              console.error(`❌ Failed to send notification for request ${id}:`, error)
+            .then(() => {
+              console.log(`✅ [Request ${id}] Notification sent successfully to user ${requestBeforeUpdate.userId}`)
             })
+            .catch(error => {
+              console.error(`❌ [Request ${id}] Failed to send notification to user ${requestBeforeUpdate.userId}:`, error)
+            })
+        } else {
+          console.warn(`⚠️ [Request ${id}] No notification message generated for status: ${body.status}, type: ${requestBeforeUpdate.requestType}`)
         }
       } else {
-        if (!isFromBot) {
-          console.log(`[Request ${id}] Skipping notification - not from bot (source: ${source})`)
-        } else if (!requestBeforeUpdate.userId) {
-          console.log(`[Request ${id}] Skipping notification - no userId`)
-        }
+        console.log(`⚠️ [Request ${id}] Skipping notification - no userId`)
       }
     }
 
