@@ -4,12 +4,14 @@ import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     requireAuth(request)
     
-    const id = parseInt(params.id)
+    // Обработка Next.js 15+ где params может быть Promise
+    const resolvedParams = params instanceof Promise ? await params : params
+    const id = parseInt(resolvedParams.id)
     
     if (isNaN(id)) {
       return NextResponse.json(

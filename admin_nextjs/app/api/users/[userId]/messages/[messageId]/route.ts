@@ -5,12 +5,14 @@ import { prisma } from '@/lib/prisma'
 // Редактирование сообщения
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { userId: string; messageId: string } }
+  { params }: { params: Promise<{ userId: string; messageId: string }> | { userId: string; messageId: string } }
 ) {
   try {
     requireAuth(request)
 
-    const messageId = parseInt(params.messageId)
+    // Обработка Next.js 15+ где params может быть Promise
+    const resolvedParams = params instanceof Promise ? await params : params
+    const messageId = parseInt(resolvedParams.messageId)
     if (isNaN(messageId)) {
       return NextResponse.json(
         createApiResponse(null, 'Invalid message ID'),
@@ -25,7 +27,7 @@ export async function PATCH(
     const existingMessage = await prisma.chatMessage.findFirst({
       where: {
         id: messageId,
-        userId: BigInt(params.userId),
+        userId: BigInt(resolvedParams.userId),
         direction: 'out', // Можно редактировать только исходящие сообщения
       },
     })
@@ -61,7 +63,7 @@ export async function PATCH(
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                chat_id: params.userId,
+                chat_id: resolvedParams.userId,
                 message_id: Number(updated.telegramMessageId),
                 text: messageText || '',
                 parse_mode: 'HTML',
@@ -73,7 +75,7 @@ export async function PATCH(
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                chat_id: params.userId,
+                chat_id: resolvedParams.userId,
                 message_id: Number(updated.telegramMessageId),
                 caption: messageText,
                 parse_mode: 'HTML',
@@ -105,12 +107,14 @@ export async function PATCH(
 // Удаление сообщения
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { userId: string; messageId: string } }
+  { params }: { params: Promise<{ userId: string; messageId: string }> | { userId: string; messageId: string } }
 ) {
   try {
     requireAuth(request)
 
-    const messageId = parseInt(params.messageId)
+    // Обработка Next.js 15+ где params может быть Promise
+    const resolvedParams = params instanceof Promise ? await params : params
+    const messageId = parseInt(resolvedParams.messageId)
     if (isNaN(messageId)) {
       return NextResponse.json(
         createApiResponse(null, 'Invalid message ID'),
@@ -122,7 +126,7 @@ export async function DELETE(
     const existingMessage = await prisma.chatMessage.findFirst({
       where: {
         id: messageId,
-        userId: BigInt(params.userId),
+        userId: BigInt(resolvedParams.userId),
         direction: 'out', // Можно удалять только исходящие сообщения
       },
     })
@@ -154,7 +158,7 @@ export async function DELETE(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              chat_id: params.userId,
+              chat_id: resolvedParams.userId,
               message_id: Number(updated.telegramMessageId),
             }),
           })
