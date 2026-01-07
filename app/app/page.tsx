@@ -11,9 +11,6 @@ import { ReferralIcon, HistoryIcon, InstructionIcon, SupportIcon } from "../comp
 import UserProfile from "../components/UserProfile"
 import RatingBlock from "../components/RatingBlock"
 import Achievements from "../components/Achievements"
-import TelegramLoginWidget from "../components/TelegramLoginWidget"
-
-
 
 function HolidayEffects() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -358,19 +355,6 @@ export default function HomePage() {
       <FixedHeaderControls />
 
       <div className="wb-wrap space-y-6">
-        {!user && !isTelegramWebApp && (
-          <section className="wb-section" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-            <h2 className="wb-h2" style={{ marginBottom: '1rem' }}>
-              {language === 'en' ? 'Sign in with Telegram' : 'Вход через Telegram'}
-            </h2>
-            <p className="wb-p" style={{ marginBottom: '1.5rem', opacity: 0.8 }}>
-              {language === 'en' 
-                ? 'Please sign in to continue' 
-                : 'Пожалуйста, войдите, чтобы продолжить'}
-            </p>
-            <TelegramLoginWidget botName="Lux_on_bot" />
-          </section>
-        )}
         <UserProfile />
 
         <section className="wb-hero">
