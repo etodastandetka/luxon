@@ -637,11 +637,9 @@ function DepositStep3Content() {
             if (Math.abs(adjustedAmount - originalAmount) > 0.001) {
               console.log(`💰 Сумма была скорректирована: ${originalAmount} → ${adjustedAmount}, перегенерируем QR-код`)
               
-              // Обновляем amount в state и URL
+              // Обновляем amount в URL (state обновится автоматически через searchParams)
               const newAmount = adjustedAmount.toFixed(2)
-              if (typeof window !== 'undefined') {
-                router.replace(`/deposit/step3?bookmaker=${bookmaker}&accountId=${encodeURIComponent(accountId.trim())}&amount=${newAmount}`)
-              }
+              router.replace(`/deposit/step3?bookmaker=${bookmaker}&accountId=${encodeURIComponent(accountId.trim())}&amount=${newAmount}&requestId=${data.data.id}`)
               
               try {
                 const qrResponse = await safeFetch(`${base}/api/public/generate-qr`, {
