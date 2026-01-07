@@ -715,6 +715,30 @@ export default function HomePage() {
 
   const t = translations[language as keyof typeof translations] || translations.ru
   const ready = !settingsLoading
+  
+  // Проверяем паузу
+  const isPaused = (settings as any)?.pause === true
+  const maintenanceMessage = (settings as any)?.maintenance_message || 'Технические работы. Попробуйте позже.'
+
+  // Если пауза включена, показываем сообщение
+  if (ready && isPaused) {
+    return (
+      <main className="wb-page wb-ready" style={{ paddingTop: "0.5rem", paddingBottom: "110px" }}>
+        <HolidayEffects />
+        <FixedHeaderControls />
+        <div className="wb-wrap space-y-6" style={{ padding: "2rem 1rem" }}>
+          <div className="card text-center bg-orange-900/20 border-orange-500" style={{ padding: "2rem" }}>
+            <div className="text-orange-300 text-2xl font-semibold mb-4">
+              ⏸️ {language === "en" ? "Service Paused" : "Бот на паузе"}
+            </div>
+            <p className="text-white/80 text-lg">
+              {maintenanceMessage}
+            </p>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className={`wb-page ${ready ? "wb-ready" : "wb-loading"}`} style={{ paddingTop: "0.5rem", paddingBottom: "110px" }}>
