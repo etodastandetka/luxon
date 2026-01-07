@@ -483,28 +483,18 @@ function DepositStep3Content() {
         body: formData,
       })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        let errorData: any = null
-        try {
-          errorData = JSON.parse(errorText)
-        } catch (e) {}
-
-        // Используем только error, не message (message может быть успешным)
-        const errorMessage = errorData?.error || `Ошибка сервера: ${response.status}`
-        alert(`Ошибка загрузки чека: ${errorMessage}`)
-        return
-      }
-
       const data = await response.json()
+      
       if (data.success) {
         console.log('✅ Чек загружен успешно')
-        // Показываем успешное сообщение
+        // Показываем успешное сообщение (используем message из ответа или дефолтное)
         const successMessage = data.message || 'Чек успешно загружен'
         alert(successMessage)
+        // Обновляем состояние, чтобы показать, что чек загружен
+        setReceiptUploaded(true)
       } else {
-        // Используем только error, не message
-        const errorMessage = data.error || data.message || 'Неизвестная ошибка'
+        // Ошибка: используем только error, не message (message может быть успешным сообщением)
+        const errorMessage = data.error || `Ошибка сервера: ${response.status}`
         alert(`Ошибка загрузки чека: ${errorMessage}`)
       }
     } catch (error: any) {
