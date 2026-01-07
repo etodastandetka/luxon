@@ -27,7 +27,8 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
   }
   
   const paymentDate = payment.paymentDate
-  console.log(`📅 [Auto-Deposit] Payment ${paymentId} date: ${paymentDate.toISOString()}`)
+  console.log(`📅 [Auto-Deposit] Payment ${paymentId} date: ${paymentDate.toISOString()} (UTC)`)
+  console.log(`📅 [Auto-Deposit] Payment ${paymentId} date (local): ${paymentDate.toLocaleString('ru-RU', { timeZone: 'Asia/Bishkek' })}`)
   
   // Ищем заявки на пополнение со статусом pending за последние N минут (из конфигурации)
   // Это защищает от случайного пополнения если пользователь не пополнял
@@ -104,7 +105,9 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     if (matches) {
       const timeDiff = paymentDate.getTime() - req.createdAt.getTime()
       const secondsDiff = Math.floor(timeDiff / 1000)
-      console.log(`✅ [Auto-Deposit] Exact match: Request ${req.id} (${reqAmount}) ≈ Payment ${amount} (diff: ${diff.toFixed(4)}, payment arrived ${secondsDiff}s after request)`)
+      const hoursDiff = (timeDiff / (1000 * 60 * 60)).toFixed(2)
+      console.log(`✅ [Auto-Deposit] Exact match: Request ${req.id} (${reqAmount}) ≈ Payment ${amount} (diff: ${diff.toFixed(4)})`)
+      console.log(`   ⏰ Time diff: ${secondsDiff}s (${hoursDiff}h) - Request: ${req.createdAt.toISOString()}, Payment: ${paymentDate.toISOString()}`)
     }
     
     return matches

@@ -109,7 +109,14 @@ export function parseDemirbankEmail(text: string): ParsedEmail | null {
   if (datetimeMatch) {
     const [, date, time] = datetimeMatch
     const [dd, mm, yyyy] = date.split('.')
-    isoDatetime = `${yyyy}-${mm}-${dd}T${time}`
+    // ВАЖНО: Добавляем часовой пояс UTC+6 (Кыргызстан) для правильной интерпретации времени
+    // Email от банка содержит время в часовом поясе Кыргызстана (UTC+6)
+    // Преобразуем в UTC для корректного сравнения с временем заявки
+    const localDatetime = `${yyyy}-${mm}-${dd}T${time}+06:00`
+    // Создаем Date объект и конвертируем в UTC ISO строку
+    const dateObj = new Date(localDatetime)
+    isoDatetime = dateObj.toISOString()
+    console.log(`🕐 [Email Parser] Parsed datetime: "${date} ${time}" (local UTC+6) -> ${isoDatetime} (UTC)`)
   }
 
   return {
@@ -158,7 +165,14 @@ function parseGenericAmountDateTime(text: string): ParsedEmail | null {
   if (datetimeMatch) {
     const [, date, time] = datetimeMatch
     const [dd, mm, yyyy] = date.split('.')
-    isoDatetime = `${yyyy}-${mm}-${dd}T${time}`
+    // ВАЖНО: Добавляем часовой пояс UTC+6 (Кыргызстан) для правильной интерпретации времени
+    // Email от банка содержит время в часовом поясе Кыргызстана (UTC+6)
+    // Преобразуем в UTC для корректного сравнения с временем заявки
+    const localDatetime = `${yyyy}-${mm}-${dd}T${time}+06:00`
+    // Создаем Date объект и конвертируем в UTC ISO строку
+    const dateObj = new Date(localDatetime)
+    isoDatetime = dateObj.toISOString()
+    console.log(`🕐 [Email Parser] Parsed datetime: "${date} ${time}" (local UTC+6) -> ${isoDatetime} (UTC)`)
   }
 
   return {
