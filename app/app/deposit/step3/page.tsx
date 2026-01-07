@@ -392,109 +392,11 @@ function DepositStep3Content() {
       }
 
       // Открываем ссылку на оплату
+      // ВАЖНО: Заявка НЕ создается здесь - только при нажатии "Оплатил" после загрузки фото
       if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
         (window as any).Telegram.WebApp.openLink(bankUrl)
       } else {
         window.open(bankUrl, '_blank')
-      }
-
-      // Пытаемся создать заявку (необязательно, если нет userId)
-      const userId = getTelegramUserId()
-      if (userId) {
-        try {
-        const base = getApiBase()
-        // ВАЖНО: Используем точную сумму из URL (с копейками), не округляем
-        const amountWithCents = parseFloat(amount)
-        
-        // Получаем данные пользователя из Telegram
-        const telegramUser = getTelegramUser()
-
-          const response = await safeFetch(`${base}/api/payment`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              type: 'deposit',
-              bookmaker: bookmaker,
-              userId: userId,
-              account_id: accountId,
-              amount: amountWithCents, // Передаем сумму С КОПЕЙКАМИ
-              payment_method: bankCode,
-              telegram_username: telegramUser?.username || null,
-              telegram_first_name: telegramUser?.first_name || null,
-              telegram_last_name: telegramUser?.last_name || null,
-            }),
-            timeout: 30000,
-            retries: 2,
-            retryDelay: 1000
-          })
-
-          if (!response.ok) {
-            const errorText = await response.text()
-            let errorData: any = null
-            try {
-              errorData = JSON.parse(errorText)
-            } catch (e) {}
-
-            const errorMessage = errorData?.error || errorData?.message || `Ошибка сервера: ${response.status}`
-            console.error('Ошибка создания заявки:', errorMessage)
-          } else {
-            const data = await response.json()
-            if (!data.success) {
-              console.error('Ошибка создания заявки:', data.error)
-            } else {
-              console.log('✅ Заявка создана успешно')
-              // Сохраняем ID заявки для загрузки чека
-              if (data.data && data.data.id) {
-                setRequestId(data.data.id)
-              }
-              
-              // Если сумма была скорректирована, перегенерируем QR-код с новой суммой
-              if (data.data && data.data.amount && data.data.originalAmount) {
-                const adjustedAmount = data.data.amount
-                const originalAmount = data.data.originalAmount
-                
-                if (Math.abs(adjustedAmount - originalAmount) > 0.001) {
-                  console.log(`💰 Сумма была скорректирована: ${originalAmount} → ${adjustedAmount}, перегенерируем QR-код`)
-                  
-                  try {
-                    const base = getApiBase()
-                    const qrResponse = await safeFetch(`${base}/api/public/generate-qr`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        amount: adjustedAmount,
-                        playerId: accountId,
-                        bank: selectedBank || 'demirbank'
-                      }),
-                      timeout: 30000,
-                      retries: 2,
-                      retryDelay: 1000
-                    })
-                    
-                    if (qrResponse.ok) {
-                      const qrData = await qrResponse.json()
-                      if (qrData.success && qrData.all_bank_urls) {
-                        setPaymentUrls(qrData.all_bank_urls)
-                        console.log('✅ QR-код обновлен с скорректированной суммой')
-                      }
-                    }
-                  } catch (qrError) {
-                    console.error('Ошибка при перегенерации QR-кода:', qrError)
-                    // Не критично, продолжаем с исходным QR
-                  }
-                }
-              }
-            }
-          }
-        } catch (error: any) {
-          console.error('Error creating deposit:', error)
-        }
-      } else {
-        console.log('⚠️ Telegram user ID не найден, заявка не создана (ссылка открыта)')
       }
     } catch (error: any) {
       console.error('Error opening bank link:', error)
@@ -584,6 +486,12 @@ function DepositStep3Content() {
       return
     }
 
+    // Проверяем, что фото чека загружено
+    if (!receiptFile && !receiptUploaded) {
+      alert('Пожалуйста, загрузите фото чека перед подтверждением оплаты')
+      return
+    }
+
     setLoading(true)
     try {
       const userId = getTelegramUserId()
@@ -600,7 +508,7 @@ function DepositStep3Content() {
       // Получаем данные пользователя из Telegram
       const telegramUser = getTelegramUser()
 
-      // Если заявка еще не создана, создаем ее
+      // Создаем заявку только при нажатии "Оплатил" (после загрузки фото)
       if (!requestId) {
         const response = await safeFetch(`${base}/api/payment`, {
           method: 'POST',
@@ -688,14 +596,26 @@ function DepositStep3Content() {
             }
           }
           
-          // Если есть загруженный чек, загружаем его
+          // Загружаем чек после создания заявки
           if (receiptFile) {
             await uploadReceipt(receiptFile)
+          } else if (!receiptUploaded) {
+            // Если фото не было загружено, предупреждаем
+            alert('⚠️ Внимание: фото чека не загружено. Пожалуйста, загрузите фото чека.')
+            setLoading(false)
+            return
           }
         }
       } else {
-        // Если заявка уже создана, просто подтверждаем оплату
-        // Заявка уже в статусе pending, админ увидит ее в админке
+        // Если заявка уже создана, проверяем наличие фото
+        if (!receiptUploaded && receiptFile) {
+          // Загружаем фото, если оно есть, но еще не загружено
+          await uploadReceipt(receiptFile)
+        } else if (!receiptUploaded) {
+          alert('⚠️ Внимание: фото чека не загружено. Пожалуйста, загрузите фото чека.')
+          setLoading(false)
+          return
+        }
       }
 
       alert(t.paymentConfirmed)
