@@ -525,7 +525,7 @@ export default function HomePage() {
   const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
   const [isTelegramWebApp, setIsTelegramWebApp] = useState(false)
   const { language } = useLanguage()
-  const { loading: settingsLoading } = useBotSettings()
+  const { settings, loading: settingsLoading } = useBotSettings()
 
   const userInitialized = useRef(false)
   
