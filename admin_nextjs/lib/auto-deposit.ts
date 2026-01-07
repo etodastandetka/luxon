@@ -30,21 +30,29 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
   console.log(`📅 [Auto-Deposit] Payment ${paymentId} date: ${paymentDate.toISOString()} (UTC)`)
   console.log(`📅 [Auto-Deposit] Payment ${paymentId} date (local): ${paymentDate.toLocaleString('ru-RU', { timeZone: 'Asia/Bishkek' })}`)
   
-  // Ищем заявки на пополнение со статусом pending за последние N минут (из конфигурации)
+  // Ищем заявки на пополнение со статусом pending в окне ±5 минут от платежа
   // Это защищает от случайного пополнения если пользователь не пополнял
   // И предотвращает обработку старых заявок с одинаковыми суммами
-  const searchWindowAgo = new Date(Date.now() - AUTO_DEPOSIT_CONFIG.REQUEST_SEARCH_WINDOW_MS)
+  // ВАЖНО: Используем окно ±5 минут, чтобы найти заявки созданные до или после платежа
+  const searchWindowMs = AUTO_DEPOSIT_CONFIG.REQUEST_SEARCH_WINDOW_MS
+  const searchWindowStart = new Date(paymentDate.getTime() - searchWindowMs) // 5 минут ДО платежа
+  const searchWindowEnd = new Date(paymentDate.getTime() + searchWindowMs) // 5 минут ПОСЛЕ платежа
+  const now = new Date()
+  
+  // Ограничиваем поиск текущим моментом, чтобы не искать в будущем
+  const actualSearchEnd = searchWindowEnd > now ? now : searchWindowEnd
+
+  console.log(`🔍 [Auto-Deposit] Search window: ${searchWindowStart.toISOString()} to ${actualSearchEnd.toISOString()}`)
 
   // Оптимизированный поиск заявок - минимум запросов для максимальной скорости
-  // Ищем ТОЛЬКО за последние 5 минут чтобы избежать случайного пополнения старых заявок
-  // ВАЖНО: Заявка должна быть создана ДО поступления платежа
+  // Ищем заявки в окне ±5 минут от платежа
   const matchingRequests = await prisma.request.findMany({
     where: {
       requestType: 'deposit',
       status: 'pending',
       createdAt: { 
-        gte: searchWindowAgo, // Только последние N минут (из конфигурации)
-        lte: paymentDate, // ВАЖНО: Заявка должна быть создана ДО поступления платежа
+        gte: searchWindowStart, // 5 минут ДО платежа
+        lte: actualSearchEnd, // 5 минут ПОСЛЕ платежа (но не в будущем)
       },
       incomingPayments: { none: { isProcessed: true } },
     },
@@ -72,30 +80,41 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
       return false
     }
     
-    // КРИТИЧЕСКИ ВАЖНО: Платеж должен поступить ПОСЛЕ создания заявки
-    // Если платеж пришел раньше заявки - это старый платеж, не привязываем его
-    if (paymentDate < req.createdAt) {
-      const timeDiff = req.createdAt.getTime() - paymentDate.getTime()
-      const minutesDiff = Math.floor(timeDiff / 60000)
-      console.log(`⚠️ [Auto-Deposit] Request ${req.id} created ${minutesDiff} minutes AFTER payment ${paymentId} (payment too old), skipping`)
+    // Проверяем разницу времени между заявкой и платежом
+    // Разрешаем сопоставление если заявка создана в пределах ±5 минут от платежа
+    const timeDiff = paymentDate.getTime() - req.createdAt.getTime()
+    const timeDiffAbs = Math.abs(timeDiff)
+    const maxTimeDiff = AUTO_DEPOSIT_CONFIG.REQUEST_SEARCH_WINDOW_MS // 5 минут
+    
+    // Если разница больше 5 минут - пропускаем
+    if (timeDiffAbs > maxTimeDiff) {
+      const minutesDiff = Math.floor(timeDiffAbs / 60000)
+      const direction = timeDiff > 0 ? 'after' : 'before'
+      console.log(`⚠️ [Auto-Deposit] Request ${req.id} created ${minutesDiff} minutes ${direction} payment ${paymentId} (too far apart), skipping`)
       return false
     }
     
-    // Дополнительная проверка: заявка должна быть создана не более 5 минут назад
-    const requestAge = Date.now() - req.createdAt.getTime()
-    const maxAge = AUTO_DEPOSIT_CONFIG.MAX_REQUEST_AGE_MS
-    if (requestAge > maxAge) {
-      console.log(`⚠️ [Auto-Deposit] Request ${req.id} is too old (${Math.floor(requestAge / 1000)}s), skipping`)
-      return false
+    // Дополнительная проверка: заявка не должна быть слишком старой (более 8 часов)
+    // Но только если заявка в прошлом (не в будущем)
+    const now = Date.now()
+    const requestAge = now - req.createdAt.getTime()
+    if (requestAge > 0) { // Только если заявка в прошлом
+      const maxAge = AUTO_DEPOSIT_CONFIG.MAX_REQUEST_AGE_MS
+      if (requestAge > maxAge) {
+        console.log(`⚠️ [Auto-Deposit] Request ${req.id} is too old (${Math.floor(requestAge / 1000)}s), skipping`)
+        return false
+      }
     }
     
-    // Проверяем, что платеж поступил не слишком давно (максимум 10 минут после создания заявки)
-    const paymentDelay = paymentDate.getTime() - req.createdAt.getTime()
-    const maxPaymentDelay = AUTO_DEPOSIT_CONFIG.PAYMENT_DATE_MAX_DELAY_MS
-    if (paymentDelay > maxPaymentDelay) {
-      const minutesDelay = Math.floor(paymentDelay / 60000)
-      console.log(`⚠️ [Auto-Deposit] Payment ${paymentId} arrived ${minutesDelay} minutes after request ${req.id} (too late), skipping`)
-      return false
+    // Проверяем, что платеж поступил не слишком давно (максимум 8 часов после создания заявки)
+    // Но только если платеж после заявки
+    if (timeDiff > 0) {
+      const maxPaymentDelay = AUTO_DEPOSIT_CONFIG.PAYMENT_DATE_MAX_DELAY_MS
+      if (timeDiff > maxPaymentDelay) {
+        const minutesDelay = Math.floor(timeDiff / 60000)
+        console.log(`⚠️ [Auto-Deposit] Payment ${paymentId} arrived ${minutesDelay} minutes after request ${req.id} (too late), skipping`)
+        return false
+      }
     }
     
     const reqAmount = parseFloat(req.amount.toString())
