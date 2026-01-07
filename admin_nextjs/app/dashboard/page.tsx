@@ -139,7 +139,7 @@ export default function DashboardPage() {
             r.requestType === 'deposit' && r.status === 'pending'
           )
           
-          // Автопополнения - статус изменился на autodeposit_success
+          // Автопополнения - статус изменился на autodeposit_success (только для уведомлений, НЕ для звуков)
           const completedDeposits = [...statusChangedRequests, ...newAutodepositRequests].filter((r: Request) =>
             r.requestType === 'deposit' && 
             (r.status === 'autodeposit_success' || r.status === 'completed')
@@ -153,25 +153,26 @@ export default function DashboardPage() {
           
           const allRequestsToNotify = Array.from(uniqueRequests.values())
           
-          console.log(`🔍 [Dashboard] New withdraw: ${newWithdrawRequests.length}, New deposit pending: ${newDepositPendingRequests.length}, Completed: ${completedDeposits.length}`)
+          // ВАЖНО: Для звуков используем ТОЛЬКО pending заявки (новые ожидающие)
+          const pendingRequestsForSound = allRequestsToNotify.filter(r => r.status === 'pending')
           
-          // Воспроизводим звуки ТОЛЬКО если есть реальные заявки для уведомления
-          if (allRequestsToNotify.length > 0) {
-            console.log(`🔔 [Dashboard] Found ${allRequestsToNotify.length} request(s) to notify:`, 
-              allRequestsToNotify.map((r: Request) => ({ id: r.id, type: r.requestType, status: r.status })))
+          console.log(`🔍 [Dashboard] New withdraw: ${newWithdrawRequests.length}, New deposit pending: ${newDepositPendingRequests.length}, Completed: ${completedDeposits.length}`)
+          console.log(`🔊 [Dashboard] Pending requests for sound: ${pendingRequestsForSound.length}`)
+          
+          // Воспроизводим звуки ТОЛЬКО для новых pending заявок
+          if (pendingRequestsForSound.length > 0) {
+            console.log(`🔔 [Dashboard] Found ${pendingRequestsForSound.length} pending request(s) for sound notification:`, 
+              pendingRequestsForSound.map((r: Request) => ({ id: r.id, type: r.requestType, status: r.status })))
             
             // Проверяем что звуки включены
             if (!isSoundsEnabled()) {
               console.log(`🔇 [Dashboard] Sounds disabled, skipping sound playback`)
             } else {
-              // ВАЖНО: Воспроизводим звук ТОЛЬКО ОДИН РАЗ для всех заявок одного типа
-              // Определяем какие звуки нужно воспроизвести (приоритет: withdraw > deposit completed > deposit pending)
+              // ВАЖНО: Воспроизводим звук ТОЛЬКО для pending заявок
+              // Приоритет: withdraw pending > deposit pending
               
-              const withdrawRequests = allRequestsToNotify.filter(r => r.requestType === 'withdraw' && r.status === 'pending')
-              const depositCompletedRequests = allRequestsToNotify.filter(r => 
-                r.requestType === 'deposit' && (r.status === 'autodeposit_success' || r.status === 'completed')
-              )
-              const depositPendingRequests = allRequestsToNotify.filter(r => 
+              const withdrawRequests = pendingRequestsForSound.filter(r => r.requestType === 'withdraw' && r.status === 'pending')
+              const depositPendingRequests = pendingRequestsForSound.filter(r => 
                 r.requestType === 'deposit' && r.status === 'pending'
               )
               
@@ -182,12 +183,8 @@ export default function DashboardPage() {
               
               if (withdrawRequests.length > 0) {
                 const ids = withdrawRequests.map(r => r.id).sort().join(',')
-                soundKey = `withdraw-${ids}`
+                soundKey = `withdraw-pending-${ids}`
                 soundToPlay = 'withdraw'
-              } else if (depositCompletedRequests.length > 0) {
-                const ids = depositCompletedRequests.map(r => r.id).sort().join(',')
-                soundKey = `deposit-completed-${ids}`
-                soundToPlay = 'deposit'
               } else if (depositPendingRequests.length > 0) {
                 const ids = depositPendingRequests.map(r => r.id).sort().join(',')
                 soundKey = `deposit-pending-${ids}`
@@ -200,11 +197,10 @@ export default function DashboardPage() {
                 activateAudioContext().then(() => {
                   if (soundToPlay === 'withdraw') {
                     playWithdrawSound()
-                    console.log(`🔊 [Dashboard] Withdraw sound played ONCE for ${withdrawRequests.length} new withdraw(s)`)
+                    console.log(`🔊 [Dashboard] Withdraw sound played ONCE for ${withdrawRequests.length} new pending withdraw(s)`)
                   } else if (soundToPlay === 'deposit') {
                     playDepositSound()
-                    const count = depositCompletedRequests.length || depositPendingRequests.length
-                    console.log(`🔊 [Dashboard] Deposit sound played ONCE for ${count} new deposit(s)`)
+                    console.log(`🔊 [Dashboard] Deposit sound played ONCE for ${depositPendingRequests.length} new pending deposit(s)`)
                   }
                   playedSoundsRef.current.add(soundKey)
                 }).catch(err => {
@@ -213,7 +209,14 @@ export default function DashboardPage() {
               } else if (soundKey && playedSoundsRef.current.has(soundKey)) {
                 console.log(`🔇 [Dashboard] Sound already played for key: ${soundKey}, skipping`)
               }
-                
+            }
+          }
+          
+          // Показываем уведомления для всех заявок (pending и completed)
+          if (allRequestsToNotify.length > 0) {
+            console.log(`🔔 [Dashboard] Found ${allRequestsToNotify.length} request(s) for notification:`, 
+              allRequestsToNotify.map((r: Request) => ({ id: r.id, type: r.requestType, status: r.status })))
+              
               // Теперь показываем уведомления для каждой заявки (без звуков)
               allRequestsToNotify.forEach((request: Request, index: number) => {
                 // Минимальная задержка только для уведомлений
@@ -259,7 +262,6 @@ export default function DashboardPage() {
                 const ids = Array.from(playedSoundsRef.current)
                 playedSoundsRef.current = new Set(ids.slice(-200))
               }
-            }
           }
         }
         
