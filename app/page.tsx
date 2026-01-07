@@ -523,11 +523,18 @@ function LuxOnSlots({
 export default function HomePage() {
   const [user, setUser] = useState<TelegramUser | null>(null)
   const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
+  const [isTelegramWebApp, setIsTelegramWebApp] = useState(false)
   const { language } = useLanguage()
   const { loading: settingsLoading } = useBotSettings()
 
   const userInitialized = useRef(false)
   useEffect(() => {
+    // Проверяем, запущено ли приложение в Telegram WebApp
+    const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null
+    if (tg) {
+      setIsTelegramWebApp(true)
+    }
+    
     // Сначала пробуем через мини-приложение
     const telegramUser = initTelegramWebApp()
     if (telegramUser) {
@@ -637,7 +644,7 @@ export default function HomePage() {
       <FixedHeaderControls />
 
       <div className="wb-wrap space-y-6">
-        {!user && (
+        {!user && !isTelegramWebApp && (
           <section className="wb-section" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
             <h2 className="wb-h2" style={{ marginBottom: '1rem' }}>
               {language === 'en' ? 'Sign in with Telegram' : 'Вход через Telegram'}
