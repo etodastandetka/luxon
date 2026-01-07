@@ -10,6 +10,25 @@ import { AUTO_DEPOSIT_CONFIG } from '@/config/app'
 export async function matchAndProcessPayment(paymentId: number, amount: number) {
   console.log(`🔍 [Auto-Deposit] matchAndProcessPayment called: paymentId=${paymentId}, amount=${amount}`)
   
+  // ВАЖНО: Получаем информацию о платеже, чтобы проверить время поступления
+  const payment = await prisma.incomingPayment.findUnique({
+    where: { id: paymentId },
+    select: { paymentDate: true, isProcessed: true },
+  })
+  
+  if (!payment) {
+    console.error(`❌ [Auto-Deposit] Payment ${paymentId} not found`)
+    return null
+  }
+  
+  if (payment.isProcessed) {
+    console.log(`⚠️ [Auto-Deposit] Payment ${paymentId} already processed, skipping`)
+    return null
+  }
+  
+  const paymentDate = payment.paymentDate
+  console.log(`📅 [Auto-Deposit] Payment ${paymentId} date: ${paymentDate.toISOString()}`)
+  
   // Ищем заявки на пополнение со статусом pending за последние N минут (из конфигурации)
   // Это защищает от случайного пополнения если пользователь не пополнял
   // И предотвращает обработку старых заявок с одинаковыми суммами
@@ -17,11 +36,15 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
 
   // Оптимизированный поиск заявок - минимум запросов для максимальной скорости
   // Ищем ТОЛЬКО за последние 5 минут чтобы избежать случайного пополнения старых заявок
+  // ВАЖНО: Заявка должна быть создана ДО поступления платежа
   const matchingRequests = await prisma.request.findMany({
     where: {
       requestType: 'deposit',
       status: 'pending',
-      createdAt: { gte: searchWindowAgo }, // Только последние N минут (из конфигурации)
+      createdAt: { 
+        gte: searchWindowAgo, // Только последние N минут (из конфигурации)
+        lte: paymentDate, // ВАЖНО: Заявка должна быть создана ДО поступления платежа
+      },
       incomingPayments: { none: { isProcessed: true } },
     },
     orderBy: { createdAt: 'asc' },
@@ -37,7 +60,7 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     },
   })
 
-  // Быстрая фильтрация по точному совпадению суммы
+  // Быстрая фильтрация по точному совпадению суммы и времени
   const exactMatches = matchingRequests.filter((req) => {
     if (req.status !== 'pending' || !req.amount) return false
     
@@ -45,6 +68,15 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     const hasProcessedPayment = req.incomingPayments?.some(p => p.isProcessed === true)
     if (hasProcessedPayment) {
       console.log(`⚠️ [Auto-Deposit] Request ${req.id} already has processed payment, skipping`)
+      return false
+    }
+    
+    // КРИТИЧЕСКИ ВАЖНО: Платеж должен поступить ПОСЛЕ создания заявки
+    // Если платеж пришел раньше заявки - это старый платеж, не привязываем его
+    if (paymentDate < req.createdAt) {
+      const timeDiff = req.createdAt.getTime() - paymentDate.getTime()
+      const minutesDiff = Math.floor(timeDiff / 60000)
+      console.log(`⚠️ [Auto-Deposit] Request ${req.id} created ${minutesDiff} minutes AFTER payment ${paymentId} (payment too old), skipping`)
       return false
     }
     
@@ -56,12 +88,23 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
       return false
     }
     
+    // Проверяем, что платеж поступил не слишком давно (максимум 10 минут после создания заявки)
+    const paymentDelay = paymentDate.getTime() - req.createdAt.getTime()
+    const maxPaymentDelay = 10 * 60 * 1000 // 10 минут
+    if (paymentDelay > maxPaymentDelay) {
+      const minutesDelay = Math.floor(paymentDelay / 60000)
+      console.log(`⚠️ [Auto-Deposit] Payment ${paymentId} arrived ${minutesDelay} minutes after request ${req.id} (too late), skipping`)
+      return false
+    }
+    
     const reqAmount = parseFloat(req.amount.toString())
     const diff = Math.abs(reqAmount - amount)
     const matches = diff < 0.01 // Точность до 1 копейки
     
     if (matches) {
-      console.log(`✅ [Auto-Deposit] Exact match: Request ${req.id} (${reqAmount}) ≈ Payment ${amount} (diff: ${diff.toFixed(4)}, age: ${Math.floor(requestAge / 1000)}s)`)
+      const timeDiff = paymentDate.getTime() - req.createdAt.getTime()
+      const secondsDiff = Math.floor(timeDiff / 1000)
+      console.log(`✅ [Auto-Deposit] Exact match: Request ${req.id} (${reqAmount}) ≈ Payment ${amount} (diff: ${diff.toFixed(4)}, payment arrived ${secondsDiff}s after request)`)
     }
     
     return matches
