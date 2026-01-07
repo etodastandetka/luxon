@@ -1307,7 +1307,8 @@ export default function RequestDetailPage() {
           >
             {isValidPhotoUrl(request.photoFileUrl) ? (
               request.photoFileUrl.startsWith('data:') ? (
-                // Для base64 используем обычный img тег
+                // Для base64 используем обычный img тег (Next.js Image не поддерживает data URLs корректно)
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={request.photoFileUrl}
                   alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
@@ -1381,7 +1382,8 @@ export default function RequestDetailPage() {
             </button>
             
                     {request.photoFileUrl.startsWith('data:') ? (
-                      // Для base64 используем обычный img тег
+                      // Для base64 используем обычный img тег (Next.js Image не поддерживает data URLs корректно)
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={request.photoFileUrl}
                         alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
