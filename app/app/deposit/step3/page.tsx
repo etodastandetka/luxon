@@ -415,6 +415,45 @@ function DepositStep3Content() {
               if (data.data && data.data.id) {
                 setRequestId(data.data.id)
               }
+              
+              // Если сумма была скорректирована, перегенерируем QR-код с новой суммой
+              if (data.data && data.data.amount && data.data.originalAmount) {
+                const adjustedAmount = data.data.amount
+                const originalAmount = data.data.originalAmount
+                
+                if (Math.abs(adjustedAmount - originalAmount) > 0.001) {
+                  console.log(`💰 Сумма была скорректирована: ${originalAmount} → ${adjustedAmount}, перегенерируем QR-код`)
+                  
+                  try {
+                    const base = getApiBase()
+                    const qrResponse = await safeFetch(`${base}/api/public/generate-qr`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        amount: adjustedAmount,
+                        playerId: accountId,
+                        bank: selectedBank || 'demirbank'
+                      }),
+                      timeout: 30000,
+                      retries: 2,
+                      retryDelay: 1000
+                    })
+                    
+                    if (qrResponse.ok) {
+                      const qrData = await qrResponse.json()
+                      if (qrData.success && qrData.all_bank_urls) {
+                        setPaymentUrls(qrData.all_bank_urls)
+                        console.log('✅ QR-код обновлен с скорректированной суммой')
+                      }
+                    }
+                  } catch (qrError) {
+                    console.error('Ошибка при перегенерации QR-кода:', qrError)
+                    // Не критично, продолжаем с исходным QR
+                  }
+                }
+              }
             }
           }
         } catch (error: any) {
@@ -565,6 +604,44 @@ function DepositStep3Content() {
 
         if (data.data && data.data.id) {
           setRequestId(data.data.id)
+          
+          // Если сумма была скорректирована, перегенерируем QR-код с новой суммой
+          if (data.data.amount && data.data.originalAmount) {
+            const adjustedAmount = data.data.amount
+            const originalAmount = data.data.originalAmount
+            
+            if (Math.abs(adjustedAmount - originalAmount) > 0.001) {
+              console.log(`💰 Сумма была скорректирована: ${originalAmount} → ${adjustedAmount}, перегенерируем QR-код`)
+              
+              try {
+                const qrResponse = await safeFetch(`${base}/api/public/generate-qr`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    amount: adjustedAmount,
+                    playerId: accountId,
+                    bank: selectedBank || 'demirbank'
+                  }),
+                  timeout: 30000,
+                  retries: 2,
+                  retryDelay: 1000
+                })
+                
+                if (qrResponse.ok) {
+                  const qrData = await qrResponse.json()
+                  if (qrData.success && qrData.all_bank_urls) {
+                    setPaymentUrls(qrData.all_bank_urls)
+                    console.log('✅ QR-код обновлен с скорректированной суммой')
+                  }
+                }
+              } catch (qrError) {
+                console.error('Ошибка при перегенерации QR-кода:', qrError)
+                // Не критично, продолжаем с исходным QR
+              }
+            }
+          }
           
           // Если есть загруженный чек, загружаем его
           if (receiptFile) {

@@ -719,6 +719,8 @@ export async function POST(request: NextRequest) {
       createApiResponse({
         id: newRequest.id,
         transactionId: newRequest.id,
+        amount: finalAmount, // Возвращаем скорректированную сумму для обновления QR-кода
+        originalAmount: amount ? parseFloat(amount) : null, // Исходная сумма для сравнения
         message: 'Заявка успешно создана',
       })
     )
