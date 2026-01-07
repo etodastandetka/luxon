@@ -390,7 +390,15 @@ function DepositStep2Content() {
     }
     setCookie(cookieName, accountId.trim())
 
+    // Генерируем рандомные копейки (от 0.01 до 0.99) для уникальности суммы
+    const randomCents = Math.floor(Math.random() * 99) + 1 // 1-99 копеек
+    const amountWithCents = amountNum + (randomCents / 100)
+    const formattedAmount = amountWithCents.toFixed(2)
+    
+    console.log(`💰 Сгенерированы рандомные копейки: ${amountNum} → ${formattedAmount} (${randomCents} копеек)`)
+
     // Предзагружаем QR ссылки перед переходом на step3 для ускорения загрузки
+    // ВАЖНО: Генерируем QR с суммой УЖЕ С КОПЕЙКАМИ
     try {
       const base = getApiBase()
       const { safeFetch } = await import('../../../utils/fetch')
@@ -401,7 +409,7 @@ function DepositStep2Content() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: amountNum,
+          amount: parseFloat(formattedAmount), // Передаем сумму С КОПЕЙКАМИ
           playerId: accountId.trim(),
           bank: 'demirbank'
         }),
@@ -415,7 +423,7 @@ function DepositStep2Content() {
         if (qrData.success && qrData.all_bank_urls) {
           // Сохраняем QR ссылки в sessionStorage для быстрого доступа на step3
           if (typeof window !== 'undefined') {
-            sessionStorage.setItem(`deposit_qr_${bookmaker}_${accountId}_${amountNum}`, JSON.stringify(qrData.all_bank_urls))
+            sessionStorage.setItem(`deposit_qr_${bookmaker}_${accountId}_${formattedAmount}`, JSON.stringify(qrData.all_bank_urls))
           }
         }
       }
@@ -424,8 +432,7 @@ function DepositStep2Content() {
       // Не блокируем переход, даже если не удалось предзагрузить
     }
 
-    // Форматируем сумму с копейками для URL
-    const formattedAmount = amountNum.toFixed(2)
+    // Передаем сумму С КОПЕЙКАМИ в URL
     router.push(`/deposit/step3?bookmaker=${bookmaker}&accountId=${encodeURIComponent(accountId.trim())}&amount=${formattedAmount}`)
   }
 

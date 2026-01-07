@@ -268,7 +268,8 @@ function DepositStep3Content() {
         const amountNum = parseFloat(amount)
         
         // 1. Пробуем загрузить предзагруженные QR ссылки из sessionStorage
-        const storageKey = `deposit_qr_${bookmaker}_${accountId}_${amountNum}`
+        // Используем точную сумму из URL (с копейками)
+        const storageKey = `deposit_qr_${bookmaker}_${accountId}_${amount}`
         const cachedQr = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null
         
         if (cachedQr) {
@@ -293,13 +294,14 @@ function DepositStep3Content() {
         const [settingsRes, qrResponse] = await Promise.all([
           fetch(settingsUrl, { cache: 'no-store' }),
           // Если QR ссылки не были в кэше, загружаем их
+          // ВАЖНО: Используем точную сумму из URL (с копейками)
           cachedQr ? Promise.resolve(null) : safeFetch(`${base}/api/public/generate-qr`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              amount: amountNum,
+              amount: parseFloat(amount), // Используем сумму из URL (уже с копейками)
               playerId: accountId,
               bank: 'demirbank'
             }),
@@ -400,11 +402,12 @@ function DepositStep3Content() {
       const userId = getTelegramUserId()
       if (userId) {
         try {
-          const base = getApiBase()
-          const amountNum = parseFloat(amount)
-          
-          // Получаем данные пользователя из Telegram
-          const telegramUser = getTelegramUser()
+        const base = getApiBase()
+        // ВАЖНО: Используем точную сумму из URL (с копейками), не округляем
+        const amountWithCents = parseFloat(amount)
+        
+        // Получаем данные пользователя из Telegram
+        const telegramUser = getTelegramUser()
 
           const response = await safeFetch(`${base}/api/payment`, {
             method: 'POST',
@@ -416,7 +419,7 @@ function DepositStep3Content() {
               bookmaker: bookmaker,
               userId: userId,
               account_id: accountId,
-              amount: amountNum,
+              amount: amountWithCents, // Передаем сумму С КОПЕЙКАМИ
               payment_method: bankCode,
               telegram_username: telegramUser?.username || null,
               telegram_first_name: telegramUser?.first_name || null,
@@ -591,7 +594,8 @@ function DepositStep3Content() {
       }
 
       const base = getApiBase()
-      const amountNum = parseFloat(amount)
+      // ВАЖНО: Используем точную сумму из URL (с копейками), не округляем
+      const amountWithCents = parseFloat(amount)
 
       // Получаем данные пользователя из Telegram
       const telegramUser = getTelegramUser()
@@ -608,7 +612,7 @@ function DepositStep3Content() {
             bookmaker: bookmaker,
             userId: userId,
             account_id: accountId,
-            amount: amountNum,
+            amount: amountWithCents, // Передаем сумму С КОПЕЙКАМИ
             payment_method: selectedBank,
             telegram_username: telegramUser?.username || null,
             telegram_first_name: telegramUser?.first_name || null,
