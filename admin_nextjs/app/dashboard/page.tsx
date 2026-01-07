@@ -193,21 +193,36 @@ export default function DashboardPage() {
               
               // Воспроизводим звук ТОЛЬКО если он еще не воспроизводился
               if (soundToPlay && soundKey && !playedSoundsRef.current.has(soundKey)) {
-                // Активируем AudioContext и воспроизводим звук ОДИН РАЗ
-                activateAudioContext().then(() => {
-                  if (soundToPlay === 'withdraw') {
-                    playWithdrawSound()
-                    console.log(`🔊 [Dashboard] Withdraw sound played ONCE for ${withdrawRequests.length} new pending withdraw(s)`)
-                  } else if (soundToPlay === 'deposit') {
-                    playDepositSound()
-                    console.log(`🔊 [Dashboard] Deposit sound played ONCE for ${depositPendingRequests.length} new pending deposit(s)`)
+                console.log(`🔊 [Dashboard] Attempting to play sound: ${soundToPlay}, key: ${soundKey}`)
+                
+                // Сразу пытаемся воспроизвести звук
+                // activateAudioContext может занять время, поэтому пробуем сразу
+                if (soundToPlay === 'withdraw') {
+                  playWithdrawSound()
+                  console.log(`🔊 [Dashboard] Withdraw sound triggered for ${withdrawRequests.length} new pending withdraw(s)`)
+                } else if (soundToPlay === 'deposit') {
+                  playDepositSound()
+                  console.log(`🔊 [Dashboard] Deposit sound triggered for ${depositPendingRequests.length} new pending deposit(s)`)
+                }
+                
+                // Также пробуем активировать AudioContext для будущих воспроизведений
+                activateAudioContext().then((activated) => {
+                  if (activated) {
+                    console.log(`🔊 [Dashboard] AudioContext activated successfully`)
+                  } else {
+                    console.warn(`🔊 [Dashboard] AudioContext activation returned false`)
                   }
-                  playedSoundsRef.current.add(soundKey)
                 }).catch(err => {
-                  console.error('🔊 [Dashboard] Failed to activate AudioContext:', err)
+                  console.warn('🔊 [Dashboard] AudioContext activation warning:', err.message)
+                  // Не критично, продолжаем
                 })
+                
+                // Помечаем как воспроизведенный
+                playedSoundsRef.current.add(soundKey)
               } else if (soundKey && playedSoundsRef.current.has(soundKey)) {
                 console.log(`🔇 [Dashboard] Sound already played for key: ${soundKey}, skipping`)
+              } else if (!soundToPlay || !soundKey) {
+                console.warn(`🔇 [Dashboard] No sound to play: soundToPlay=${soundToPlay}, soundKey=${soundKey}`)
               }
             }
           }

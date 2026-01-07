@@ -72,11 +72,16 @@ export default function BroadcastPage() {
       const data = await response.json()
 
       if (data.success) {
-        alert(data.data.message)
+        const result = data.data
+        const messageText = result.message || 'Рассылка завершена'
+        alert(messageText)
         setMessage('')
         fetchHistory()
+        fetchStats() // Обновляем статистику
       } else {
-        alert(data.error || 'Ошибка при отправке рассылки')
+        const errorMsg = data.error || 'Ошибка при отправке рассылки'
+        console.error('Broadcast error:', data)
+        alert(`Ошибка: ${errorMsg}\n\nПроверьте консоль для подробностей.`)
       }
     } catch (error) {
       console.error('Failed to send broadcast:', error)
