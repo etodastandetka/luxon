@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = "8042108386:AAFGNVTTfrMy-KwHjxOA72Gd_iV-Bgy5u4U"
 
 # URL сайта
-WEBSITE_URL = "https://luxon.dad"
-API_URL = "https://japar.click"
+WEBSITE_URL = "https://lux-on.org"
+API_URL = "https://pipiska.net"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start"""

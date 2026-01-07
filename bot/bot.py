@@ -30,8 +30,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 BOT_TOKEN = "7927891546:AAHyroAGoOIV6qKFAnZur13i8gvw2hMnJ-4"
 
 # URL сайта
-WEBSITE_URL = "https://luxon.dad"
-API_URL = "https://japar.click"
+WEBSITE_URL = "https://lux-on.org"
+API_URL = "https://pipiska.net"
 
 # Словарь для хранения состояний пользователей
 user_states = {}

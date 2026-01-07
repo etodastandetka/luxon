@@ -14,7 +14,7 @@ Pyrogram bridge for user-account chat delivery.
   API_ID           — Telegram api_id
   API_HASH         — Telegram api_hash
   SESSION_STRING   — session_string личного аккаунта (export_session_string)
-  API_BASE         — базовый URL админки, например https://japar.click
+  API_BASE         — базовый URL админки, например https://pipiska.net
   OUTBOX_POLL_SEC  — интервал опроса аутбокса (сек), по умолчанию 2
   BRIDGE_MODE      — bot | operator (default bot)
 """
@@ -32,7 +32,7 @@ from pyrogram.types import Message
 API_ID = int(os.environ.get("API_ID", "0"))
 API_HASH = os.environ.get("API_HASH", "")
 SESSION_STRING = os.environ.get("SESSION_STRING", "")
-API_BASE = os.environ.get("API_BASE", "https://japar.click").rstrip("/")
+API_BASE = os.environ.get("API_BASE", "https://pipiska.net").rstrip("/")
 OUTBOX_POLL_SEC = float(os.environ.get("OUTBOX_POLL_SEC", "2"))
 BRIDGE_MODE = os.environ.get("BRIDGE_MODE", "bot")  # bot | operator
 
