@@ -44,6 +44,10 @@ settings_cache = {
     'casinos': {},
     'deposit_banks': [],
     'withdrawal_banks': [],
+    'deposits_enabled': True,
+    'withdrawals_enabled': True,
+    'pause': False,
+    'maintenance_message': 'Технические работы. Попробуйте позже.',
     'last_update': 0
 }
 
@@ -83,16 +87,37 @@ async def load_settings():
                     data = result
                 
                 settings_cache['casinos'] = data.get('casinos', {})
-                settings_cache['deposit_banks'] = data.get('deposits', {}).get('banks', []) if isinstance(data.get('deposits'), dict) else []
-                settings_cache['withdrawal_banks'] = data.get('withdrawals', {}).get('banks', []) if isinstance(data.get('withdrawals'), dict) else []
+                deposits_data = data.get('deposits', {})
+                withdrawals_data = data.get('withdrawals', {})
+                
+                if isinstance(deposits_data, dict):
+                    settings_cache['deposit_banks'] = deposits_data.get('banks', [])
+                    settings_cache['deposits_enabled'] = deposits_data.get('enabled', True)
+                else:
+                    settings_cache['deposit_banks'] = []
+                    settings_cache['deposits_enabled'] = True
+                
+                if isinstance(withdrawals_data, dict):
+                    settings_cache['withdrawal_banks'] = withdrawals_data.get('banks', [])
+                    settings_cache['withdrawals_enabled'] = withdrawals_data.get('enabled', True)
+                else:
+                    settings_cache['withdrawal_banks'] = []
+                    settings_cache['withdrawals_enabled'] = True
+                
+                settings_cache['pause'] = data.get('pause', False)
+                settings_cache['maintenance_message'] = data.get('maintenance_message', 'Технические работы. Попробуйте позже.')
                 settings_cache['last_update'] = asyncio.get_event_loop().time()
-                logger.info(f"✅ Настройки загружены: казино={len(settings_cache['casinos'])}, депозиты={len(settings_cache['deposit_banks'])}, выводы={len(settings_cache['withdrawal_banks'])}")
+                logger.info(f"✅ Настройки загружены: казино={len(settings_cache['casinos'])}, депозиты={settings_cache['deposits_enabled']} (банки: {len(settings_cache['deposit_banks'])}), выводы={settings_cache['withdrawals_enabled']} (банки: {len(settings_cache['withdrawal_banks'])}), пауза={settings_cache['pause']}")
     except Exception as e:
         logger.warning(f"⚠️ Не удалось загрузить настройки: {e}, используем значения по умолчанию")
         # Значения по умолчанию
         settings_cache['casinos'] = {'1xbet': True, '1win': True, 'melbet': True, 'mostbet': True, 'winwin': True, '888starz': True}
         settings_cache['deposit_banks'] = ['mbank', 'bakai', 'balance', 'demir', 'omoney', 'megapay']
         settings_cache['withdrawal_banks'] = ['kompanion', 'odengi', 'bakai', 'balance', 'megapay', 'mbank']
+        settings_cache['deposits_enabled'] = True
+        settings_cache['withdrawals_enabled'] = True
+        settings_cache['pause'] = False
+        settings_cache['maintenance_message'] = 'Технические работы. Попробуйте позже.'
 
 async def check_channel_subscription(user_id: int, channel_id: str) -> bool:
     """Проверяет подписку пользователя на канал"""
@@ -169,6 +194,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     user_id = user.id
     logger.info(f"📥 Получена команда /start от пользователя {user_id} (@{user.username})")
+    
+    # Загружаем настройки если они устарели
+    if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
+        await load_settings()
+    
+    # Проверяем паузу
+    if settings_cache.get('pause', False):
+        maintenance_message = settings_cache.get('maintenance_message', 'Технические работы. Попробуйте позже.')
+        await update.message.reply_text(
+            f"⏸️ <b>Бот на паузе</b>\n\n{maintenance_message}",
+            parse_mode='HTML'
+        )
+        logger.info(f"⏸️ Бот на паузе, пользователь {user_id} получил сообщение о технических работах")
+        return
     
     # Проверяем настройки канала
     logger.info(f"🔍 Проверяю настройки канала для пользователя {user_id}")
@@ -381,16 +420,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Отвечаем ВСЕМ пользователям, независимо от подписки на канал
     if message_text in ["💰 Пополнить", "💸 Вывести"]:
         logger.info(f"📨 Пользователь {user_id} нажал кнопку: {message_text}")
+        
+        # Загружаем настройки если они устарели
+        if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
+            await load_settings()
+        
+        # Проверяем паузу
+        if settings_cache.get('pause', False):
+            maintenance_message = settings_cache.get('maintenance_message', 'Технические работы. Попробуйте позже.')
+            await update.message.reply_text(
+                f"⏸️ <b>Бот на паузе</b>\n\n{maintenance_message}",
+                parse_mode='HTML'
+            )
+            logger.info(f"⏸️ Бот на паузе, пользователь {user_id} попытался использовать функцию")
+            return
+        
         if message_text == "💰 Пополнить":
+            # Проверяем, включены ли депозиты
+            if not settings_cache.get('deposits_enabled', True):
+                await update.message.reply_text(
+                    "❌ Пополнение временно отключено. Попробуйте позже.",
+                    parse_mode='HTML'
+                )
+                logger.info(f"❌ Депозиты отключены, пользователь {user_id} попытался пополнить")
+                return
+            
             # Начинаем диалог пополнения
             user_states[user_id] = {
                 'step': 'deposit_bookmaker',
                 'data': {}
             }
-            
-            # Загружаем настройки если они устарели
-            if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
-                await load_settings()
             
             # Формируем список доступных казино через Reply клавиатуру
             all_casinos = [
@@ -417,15 +476,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 parse_mode='HTML'
             )
         else:
+            # Проверяем, включены ли выводы
+            if not settings_cache.get('withdrawals_enabled', True):
+                await update.message.reply_text(
+                    "❌ Вывод временно отключен. Попробуйте позже.",
+                    parse_mode='HTML'
+                )
+                logger.info(f"❌ Выводы отключены, пользователь {user_id} попытался вывести")
+                return
+            
             # Начинаем диалог вывода
             user_states[user_id] = {
                 'step': 'withdraw_bookmaker',
                 'data': {}
             }
-            
-            # Загружаем настройки если они устарели
-            if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
-                await load_settings()
             
             # Формируем список доступных казино через Reply клавиатуру
             all_casinos = [
