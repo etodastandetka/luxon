@@ -237,27 +237,28 @@ function DepositStep3Content() {
     }
 
     // Загружаем фото чека, если заявка уже создана
-    async function loadReceiptIfExists() {
-      const requestIdFromUrl = searchParams.get('requestId')
-      if (requestIdFromUrl) {
-        try {
-          const base = getApiBase()
-          const response = await fetch(`${base}/api/requests/${requestIdFromUrl}/photo`)
+    const requestIdFromUrl = searchParams.get('requestId')
+    if (requestIdFromUrl && !requestId) {
+      // Загружаем фото только если requestId есть в URL, но еще не загружен в state
+      fetch(`${getApiBase()}/api/requests/${requestIdFromUrl}/photo`)
+        .then(response => {
           if (response.ok) {
-            const data = await response.json()
-            if (data.success && data.data && data.data.photoFileUrl) {
-              setReceiptPreview(data.data.photoFileUrl)
-              setReceiptUploaded(true)
-              setRequestId(parseInt(requestIdFromUrl))
-              console.log('✅ Фото чека загружено из API')
-            }
+            return response.json()
           }
-        } catch (error) {
+          return null
+        })
+        .then(data => {
+          if (data && data.success && data.data && data.data.photoFileUrl) {
+            setReceiptPreview(data.data.photoFileUrl)
+            setReceiptUploaded(true)
+            setRequestId(parseInt(requestIdFromUrl))
+            console.log('✅ Фото чека загружено из API')
+          }
+        })
+        .catch(error => {
           console.error('Ошибка загрузки фото чека:', error)
-        }
-      }
+        })
     }
-    loadReceiptIfExists()
 
     // Загружаем настройки банков и QR ссылки
     async function loadBankSettingsAndQR() {
