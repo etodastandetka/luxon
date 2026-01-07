@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { API_URLS } from '../../config/api'
-import { logger } from '../../lib/logger'
+import { API_URLS } from '../../../config/api'
+import { logger } from '../../../lib/logger'
 
 export async function GET(request: NextRequest) {
   try {

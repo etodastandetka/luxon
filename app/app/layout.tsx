@@ -1,17 +1,17 @@
 'use client'
 
-import './globals.css'
-import TelegramInit from './components/TelegramInit'
-import { LanguageProvider } from './components/LanguageContext'
-import { HomePageDataProvider } from './contexts/HomePageDataContext'
-import BottomNavigation from './components/BottomNavigation'
-import Snowflakes from './components/Snowflakes'
-import OldDeviceWarning from './components/OldDeviceWarning'
+import '../globals.css'
+import TelegramInit from '../components/TelegramInit'
+import { LanguageProvider } from '../components/LanguageContext'
+import { HomePageDataProvider } from '../contexts/HomePageDataContext'
+import BottomNavigation from '../components/BottomNavigation'
+import Snowflakes from '../components/Snowflakes'
+import OldDeviceWarning from '../components/OldDeviceWarning'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { getApiBase } from './utils/fetch'
-import { getTelegramUserId } from './utils/telegram'
-import { initIOSColorFixes } from './utils/ios-color-fix'
+import { getApiBase } from '../utils/fetch'
+import { getTelegramUserId } from '../utils/telegram'
+import { initIOSColorFixes } from '../utils/ios-color-fix'
 
 function BlockedChecker({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

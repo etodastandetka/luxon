@@ -1,8 +1,8 @@
 "use client"
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import FixedHeaderControls from '../components/FixedHeaderControls'
-import { getApiBase } from '../utils/fetch'
+import FixedHeaderControls from '../../components/FixedHeaderControls'
+import { getApiBase } from '../../utils/fetch'
 
 export default function BlockedPage() {
   const router = useRouter()

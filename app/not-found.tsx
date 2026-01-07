@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import FixedHeaderControls from '../components/FixedHeaderControls'
+import FixedHeaderControls from './components/FixedHeaderControls'
 
 export default function NotFound() {
   const router = useRouter()
