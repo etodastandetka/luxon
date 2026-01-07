@@ -5,6 +5,14 @@ set -e
 
 echo "🔒 Настройка SSL сертификатов для nginx"
 
+# Определяем директорию скрипта и корневую директорию проекта
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+NGINX_CONFIG_DIR="$PROJECT_ROOT/nginx"
+
+echo "📁 Директория проекта: $PROJECT_ROOT"
+echo "📁 Директория конфигураций nginx: $NGINX_CONFIG_DIR"
+
 # Проверяем, запущен ли скрипт от root
 if [ "$EUID" -ne 0 ]; then 
     echo "❌ Скрипт должен быть запущен от root (используйте sudo)"
@@ -71,12 +79,12 @@ EOF
 # Копируем основную конфигурацию (если её нет)
 if [ ! -f /etc/nginx/sites-available/lux-on.org ]; then
     echo "📋 Копирование конфигурации lux-on.org..."
-    cp nginx/lux-on.org.conf /etc/nginx/sites-available/lux-on.org
+    cp "$NGINX_CONFIG_DIR/lux-on.org.conf" /etc/nginx/sites-available/lux-on.org
 fi
 
 if [ ! -f /etc/nginx/sites-available/pipiska.net ]; then
     echo "📋 Копирование конфигурации pipiska.net..."
-    cp nginx/pipiska.net.conf /etc/nginx/sites-available/pipiska.net
+    cp "$NGINX_CONFIG_DIR/pipiska.net.conf" /etc/nginx/sites-available/pipiska.net
 fi
 
 # Включаем сайты (если не включены)
@@ -128,8 +136,19 @@ certbot certonly --nginx \
 echo "📝 Применение конфигураций с SSL..."
 
 # Копируем SSL конфигурации (после получения сертификатов)
-cp nginx/lux-on.org.ssl.conf /etc/nginx/sites-available/lux-on.org
-cp nginx/pipiska.net.ssl.conf /etc/nginx/sites-available/pipiska.net
+if [ -f "$NGINX_CONFIG_DIR/lux-on.org.ssl.conf" ]; then
+    cp "$NGINX_CONFIG_DIR/lux-on.org.ssl.conf" /etc/nginx/sites-available/lux-on.org
+    echo "✅ Применена SSL конфигурация для lux-on.org"
+else
+    echo "⚠️ Файл $NGINX_CONFIG_DIR/lux-on.org.ssl.conf не найден, пропускаем..."
+fi
+
+if [ -f "$NGINX_CONFIG_DIR/pipiska.net.ssl.conf" ]; then
+    cp "$NGINX_CONFIG_DIR/pipiska.net.ssl.conf" /etc/nginx/sites-available/pipiska.net
+    echo "✅ Применена SSL конфигурация для pipiska.net"
+else
+    echo "⚠️ Файл $NGINX_CONFIG_DIR/pipiska.net.ssl.conf не найден, пропускаем..."
+fi
 
 # Проверяем конфигурацию
 echo "🔍 Проверка конфигурации nginx..."
