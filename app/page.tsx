@@ -5,7 +5,7 @@ import ServiceStatus from "../components/ServiceStatus"
 import FixedHeaderControls from "../components/FixedHeaderControls"
 import { useLanguage } from "../components/LanguageContext"
 import { useBotSettings } from "../components/SettingsLoader"
-import { initTelegramWebApp, syncWithBot, TelegramUser, getTelegramUser } from "../utils/telegram"
+import { initTelegramWebApp, syncWithBot, TelegramUser, getTelegramUser, clearTelegramUserCache } from "../utils/telegram"
 import { useHomePageData } from "../hooks/useHomePageData"
 import { ReferralIcon, HistoryIcon, InstructionIcon, SupportIcon } from "../components/Icons"
 import UserProfile from "../components/UserProfile"
@@ -528,7 +528,9 @@ export default function HomePage() {
   const { loading: settingsLoading } = useBotSettings()
 
   const userInitialized = useRef(false)
-  useEffect(() => {
+  
+  // Функция для проверки и обновления пользователя
+  const checkAndUpdateUser = useCallback(() => {
     // Проверяем, запущено ли приложение в Telegram WebApp
     const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null
     if (tg) {
@@ -538,7 +540,7 @@ export default function HomePage() {
     // Сначала пробуем через мини-приложение
     const telegramUser = initTelegramWebApp()
     if (telegramUser) {
-      if (!userInitialized.current) {
+      if (!userInitialized.current || user?.id !== telegramUser.id) {
         userInitialized.current = true
         setUser(telegramUser)
         syncWithBot(telegramUser, "app_opened", {
@@ -549,27 +551,78 @@ export default function HomePage() {
     } else {
       // Если не через мини-приложение, проверяем localStorage (виджет авторизации)
       const savedUser = getTelegramUser(false) // Не используем кэш
-      if (savedUser && !user) {
+      if (savedUser && (!user || user.id !== savedUser.id)) {
         setUser(savedUser)
       }
     }
   }, [language, user])
+  
+  useEffect(() => {
+    checkAndUpdateUser()
+    
+    // Периодически проверяем наличие пользователя (на случай если авторизация произошла в другом окне)
+    const interval = setInterval(() => {
+      if (!user) {
+        checkAndUpdateUser()
+      }
+    }, 1000) // Проверяем каждую секунду, если пользователь не авторизован
+    
+    // Проверяем при фокусе окна
+    const handleFocus = () => {
+      if (!user) {
+        checkAndUpdateUser()
+      }
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [language, user, checkAndUpdateUser])
 
   // Слушаем сообщения от окна авторизации (для виджета)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'telegram_auth_success' && event.data?.user) {
-        setUser(event.data.user)
+        const userData = event.data.user
+        setUser(userData)
         // Обновляем localStorage через функцию getTelegramUser (она использует localStorage)
         if (typeof window !== 'undefined') {
-          localStorage.setItem('telegram_user', JSON.stringify(event.data.user))
+          localStorage.setItem('telegram_user', JSON.stringify(userData))
+          // Очищаем кэш, чтобы следующая проверка получила свежие данные
+          clearTelegramUserCache()
+        }
+        // Вызываем callback если он есть
+        if (userInitialized.current === false) {
+          userInitialized.current = true
+        }
+      }
+    }
+
+    // Также слушаем изменения localStorage (если авторизация произошла в другом окне)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'telegram_user' && e.newValue) {
+        try {
+          const userData = JSON.parse(e.newValue)
+          if (!user || user.id !== userData.id) {
+            setUser(userData)
+            clearTelegramUserCache()
+          }
+        } catch (error) {
+          console.error('Error parsing user data from storage:', error)
         }
       }
     }
 
     window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [])
+    window.addEventListener('storage', handleStorageChange)
+    
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [user])
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours()
