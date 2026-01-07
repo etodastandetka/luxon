@@ -424,7 +424,9 @@ function DepositStep2Content() {
       // Не блокируем переход, даже если не удалось предзагрузить
     }
 
-    router.push(`/deposit/step3?bookmaker=${bookmaker}&accountId=${encodeURIComponent(accountId.trim())}&amount=${amountNum}`)
+    // Форматируем сумму с копейками для URL
+    const formattedAmount = amountNum.toFixed(2)
+    router.push(`/deposit/step3?bookmaker=${bookmaker}&accountId=${encodeURIComponent(accountId.trim())}&amount=${formattedAmount}`)
   }
 
   const getBookmakerName = (bm: string) => {
