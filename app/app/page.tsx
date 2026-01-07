@@ -406,15 +406,30 @@ function LuxOnSlots({
             spinningStatesRef.current[index] = false
             reel.classList.remove("lux-reel-spinning")
             
-            // Устанавливаем финальную позицию после завершения анимации
-            container.style.transform = `translateY(${targetPosition}px)`
-            container.style.transition = 'none'
-            // Принудительный reflow
+            // Очищаем CSS переменные анимации
+            reel.style.removeProperty("--spin-duration")
+            reel.style.removeProperty("--start-position")
+            reel.style.removeProperty("--target-position")
+            
+            // Устанавливаем финальную позицию после завершения анимации с !important
+            container.style.setProperty('transform', `translateY(${targetPosition}px)`, 'important')
+            container.style.setProperty('transition', 'none', 'important')
+            // Принудительный reflow для применения позиции
             void container.offsetHeight
-            // Восстанавливаем transition для будущих анимаций
-            setTimeout(() => {
-              container.style.transition = ''
-            }, 50)
+            
+            // Убеждаемся, что позиция установлена правильно после небольшой задержки
+            requestAnimationFrame(() => {
+              container.style.setProperty('transform', `translateY(${targetPosition}px)`, 'important')
+              container.style.setProperty('transition', 'none', 'important')
+              void container.offsetHeight
+              // Восстанавливаем transition для будущих анимаций
+              setTimeout(() => {
+                container.style.removeProperty('transition')
+                container.style.removeProperty('transform')
+                // Устанавливаем без !important для нормальной работы
+                container.style.transform = `translateY(${targetPosition}px)`
+              }, 50)
+            })
             
             container.removeEventListener('animationend', handleAnimationEnd as EventListener)
             resolve()
@@ -427,12 +442,27 @@ function LuxOnSlots({
             if (spinningStatesRef.current[index]) {
               spinningStatesRef.current[index] = false
               reel.classList.remove("lux-reel-spinning")
-              container.style.transform = `translateY(${targetPosition}px)`
-              container.style.transition = 'none'
+              
+              // Очищаем CSS переменные анимации
+              reel.style.removeProperty("--spin-duration")
+              reel.style.removeProperty("--start-position")
+              reel.style.removeProperty("--target-position")
+              
+              container.style.setProperty('transform', `translateY(${targetPosition}px)`, 'important')
+              container.style.setProperty('transition', 'none', 'important')
               void container.offsetHeight
-              setTimeout(() => {
-                container.style.transition = ''
-              }, 50)
+              
+              requestAnimationFrame(() => {
+                container.style.setProperty('transform', `translateY(${targetPosition}px)`, 'important')
+                container.style.setProperty('transition', 'none', 'important')
+                void container.offsetHeight
+                setTimeout(() => {
+                  container.style.removeProperty('transition')
+                  container.style.removeProperty('transform')
+                  container.style.transform = `translateY(${targetPosition}px)`
+                }, 50)
+              })
+              
               container.removeEventListener('animationend', handleAnimationEnd as EventListener)
               resolve()
             }
