@@ -6,8 +6,12 @@ module.exports = {
       script: 'npm',
       args: 'run watcher',
       interpreter: 'none',
+      env_file: '/var/www/luxon/admin_nextjs/.env', // Загружаем переменные из .env файла
       env: {
         NODE_ENV: 'production'
+        // DATABASE_URL будет загружен из .env файла через env_file
+        // Если нужно переопределить, можно добавить сюда:
+        // DATABASE_URL: 'postgresql://...'
       },
       error_file: '/var/log/pm2/luxon-watcher-error.log',
       out_file: '/var/log/pm2/luxon-watcher-out.log',
