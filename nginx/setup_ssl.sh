@@ -127,9 +127,9 @@ certbot certonly --nginx \
 # Применяем полные конфигурации с SSL
 echo "📝 Применение конфигураций с SSL..."
 
-# Копируем обновленные конфигурации
-cp nginx/lux-on.org.conf /etc/nginx/sites-available/lux-on.org
-cp nginx/pipiska.net.conf /etc/nginx/sites-available/pipiska.net
+# Копируем SSL конфигурации (после получения сертификатов)
+cp nginx/lux-on.org.ssl.conf /etc/nginx/sites-available/lux-on.org
+cp nginx/pipiska.net.ssl.conf /etc/nginx/sites-available/pipiska.net
 
 # Проверяем конфигурацию
 echo "🔍 Проверка конфигурации nginx..."
