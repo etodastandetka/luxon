@@ -63,26 +63,42 @@ const writeSessionCache = (settings: BotSettings) => {
 }
 
 const resolveSettingsFromApi = (data: any): BotSettings | null => {
+  // API возвращает { success: true, data: {...} }
+  if (data?.success && data.data) return data.data as BotSettings
+  // Если есть settings напрямую
   if (data?.success && data.settings) return data.settings
-  if (data && !data.success && !data.error) return data as BotSettings
+  // Если нет success, но есть данные напрямую
+  if (data && !data.success && !data.error && typeof data === 'object') {
+    return data as BotSettings
+  }
   return null
 }
 
 const loadSettingsOnce = async (): Promise<BotSettings> => {
-  const apiUrl = getApiBase()
-  const response = await fetch(`${apiUrl}/api/public/payment-settings`, { cache: 'no-store' })
+  try {
+    const apiUrl = getApiBase()
+    const response = await fetch(`${apiUrl}/api/public/payment-settings`, { cache: 'no-store' })
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`)
+    if (!response.ok) {
+      // Не бросаем ошибку, возвращаем fallback
+      console.warn(`⚠️ Settings API returned ${response.status}, using fallback settings`)
+      return FALLBACK_SETTINGS
+    }
+
+    const data = await response.json()
+    const resolved = resolveSettingsFromApi(data)
+    if (!resolved) {
+      // Не бросаем ошибку, возвращаем fallback
+      console.warn('⚠️ Could not resolve settings from API response, using fallback settings', data)
+      return FALLBACK_SETTINGS
+    }
+
+    return resolved
+  } catch (error) {
+    // Не бросаем ошибку дальше, возвращаем fallback
+    console.warn('⚠️ Error loading settings, using fallback:', error)
+    return FALLBACK_SETTINGS
   }
-
-  const data = await response.json()
-  const resolved = resolveSettingsFromApi(data)
-  if (!resolved) {
-    throw new Error(data?.error || 'Failed to load settings')
-  }
-
-  return resolved
 }
 
 const getCachedSettings = (): BotSettings | null => {
@@ -116,7 +132,8 @@ const fetchSettingsWithCache = async (): Promise<BotSettings> => {
       return result
     })
     .catch((error) => {
-      console.error('Error loading bot settings:', error)
+      // Это не должно происходить, так как loadSettingsOnce теперь всегда возвращает результат
+      console.warn('⚠️ Unexpected error in settings loader, using fallback:', error)
       return FALLBACK_SETTINGS
     })
     .finally(() => {
