@@ -1,10 +1,15 @@
 "use client"
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 export default function TelegramInit() {
+  const initializedRef = useRef(false)
+
   useEffect(() => {
     // Загружаем скрипт Telegram WebApp только на клиенте
     if (typeof window === 'undefined') return
+    
+    // Предотвращаем множественную инициализацию
+    if (initializedRef.current) return
 
     // Функция инициализации Telegram WebApp
     const initializeTelegramWebApp = () => {
@@ -13,11 +18,23 @@ export default function TelegramInit() {
         if (telegram && telegram.WebApp) {
           const tg = telegram.WebApp
           
-          // Расширяем WebApp на весь экран
-          tg.expand()
+          // Предотвращаем повторную инициализацию
+          if (initializedRef.current) return
+          initializedRef.current = true
+          
+          // Расширяем WebApp на весь экран (только один раз)
+          try {
+            tg.expand()
+          } catch (e) {
+            // Игнорируем ошибки, если метод не поддерживается
+          }
           
           // Отключаем подтверждение закрытия
-          tg.disableClosingConfirmation()
+          try {
+            tg.disableClosingConfirmation()
+          } catch (e) {
+            // Игнорируем ошибки, если метод не поддерживается
+          }
           
           // Используем цвета из themeParams Telegram (если доступны)
           // Это важно для iOS, чтобы цвета соответствовали теме Telegram
@@ -66,8 +83,12 @@ export default function TelegramInit() {
             document.body.style.color = newTextColor
           })
           
-          // Готовим WebApp
-          tg.ready()
+          // Готовим WebApp (только один раз)
+          try {
+            tg.ready()
+          } catch (e) {
+            // Игнорируем ошибки
+          }
           
           // Логируем информацию о hash для диагностики
           if (process.env.NODE_ENV === 'development') {
@@ -92,7 +113,9 @@ export default function TelegramInit() {
     // Проверяем, не загружен ли уже скрипт
     if ((window as any).Telegram?.WebApp) {
       // Скрипт уже загружен, инициализируем
-      initializeTelegramWebApp()
+      if (!initializedRef.current) {
+        initializeTelegramWebApp()
+      }
       return
     }
 

@@ -159,9 +159,44 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// Компонент для управления UI на основе pathname
+function LayoutUI({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  
+  const [shouldHideUI, setShouldHideUI] = useState(false)
+
+  // Подстраховка: если где-то остался loading-active — убираем и возвращаем меню
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    
+    const isBlocked = pathname === '/blocked'
+    setShouldHideUI(isBlocked)
+    
+    document.body.classList.remove('loading-active')
+    const nav = document.querySelector('.bottom-navigation') as HTMLElement | null
+    const garlands = document.querySelector('.new-year-garlands') as HTMLElement | null
+    if (nav) {
+      nav.style.removeProperty('display')
+      nav.style.removeProperty('visibility')
+      nav.style.removeProperty('opacity')
+      nav.style.removeProperty('z-index')
+    }
+    if (garlands) {
+      garlands.style.removeProperty('display')
+      garlands.style.removeProperty('visibility')
+      garlands.style.removeProperty('opacity')
+      garlands.style.removeProperty('z-index')
+    }
+  }, [pathname])
+
+  return (
+    <>
+      {!shouldHideUI && <Snowflakes />}
+      {children}
+    </>
+  )
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Инициализируем исправления цветов для iOS
   useEffect(() => {
     initIOSColorFixes()
@@ -185,29 +220,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }
     }
   }, [])
-
-  // Подстраховка: если где-то остался loading-active — убираем и возвращаем меню
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    document.body.classList.remove('loading-active')
-    const nav = document.querySelector('.bottom-navigation') as HTMLElement | null
-    const garlands = document.querySelector('.new-year-garlands') as HTMLElement | null
-    if (nav) {
-      nav.style.removeProperty('display')
-      nav.style.removeProperty('visibility')
-      nav.style.removeProperty('opacity')
-      nav.style.removeProperty('z-index')
-    }
-    if (garlands) {
-      garlands.style.removeProperty('display')
-      garlands.style.removeProperty('visibility')
-      garlands.style.removeProperty('opacity')
-      garlands.style.removeProperty('z-index')
-    }
-  }, [pathname])
-
-  // Скрываем меню и гирлянды на странице блокировки
-  const shouldHideUI = pathname === '/blocked'
 
   return (
     <html lang="ru">
@@ -301,12 +313,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <HomePageDataProvider>
             <OldDeviceWarning />
             <TelegramInit />
-            {!shouldHideUI && <Snowflakes />}
-            <BlockedChecker>
-              <div className="container" style={{ paddingTop: '0', paddingBottom: '100px', minHeight: '100vh' }}>
-                {children}
-              </div>
-            </BlockedChecker>
+            <LayoutUI>
+              <BlockedChecker>
+                <div className="container" style={{ paddingTop: '0', paddingBottom: '100px', minHeight: '100vh' }}>
+                  {children}
+                </div>
+              </BlockedChecker>
+            </LayoutUI>
           </HomePageDataProvider>
         </LanguageProvider>
       </body>
