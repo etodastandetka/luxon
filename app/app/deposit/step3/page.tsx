@@ -236,6 +236,29 @@ function DepositStep3Content() {
       return
     }
 
+    // Загружаем фото чека, если заявка уже создана
+    async function loadReceiptIfExists() {
+      const requestIdFromUrl = searchParams.get('requestId')
+      if (requestIdFromUrl) {
+        try {
+          const base = getApiBase()
+          const response = await fetch(`${base}/api/requests/${requestIdFromUrl}/photo`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.success && data.data && data.data.photoFileUrl) {
+              setReceiptPreview(data.data.photoFileUrl)
+              setReceiptUploaded(true)
+              setRequestId(parseInt(requestIdFromUrl))
+              console.log('✅ Фото чека загружено из API')
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки фото чека:', error)
+        }
+      }
+    }
+    loadReceiptIfExists()
+
     // Загружаем настройки банков и QR ссылки
     async function loadBankSettingsAndQR() {
       try {
@@ -326,7 +349,7 @@ function DepositStep3Content() {
       }
     }
     loadBankSettingsAndQR()
-  }, [bookmaker, accountId, amount, router])
+  }, [bookmaker, accountId, amount, router, searchParams])
 
   const handleBankSelect = async (bankCode: string) => {
     setSelectedBank(bankCode)
@@ -608,11 +631,17 @@ function DepositStep3Content() {
           
           // Если сумма была скорректирована, перегенерируем QR-код с новой суммой
           if (data.data.amount && data.data.originalAmount) {
-            const adjustedAmount = data.data.amount
-            const originalAmount = data.data.originalAmount
+            const adjustedAmount = parseFloat(data.data.amount)
+            const originalAmount = parseFloat(data.data.originalAmount)
             
             if (Math.abs(adjustedAmount - originalAmount) > 0.001) {
               console.log(`💰 Сумма была скорректирована: ${originalAmount} → ${adjustedAmount}, перегенерируем QR-код`)
+              
+              // Обновляем amount в state и URL
+              const newAmount = adjustedAmount.toFixed(2)
+              if (typeof window !== 'undefined') {
+                router.replace(`/deposit/step3?bookmaker=${bookmaker}&accountId=${encodeURIComponent(accountId.trim())}&amount=${newAmount}`)
+              }
               
               try {
                 const qrResponse = await safeFetch(`${base}/api/public/generate-qr`, {
