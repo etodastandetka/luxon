@@ -540,22 +540,35 @@ export default function HomePage() {
     // Сначала пробуем через мини-приложение
     const telegramUser = initTelegramWebApp()
     if (telegramUser) {
-      if (!userInitialized.current || user?.id !== telegramUser.id) {
+      if (!userInitialized.current) {
         userInitialized.current = true
         setUser(telegramUser)
         syncWithBot(telegramUser, "app_opened", {
           page: "home",
           language,
         }).catch(() => {})
+      } else {
+        // Обновляем пользователя если ID изменился
+        setUser((currentUser) => {
+          if (!currentUser || currentUser.id !== telegramUser.id) {
+            return telegramUser
+          }
+          return currentUser
+        })
       }
     } else {
       // Если не через мини-приложение, проверяем localStorage (виджет авторизации)
       const savedUser = getTelegramUser(false) // Не используем кэш
-      if (savedUser && (!user || user.id !== savedUser.id)) {
-        setUser(savedUser)
+      if (savedUser) {
+        setUser((currentUser) => {
+          if (!currentUser || currentUser.id !== savedUser.id) {
+            return savedUser
+          }
+          return currentUser
+        })
       }
     }
-  }, [language, user])
+  }, [language])
   
   useEffect(() => {
     checkAndUpdateUser()
@@ -579,7 +592,7 @@ export default function HomePage() {
       clearInterval(interval)
       window.removeEventListener('focus', handleFocus)
     }
-  }, [language, user, checkAndUpdateUser])
+  }, [checkAndUpdateUser])
 
   // Слушаем сообщения от окна авторизации (для виджета)
   useEffect(() => {
@@ -605,10 +618,13 @@ export default function HomePage() {
       if (e.key === 'telegram_user' && e.newValue) {
         try {
           const userData = JSON.parse(e.newValue)
-          if (!user || user.id !== userData.id) {
-            setUser(userData)
-            clearTelegramUserCache()
-          }
+          setUser((currentUser) => {
+            if (!currentUser || currentUser.id !== userData.id) {
+              clearTelegramUserCache()
+              return userData
+            }
+            return currentUser
+          })
         } catch (error) {
           console.error('Error parsing user data from storage:', error)
         }
