@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
     if (type) {
       where.requestType = type
     }
+    
+    // ВАЖНО: По умолчанию возвращаем ВСЕ заявки независимо от статуса
+    // (pending, completed, approved, rejected, failed и т.д.)
+    // Это нужно для отображения полной истории транзакций пользователя
+    
     // Фильтр для ручных заявок: processedBy не равен "автопополнение" и не null
     // Это означает, что заявка была закрыта админом вручную (processedBy = логин админа)
     if (manual) {
@@ -56,11 +61,12 @@ export async function GET(request: NextRequest) {
         { processedBy: { not: 'автопополнение' } },
         { processedBy: { not: null } }
       ]
-      // Также фильтруем только успешные заявки (completed, approved)
+      // Для ручных заявок фильтруем только успешные заявки (completed, approved)
       where.status = {
         in: ['completed', 'approved']
       }
     }
+    // Если manual не установлен, НЕ фильтруем по статусу - возвращаем все заявки
 
     // Оптимизация: берем на 1 больше для проверки hasMore
     const takeValue = limit + 1
