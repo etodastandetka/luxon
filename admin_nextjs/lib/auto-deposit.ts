@@ -235,17 +235,48 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     }
     
     // Дополнительная проверка что статус действительно обновился
-    const verifyRequest = await prisma.request.findUnique({
+    let verifyRequest = await prisma.request.findUnique({
       where: { id: request.id },
       select: { status: true, processedBy: true },
     })
     
+    // КРИТИЧЕСКАЯ ЗАЩИТА: Если статус не обновился, пытаемся обновить вручную
     if (verifyRequest?.status !== 'autodeposit_success') {
       console.error(`❌ [Auto-Deposit] CRITICAL: Request ${request.id} status is ${verifyRequest?.status}, expected autodeposit_success`)
-      throw new Error(`Failed to update request status: current status is ${verifyRequest?.status}`)
+      console.log(`🔄 [Auto-Deposit] Attempting manual status update for request ${request.id}...`)
+      
+      try {
+        // Пытаемся обновить статус вручную как последнюю попытку
+        const manualUpdate = await prisma.request.update({
+          where: { id: request.id },
+          data: {
+            status: 'autodeposit_success',
+            statusDetail: null,
+            processedBy: 'автопополнение' as any,
+            processedAt: new Date(),
+            updatedAt: new Date(),
+          } as any,
+        })
+        
+        // Проверяем еще раз
+        verifyRequest = await prisma.request.findUnique({
+          where: { id: request.id },
+          select: { status: true, processedBy: true },
+        })
+        
+        if (verifyRequest?.status === 'autodeposit_success') {
+          console.log(`✅ [Auto-Deposit] Manual update successful: Request ${request.id} → autodeposit_success`)
+        } else {
+          console.error(`❌ [Auto-Deposit] Manual update failed: Request ${request.id} status is still ${verifyRequest?.status}`)
+          throw new Error(`Failed to update request status: current status is ${verifyRequest?.status}`)
+        }
+      } catch (manualUpdateError: any) {
+        console.error(`❌ [Auto-Deposit] Manual update error:`, manualUpdateError.message)
+        throw new Error(`Failed to update request status: ${manualUpdateError.message}`)
+      }
+    } else {
+      console.log(`✅ [Auto-Deposit] SUCCESS: Request ${request.id} → autodeposit_success (verified)`)
     }
-    
-    console.log(`✅ [Auto-Deposit] SUCCESS: Request ${request.id} → autodeposit_success (verified)`)
 
     // Отправляем уведомление пользователю в бот, если заявка создана через бот
     try {
