@@ -478,10 +478,48 @@ export async function POST(request: NextRequest) {
       userIdBigInt = BigInt(Math.abs(hash))
     }
 
+    // Если данные пользователя не переданы, пытаемся получить из BotUser
+    let finalFirstName = telegram_first_name
+    let finalLastName = telegram_last_name
+    let finalUsername = telegram_username
+    
+    if (!finalFirstName || !finalLastName) {
+      try {
+        const botUser = await prisma.botUser.findUnique({
+          where: { userId: userIdBigInt },
+          select: {
+            firstName: true,
+            lastName: true,
+            username: true,
+          },
+        })
+        
+        if (botUser) {
+          if (!finalFirstName && botUser.firstName) {
+            finalFirstName = botUser.firstName
+          }
+          if (!finalLastName && botUser.lastName) {
+            finalLastName = botUser.lastName
+          }
+          if (!finalUsername && botUser.username) {
+            finalUsername = botUser.username
+          }
+          console.log('✅ [Payment API] Получены данные пользователя из BotUser:', {
+            firstName: finalFirstName,
+            lastName: finalLastName,
+            username: finalUsername
+          })
+        }
+      } catch (error: any) {
+        console.warn('⚠️ [Payment API] Не удалось получить данные пользователя из BotUser:', error.message)
+      }
+    }
+    
     console.log('💾 Payment API - Saving to database:', {
       userId: userIdBigInt.toString(),
-      username: telegram_username,
-      firstName: telegram_first_name,
+      username: finalUsername,
+      firstName: finalFirstName,
+      lastName: finalLastName,
       type,
       originalAmount: amount ? parseFloat(amount) : null,
       finalAmount: finalAmount,
@@ -598,9 +636,9 @@ export async function POST(request: NextRequest) {
     const newRequest = await prisma.request.create({
       data: {
         userId: userIdBigInt,
-        username: telegram_username,
-        firstName: telegram_first_name,
-        lastName: telegram_last_name,
+        username: finalUsername,
+        firstName: finalFirstName,
+        lastName: finalLastName,
         bookmaker,
         accountId: finalAccountId?.toString(),
         amount: finalAmount, // В сомах (для пополнения в казино), null для error_log (может быть скорректировано для депозитов)

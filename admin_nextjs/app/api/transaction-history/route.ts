@@ -100,16 +100,62 @@ export async function GET(request: NextRequest) {
     const hasMore = requests.length > limit
     const actualRequests = hasMore ? requests.slice(0, limit) : requests
 
-    const transactions = actualRequests.map((r) => ({
-      id: r.id.toString(),
-      user_id: r.userId.toString(),
-      account_id: r.accountId || '',
-      user_display_name: r.firstName
+    // Получаем userId для запросов без имени, чтобы получить данные из BotUser
+    const userIdsWithoutName = actualRequests
+      .filter(r => !r.firstName)
+      .map(r => r.userId)
+    
+    // Получаем данные пользователей из BotUser для тех, у кого нет имени в Request
+    let userDataMap: Record<string, { firstName: string | null; lastName: string | null; username: string | null }> = {}
+    if (userIdsWithoutName.length > 0) {
+      try {
+        const botUsers = await prisma.botUser.findMany({
+          where: {
+            userId: { in: userIdsWithoutName },
+          },
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+          },
+        })
+        
+        botUsers.forEach(user => {
+          userDataMap[user.userId.toString()] = {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username,
+          }
+        })
+      } catch (error: any) {
+        console.warn('⚠️ [Transaction History] Не удалось получить данные пользователей из BotUser:', error.message)
+      }
+    }
+
+    const transactions = actualRequests.map((r) => {
+      // Если нет имени в Request, пытаемся получить из BotUser
+      let displayName = r.firstName
         ? `${r.firstName}${r.lastName ? ' ' + r.lastName : ''}`
-        : 'Unknown',
-      username: r.username || '',
-      first_name: r.firstName || '',
-      last_name: r.lastName || '',
+        : null
+      
+      if (!displayName) {
+        const userData = userDataMap[r.userId.toString()]
+        if (userData) {
+          displayName = userData.firstName
+            ? `${userData.firstName}${userData.lastName ? ' ' + userData.lastName : ''}`
+            : null
+        }
+      }
+      
+      return {
+        id: r.id.toString(),
+        user_id: r.userId.toString(),
+        account_id: r.accountId || '',
+        user_display_name: displayName || 'Unknown',
+        username: r.username || userDataMap[r.userId.toString()]?.username || '',
+        first_name: r.firstName || userDataMap[r.userId.toString()]?.firstName || '',
+        last_name: r.lastName || userDataMap[r.userId.toString()]?.lastName || '',
       type: r.requestType,
       amount: r.amount ? parseFloat(r.amount.toString()) : 0,
       status: r.status,
@@ -121,7 +167,8 @@ export async function GET(request: NextRequest) {
       created_at: r.createdAt.toISOString(),
       processed_at: r.processedAt?.toISOString() || null,
       processedBy: r.processedBy || null,
-    }))
+      }
+    })
 
     const response = NextResponse.json(createApiResponse({ 
       transactions,
