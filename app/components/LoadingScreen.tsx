@@ -86,27 +86,69 @@ export default function LoadingScreen({
 
   return (
     <div 
-      className="fixed inset-0 z-[99999] loading-screen" 
+      className="loading-screen" 
       style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99999,
         background: 'linear-gradient(135deg, #0f1b0f 0%, #1a2e1a 50%, #0f1b0f 100%)',
         backgroundAttachment: 'fixed'
       }}
     >
       {/* Контент */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center space-y-6">
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px'
+        }}>
           {/* Логотип LUX ON */}
-          <h1 className="text-5xl font-bold text-white drop-shadow-lg tracking-wider">
+          <h1 style={{
+            fontSize: '3rem',
+            fontWeight: 'bold',
+            color: '#ffffff',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+            letterSpacing: '0.05em',
+            margin: 0
+          }}>
             {message}
           </h1>
           
           {/* Прогресс бар */}
           {showProgress && (
-            <div className="w-64 mx-auto">
-              <div className="relative bg-black/40 backdrop-blur rounded-full h-2 overflow-hidden border border-white/20">
+            <div style={{
+              width: '256px',
+              margin: '0 auto'
+            }}>
+              <div style={{
+                position: 'relative',
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '9999px',
+                height: '8px',
+                overflow: 'hidden',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}>
                 <div 
-                  className="bg-gradient-to-r from-green-400 to-green-500 h-full transition-all duration-300 ease-out"
-                  style={{ width: `${progress}%` }}
+                  style={{
+                    background: 'linear-gradient(to right, #4ade80, #22c55e)',
+                    height: '100%',
+                    transition: 'width 300ms ease-out',
+                    width: `${progress}%`
+                  }}
                 />
               </div>
             </div>
