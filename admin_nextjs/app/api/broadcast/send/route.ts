@@ -5,13 +5,36 @@ import { getMiniAppUrl } from '@/config/domains'
 
 export const dynamic = 'force-dynamic'
 
-// Отправка рассылки всем пользователям
+// Отправка рассылки всем пользователям (поддерживает текст и фото)
 export async function POST(request: NextRequest) {
   try {
     requireAuth(request)
 
-    const body = await request.json()
-    const { message } = body
+    // Поддерживаем как JSON (только текст), так и FormData (текст + фото)
+    let message: string = ''
+    let photoFile: File | null = null
+    let photoBuffer: Buffer | null = null
+    let photoMimeType: string | null = null
+
+    const contentType = request.headers.get('content-type') || ''
+    
+    // Если это FormData (содержит multipart/form-data)
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData()
+      message = (formData.get('message') as string) || ''
+      const photo = formData.get('photo') as File | null
+      
+      if (photo && photo.size > 0) {
+        photoFile = photo
+        const arrayBuffer = await photo.arrayBuffer()
+        photoBuffer = Buffer.from(arrayBuffer)
+        photoMimeType = photo.type || 'image/jpeg'
+      }
+    } else {
+      // JSON - только текст
+      const body = await request.json()
+      message = body.message || ''
+    }
 
     if (!message || !message.trim()) {
       return NextResponse.json(
@@ -23,8 +46,66 @@ export async function POST(request: NextRequest) {
     const botToken = process.env.BOT_TOKEN
 
     if (!botToken) {
+      console.error('❌ [Broadcast] BOT_TOKEN is not configured in environment variables')
       return NextResponse.json(
         createApiResponse(null, 'BOT_TOKEN not configured'),
+        { status: 500 }
+      )
+    }
+
+    // Проверяем формат токена (обычно это числа:буквы, минимум 10 символов)
+    if (botToken.length < 10 || !botToken.includes(':')) {
+      console.error(`❌ [Broadcast] BOT_TOKEN format is invalid (length: ${botToken.length}, contains ':'): ${botToken.includes(':')}`)
+      return NextResponse.json(
+        createApiResponse(null, 'BOT_TOKEN format is invalid'),
+        { status: 500 }
+      )
+    }
+
+    // Логируем начало рассылки (без токена)
+    const tokenPreview = botToken.substring(0, 10) + '...' + botToken.substring(botToken.length - 5)
+    console.log(`📢 [Broadcast] BOT_TOKEN loaded: ${tokenPreview}`)
+    
+    // Проверяем токен через getMe перед началом рассылки
+    try {
+      const testUrl = `https://api.telegram.org/bot${botToken}/getMe`
+      const testController = new AbortController()
+      const testTimeoutId = setTimeout(() => testController.abort(), 5000) // 5 секунд таймаут
+      
+      const testResponse = await fetch(testUrl, {
+        method: 'GET',
+        signal: testController.signal
+      })
+      
+      clearTimeout(testTimeoutId)
+      
+      if (!testResponse.ok) {
+        const errorText = await testResponse.text()
+        console.error(`❌ [Broadcast] BOT_TOKEN validation failed:`, {
+          status: testResponse.status,
+          error: errorText
+        })
+        return NextResponse.json(
+          createApiResponse(null, `BOT_TOKEN недействителен: ${testResponse.status === 404 ? 'Токен не найден' : 'Ошибка проверки токена'}`),
+          { status: 500 }
+        )
+      }
+      
+      const testData = await testResponse.json()
+      if (!testData.ok) {
+        console.error(`❌ [Broadcast] BOT_TOKEN validation failed:`, testData)
+        return NextResponse.json(
+          createApiResponse(null, `BOT_TOKEN недействителен: ${testData.description || 'Неизвестная ошибка'}`),
+          { status: 500 }
+        )
+      }
+      
+      console.log(`✅ [Broadcast] BOT_TOKEN validated, bot username: @${testData.result.username || 'N/A'}`)
+    } catch (error: any) {
+      const errorMsg = error.name === 'AbortError' ? 'Таймаут при проверке токена' : error.message || 'Неизвестная ошибка'
+      console.error(`❌ [Broadcast] Failed to validate BOT_TOKEN:`, errorMsg)
+      return NextResponse.json(
+        createApiResponse(null, `Ошибка проверки BOT_TOKEN: ${errorMsg}`),
         { status: 500 }
       )
     }
@@ -32,18 +113,35 @@ export async function POST(request: NextRequest) {
     // URL мини-приложения для кнопки (из централизованной конфигурации)
     const miniAppUrl = getMiniAppUrl()
 
-    // Получаем всех пользователей
-    const users = await prisma.botUser.findMany({
+    // Получаем всех пользователей и фильтруем только валидные userId
+    const allUsers = await prisma.botUser.findMany({
       select: {
         userId: true,
       },
     })
 
+    // Фильтруем только пользователей с валидными числовыми userId (Telegram ID)
+    const users = allUsers.filter(user => {
+      if (!user.userId) return false
+      const userIdString = user.userId.toString().trim()
+      // Проверяем, что userId является числом (Telegram ID всегда числовой)
+      return userIdString !== '' && /^\d+$/.test(userIdString)
+    })
+
     if (users.length === 0) {
+      const invalidCount = allUsers.length - users.length
+      if (invalidCount > 0) {
+        console.warn(`⚠️ [Broadcast] Filtered out ${invalidCount} users with invalid userId format`)
+      }
       return NextResponse.json(
-        createApiResponse(null, 'Нет пользователей для рассылки'),
+        createApiResponse(null, 'Нет пользователей с валидными ID для рассылки'),
         { status: 400 }
       )
+    }
+
+    if (allUsers.length > users.length) {
+      const invalidCount = allUsers.length - users.length
+      console.warn(`⚠️ [Broadcast] Filtered out ${invalidCount} users with invalid userId format. Proceeding with ${users.length} valid users.`)
     }
 
     let successCount = 0
@@ -56,34 +154,93 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < users.length; i++) {
       const user = users[i]
       try {
-        const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+        // Проверяем что токен не пустой перед каждым запросом
+        if (!botToken || botToken.trim() === '') {
+          console.error(`❌ [Broadcast] BOT_TOKEN is empty for user ${user.userId}`)
+          errorCount++
+          errors.push(`User ${user.userId}: BOT_TOKEN is empty`)
+          continue
+        }
+
+        // Валидация userId - должен быть числом (Telegram ID)
+        if (!user.userId) {
+          console.error(`❌ [Broadcast] Invalid userId for user at index ${i}: userId is null/undefined`)
+          errorCount++
+          errors.push(`User at index ${i}: Invalid userId (null/undefined)`)
+          continue
+        }
+        
+        const userIdString = user.userId.toString().trim()
+        if (userIdString === '' || !/^\d+$/.test(userIdString)) {
+          console.error(`❌ [Broadcast] Invalid userId format for user at index ${i}: "${userIdString}" (not a valid number)`)
+          errorCount++
+          errors.push(`User at index ${i}: Invalid userId format "${userIdString}"`)
+          continue
+        }
+
+        // Определяем endpoint и способ отправки (с фото или без)
+        let apiEndpoint: string
+        let requestBody: BodyInit
+        let requestHeaders: HeadersInit
+        
+        const replyMarkup = {
+          inline_keyboard: [
+            [
+              {
+                text: '🚀 Открыть приложение',
+                web_app: {
+                  url: miniAppUrl
+                }
+              }
+            ]
+          ]
+        }
+
+        if (photoBuffer && photoMimeType) {
+          // Отправка с фото через FormData
+          apiEndpoint = `https://api.telegram.org/bot${botToken}/sendPhoto`
+          
+          const formData = new FormData()
+          formData.append('chat_id', user.userId.toString())
+          // Конвертируем Buffer в Uint8Array для Blob
+          const uint8Array = new Uint8Array(photoBuffer)
+          formData.append('photo', new Blob([uint8Array], { type: photoMimeType }), photoFile?.name || 'photo.jpg')
+          if (message.trim()) {
+            formData.append('caption', message)
+          }
+          formData.append('parse_mode', 'HTML')
+          formData.append('reply_markup', JSON.stringify(replyMarkup))
+          
+          requestBody = formData
+          requestHeaders = {} // FormData сам установит Content-Type с boundary
+        } else {
+          // Отправка только текста через JSON
+          apiEndpoint = `https://api.telegram.org/bot${botToken}/sendMessage`
+          
+          requestBody = JSON.stringify({
+            chat_id: user.userId.toString(),
+            text: message,
+            parse_mode: 'HTML',
+            reply_markup: replyMarkup
+          })
+          requestHeaders = {
+            'Content-Type': 'application/json',
+          }
+        }
+        
+        // Логируем первый запрос для отладки
+        if (i === 0) {
+          console.log(`🔍 [Broadcast] First request to user ${user.userId}, method: ${photoBuffer ? 'sendPhoto' : 'sendMessage'}`)
+        }
         
         // Добавляем таймаут для запроса
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 секунд таймаут
         
-        const telegramResponse = await fetch(sendMessageUrl, {
+        const telegramResponse = await fetch(apiEndpoint, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: user.userId.toString(),
-            text: message,
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: '🚀 Открыть приложение',
-                    web_app: {
-                      url: miniAppUrl
-                    }
-                  }
-                ]
-              ]
-            }
-          }),
+          headers: requestHeaders,
+          body: requestBody,
           signal: controller.signal
         })
 
@@ -91,16 +248,66 @@ export async function POST(request: NextRequest) {
 
         if (!telegramResponse.ok) {
           const errorText = await telegramResponse.text()
-          console.error(`❌ [Broadcast] HTTP error for user ${user.userId}: ${telegramResponse.status} ${errorText}`)
+          let errorJson: any = {}
+          try {
+            errorJson = JSON.parse(errorText)
+          } catch (e) {
+            // Если не JSON, используем текст как есть
+          }
+          
+          console.error(`❌ [Broadcast] HTTP error for user ${user.userId}:`, {
+            status: telegramResponse.status,
+            statusText: telegramResponse.statusText,
+            errorCode: errorJson.error_code,
+            description: errorJson.description,
+            endpoint: apiEndpoint.substring(0, 60) + '...' // Показываем начало URL без токена
+          })
+          
           errorCount++
-          errors.push(`User ${user.userId}: HTTP ${telegramResponse.status}`)
+          errors.push(`User ${user.userId}: HTTP ${telegramResponse.status} - ${errorJson.description || errorText.substring(0, 100)}`)
+          
+          // Если все запросы дают 404, возможно проблема с токеном или пользователями
+          if (i < 5 && telegramResponse.status === 404) {
+            console.error(`❌ [Broadcast] CRITICAL: Request ${i + 1} returned 404 for user ${user.userId}`)
+            console.error(`❌ [Broadcast] Error details:`, {
+              errorCode: errorJson.error_code,
+              description: errorJson.description,
+              userId: user.userId,
+              userIdType: typeof user.userId,
+              userIdString: user.userId.toString(),
+              hasPhoto: !!photoBuffer
+            })
+            
+            // Если первые несколько запросов все 404, останавливаем рассылку
+            if (i === 4 && errorCount === 5) {
+              console.error(`❌ [Broadcast] CRITICAL: All first 5 requests returned 404. Stopping broadcast!`)
+              console.error(`❌ [Broadcast] Possible issues:`)
+              console.error(`  1. BOT_TOKEN is incorrect or invalid`)
+              console.error(`  2. User IDs in database are incorrect`)
+              console.error(`  3. Bot was deleted or blocked`)
+              return NextResponse.json(
+                createApiResponse(null, `Критическая ошибка: все запросы возвращают 404. Проверьте BOT_TOKEN и данные пользователей. Ошибок: ${errorCount}`),
+                { status: 500 }
+              )
+            }
+          }
+          
           continue
         }
 
         const telegramData = await telegramResponse.json()
+        
+        // Логируем первый успешный ответ для отладки
+        if (i === 0 && telegramData.ok) {
+          console.log(`✅ [Broadcast] First message sent successfully to user ${user.userId}`)
+        }
 
         if (telegramData.ok) {
           successCount++
+          // Логируем первый успешный запрос
+          if (successCount === 1) {
+            console.log(`✅ [Broadcast] First message sent successfully to user ${user.userId}`)
+          }
           if ((i + 1) % 100 === 0) {
             console.log(`✅ [Broadcast] Progress: ${i + 1}/${users.length} sent (${successCount} success, ${errorCount} errors)`)
           }
@@ -110,13 +317,20 @@ export async function POST(request: NextRequest) {
           errorCount++
           errors.push(`User ${user.userId}: ${errorMsg}`)
           
-          // Если пользователь заблокировал бота (403) или другие критические ошибки, пропускаем
-          if (telegramData.error_code === 403 || telegramData.error_code === 400) {
-            // Эти ошибки не критичны, просто пропускаем пользователя
+          // Если пользователь заблокировал бота (403) или неверный запрос (400), пропускаем
+          if (telegramData.error_code === 403) {
+            // Пользователь заблокировал бота - не критично
+            console.log(`⚠️ [Broadcast] User ${user.userId} blocked the bot`)
             continue
           }
           
-          // Если rate limit (429), делаем паузу
+          if (telegramData.error_code === 400) {
+            // Неверный запрос (возможно, неверный chat_id) - пропускаем
+            console.log(`⚠️ [Broadcast] Invalid request for user ${user.userId}: ${errorMsg}`)
+            continue
+          }
+          
+          // Если rate limit (429), делаем паузу и повторяем
           if (telegramData.error_code === 429) {
             const retryAfter = telegramData.parameters?.retry_after || 1
             console.log(`⏸️ [Broadcast] Rate limit hit, waiting ${retryAfter} seconds...`)
@@ -128,9 +342,9 @@ export async function POST(request: NextRequest) {
         }
         
         // Небольшая задержка между запросами чтобы не попасть в rate limit
-        // Telegram позволяет до 30 сообщений в секунду
+        // Telegram позволяет до 30 сообщений в секунду, используем 35ms = ~28 сообщений/сек для безопасности
         if (i < users.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 50)) // 50ms = 20 сообщений/сек
+          await new Promise(resolve => setTimeout(resolve, 35)) // 35ms = ~28 сообщений/сек
         }
       } catch (error: any) {
         errorCount++
@@ -145,8 +359,9 @@ export async function POST(request: NextRequest) {
       console.log(`❌ [Broadcast] Errors:`, errors.slice(0, 10))
     }
 
-    // Сохраняем в историю рассылок
-    const broadcastTitle = `Рассылка ${successCount} пользователям - ${new Date().toLocaleString('ru-RU')}`
+    // Сохраняем в историю рассылок с детальной статистикой
+    const hasPhotoText = photoBuffer ? ' (с фото)' : ''
+    const broadcastTitle = `Рассылка ${successCount} из ${users.length} пользователям${hasPhotoText} - ${new Date().toLocaleString('ru-RU')}`
     await prisma.broadcastMessage.create({
       data: {
         title: broadcastTitle,
@@ -156,13 +371,16 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    const successRate = users.length > 0 ? ((successCount / users.length) * 100).toFixed(1) : '0'
+    
     return NextResponse.json(
       createApiResponse({
         success: true,
-        message: `Рассылка завершена. Успешно: ${successCount}, Ошибок: ${errorCount}`,
+        message: `Рассылка завершена. Успешно отправлено: ${successCount} из ${users.length} (${successRate}%)`,
         sentCount: successCount,
         errorCount: errorCount,
         totalUsers: users.length,
+        successRate: parseFloat(successRate),
       })
     )
   } catch (error: any) {

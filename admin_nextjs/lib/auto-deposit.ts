@@ -169,10 +169,10 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     }
     
     // После успешного пополнения - атомарно обновляем все в одной транзакции
-    // ВАЖНО: Проверяем что заявка все еще pending и не была обработана автопополнением
+    // ВАЖНО: Если пополнение успешно, статус ОБЯЗАТЕЛЬНО должен обновиться на autodeposit_success
     // ВАЖНО: Используем транзакцию чтобы гарантировать что статус ОБЯЗАТЕЛЬНО обновится
     const updateResult = await prisma.$transaction(async (tx) => {
-      // Проверяем что заявка все еще pending и платеж не обработан
+      // Проверяем текущее состояние заявки и платежа
       const [currentRequest, currentPayment] = await Promise.all([
         tx.request.findUnique({
           where: { id: request.id },
@@ -184,15 +184,45 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
         }),
       ])
       
-      // Если уже обработано - пропускаем (защита от двойного пополнения)
-      if (currentRequest?.status !== 'pending' || currentPayment?.isProcessed) {
-        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already processed (status: ${currentRequest?.status}), skipping`)
+      // КРИТИЧЕСКИ ВАЖНО: Если платеж уже обработан - пропускаем (защита от двойного пополнения)
+      if (currentPayment?.isProcessed) {
+        console.log(`⚠️ [Auto-Deposit] Payment ${paymentId} already processed, skipping`)
         return { skipped: true }
       }
       
-      // Дополнительная проверка: если заявка уже обработана автопополнением - не трогаем
-      if (currentRequest?.processedBy === 'автопополнение') {
-        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already processed by autodeposit, skipping`)
+      // Если заявка уже обработана автопополнением - пропускаем (защита от двойного пополнения)
+      if (currentRequest?.processedBy === 'автопополнение' || currentRequest?.status === 'autodeposit_success') {
+        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already processed by autodeposit (status: ${currentRequest?.status}), skipping`)
+        // Но все равно помечаем платеж как обработанный
+        await tx.incomingPayment.update({
+          where: { id: paymentId },
+          data: {
+            requestId: request.id,
+            isProcessed: true,
+          },
+        })
+        return { skipped: true }
+      }
+      
+      // ВАЖНО: Если пополнение уже выполнено успешно, но статус еще не обновлен - ОБЯЗАТЕЛЬНО обновляем
+      // Даже если заявка уже не pending (например, была изменена вручную), но пополнение успешно - обновляем статус
+      // Исключение: если заявка уже completed/approved - не трогаем (возможно, обработана вручную)
+      const shouldUpdateStatus = 
+        currentRequest?.status === 'pending' || 
+        currentRequest?.status === 'api_error' ||
+        currentRequest?.status === 'deposit_failed' ||
+        !currentRequest?.processedBy // Если нет processedBy, значит не обработана
+      
+      if (!shouldUpdateStatus && (currentRequest?.status === 'completed' || currentRequest?.status === 'approved')) {
+        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already completed/approved (status: ${currentRequest?.status}), but deposit was successful. Marking payment as processed.`)
+        // Помечаем платеж как обработанный, но не меняем статус заявки
+        await tx.incomingPayment.update({
+          where: { id: paymentId },
+          data: {
+            requestId: request.id,
+            isProcessed: true,
+          },
+        })
         return { skipped: true }
       }
       
@@ -217,7 +247,7 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
         }),
       ])
       
-      console.log(`✅ [Auto-Deposit] Transaction: Request ${request.id} status updated to autodeposit_success`)
+      console.log(`✅ [Auto-Deposit] Transaction: Request ${request.id} status updated to autodeposit_success (was: ${currentRequest?.status})`)
       console.log(`✅ [Auto-Deposit] Transaction: Payment ${paymentId} marked as processed`)
       
       return { updatedRequest, updatedPayment, skipped: false }

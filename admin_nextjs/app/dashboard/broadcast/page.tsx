@@ -8,15 +8,19 @@ interface Broadcast {
   message: string
   sentAt: string | null
   createdAt: string
-  sentCount?: number
+  sentCount?: number | null
+  totalCount?: number | null
 }
 
 export default function BroadcastPage() {
   const [message, setMessage] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [totalUsers, setTotalUsers] = useState(0)
+  const [sendProgress, setSendProgress] = useState<{ current: number; total: number; success: number; errors: number } | null>(null)
 
   useEffect(() => {
     fetchHistory()
@@ -51,41 +55,99 @@ export default function BroadcastPage() {
     }
   }
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Проверяем что это изображение
+      if (!file.type.startsWith('image/')) {
+        alert('Пожалуйста, выберите изображение')
+        return
+      }
+      
+      // Проверяем размер (макс 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Размер изображения не должен превышать 10MB')
+        return
+      }
+      
+      setPhoto(file)
+      
+      // Создаем превью
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removePhoto = () => {
+    setPhoto(null)
+    setPhotoPreview(null)
+  }
+
   const sendBroadcast = async () => {
     if (!message.trim()) {
       alert('Введите текст сообщения')
       return
     }
 
-    if (!confirm(`Вы уверены, что хотите отправить это сообщение всем ${totalUsers} пользователям бота?`)) {
+    const confirmText = photo 
+      ? `Вы уверены, что хотите отправить это сообщение с фото всем ${totalUsers} пользователям бота?`
+      : `Вы уверены, что хотите отправить это сообщение всем ${totalUsers} пользователям бота?`
+    
+    if (!confirm(confirmText)) {
       return
     }
 
     setSending(true)
+    setSendProgress({ current: 0, total: totalUsers, success: 0, errors: 0 })
+    
     try {
-      const response = await fetch('/api/broadcast/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      })
+      let response: Response
+      
+      if (photo) {
+        // Отправка с фото через FormData
+        const formData = new FormData()
+        formData.append('message', message)
+        formData.append('photo', photo)
+        
+        response = await fetch('/api/broadcast/send', {
+          method: 'POST',
+          body: formData,
+        })
+      } else {
+        // Отправка только текста через JSON
+        response = await fetch('/api/broadcast/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+        })
+      }
 
       const data = await response.json()
 
       if (data.success) {
         const result = data.data
-        const messageText = result.message || 'Рассылка завершена'
+        const successRate = result.successRate ? `${result.successRate}%` : 'N/A'
+        const messageText = `Рассылка завершена!\n\n✅ Успешно отправлено: ${result.sentCount || 0} из ${result.totalUsers || 0}\n❌ Ошибок: ${result.errorCount || 0}\n📊 Успешность: ${successRate}`
         alert(messageText)
         setMessage('')
+        setPhoto(null)
+        setPhotoPreview(null)
+        setSendProgress(null)
         fetchHistory()
         fetchStats() // Обновляем статистику
       } else {
         const errorMsg = data.error || 'Ошибка при отправке рассылки'
         console.error('Broadcast error:', data)
         alert(`Ошибка: ${errorMsg}\n\nПроверьте консоль для подробностей.`)
+        setSendProgress(null)
       }
     } catch (error) {
       console.error('Failed to send broadcast:', error)
       alert('Ошибка при отправке рассылки')
+      setSendProgress(null)
     } finally {
       setSending(false)
     }
@@ -140,21 +202,99 @@ export default function BroadcastPage() {
             className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
           />
           <p className="text-xs text-gray-400 mt-2">
-            Поддерживается HTML разметка: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;
+            Поддерживается HTML разметка: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;, &lt;code&gt;код&lt;/code&gt;
             <br />
             <span className="text-green-400">✓ К каждой рассылке автоматически добавляется кнопка &quot;🚀 Открыть приложение&quot;</span>
+            <br />
+            <span className="text-yellow-400">⚠️ Рассылка может занять некоторое время при большом количестве пользователей</span>
           </p>
         </div>
+
+        {/* Загрузка фото */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Фото (опционально)
+          </label>
+          {photoPreview ? (
+            <div className="relative mb-2">
+              <img
+                src={photoPreview}
+                alt="Preview"
+                className="w-full max-h-64 object-contain rounded-lg border border-gray-700 bg-gray-900"
+              />
+              <button
+                type="button"
+                onClick={removePhoto}
+                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors"
+                title="Удалить фото"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-700 border-dashed rounded-lg cursor-pointer bg-gray-900 hover:bg-gray-800 transition-colors">
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="mb-2 text-sm text-gray-400">
+                  <span className="font-semibold">Нажмите для загрузки</span> или перетащите фото
+                </p>
+                <p className="text-xs text-gray-500">PNG, JPG, GIF до 10MB</p>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                disabled={sending}
+              />
+            </label>
+          )}
+        </div>
+
+        {/* Индикатор прогресса */}
+        {sendProgress && (
+          <div className="mb-4 bg-gray-900 border border-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-300">Прогресс отправки</span>
+              <span className="text-sm font-medium text-white">
+                {sendProgress.current} / {sendProgress.total}
+              </span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+              <div
+                className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(sendProgress.current / sendProgress.total) * 100}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <span>✓ Успешно: {sendProgress.success}</span>
+              <span>✗ Ошибок: {sendProgress.errors}</span>
+            </div>
+          </div>
+        )}
 
         <button
           onClick={sendBroadcast}
           disabled={sending || !message.trim()}
           className="w-full bg-gradient-to-r from-green-500 to-green-600 text-black px-4 py-3 rounded-xl hover:from-green-600 hover:to-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-          <span>{sending ? 'Отправка...' : 'Отправить'}</span>
+          {sending ? (
+            <>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
+              <span>Отправка...</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              <span>Отправить</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -193,7 +333,13 @@ export default function BroadcastPage() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      <span>{broadcast.sentCount || totalUsers} отправлено</span>
+                      <span>
+                        {broadcast.sentCount !== null && broadcast.sentCount !== undefined 
+                          ? broadcast.totalCount 
+                            ? `${broadcast.sentCount} из ${broadcast.totalCount} отправлено`
+                            : `${broadcast.sentCount} отправлено`
+                          : `${totalUsers} отправлено`}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -23,9 +23,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       createApiResponse({
         broadcasts: broadcasts.map(b => {
-          // Пытаемся извлечь количество из title (формат: "Рассылка 1234 пользователям")
-          const match = b.title.match(/Рассылка (\d+) пользователям/)
-          const sentCount = match ? parseInt(match[1]) : null
+          // Пытаемся извлечь количество из title (формат: "Рассылка 1234 из 1500 пользователям" или "Рассылка 1234 пользователям")
+          const matchFull = b.title.match(/Рассылка (\d+) из (\d+) пользователям/)
+          const matchSimple = b.title.match(/Рассылка (\d+) пользователям/)
+          
+          let sentCount = null
+          let totalCount = null
+          
+          if (matchFull) {
+            sentCount = parseInt(matchFull[1])
+            totalCount = parseInt(matchFull[2])
+          } else if (matchSimple) {
+            sentCount = parseInt(matchSimple[1])
+          }
           
           return {
             id: b.id,
@@ -34,6 +44,7 @@ export async function GET(request: NextRequest) {
             sentAt: b.sentAt,
             createdAt: b.createdAt,
             sentCount,
+            totalCount,
           }
         }),
       })

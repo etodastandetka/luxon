@@ -29,9 +29,10 @@ export async function GET(request: NextRequest) {
       const userIdTrimmed = userId.trim()
       // Проверяем, что строка содержит только цифры (может быть отрицательным числом, но для Telegram ID это не нужно)
       if (!/^\d+$/.test(userIdTrimmed)) {
-        console.error(`❌ Invalid userId format: ${userId} (not a valid number)`)
+        // Логируем как warning, так как это может быть тестовый запрос или некорректный формат
+        console.warn(`⚠️ [Transaction History] Invalid userId format: ${userId} (not a valid number, skipping)`)
         return NextResponse.json(
-          createApiResponse(null, `Invalid user ID format: ${userId}`),
+          createApiResponse(null, `Invalid user ID format: ${userId}. User ID must be a number.`),
           { status: 400 }
         )
       }
