@@ -99,33 +99,92 @@ const loadAllData = async (): Promise<HomePageData> => {
       // Загружаем все данные параллельно одним запросом
       // Загружаем все транзакции пачками, как в профиле, чтобы получить точную статистику
       let allTransactions: any[] = []
-      let offset = 0
-      const limit = 1000
-      let hasMore = true
-      
-      // Загружаем все транзакции пачками (максимум 10000 для статистики)
-      while (hasMore && offset < 10000) {
-        const transactionsResponse = await fetch(
-          `${API_URLS.BASE}/api/transaction-history?user_id=${userId}&limit=${limit}&offset=${offset}`
-        )
-        const transactionsData = await transactionsResponse.json()
+      try {
+        let offset = 0
+        const limit = 1000
+        let hasMore = true
         
-        const transactions = transactionsData.data?.transactions || transactionsData.transactions || []
-        allTransactions = allTransactions.concat(transactions)
+        // Загружаем все транзакции пачками (максимум 10000 для статистики)
+        while (hasMore && offset < 10000) {
+          const transactionsResponse = await fetch(
+            `${API_URLS.BASE}/api/transaction-history?user_id=${userId}&limit=${limit}&offset=${offset}`,
+            {
+              cache: 'no-store', // Не кэшируем для актуальных данных
+            }
+          )
+          
+          if (!transactionsResponse.ok) {
+            console.warn('⚠️ Transaction history API returned error:', transactionsResponse.status)
+            break
+          }
+          
+          const transactionsData = await transactionsResponse.json()
+          
+          const transactions = transactionsData.data?.transactions || transactionsData.transactions || []
+          allTransactions = allTransactions.concat(transactions)
+          
+          // Проверяем, есть ли еще транзакции
+          hasMore = transactionsData.data?.pagination?.hasMore || transactions.length === limit
+          offset += limit
+          
+          // Если получили меньше транзакций чем лимит, значит это последняя страница
+          if (transactions.length < limit) {
+            hasMore = false
+          }
+        }
         
-        // Проверяем, есть ли еще транзакции
-        hasMore = transactionsData.data?.pagination?.hasMore || transactions.length === limit
-        offset += limit
+        console.log('✅ Transactions loaded:', allTransactions.length, 'transactions')
+      } catch (error) {
+        console.error('❌ Error loading transactions:', error)
+        // Продолжаем с пустым массивом - не критично для отображения
+        allTransactions = []
       }
       
       // Загружаем leaderboard параллельно
-      const leaderboardResponse = await fetch(`${API_URLS.LEADERBOARD}?type=deposits&limit=5`)
-      const leaderboardData = await leaderboardResponse.json()
+      let topPlayers: any[] = []
+      try {
+        const leaderboardResponse = await fetch(`${API_URLS.LEADERBOARD}?type=deposits&limit=5`, {
+          cache: 'no-store', // Не кэшируем для актуальных данных
+        })
+        
+        if (leaderboardResponse.ok) {
+          const leaderboardData = await leaderboardResponse.json()
+          
+          // Обрабатываем разные форматы ответа
+          let rawLeaderboard: any[] = []
+          
+          if (leaderboardData.success && leaderboardData.data?.leaderboard) {
+            rawLeaderboard = Array.isArray(leaderboardData.data.leaderboard) 
+              ? leaderboardData.data.leaderboard
+              : []
+          } else if (Array.isArray(leaderboardData.leaderboard)) {
+            // Fallback для другого формата ответа
+            rawLeaderboard = leaderboardData.leaderboard
+          } else if (Array.isArray(leaderboardData)) {
+            // Еще один fallback
+            rawLeaderboard = leaderboardData
+          }
+          
+          // Преобразуем данные в нужный формат для компонента
+          topPlayers = rawLeaderboard.slice(0, 5).map((player: any) => ({
+            userId: player.userId || player.user_id || String(player.id || ''),
+            displayName: player.displayName || player.display_name || player.username || `Игрок #${player.userId || player.user_id || ''}`,
+            totalAmount: typeof player.totalAmount === 'number' ? player.totalAmount : (typeof player.total_amount === 'number' ? player.total_amount : 0),
+            rank: typeof player.rank === 'number' ? player.rank : (player.rank || 0),
+            rankType: player.rankType || player.rank_type || 'iron',
+          }))
+          
+          console.log('✅ Leaderboard loaded:', topPlayers.length, 'players')
+        } else {
+          console.warn('⚠️ Leaderboard API returned error:', leaderboardResponse.status, leaderboardResponse.statusText)
+        }
+      } catch (error) {
+        console.error('❌ Error loading leaderboard:', error)
+        // Продолжаем с пустым массивом - не критично
+        topPlayers = []
+      }
 
       const transactions = allTransactions
-      const topPlayers = leaderboardData.success && leaderboardData.data?.leaderboard
-        ? leaderboardData.data.leaderboard.slice(0, 5)
-        : []
 
       const result: HomePageData = {
         transactions,
@@ -213,24 +272,16 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Если данные уже загружены из кеша, сразу показываем их и обновляем в фоне
-    if (!data.loading) {
-      // Загружаем свежие данные в фоне без блокировки UI (даже если данных нет)
-      loadAllData().then(result => {
-        if (mountedRef.current) {
-          setData(result)
-        }
-      }).catch(() => {
-        // Игнорируем ошибки фоновой загрузки
-      })
-      // Не возвращаемся - продолжаем подписку
-    }
-
     // Подписываемся на обновления (только один раз)
     if (!subscribedRef.current) {
       subscribedRef.current = true
       const callback = (newData: HomePageData) => {
         if (mountedRef.current) {
+          console.log('📊 HomePageData updated:', {
+            transactions: newData.transactions.length,
+            topPlayers: newData.topPlayers.length,
+            loading: newData.loading
+          })
           setData(newData)
         }
       }
@@ -242,10 +293,24 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
           if (mountedRef.current) {
             setData(result)
           }
+        }).catch(error => {
+          console.error('❌ Error in loading promise:', error)
+          if (mountedRef.current) {
+            setData({ transactions: [], topPlayers: [], loading: false })
+          }
         })
       } else {
         // Загружаем данные сразу, не ждем
-        loadAllData()
+        loadAllData().then(result => {
+          if (mountedRef.current) {
+            setData(result)
+          }
+        }).catch(error => {
+          console.error('❌ Error loading data:', error)
+          if (mountedRef.current) {
+            setData({ transactions: [], topPlayers: [], loading: false })
+          }
+        })
       }
 
       return () => {
@@ -253,12 +318,25 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
         mountedRef.current = false
       }
     }
-  }, []) // Пустой массив - выполняется только один раз
+    
+    // Если данные уже загружены из кеша, обновляем их в фоне
+    if (!data.loading && data.transactions.length === 0 && data.topPlayers.length === 0) {
+      // Если кеш пустой, загружаем данные
+      loadAllData().then(result => {
+        if (mountedRef.current) {
+          setData(result)
+        }
+      }).catch(error => {
+        console.error('❌ Error in background refresh:', error)
+      })
+    }
+  }, [data]) // Зависимость от data для проверки пустого кеша
 
   // Отслеживаем изменение пользователя и перезагружаем данные
   useEffect(() => {
     const currentUserId = getTelegramUserId()
     if (userIdRef.current !== currentUserId && currentUserId) {
+      console.log('🔄 User changed, reloading data:', currentUserId)
       userIdRef.current = currentUserId
       // Перезагружаем данные для нового пользователя
       const cacheKey = `homepage_${currentUserId}`
@@ -270,6 +348,11 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
       loadAllData().then(result => {
         if (mountedRef.current) {
           setData(result)
+        }
+      }).catch(error => {
+        console.error('❌ Error reloading data for new user:', error)
+        if (mountedRef.current) {
+          setData({ transactions: [], topPlayers: [], loading: false })
         }
       })
     }
