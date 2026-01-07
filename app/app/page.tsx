@@ -203,20 +203,20 @@ function LuxOnSlots({
     
     container.appendChild(frag)
     
-    // Всегда устанавливаем позицию после создания символов
-    const symbolHeight = 50
-    const centerOffset = 75 // центр видимой области (150px / 2 = 75px)
-    const targetSymbolIndex = 20
-    const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
-    
-    // Устанавливаем позицию сразу, синхронно, с !important для гарантии
-    container.style.setProperty('transform', `translateY(${initialPosition}px)`, 'important')
-    container.style.setProperty('transition', 'none', 'important')
-    // Принудительный reflow для применения стилей
-    void container.offsetHeight
-    
-    // Восстанавливаем transition только если не идет анимация
+    // Устанавливаем позицию только если НЕ идет спиннинг (нет finalSymbol)
+    // Если идет спиннинг, позицию установит spinReel
     if (!finalSymbol) {
+      const symbolHeight = 50
+      const centerOffset = 75 // центр видимой области (150px / 2 = 75px)
+      const targetSymbolIndex = 20
+      const initialPosition = targetSymbolIndex * symbolHeight - centerOffset
+      
+      // Устанавливаем позицию сразу, синхронно, с !important для гарантии
+      container.style.setProperty('transform', `translateY(${initialPosition}px)`, 'important')
+      container.style.setProperty('transition', 'none', 'important')
+      // Принудительный reflow для применения стилей
+      void container.offsetHeight
+      
       // Используем setTimeout для восстановления transition после применения позиции
       setTimeout(() => {
         container.style.removeProperty('transition')
@@ -354,7 +354,6 @@ function LuxOnSlots({
       if (!reel) return Promise.resolve()
       
       spinningStatesRef.current[index] = true
-      reel.classList.add("lux-reel-spinning")
       
       // Определяем финальную позицию (в пикселях)
       const symbolHeight = 50 // высота символа
@@ -370,57 +369,75 @@ function LuxOnSlots({
       // Все барабаны крутятся одинаковое время, но останавливаются с задержкой
       const spinDuration = baseSpinTime + stopDelay // базовое время + задержка остановки
       const startPosition = -2000 // начальная позиция сверху
-      reel.style.setProperty("--spin-duration", `${spinDuration}ms`)
-      reel.style.setProperty("--start-position", `${startPosition}px`)
-      reel.style.setProperty("--target-position", `${targetPosition}px`)
       
       return new Promise<void>((resolve) => {
-        const container = reel.querySelector('.lux-reel-container') as HTMLElement
-        if (!container) {
-          spinningStatesRef.current[index] = false
-          reel.classList.remove("lux-reel-spinning")
-          resolve()
-          return
-        }
-        
-        const handleAnimationEnd = (e: AnimationEvent) => {
-          // Проверяем, что это событие от нашего контейнера
-          if (e.target !== container) return
+        // Ждем следующего кадра, чтобы контейнер точно был готов
+        requestAnimationFrame(() => {
+          const container = reel.querySelector('.lux-reel-container') as HTMLElement
+          if (!container) {
+            spinningStatesRef.current[index] = false
+            resolve()
+            return
+          }
           
-          spinningStatesRef.current[index] = false
-          reel.classList.remove("lux-reel-spinning")
+          // Устанавливаем CSS переменные на reel
+          reel.style.setProperty("--spin-duration", `${spinDuration}ms`)
+          reel.style.setProperty("--start-position", `${startPosition}px`)
+          reel.style.setProperty("--target-position", `${targetPosition}px`)
           
-          // Устанавливаем финальную позицию после завершения анимации
-          container.style.transform = `translateY(${targetPosition}px)`
+          // Устанавливаем начальную позицию без transition
           container.style.transition = 'none'
+          container.style.transform = `translateY(${startPosition}px)`
           // Принудительный reflow
           void container.offsetHeight
-          // Восстанавливаем transition для будущих анимаций
+          
+          // Теперь добавляем класс для запуска анимации
+          reel.classList.add("lux-reel-spinning")
+          
+          // Восстанавливаем transition для анимации
           setTimeout(() => {
             container.style.transition = ''
-          }, 50)
+          }, 10)
           
-          container.removeEventListener('animationend', handleAnimationEnd as EventListener)
-          resolve()
-        }
-        
-        container.addEventListener('animationend', handleAnimationEnd as EventListener, { once: true })
-        
-        // Fallback на случай, если событие не сработает
-        setTimeout(() => {
-          if (spinningStatesRef.current[index]) {
+          const handleAnimationEnd = (e: AnimationEvent) => {
+            // Проверяем, что это событие от нашего контейнера
+            if (e.target !== container) return
+            
             spinningStatesRef.current[index] = false
             reel.classList.remove("lux-reel-spinning")
+            
+            // Устанавливаем финальную позицию после завершения анимации
             container.style.transform = `translateY(${targetPosition}px)`
             container.style.transition = 'none'
+            // Принудительный reflow
             void container.offsetHeight
+            // Восстанавливаем transition для будущих анимаций
             setTimeout(() => {
               container.style.transition = ''
             }, 50)
+            
             container.removeEventListener('animationend', handleAnimationEnd as EventListener)
             resolve()
           }
-        }, spinDuration + 200)
+          
+          container.addEventListener('animationend', handleAnimationEnd as EventListener, { once: true })
+          
+          // Fallback на случай, если событие не сработает
+          setTimeout(() => {
+            if (spinningStatesRef.current[index]) {
+              spinningStatesRef.current[index] = false
+              reel.classList.remove("lux-reel-spinning")
+              container.style.transform = `translateY(${targetPosition}px)`
+              container.style.transition = 'none'
+              void container.offsetHeight
+              setTimeout(() => {
+                container.style.transition = ''
+              }, 50)
+              container.removeEventListener('animationend', handleAnimationEnd as EventListener)
+              resolve()
+            }
+          }, spinDuration + 200)
+        })
       })
     },
     [renderReel]
@@ -1653,14 +1670,15 @@ export default function HomePage() {
         .lux-reel-spinning .lux-reel-container {
           animation: lux-reel-spin var(--spin-duration, 2000ms) cubic-bezier(0.17, 0.67, 0.12, 0.99) forwards;
           animation-fill-mode: forwards;
+          transition: none !important;
         }
 
         @keyframes lux-reel-spin {
-          0% {
-            transform: translateY(var(--start-position, -2000px)) !important;
+          from {
+            transform: translateY(var(--start-position, -2000px));
           }
-          100% {
-            transform: translateY(var(--target-position, 0px)) !important;
+          to {
+            transform: translateY(var(--target-position, 0px));
           }
         }
 
