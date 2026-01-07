@@ -6,7 +6,7 @@ import Imap from 'imap'
 import { simpleParser } from 'mailparser'
 import { prisma } from './prisma'
 import { parseEmailByBank } from './email-parsers'
-import { depositToCasino } from './deposit-balance'
+import { matchAndProcessPayment } from './auto-deposit'
 
 interface WatcherSettings {
   enabled: boolean
@@ -200,9 +200,21 @@ async function processEmail(
             })
 
             console.log(`✅ IncomingPayment saved: ID ${incomingPayment.id}`)
+            console.log(`🔍 [Email Watcher] Starting auto-match for payment ${incomingPayment.id}, amount: ${amount}`)
 
             // Пытаемся найти совпадение и автоматически пополнить баланс
-            await matchAndProcessPayment(incomingPayment.id, amount)
+            // Используем правильную функцию из lib/auto-deposit.ts
+            try {
+              const result = await matchAndProcessPayment(incomingPayment.id, amount)
+              if (result && result.success) {
+                console.log(`✅ [Email Watcher] Auto-deposit completed instantly for payment ${incomingPayment.id}, request ${result.requestId}`)
+              } else {
+                console.log(`ℹ️ [Email Watcher] No matching request found for payment ${incomingPayment.id} (amount: ${amount})`)
+              }
+            } catch (error: any) {
+              console.error(`❌ [Email Watcher] Auto-match failed for payment ${incomingPayment.id}:`, error.message)
+              // Не прерываем обработку, т.к. платеж уже сохранен и может быть обработан вручную
+            }
 
             // СРАЗУ помечаем письмо как прочитанное ПОСЛЕ успешной обработки
             // Это критично важно, чтобы не обрабатывать письмо повторно
@@ -232,143 +244,8 @@ async function processEmail(
   })
 }
 
-/**
- * Сопоставление платежа с заявкой и автоматическое пополнение
- */
-async function matchAndProcessPayment(paymentId: number, amount: number): Promise<void> {
-  // Ищем заявки на пополнение со статусом pending за последние 30 минут
-  // Увеличено с 5 минут, чтобы охватить больше заявок
-  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
-
-  console.log(`🔍 Matching payment ${paymentId}: looking for requests with amount ${amount} created after ${thirtyMinutesAgo.toISOString()}`)
-
-  const matchingRequests = await prisma.request.findMany({
-    where: {
-      requestType: 'deposit',
-      status: 'pending',
-      createdAt: {
-        gte: thirtyMinutesAgo,
-      },
-      // Исключаем заявки, которые уже имеют связанный обработанный платеж
-      incomingPayments: {
-        none: {
-          isProcessed: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'asc', // Берем самую старую заявку (первую по времени)
-    },
-    include: {
-      incomingPayments: {
-        where: {
-          isProcessed: true,
-        },
-      },
-    },
-  })
-
-  console.log(`📋 Found ${matchingRequests.length} pending deposit requests in the last 30 minutes (without processed payments)`)
-
-  // Фильтруем вручную, т.к. Prisma может иметь проблемы с точным сравнением Decimal
-  // И дополнительно проверяем, что у заявки нет обработанных платежей
-  const exactMatches = matchingRequests.filter((req) => {
-    // Пропускаем заявки, у которых уже есть обработанный платеж
-    if (req.incomingPayments && req.incomingPayments.length > 0) {
-      return false
-    }
-    
-    if (!req.amount) return false
-    const reqAmount = parseFloat(req.amount.toString())
-    return Math.abs(reqAmount - amount) < 0.01 // Точность до 1 копейки
-  })
-
-  console.log(`🎯 Found ${exactMatches.length} exact match(es) for payment ${paymentId}`)
-
-  if (exactMatches.length === 0) {
-    console.log(`ℹ️ No matching request found for payment ${paymentId} (amount: ${amount})`)
-    return
-  }
-
-  // Берем самую первую заявку (самую старую по времени создания)
-  const request = exactMatches[0]
-  
-  // Дополнительная проверка: убеждаемся, что платеж еще не обработан
-  const existingProcessedPayment = await prisma.incomingPayment.findFirst({
-    where: {
-      id: paymentId,
-      isProcessed: true,
-    },
-  })
-  
-  if (existingProcessedPayment) {
-    console.log(`⚠️ Payment ${paymentId} is already processed, skipping`)
-    return
-  }
-
-  if (!request.accountId || !request.bookmaker) {
-    console.warn(`⚠️ Request ${request.id} missing accountId or bookmaker`)
-    return
-  }
-
-  console.log(
-    `🔍 Found matching request: ID ${request.id}, Account: ${request.accountId}, Bookmaker: ${request.bookmaker}`
-  )
-
-  // Обновляем статус платежа - связываем с заявкой
-  await prisma.incomingPayment.update({
-    where: { id: paymentId },
-    data: {
-      requestId: request.id,
-      isProcessed: true,
-    },
-  })
-
-  // Пополняем баланс через казино API
-  try {
-    const depositResult = await depositToCasino(
-      request.bookmaker,
-      request.accountId,
-      parseFloat(request.amount?.toString() || '0')
-    )
-
-    if (!depositResult.success) {
-      throw new Error(depositResult.message || 'Deposit failed')
-    }
-
-    // Успешное пополнение - обновляем статус заявки
-    // processedBy = "автопополнение" означает что заявка закрыта автоматически
-    await prisma.request.update({
-      where: { id: request.id },
-      data: {
-        status: 'completed',
-        statusDetail: null,
-        processedBy: 'автопополнение' as any,
-        processedAt: new Date(),
-        updatedAt: new Date(),
-      } as any,
-    })
-
-    console.log(
-      `✅ Auto-deposit successful: Request ${request.id}, Account ${request.accountId}`
-    )
-  } catch (error: any) {
-    console.error(`❌ Auto-deposit failed for request ${request.id}:`, error)
-
-    // В случае ошибки API казино, ставим статус profile-5
-    await prisma.request.update({
-      where: { id: request.id },
-      data: {
-        status: 'profile-5',
-        statusDetail: 'api_error',
-        processedAt: new Date(),
-        updatedAt: new Date(),
-      },
-    })
-
-    throw error
-  }
-}
+// Функция matchAndProcessPayment теперь импортируется из ./auto-deposit
+// Это гарантирует единую логику автопополнения во всем приложении
 
 /**
  * Проверка всех непрочитанных писем (для первого запуска после перезапуска)
