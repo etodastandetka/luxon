@@ -12,12 +12,18 @@ export async function GET(
     const resolvedParams = params instanceof Promise ? await params : params
     const fileId = resolvedParams.fileId
 
-    if (!fileId || fileId.includes('..') || fileId.includes('/')) {
+    if (!fileId || fileId.includes('..')) {
+      return new NextResponse('Invalid file ID', { status: 400 })
+    }
+
+    // Разрешаем слэши в имени файла, но проверяем на path traversal
+    const normalizedFileId = fileId.replace(/\\/g, '/')
+    if (normalizedFileId.includes('../') || normalizedFileId.startsWith('/')) {
       return new NextResponse('Invalid file ID', { status: 400 })
     }
 
     const uploadDir = path.join(process.cwd(), 'tmp', 'receipts')
-    const filePath = path.join(uploadDir, fileId)
+    const filePath = path.join(uploadDir, normalizedFileId)
 
     // Проверяем, существует ли файл
     if (!fs.existsSync(filePath)) {

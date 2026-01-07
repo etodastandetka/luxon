@@ -77,42 +77,53 @@ export default function RequestDetailPage() {
 
   // Функция для валидации URL фото
   const isValidPhotoUrl = (url: string | null | undefined): boolean => {
-    if (!url || typeof url !== 'string' || url.trim() === '') return false
+    if (!url || typeof url !== 'string') return false
+    
+    // Убираем пробелы в начале и конце
+    const trimmedUrl = url.trim()
+    if (trimmedUrl === '') return false
     
     // Проверяем, что это валидный URL или data URL
     try {
-      if (url.startsWith('data:')) {
+      // Проверяем data URL
+      if (trimmedUrl.startsWith('data:')) {
         // Проверяем формат data URL: data:[<mediatype>][;base64],<data>
-        // Должен быть полный формат с запятой и данными после нее
         const dataUrlPattern = /^data:([a-zA-Z][a-zA-Z0-9]*\/[a-zA-Z0-9][a-zA-Z0-9]*)(;base64)?,/
-        if (!dataUrlPattern.test(url)) return false
+        if (!dataUrlPattern.test(trimmedUrl)) return false
         
-        // Проверяем, что после запятой есть данные (минимум несколько символов)
-        const commaIndex = url.indexOf(',')
-        if (commaIndex === -1 || commaIndex === url.length - 1) return false
+        // Проверяем, что после запятой есть данные
+        const commaIndex = trimmedUrl.indexOf(',')
+        if (commaIndex === -1 || commaIndex === trimmedUrl.length - 1) return false
         
-        // Проверяем, что данные не пустые (минимум 10 символов для валидного изображения)
-        const dataPart = url.substring(commaIndex + 1)
+        // Проверяем, что данные не пустые (минимум 10 символов)
+        const dataPart = trimmedUrl.substring(commaIndex + 1)
         if (dataPart.length < 10) return false
         
         return true
       }
       
       // Проверяем относительный URL (начинается с /)
-      if (url.startsWith('/')) {
-        // Относительные URL валидны для использования в Next.js Image компоненте
-        return true
+      if (trimmedUrl.startsWith('/')) {
+        // Проверяем, что это не просто "/" и не содержит опасных символов
+        if (trimmedUrl.length > 1 && !trimmedUrl.includes('..')) {
+          return true
+        }
       }
       
-      // Проверяем обычный URL (http/https)
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        new URL(url)
-        return true
+      // Проверяем абсолютный URL (http/https)
+      if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+        try {
+          new URL(trimmedUrl)
+          return true
+        } catch {
+          return false
+        }
       }
       
       // Если это не data URL, не относительный URL и не http/https, считаем невалидным
       return false
-    } catch {
+    } catch (error) {
+      console.warn('⚠️ [Request Detail] Ошибка валидации URL:', error, 'URL:', trimmedUrl)
       return false
     }
   }
@@ -224,7 +235,7 @@ export default function RequestDetailPage() {
                   }
                   
                   if (photoData.success && photoData.data?.photoFileUrl && isMountedRef.current) {
-                    const photoUrl = photoData.data.photoFileUrl
+                    const photoUrl = String(photoData.data.photoFileUrl).trim()
                     // Валидируем URL перед использованием
                     if (isValidPhotoUrl(photoUrl)) {
                       setRequest(prev => {
@@ -240,7 +251,7 @@ export default function RequestDetailPage() {
                         }
                       })
                     } else {
-                      console.warn('⚠️ [Request Detail] Невалидный URL фото:', photoUrl)
+                      console.warn('⚠️ [Request Detail] Невалидный URL фото:', photoUrl, 'Type:', typeof photoUrl, 'Length:', photoUrl?.length)
                       setPhotoError(true)
                     }
                   }
