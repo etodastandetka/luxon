@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import BankButtons from '../../../components/BankButtons'
 import { getApiBase, safeFetch } from '../../../utils/fetch'
-import { getTelegramUserId } from '../../../utils/telegram'
+import { getTelegramUserId, getTelegramUser } from '../../../utils/telegram'
 import { DEPOSIT_CONFIG } from '../../../config/app'
 
 declare global {
@@ -402,6 +402,9 @@ function DepositStep3Content() {
         try {
           const base = getApiBase()
           const amountNum = parseFloat(amount)
+          
+          // Получаем данные пользователя из Telegram
+          const telegramUser = getTelegramUser()
 
           const response = await safeFetch(`${base}/api/payment`, {
             method: 'POST',
@@ -415,6 +418,9 @@ function DepositStep3Content() {
               account_id: accountId,
               amount: amountNum,
               payment_method: bankCode,
+              telegram_username: telegramUser?.username || null,
+              telegram_first_name: telegramUser?.first_name || null,
+              telegram_last_name: telegramUser?.last_name || null,
             }),
             timeout: 30000,
             retries: 2,
@@ -587,6 +593,9 @@ function DepositStep3Content() {
       const base = getApiBase()
       const amountNum = parseFloat(amount)
 
+      // Получаем данные пользователя из Telegram
+      const telegramUser = getTelegramUser()
+
       // Если заявка еще не создана, создаем ее
       if (!requestId) {
         const response = await safeFetch(`${base}/api/payment`, {
@@ -601,6 +610,9 @@ function DepositStep3Content() {
             account_id: accountId,
             amount: amountNum,
             payment_method: selectedBank,
+            telegram_username: telegramUser?.username || null,
+            telegram_first_name: telegramUser?.first_name || null,
+            telegram_last_name: telegramUser?.last_name || null,
           }),
           timeout: 30000,
           retries: 2,
