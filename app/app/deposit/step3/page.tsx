@@ -349,7 +349,7 @@ function DepositStep3Content() {
       }
     }
     loadBankSettingsAndQR()
-  }, [bookmaker, accountId, amount, router, searchParams])
+  }, [bookmaker, accountId, amount, router])
 
   const handleBankSelect = async (bankCode: string) => {
     setSelectedBank(bankCode)
