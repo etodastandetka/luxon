@@ -156,7 +156,29 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
   try {
     const { depositToCasino } = await import('./deposit-balance')
     
+    // ВАЖНО: Проверяем текущий статус заявки перед пополнением
+    // Если заявка уже completed/approved, сначала обновляем статус на autodeposit_success,
+    // чтобы depositToCasino не считал её дубликатом
+    const currentRequestStatus = await prisma.request.findUnique({
+      where: { id: request.id },
+      select: { status: true },
+    })
+    
+    // Если заявка уже completed/approved, временно обновляем статус на pending,
+    // чтобы depositToCasino не считал её дубликатом
+    if (currentRequestStatus?.status === 'completed' || currentRequestStatus?.status === 'approved') {
+      console.log(`⚠️ [Auto-Deposit] Request ${request.id} already ${currentRequestStatus.status}, temporarily updating to pending for deposit check`)
+      await prisma.request.update({
+        where: { id: request.id },
+        data: {
+          status: 'pending' as any,
+          updatedAt: new Date(),
+        } as any,
+      })
+    }
+    
     // Сразу пополняем баланс через казино API (самое важное - делаем мгновенно)
+    // Передаем request.id чтобы исключить текущую заявку из проверки на дублирование
     const depositResult = await depositToCasino(
       request.bookmaker,
       request.accountId,
@@ -167,6 +189,17 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     if (!depositResult.success) {
       const errorMessage = depositResult.message || 'Deposit failed'
       console.error(`❌ [Auto-Deposit] Deposit failed: ${errorMessage}`)
+      
+      // Восстанавливаем исходный статус если был изменен
+      if (currentRequestStatus?.status === 'completed' || currentRequestStatus?.status === 'approved') {
+        await prisma.request.update({
+          where: { id: request.id },
+          data: {
+            status: currentRequestStatus.status as any,
+            updatedAt: new Date(),
+          } as any,
+        })
+      }
       
       // Сохраняем ошибку в БД для отображения в админке
       try {
@@ -225,19 +258,32 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
         return { skipped: true, reason: 'request_already_processed', paymentLinked: true }
       }
       
-      // Если заявка уже completed/approved вручную - все равно привязываем платеж
+      // Если заявка уже completed/approved вручную - обновляем статус на autodeposit_success
+      // Это важно, чтобы показать, что пополнение было автоматическим
       if (currentRequest?.status === 'completed' || currentRequest?.status === 'approved') {
-        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already completed/approved (status: ${currentRequest?.status}), but deposit was successful. Linking payment.`)
-        // ВСЕГДА привязываем платеж к заявке
-        await tx.incomingPayment.update({
-          where: { id: paymentId },
-          data: {
-            requestId: request.id,
-            isProcessed: true,
-          },
-        })
-        console.log(`✅ [Auto-Deposit] Payment ${paymentId} linked to request ${request.id} (request was manually completed)`)
-        return { skipped: true, reason: 'request_manually_completed', paymentLinked: true }
+        console.log(`⚠️ [Auto-Deposit] Request ${request.id} already completed/approved (status: ${currentRequest?.status}), but deposit was successful. Updating to autodeposit_success.`)
+        // Обновляем статус на autodeposit_success, чтобы показать что это автопополнение
+        await Promise.all([
+          tx.request.update({
+            where: { id: request.id },
+            data: {
+              status: 'autodeposit_success',
+              statusDetail: null,
+              processedBy: 'автопополнение' as any,
+              processedAt: new Date(),
+              updatedAt: new Date(),
+            } as any,
+          }),
+          tx.incomingPayment.update({
+            where: { id: paymentId },
+            data: {
+              requestId: request.id,
+              isProcessed: true,
+            },
+          }),
+        ])
+        console.log(`✅ [Auto-Deposit] Request ${request.id} updated to autodeposit_success (was: ${currentRequest?.status}), payment ${paymentId} linked`)
+        return { skipped: false, requestUpdated: true, paymentLinked: true }
       }
       
       // Обновляем заявку и платеж атомарно - ВАЖНО: это должно обязательно выполниться
@@ -272,8 +318,19 @@ export async function matchAndProcessPayment(paymentId: number, amount: number) 
     if (updateResult?.skipped) {
       const reason = updateResult.reason || 'unknown'
       const paymentLinked = updateResult.paymentLinked || false
+      const requestUpdated = (updateResult as any)?.requestUpdated || false
       
-      if (paymentLinked) {
+      if (paymentLinked && requestUpdated) {
+        // Статус обновлен и платеж привязан - все хорошо
+        console.log(`✅ [Auto-Deposit] Payment ${paymentId} linked to request ${request.id}, status updated to autodeposit_success`)
+        return {
+          requestId: request.id,
+          success: true,
+          paymentLinked: true,
+          statusUpdated: true,
+          reason
+        }
+      } else if (paymentLinked) {
         console.log(`✅ [Auto-Deposit] Payment ${paymentId} linked to request ${request.id} (skipped status update: ${reason})`)
         // Платеж привязан, но статус не обновлен - это нормально если заявка уже обработана
         return {
