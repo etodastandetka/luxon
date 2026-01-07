@@ -310,9 +310,9 @@ export async function POST(request: NextRequest) {
         return errorResponse
       }
       
-      // Находим индекс последнего поля 63 (контрольная сумма)
-      const last63Index = requisite.lastIndexOf('6304')
-      if (last63Index === -1) {
+      // Находим индекс последнего поля 63 (контрольная сумма) в исходном requisite
+      const originalLast63Index = requisite.lastIndexOf('6304')
+      if (originalLast63Index === -1) {
         const errorResponse = NextResponse.json(
           { success: false, error: 'Не найдено поле 63 в base_hash для Bakai' },
           { status: 400 }
@@ -321,11 +321,11 @@ export async function POST(request: NextRequest) {
         return errorResponse
       }
       
-      console.log(`🔍 Field 63 found at index ${last63Index}`)
+      console.log(`🔍 Field 63 found at index ${originalLast63Index}`)
       
       // Находим последнее поле 54 перед полем 63
       const lastField54Before63 = field54Matches
-        .filter(m => m.index < last63Index)
+        .filter(m => m.index < originalLast63Index)
         .sort((a, b) => b.index - a.index)[0]
       
       if (!lastField54Before63) {
@@ -350,8 +350,27 @@ export async function POST(request: NextRequest) {
                        newField54 + 
                        requisite.substring(lastField54Before63.index + oldField54.length)
       
+      // 🔐 КРИТИЧНО: Пересчитываем индекс поля 63 после замены поля 54
+      // Длина нового поля 54 может отличаться от старого, поэтому индекс 63 может сместиться
+      const lengthDiff = newField54.length - oldField54.length
+      const newLast63Index = originalLast63Index + lengthDiff
+      
+      console.log(`🔍 Field 54 length change: ${oldField54.length} -> ${newField54.length} (diff: ${lengthDiff})`)
+      console.log(`🔍 Field 63 index: ${originalLast63Index} -> ${newLast63Index}`)
+      
+      // Проверяем, что поле 63 все еще существует после замены
+      if (updatedHash.substring(newLast63Index, newLast63Index + 4) !== '6304') {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'Ошибка: поле 63 не найдено после замены поля 54' },
+          { status: 500 }
+        )
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        return errorResponse
+      }
+      
       // Извлекаем данные до последнего объекта 63 (ID "00" - "90", исключая ID 63)
-      let dataBefore63 = updatedHash.substring(0, last63Index)
+      // ВАЖНО: Используем новый индекс после замены поля 54
+      let dataBefore63 = updatedHash.substring(0, newLast63Index)
       
       // 🔐 КРИТИЧЕСКАЯ ПРОВЕРКА: Убеждаемся, что сумма (поле 54) включена в данные для hash
       if (!dataBefore63.includes(newField54)) {
@@ -397,11 +416,12 @@ export async function POST(request: NextRequest) {
       console.log(`🔐 SHA-256 checksum calculated: ${checksumFull.substring(0, 20)}...${checksumFull.slice(-4)} (last 4: ${checksum})`)
       
       // Заменяем последнее поле 63 (контрольная сумма) - формат: 6304 + 4 символа hex
+      // ВАЖНО: Используем новый индекс после замены поля 54
       const newField63 = `6304${checksum}`
-      qrHash = updatedHash.substring(0, last63Index) + newField63
+      qrHash = updatedHash.substring(0, newLast63Index) + newField63
       
       console.log(`✅ BAKAI QR hash generated successfully`)
-      console.log(`   Old field 63: ${requisite.substring(last63Index, last63Index + 8)}`)
+      console.log(`   Old field 63: ${requisite.substring(originalLast63Index, originalLast63Index + 8)}`)
       console.log(`   New field 63: ${newField63}`)
       console.log(`   Final hash preview: ${qrHash.substring(0, 30)}...${qrHash.slice(-15)}`)
     } else {
