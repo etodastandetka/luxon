@@ -90,11 +90,28 @@ export default function TelegramInit() {
             // Игнорируем ошибки
           }
           
+          // Сохраняем данные пользователя в localStorage для быстрого доступа
+          try {
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+              const userData = tg.initDataUnsafe.user
+              localStorage.setItem('telegram_user', JSON.stringify(userData))
+              console.log('✅ Данные пользователя сохранены в localStorage:', {
+                id: userData.id,
+                username: userData.username,
+                first_name: userData.first_name
+              })
+            }
+          } catch (e) {
+            console.warn('⚠️ Не удалось сохранить данные пользователя:', e)
+          }
+          
           // Логируем информацию о hash для диагностики
           if (process.env.NODE_ENV === 'development') {
             console.log('🔍 Telegram WebApp Debug:', {
               hasInitData: !!tg.initData,
               hasInitDataUnsafe: !!tg.initDataUnsafe,
+              hasUser: !!(tg.initDataUnsafe?.user),
+              userId: tg.initDataUnsafe?.user?.id || 'N/A',
               hasHash: !!(tg.initDataUnsafe?.hash),
               hash: tg.initDataUnsafe?.hash || 'N/A',
               initDataLength: tg.initData?.length || 0,

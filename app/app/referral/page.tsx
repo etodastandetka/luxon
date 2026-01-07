@@ -63,7 +63,29 @@ export default function ReferralPage() {
     setError(null)
     
     // Используем оптимизированную функцию (без задержек и множественных попыток)
-    const userId = getTelegramUserId()
+    let userId = getTelegramUserId()
+    
+    // Если userId не получен, пробуем получить из localStorage
+    if (!userId && typeof window !== 'undefined') {
+      try {
+        const savedUser = localStorage.getItem('telegram_user')
+        if (savedUser) {
+          const userData = JSON.parse(savedUser)
+          if (userData && userData.id) {
+            userId = String(userData.id)
+            // Сохраняем в кэш для быстрого доступа
+            if ((window as any).Telegram?.WebApp?.initDataUnsafe?.user) {
+              // Данные уже есть в Telegram WebApp, не перезаписываем
+            } else {
+              // Сохраняем обратно в Telegram WebApp кэш
+              console.log('✅ Восстановлен userId из localStorage:', userId)
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ Ошибка при чтении userId из localStorage:', e)
+      }
+    }
     
     try {
       
@@ -74,6 +96,18 @@ export default function ReferralPage() {
       }
       
       setIsFromBot(true)
+      
+      // Сохраняем данные пользователя для будущего использования
+      if (typeof window !== 'undefined') {
+        try {
+          const tg = (window as any).Telegram?.WebApp
+          if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            localStorage.setItem('telegram_user', JSON.stringify(tg.initDataUnsafe.user))
+          }
+        } catch (e) {
+          // Игнорируем ошибки сохранения
+        }
+      }
       
       if (process.env.NODE_ENV === 'development') {
         console.log('🔍 Telegram WebApp Debug:', {
@@ -142,6 +176,8 @@ export default function ReferralPage() {
       // TODO: Обновить имя бота на актуальное после создания бота
       const link = `https://t.me/lux_on_bot?start=ref${userId}`
       setReferralLink(link)
+      
+      console.log('🔗 Реферальная ссылка сгенерирована:', link)
 
       // Загружаем данные рефералов с API
       const apiUrl = getApiBase()
@@ -161,13 +197,17 @@ export default function ReferralPage() {
         // API всегда возвращает success: true при успешном запросе, даже если данных нет
         if (data && data.success === true) {
           // Обрабатываем данные, даже если они нулевые (это нормально для нового пользователя)
-          setEarned(typeof data.earned === 'number' ? data.earned : 0)
-          setAvailableBalance(typeof data.available_balance === 'number' ? data.available_balance : 0)
+          const earnedValue = typeof data.earned === 'number' ? data.earned : 0
+          const availableBalanceValue = typeof data.available_balance === 'number' ? data.available_balance : 0
+          const referralCountValue = typeof data.total_referrals === 'number' ? data.total_referrals : (typeof data.referral_count === 'number' ? data.referral_count : 0)
+          
+          setEarned(earnedValue)
+          setAvailableBalance(availableBalanceValue)
           setHasPendingWithdrawal(Boolean(data.has_pending_withdrawal))
           // Используем total_referrals (общее количество) вместо referral_count (только активные)
-          setReferralCount(typeof data.total_referrals === 'number' ? data.total_referrals : (typeof data.referral_count === 'number' ? data.referral_count : 0))
+          setReferralCount(referralCountValue)
           setTopPlayers(Array.isArray(data.top_players) ? data.top_players : [])
-          setUserRank(typeof data.user_rank === 'number' ? data.user_rank : (data.user_rank === null ? 0 : 0))
+          setUserRank(typeof data.user_rank === 'number' && data.user_rank > 0 ? data.user_rank : 0)
           
           // Обновляем настройки рефералов, если они есть
           if (data.settings) {
@@ -188,35 +228,61 @@ export default function ReferralPage() {
           }
           setError(null)
           console.log('✅ Данные рефералов успешно загружены:', {
-            earned: data.earned,
-            total_referrals: data.total_referrals,
+            earned: earnedValue,
+            available_balance: availableBalanceValue,
+            total_referrals: referralCountValue,
             referral_count: data.referral_count,
-            top_players_count: Array.isArray(data.top_players) ? data.top_players.length : 0
+            top_players_count: Array.isArray(data.top_players) ? data.top_players.length : 0,
+            user_rank: data.user_rank
           })
         } else if (data && data.success === false) {
-          // Если API вернул явную ошибку
+          // Если API вернул явную ошибку, но все равно показываем реферальную ссылку
           const errorMessage = data?.error || 'Не удалось загрузить данные реферальной программы'
           console.error('❌ API вернул ошибку:', errorMessage, 'Полные данные:', data)
           setError(errorMessage)
-          setTopPlayers([])
+          // Устанавливаем значения по умолчанию, чтобы интерфейс работал
+          setEarned(0)
+          setAvailableBalance(0)
+          setReferralCount(0)
+          setTopPlayers(Array.isArray(data.top_players) ? data.top_players : [])
           setUserRank(0)
         } else {
           // Если данные не в ожидаемом формате, но есть поля earned или total_referrals, все равно обрабатываем
-          if (data && (data.earned !== undefined || data.total_referrals !== undefined)) {
+          if (data && (data.earned !== undefined || data.total_referrals !== undefined || data.top_players)) {
             console.warn('⚠️ API вернул данные без success флага, но обрабатываем их:', data)
             setEarned(typeof data.earned === 'number' ? data.earned : 0)
             setAvailableBalance(typeof data.available_balance === 'number' ? data.available_balance : 0)
             setHasPendingWithdrawal(Boolean(data.has_pending_withdrawal))
             setReferralCount(typeof data.total_referrals === 'number' ? data.total_referrals : (typeof data.referral_count === 'number' ? data.referral_count : 0))
             setTopPlayers(Array.isArray(data.top_players) ? data.top_players : [])
-            setUserRank(typeof data.user_rank === 'number' ? data.user_rank : 0)
+            setUserRank(typeof data.user_rank === 'number' && data.user_rank > 0 ? data.user_rank : 0)
             setError(null)
+            
+            // Обновляем настройки, если они есть
+            if (data.settings) {
+              setReferralSettings({
+                referral_percentage: data.settings.referral_percentage || 5,
+                min_payout: data.settings.min_payout || 100,
+                first_place_prize: data.settings.first_place_prize || 10000,
+                second_place_prize: data.settings.second_place_prize || 5000,
+                third_place_prize: data.settings.third_place_prize || 2500,
+                fourth_place_prize: data.settings.fourth_place_prize || 1500,
+                fifth_place_prize: data.settings.fifth_place_prize || 1000,
+                total_prize_pool: data.settings.total_prize_pool || 20000,
+                next_payout_date: data.settings.next_payout_date || '1 ноября'
+              })
+            }
           } else {
-            // Если данные действительно не в ожидаемом формате
-            console.error('❌ Неожиданный формат ответа API:', data)
-            setError('Сервер вернул данные в неожиданном формате')
+            // Если данные действительно не в ожидаемом формате, но не показываем ошибку
+            // Просто устанавливаем значения по умолчанию
+            console.warn('⚠️ Неожиданный формат ответа API, используем значения по умолчанию:', data)
+            setEarned(0)
+            setAvailableBalance(0)
+            setReferralCount(0)
             setTopPlayers([])
             setUserRank(0)
+            // Не устанавливаем ошибку, чтобы пользователь мог видеть реферальную ссылку
+            setError(null)
           }
         }
       } catch (fetchError: any) {
@@ -285,6 +351,10 @@ export default function ReferralPage() {
         }
         
         setError(errorMessage)
+        // Устанавливаем значения по умолчанию, чтобы интерфейс работал
+        setEarned(0)
+        setAvailableBalance(0)
+        setReferralCount(0)
         setTopPlayers([])
         setUserRank(0)
       }
@@ -296,7 +366,12 @@ export default function ReferralPage() {
         userId: userId || 'unknown',
         timestamp: new Date().toISOString()
       })
+      // Показываем ошибку, но не блокируем интерфейс
       setError(error?.message || 'Произошла ошибка при загрузке данных')
+      // Устанавливаем значения по умолчанию, чтобы интерфейс работал
+      setEarned(0)
+      setAvailableBalance(0)
+      setReferralCount(0)
       setTopPlayers([])
       setUserRank(0)
     } finally {
