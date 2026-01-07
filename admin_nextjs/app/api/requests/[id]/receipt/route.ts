@@ -89,7 +89,7 @@ export async function POST(
     console.log(`✅ Receipt uploaded for request ${requestId}: ${fileUrl}`)
 
     return NextResponse.json(
-      createApiResponse({ url: fileUrl }, 'Receipt uploaded successfully'),
+      createApiResponse({ url: fileUrl }, undefined, 'Receipt uploaded successfully'),
       {
         headers: {
           'Access-Control-Allow-Origin': '*',
