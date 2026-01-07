@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    const amount = parseFloat(String(sanitizedBody.amount || 0))
+    let amount = parseFloat(String(sanitizedBody.amount || 0))
     const playerId = sanitizedBody.playerId || ''
     const bank = sanitizedBody.bank || 'demirbank'
     
@@ -77,6 +77,48 @@ export async function POST(request: NextRequest) {
       )
       errorResponse.headers.set('Access-Control-Allow-Origin', '*')
       return errorResponse
+    }
+
+    // 🔄 Автоматическая корректировка копеек для избежания конфликтов
+    // Проверяем, есть ли активная заявка с такой же суммой (включая копейки) у любого пользователя
+    // Это гарантирует, что QR-код будет сгенерирован с суммой, которая не конфликтует с другими заявками
+    const MAX_ATTEMPTS = 10
+    let adjustedAmount = amount
+    let attempts = 0
+    const originalAmount = amount
+    
+    while (attempts < MAX_ATTEMPTS) {
+      // Проверяем, есть ли активная заявка с такой же суммой
+      const existingRequest = await prisma.request.findFirst({
+        where: {
+          requestType: 'deposit',
+          amount: adjustedAmount,
+          status: {
+            in: ['pending', 'processing', 'deferred'] // Активные статусы
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+      
+      if (!existingRequest) {
+        // Сумма свободна, используем её
+        if (adjustedAmount !== originalAmount) {
+          console.log(`✅ [Generate QR] Amount adjusted: ${originalAmount} → ${adjustedAmount} (to avoid conflict)`)
+        }
+        amount = adjustedAmount
+        break
+      }
+      
+      // Сумма занята, увеличиваем копейки на 0.01
+      attempts++
+      adjustedAmount = Math.round((adjustedAmount + 0.01) * 100) / 100
+    }
+    
+    if (attempts >= MAX_ATTEMPTS) {
+      console.warn(`⚠️ [Generate QR] Could not find free amount after ${MAX_ATTEMPTS} attempts, using last checked: ${adjustedAmount}`)
+      amount = adjustedAmount
     }
     
     // Получаем активный реквизит с retry логикой и альтернативными способами

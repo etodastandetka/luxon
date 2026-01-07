@@ -335,9 +335,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Валидация минимального депозита в зависимости от казино
-    if (type === 'deposit' && amount) {
-      const amountNum = parseFloat(amount)
-      if (!isNaN(amountNum)) {
+    let finalAmount = amount ? parseFloat(amount) : null
+    if (type === 'deposit' && finalAmount) {
+      if (!isNaN(finalAmount)) {
         const normalizedBookmaker = (bookmaker || '').toLowerCase()
         let minDeposit = DEPOSIT_CONFIG.MIN_DEPOSIT_AMOUNT
         
@@ -346,7 +346,7 @@ export async function POST(request: NextRequest) {
           minDeposit = DEPOSIT_CONFIG.MIN_DEPOSIT_AMOUNT_1WIN
         }
         
-        if (amountNum < minDeposit) {
+        if (finalAmount < minDeposit) {
           const errorResponse = NextResponse.json(
             createApiResponse(null, `Минимальная сумма депозита для ${bookmaker || 'этого казино'}: ${minDeposit} сом`),
             { 
@@ -359,7 +359,7 @@ export async function POST(request: NextRequest) {
           return errorResponse
         }
         
-        if (amountNum > DEPOSIT_CONFIG.MAX_DEPOSIT_AMOUNT) {
+        if (finalAmount > DEPOSIT_CONFIG.MAX_DEPOSIT_AMOUNT) {
           const errorResponse = NextResponse.json(
             createApiResponse(null, `Максимальная сумма депозита: ${DEPOSIT_CONFIG.MAX_DEPOSIT_AMOUNT} сом`),
             { 
@@ -370,6 +370,54 @@ export async function POST(request: NextRequest) {
             }
           )
           return errorResponse
+        }
+
+        // 🔄 Автоматическая корректировка копеек для избежания конфликтов
+        // Проверяем, есть ли активная заявка с такой же суммой (включая копейки) у любого пользователя
+        const MAX_ATTEMPTS = 10
+        let adjustedAmount = finalAmount
+        let attempts = 0
+        
+        while (attempts < MAX_ATTEMPTS) {
+          // Проверяем, есть ли активная заявка с такой же суммой
+          const existingRequest = await prisma.request.findFirst({
+            where: {
+              requestType: 'deposit',
+              amount: adjustedAmount,
+              status: {
+                in: ['pending', 'processing', 'deferred'] // Активные статусы
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            }
+          })
+          
+          if (!existingRequest) {
+            // Сумма свободна, используем её
+            if (adjustedAmount !== finalAmount) {
+              console.log(`✅ [Payment API] Amount adjusted: ${finalAmount} → ${adjustedAmount} (to avoid conflict)`)
+            }
+            finalAmount = adjustedAmount
+            break
+          }
+          
+          // Сумма занята, увеличиваем копейки на 0.01
+          attempts++
+          adjustedAmount = Math.round((adjustedAmount + 0.01) * 100) / 100
+          
+          // Проверяем, не превысили ли максимальную сумму
+          if (adjustedAmount > DEPOSIT_CONFIG.MAX_DEPOSIT_AMOUNT) {
+            console.warn(`⚠️ [Payment API] Cannot adjust amount ${finalAmount}: all variants exceed max deposit`)
+            // Используем последнюю проверенную сумму
+            finalAmount = adjustedAmount - 0.01
+            break
+          }
+        }
+        
+        if (attempts >= MAX_ATTEMPTS) {
+          console.warn(`⚠️ [Payment API] Could not find free amount after ${MAX_ATTEMPTS} attempts, using last checked: ${adjustedAmount}`)
+          finalAmount = adjustedAmount
         }
       }
     }
@@ -435,7 +483,8 @@ export async function POST(request: NextRequest) {
       username: telegram_username,
       firstName: telegram_first_name,
       type,
-      amount: amount ? parseFloat(amount) : null,
+      originalAmount: amount ? parseFloat(amount) : null,
+      finalAmount: finalAmount,
       bookmaker,
       bank: finalBank
     })
@@ -554,7 +603,7 @@ export async function POST(request: NextRequest) {
         lastName: telegram_last_name,
         bookmaker,
         accountId: finalAccountId?.toString(),
-        amount: amount ? parseFloat(amount) : null, // В сомах (для пополнения в казино), null для error_log
+        amount: finalAmount, // В сомах (для пополнения в казино), null для error_log (может быть скорректировано для депозитов)
         requestType: type,
         bank: finalBank,
         phone,
