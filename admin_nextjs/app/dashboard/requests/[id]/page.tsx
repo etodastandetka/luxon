@@ -98,13 +98,19 @@ export default function RequestDetailPage() {
         return true
       }
       
+      // Проверяем относительный URL (начинается с /)
+      if (url.startsWith('/')) {
+        // Относительные URL валидны для использования в Next.js Image компоненте
+        return true
+      }
+      
       // Проверяем обычный URL (http/https)
       if (url.startsWith('http://') || url.startsWith('https://')) {
         new URL(url)
         return true
       }
       
-      // Если это не data URL и не http/https, считаем невалидным
+      // Если это не data URL, не относительный URL и не http/https, считаем невалидным
       return false
     } catch {
       return false

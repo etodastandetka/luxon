@@ -6,14 +6,17 @@ import { DATABASE_CONFIG } from '@/config/app'
 // Получение истории чата с пользователем или сохраненного account_id
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> | { userId: string } }
 ) {
   try {
     requireAuth(request)
 
+    // Обработка Next.js 15+ где params может быть Promise
+    const resolvedParams = params instanceof Promise ? await params : params
+
     let userId: bigint
     try {
-      userId = BigInt(params.userId)
+      userId = BigInt(resolvedParams.userId)
     } catch (e) {
       return NextResponse.json(
         createApiResponse(null, 'Invalid user ID'),
@@ -144,14 +147,17 @@ export async function GET(
 // Сохранение account_id для казино
 export async function POST(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> | { userId: string } }
 ) {
   try {
     requireAuth(request)
 
+    // Обработка Next.js 15+ где params может быть Promise
+    const resolvedParams = params instanceof Promise ? await params : params
+
     let userId: bigint
     try {
-      userId = BigInt(params.userId)
+      userId = BigInt(resolvedParams.userId)
     } catch (e) {
       return NextResponse.json(
         createApiResponse(null, 'Invalid user ID'),

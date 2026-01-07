@@ -8,14 +8,17 @@ import { randomUUID } from 'crypto'
 // Отправка сообщения пользователю через бота (поддерживает текст, фото и видео)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> | { userId: string } }
 ) {
   try {
     requireAuth(request)
 
+    // Обработка Next.js 15+ где params может быть Promise
+    const resolvedParams = params instanceof Promise ? await params : params
+
     let userId: bigint
     try {
-      userId = BigInt(params.userId)
+      userId = BigInt(resolvedParams.userId)
     } catch (e) {
       return NextResponse.json(
         createApiResponse(null, 'Invalid user ID'),
