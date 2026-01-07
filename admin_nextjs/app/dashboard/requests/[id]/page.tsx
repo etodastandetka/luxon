@@ -1295,25 +1295,44 @@ export default function RequestDetailPage() {
             }}
           >
             {isValidPhotoUrl(request.photoFileUrl) ? (
-              <Image
-                src={request.photoFileUrl}
-                alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-                width={800}
-                height={600}
-                className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
-                style={{ display: 'block' }}
-                loading="eager"
-                priority
-                unoptimized={request.photoFileUrl?.startsWith('data:')}
-                onError={(e) => {
-                  console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
-                  setPhotoError(true)
-                }}
-                onLoad={() => {
-                  console.log('✅ [Request Detail] Изображение успешно загружено')
-                  setPhotoError(false)
-                }}
-              />
+              request.photoFileUrl.startsWith('data:') ? (
+                // Для base64 используем обычный img тег
+                <img
+                  src={request.photoFileUrl}
+                  alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+                  className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
+                  style={{ display: 'block' }}
+                  onError={(e) => {
+                    console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
+                    setPhotoError(true)
+                  }}
+                  onLoad={() => {
+                    console.log('✅ [Request Detail] Изображение успешно загружено')
+                    setPhotoError(false)
+                  }}
+                />
+              ) : (
+                // Для относительных и абсолютных URL используем Next.js Image
+                <Image
+                  src={request.photoFileUrl}
+                  alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+                  width={800}
+                  height={600}
+                  className="w-full h-auto max-h-[600px] rounded-lg object-contain relative z-0"
+                  style={{ display: 'block' }}
+                  loading="eager"
+                  priority
+                  unoptimized={true}
+                  onError={(e) => {
+                    console.error('❌ [Request Detail] Ошибка загрузки изображения:', e)
+                    setPhotoError(true)
+                  }}
+                  onLoad={() => {
+                    console.log('✅ [Request Detail] Изображение успешно загружено')
+                    setPhotoError(false)
+                  }}
+                />
+              )
             ) : (
               <div className="text-center py-8 bg-gray-900 rounded-lg">
                 <p className="text-red-400 text-sm">Невалидный URL фото</p>
@@ -1350,21 +1369,36 @@ export default function RequestDetailPage() {
               </svg>
             </button>
             
-                    <Image
-                      src={request.photoFileUrl}
-                      alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
-                      width={1200}
-                      height={1200}
-                      className="max-w-full max-h-full object-contain rounded-lg"
-                      onClick={(e) => e.stopPropagation()}
-                      loading="eager"
-                      priority
-                      unoptimized
-                      onError={() => {
-                        console.error('❌ [Request Detail] Ошибка загрузки изображения в модальном окне')
-                        setShowPhotoModal(false)
-                      }}
-                    />
+                    {request.photoFileUrl.startsWith('data:') ? (
+                      // Для base64 используем обычный img тег
+                      <img
+                        src={request.photoFileUrl}
+                        alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+                        className="max-w-full max-h-full object-contain rounded-lg"
+                        onClick={(e) => e.stopPropagation()}
+                        onError={() => {
+                          console.error('❌ [Request Detail] Ошибка загрузки изображения в модальном окне')
+                          setShowPhotoModal(false)
+                        }}
+                      />
+                    ) : (
+                      // Для относительных и абсолютных URL используем Next.js Image
+                      <Image
+                        src={request.photoFileUrl}
+                        alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
+                        width={1200}
+                        height={1200}
+                        className="max-w-full max-h-full object-contain rounded-lg"
+                        onClick={(e) => e.stopPropagation()}
+                        loading="eager"
+                        priority
+                        unoptimized={true}
+                        onError={() => {
+                          console.error('❌ [Request Detail] Ошибка загрузки изображения в модальном окне')
+                          setShowPhotoModal(false)
+                        }}
+                      />
+                    )}
         </div>
       )}
 
