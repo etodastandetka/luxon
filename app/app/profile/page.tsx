@@ -127,11 +127,28 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="space-y-6">
+      <main style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <FixedHeaderControls />
-        <div className="card text-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <div className="text-white/70">Загрузка...</div>
+        <div style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: '12px',
+          padding: '32px',
+          textAlign: 'center',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
+          <div style={{
+            animation: 'spin 1s linear infinite',
+            borderRadius: '50%',
+            height: '48px',
+            width: '48px',
+            border: '2px solid #22c55e',
+            borderTopColor: 'transparent',
+            margin: '0 auto 16px'
+          }}></div>
+          <div style={{
+            color: 'rgba(255, 255, 255, 0.7)'
+          }}>Загрузка...</div>
         </div>
       </main>
     )

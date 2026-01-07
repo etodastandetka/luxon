@@ -410,9 +410,26 @@ export default function RatingPage() {
 
       {/* Рейтинг */}
       {loading ? (
-        <div className="card p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <div className="text-white/70">{t.loading}</div>
+        <div style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: '12px',
+          padding: '32px',
+          textAlign: 'center',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
+          <div style={{
+            animation: 'spin 1s linear infinite',
+            borderRadius: '50%',
+            height: '48px',
+            width: '48px',
+            border: '2px solid #22c55e',
+            borderTopColor: 'transparent',
+            margin: '0 auto 16px'
+          }}></div>
+          <div style={{
+            color: 'rgba(255, 255, 255, 0.7)'
+          }}>{t.loading}</div>
         </div>
       ) : (
         <div className="space-y-2">
