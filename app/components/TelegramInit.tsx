@@ -24,14 +24,14 @@ export default function TelegramInit() {
           
           // Расширяем WebApp на весь экран (только один раз)
           try {
-            tg.expand()
+          tg.expand()
           } catch (e) {
             // Игнорируем ошибки, если метод не поддерживается
           }
           
           // Отключаем подтверждение закрытия
           try {
-            tg.disableClosingConfirmation()
+          tg.disableClosingConfirmation()
           } catch (e) {
             // Игнорируем ошибки, если метод не поддерживается
           }
@@ -85,7 +85,7 @@ export default function TelegramInit() {
           
           // Готовим WebApp (только один раз)
           try {
-            tg.ready()
+          tg.ready()
           } catch (e) {
             // Игнорируем ошибки
           }
@@ -114,7 +114,7 @@ export default function TelegramInit() {
     if ((window as any).Telegram?.WebApp) {
       // Скрипт уже загружен, инициализируем
       if (!initializedRef.current) {
-        initializeTelegramWebApp()
+      initializeTelegramWebApp()
       }
       return
     }

@@ -97,18 +97,32 @@ const loadAllData = async (): Promise<HomePageData> => {
   loadingPromise = (async () => {
     try {
       // Загружаем все данные параллельно одним запросом
-      // Уменьшаем лимит транзакций для достижений - им не нужны все 1000
-      const [transactionsResponse, leaderboardResponse] = await Promise.all([
-        fetch(`${API_URLS.BASE}/api/transaction-history?user_id=${userId}&limit=200`),
-        fetch(`${API_URLS.LEADERBOARD}?type=deposits&limit=5`),
-      ])
+      // Загружаем все транзакции пачками, как в профиле, чтобы получить точную статистику
+      let allTransactions: any[] = []
+      let offset = 0
+      const limit = 1000
+      let hasMore = true
+      
+      // Загружаем все транзакции пачками (максимум 10000 для статистики)
+      while (hasMore && offset < 10000) {
+        const transactionsResponse = await fetch(
+          `${API_URLS.BASE}/api/transaction-history?user_id=${userId}&limit=${limit}&offset=${offset}`
+        )
+        const transactionsData = await transactionsResponse.json()
+        
+        const transactions = transactionsData.data?.transactions || transactionsData.transactions || []
+        allTransactions = allTransactions.concat(transactions)
+        
+        // Проверяем, есть ли еще транзакции
+        hasMore = transactionsData.data?.pagination?.hasMore || transactions.length === limit
+        offset += limit
+      }
+      
+      // Загружаем leaderboard параллельно
+      const leaderboardResponse = await fetch(`${API_URLS.LEADERBOARD}?type=deposits&limit=5`)
+      const leaderboardData = await leaderboardResponse.json()
 
-      const [transactionsData, leaderboardData] = await Promise.all([
-        transactionsResponse.json(),
-        leaderboardResponse.json(),
-      ])
-
-      const transactions = transactionsData.data?.transactions || transactionsData.transactions || []
+      const transactions = allTransactions
       const topPlayers = leaderboardData.success && leaderboardData.data?.leaderboard
         ? leaderboardData.data.leaderboard.slice(0, 5)
         : []
@@ -181,9 +195,23 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<HomePageData>(getInitialData)
   const mountedRef = useRef(true)
   const subscribedRef = useRef(false)
+  const userIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     mountedRef.current = true
+    const currentUserId = getTelegramUserId()
+    
+    // Если пользователь изменился, очищаем кеш и перезагружаем данные
+    if (userIdRef.current !== currentUserId) {
+      userIdRef.current = currentUserId
+      if (currentUserId) {
+        const cacheKey = `homepage_${currentUserId}`
+        dataCache.delete(cacheKey)
+        globalData = null
+        isLoading = false
+        loadingPromise = null
+      }
+    }
     
     // Если данные уже загружены из кеша, сразу показываем их и обновляем в фоне
     if (!data.loading) {
@@ -226,6 +254,26 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
       }
     }
   }, []) // Пустой массив - выполняется только один раз
+
+  // Отслеживаем изменение пользователя и перезагружаем данные
+  useEffect(() => {
+    const currentUserId = getTelegramUserId()
+    if (userIdRef.current !== currentUserId && currentUserId) {
+      userIdRef.current = currentUserId
+      // Перезагружаем данные для нового пользователя
+      const cacheKey = `homepage_${currentUserId}`
+      dataCache.delete(cacheKey)
+      globalData = null
+      isLoading = false
+      loadingPromise = null
+      setData({ transactions: [], topPlayers: [], loading: true })
+      loadAllData().then(result => {
+        if (mountedRef.current) {
+          setData(result)
+        }
+      })
+    }
+  })
 
   const refresh = () => {
     const userId = getTelegramUserId()

@@ -648,7 +648,7 @@ export default function HomePage() {
     return language === "en" ? "Good night" : "Доброй ночи"
   }, [language])
 
-  const { transactions } = useHomePageData()
+  const { transactions, loading: transactionsLoading } = useHomePageData()
 
   const computedStats = useMemo(() => {
     let deposits = 0
@@ -663,11 +663,20 @@ export default function HomePage() {
     return { deposits, withdraws }
   }, [transactions])
 
+  // Обновляем статистику при загрузке транзакций
   useEffect(() => {
-    if (userStats?.deposits !== computedStats.deposits || userStats?.withdraws !== computedStats.withdraws) {
+    // Если транзакции загружены (не loading), обновляем статистику
+    if (!transactionsLoading) {
       setUserStats(computedStats)
     }
-  }, [computedStats])
+  }, [computedStats, transactionsLoading])
+
+  // Принудительно обновляем статистику при изменении пользователя
+  useEffect(() => {
+    if (user && !transactionsLoading) {
+      setUserStats(computedStats)
+    }
+  }, [user?.id, transactionsLoading, computedStats])
 
   const translations = {
     ru: {

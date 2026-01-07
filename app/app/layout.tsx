@@ -314,11 +314,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <OldDeviceWarning />
             <TelegramInit />
             <LayoutUI>
-              <BlockedChecker>
-                <div className="container" style={{ paddingTop: '0', paddingBottom: '100px', minHeight: '100vh' }}>
-                  {children}
-                </div>
-              </BlockedChecker>
+            <BlockedChecker>
+              <div className="container" style={{ paddingTop: '0', paddingBottom: '100px', minHeight: '100vh' }}>
+                {children}
+              </div>
+            </BlockedChecker>
             </LayoutUI>
           </HomePageDataProvider>
         </LanguageProvider>

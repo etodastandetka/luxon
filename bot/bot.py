@@ -923,7 +923,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 
                 # Создаем заявку с фото чека
                 user = update.effective_user
-                bank = data.get('bank', 'demirbank')  # Используем выбранный банк или по умолчанию
+                # По умолчанию используем omoney (о деньги), но не сохраняем выбор банка для отслеживания
+                bank = 'omoney'  # Всегда используем omoney по умолчанию
                 
                 request_body = {
                     "type": "deposit",

@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
       amount,
       bookmaker,
       bank,
+      payment_method, // payment_method из клиентского сайта
       phone,
       account_id,
       telegram_username,
@@ -121,10 +122,39 @@ export async function POST(request: NextRequest) {
       transaction_id, // ID транзакции от Mostbet API (для withdraw)
     } = sanitizedBody
 
+    // Маппинг payment_method на bank (для клиентского сайта)
+    // Если bank не указан, но есть payment_method, используем его
+    let finalBank = bank || payment_method || null
+    
+    // Нормализация названий банков
+    if (finalBank) {
+      const bankMapping: Record<string, string> = {
+        'omoney': 'omoney',
+        'o!money': 'omoney',
+        'odengi': 'omoney',
+        'o! bank': 'omoney',
+        'obank': 'omoney',
+        'demirbank': 'demirbank',
+        'demir': 'demirbank',
+        'balance': 'balance',
+        'balance.kg': 'balance',
+        'bakai': 'bakai',
+        'megapay': 'megapay',
+        'mbank': 'mbank',
+        'optima': 'optima',
+        'компаньон': 'kompanion',
+        'kompanion': 'kompanion',
+        'companion': 'kompanion'
+      }
+      
+      const normalizedBank = finalBank.toLowerCase().trim()
+      finalBank = bankMapping[normalizedBank] || finalBank
+    }
+
     // 🛡️ Проверка на SQL инъекции и XSS в строковых полях
     const stringFields = [
       telegram_username, telegram_first_name, telegram_last_name,
-      bookmaker, bank, phone, account_id, site_code
+      bookmaker, finalBank, phone, account_id, site_code
     ].filter(Boolean)
     
     for (const field of stringFields) {
@@ -157,7 +187,7 @@ export async function POST(request: NextRequest) {
       type,
       amount,
       bookmaker,
-      bank
+      bank: finalBank
     })
 
     // 🛡️ КРИТИЧНАЯ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: проверяем ДО создания заявки
@@ -407,7 +437,7 @@ export async function POST(request: NextRequest) {
       type,
       amount: amount ? parseFloat(amount) : null,
       bookmaker,
-      bank
+      bank: finalBank
     })
 
     // Для error_log сохраняем информацию об ошибке в statusDetail
@@ -526,7 +556,7 @@ export async function POST(request: NextRequest) {
         accountId: finalAccountId?.toString(),
         amount: amount ? parseFloat(amount) : null, // В сомах (для пополнения в казино), null для error_log
         requestType: type,
-        bank,
+        bank: finalBank,
         phone,
         status: 'pending',
         statusDetail: statusDetail, // Для error_log содержит JSON с информацией об ошибке

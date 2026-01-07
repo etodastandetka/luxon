@@ -187,25 +187,25 @@ export default function HistoryPage() {
 
   const getBankImage = useCallback((bank: string | null) => {
     if (!bank) return null
-    const normalized = bank.toLowerCase()
+    const normalized = bank.toLowerCase().trim()
     
-    // Маппинг банков на изображения
-    if (normalized.includes('demirbank') || normalized.includes('demir')) {
+    // Маппинг банков на изображения (проверяем точные совпадения и варианты)
+    if (normalized === 'demirbank' || normalized === 'demir' || normalized.includes('demirbank') || normalized.includes('demir')) {
       return '/images/demirbank.jpg'
     }
-    if (normalized.includes('omoney') || normalized.includes('o!money')) {
+    if (normalized === 'omoney' || normalized === 'o!money' || normalized === 'odengi' || normalized === 'o! bank' || normalized === 'obank' || normalized.includes('omoney') || normalized.includes('odengi')) {
       return '/images/omoney.jpg'
     }
-    if (normalized.includes('balance')) {
+    if (normalized === 'balance' || normalized === 'balance.kg' || normalized.includes('balance')) {
       return '/images/balance.jpg'
     }
-    if (normalized.includes('bakai')) {
+    if (normalized === 'bakai' || normalized.includes('bakai')) {
       return '/images/bakai.jpg'
     }
-    if (normalized.includes('megapay')) {
+    if (normalized === 'megapay' || normalized.includes('megapay')) {
       return '/images/megapay.jpg'
     }
-    if (normalized.includes('mbank')) {
+    if (normalized === 'mbank' || normalized.includes('mbank')) {
       return '/images/mbank.png'
     }
     if (normalized.includes('optima')) {
