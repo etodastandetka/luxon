@@ -6,9 +6,11 @@ module.exports = {
       script: 'node_modules/.bin/next',
       args: 'start -p 3001',
       interpreter: 'none',
+      env_file: '/var/www/luxon/admin_nextjs/.env', // Загружаем переменные из .env файла
       env: {
         NODE_ENV: 'production',
         PORT: 3001
+        // DATABASE_URL и другие переменные будут загружены из .env файла через env_file
       },
       error_file: '/var/log/pm2/luxon-admin-error.log',
       out_file: '/var/log/pm2/luxon-admin-out.log',
