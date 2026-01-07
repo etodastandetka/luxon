@@ -167,6 +167,7 @@ function DepositStep3Content() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
+  const [receiptUploaded, setReceiptUploaded] = useState(false)
   const [requestId, setRequestId] = useState<number | null>(null)
   const bookmaker = searchParams.get('bookmaker') || (typeof window !== 'undefined' ? localStorage.getItem('deposit_bookmaker') : '') || ''
   const accountId = searchParams.get('accountId') || ''
