@@ -69,12 +69,17 @@ update_project() {
 }
 
 # Обновляем все проекты
+# ПРАВИЛЬНЫЕ ПУТИ согласно ecosystem.config.js:
+# - Админка: /var/www/luxon/admin_nextjs
+# - Мини-приложение: /var/www/luxon/app (НЕ app/app!)
+# - Бот: /var/www/luxon/bot
+
 echo "1️⃣  Обновление админки..."
-update_project "/var/www/ls/admin_nextjs" "Админка" || true
+update_project "/var/www/luxon/admin_nextjs" "Админка" || true
 
 echo ""
 echo "2️⃣  Обновление мини-приложения..."
-update_project "/var/www/luxon/app/app" "Мини-приложение" || true
+update_project "/var/www/luxon/app" "Мини-приложение" || true
 
 echo ""
 echo "3️⃣  Обновление корневого репозитория (если есть)..."
