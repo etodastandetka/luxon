@@ -825,7 +825,7 @@ function DepositStep3Content() {
           <div className="flex justify-between items-center">
             <span className="text-white/80">{t.amountToPay}</span>
             <span className="text-white font-semibold text-lg">
-              {parseFloat(amount).toLocaleString()} сом
+              {parseFloat(amount).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} сом
             </span>
           </div>
         )}
