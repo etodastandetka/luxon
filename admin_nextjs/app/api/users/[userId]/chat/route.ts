@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, createApiResponse } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
+import { DATABASE_CONFIG } from '@/config/app'
 
 // Получение истории чата с пользователем или сохраненного account_id
 export async function GET(
@@ -67,6 +68,7 @@ export async function GET(
           replyTo: {
             select: {
               id: true,
+              userId: true,
               messageText: true,
               messageType: true,
               mediaUrl: true,
@@ -100,10 +102,12 @@ export async function GET(
             replyTo: {
               select: {
                 id: true,
+                userId: true,
                 messageText: true,
                 messageType: true,
                 mediaUrl: true,
                 direction: true,
+                isDeleted: true,
               }
             }
           },
