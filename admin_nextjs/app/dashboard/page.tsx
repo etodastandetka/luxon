@@ -642,23 +642,69 @@ export default function DashboardPage() {
       {/* Контент заявок */}
       {loading || requests.length === 0 ? (
         loading ? (
-          // Скелетон для быстрой загрузки
-          <div className="space-y-3">
+          // Скелетон для быстрой загрузки с inline стилями для предотвращения FOUC
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 animate-pulse">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <div className="w-12 h-12 bg-gray-700 rounded-lg"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
-                      <div className="h-3 bg-gray-700 rounded w-24 mb-2"></div>
-                      <div className="h-5 bg-gray-700 rounded w-20"></div>
+              <div 
+                key={i} 
+                style={{
+                  backgroundColor: 'rgba(31, 41, 55, 0.5)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  border: '1px solid rgba(55, 65, 81, 1)',
+                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      backgroundColor: 'rgba(55, 65, 81, 1)',
+                      borderRadius: '8px'
+                    }}></div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        height: '16px',
+                        backgroundColor: 'rgba(55, 65, 81, 1)',
+                        borderRadius: '4px',
+                        width: '128px',
+                        marginBottom: '8px'
+                      }}></div>
+                      <div style={{
+                        height: '12px',
+                        backgroundColor: 'rgba(55, 65, 81, 1)',
+                        borderRadius: '4px',
+                        width: '96px',
+                        marginBottom: '8px'
+                      }}></div>
+                      <div style={{
+                        height: '20px',
+                        backgroundColor: 'rgba(55, 65, 81, 1)',
+                        borderRadius: '4px',
+                        width: '80px'
+                      }}></div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end space-y-2">
-                    <div className="h-3 bg-gray-700 rounded w-20"></div>
-                    <div className="h-5 bg-gray-700 rounded w-16"></div>
-                    <div className="h-5 bg-gray-700 rounded w-24"></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                    <div style={{
+                      height: '12px',
+                      backgroundColor: 'rgba(55, 65, 81, 1)',
+                      borderRadius: '4px',
+                      width: '80px'
+                    }}></div>
+                    <div style={{
+                      height: '20px',
+                      backgroundColor: 'rgba(55, 65, 81, 1)',
+                      borderRadius: '4px',
+                      width: '64px'
+                    }}></div>
+                    <div style={{
+                      height: '20px',
+                      backgroundColor: 'rgba(55, 65, 81, 1)',
+                      borderRadius: '4px',
+                      width: '96px'
+                    }}></div>
                   </div>
                 </div>
               </div>
