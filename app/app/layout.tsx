@@ -233,6 +233,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
         <meta name="app-version" content={process.env.NEXT_PUBLIC_APP_VERSION || Date.now().toString()} />
+        
+        {/* PWA мета-теги */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#07150d" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="LUX ON" />
+        
+        {/* Иконки для iOS */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="144x144" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="120x120" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="114x114" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="76x76" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="72x72" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="60x60" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="57x57" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        
+        {/* Иконки для Android */}
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+        
         {/* Полифиллы для старых браузеров - загружаем первыми */}
         <script
           dangerouslySetInnerHTML={{

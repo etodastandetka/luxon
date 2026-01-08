@@ -1,0 +1,44 @@
+{
+  "name": "LUX ON",
+  "short_name": "LUX ON",
+  "description": "LUX ON - удобное приложение для пополнения и вывода средств",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07150d",
+  "theme_color": "#07150d",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Пополнение",
+      "short_name": "Пополнить",
+      "description": "Пополнить баланс",
+      "url": "/deposit",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Вывод",
+      "short_name": "Вывести",
+      "description": "Вывести средства",
+      "url": "/withdraw",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
+
