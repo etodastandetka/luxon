@@ -7,6 +7,7 @@ import BankButtons from '../../../components/BankButtons'
 import { getApiBase, safeFetch } from '../../../utils/fetch'
 import { getTelegramUserId, getTelegramUser } from '../../../utils/telegram'
 import { DEPOSIT_CONFIG } from '../../../config/app'
+import { compressImage, fileToBase64 } from '../../../utils/imageCompression'
 
 declare global {
   interface Window {
@@ -410,36 +411,57 @@ function DepositStep3Content() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Проверка размера файла (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Размер файла не должен превышать 10MB')
-      return
-    }
-
     // Проверка типа файла
     if (!file.type.startsWith('image/')) {
       alert('Пожалуйста, выберите изображение (PNG, JPG)')
       return
     }
 
-    setReceiptFile(file)
-
-    // Создаем превью
-    if (typeof window !== 'undefined' && typeof (window as any).FileReader !== 'undefined') {
-      const reader = new (window as any).FileReader()
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const base64 = e.target?.result as string
-        setReceiptPreview(base64)
-      }
-      reader.onerror = () => {
-        alert('Ошибка при загрузке фото. Попробуйте еще раз.')
-      }
-      reader.readAsDataURL(file)
+    // Проверка размера файла (20MB - увеличили лимит, так как будем сжимать)
+    if (file.size > 20 * 1024 * 1024) {
+      alert('Размер файла не должен превышать 20MB')
+      return
     }
 
-    // Если есть requestId, сразу загружаем
-    if (requestId) {
-      await uploadReceipt(file)
+    try {
+      // Сжимаем изображение, если оно большое
+      let processedFile = file
+      if (file.size > 2 * 1024 * 1024) {
+        try {
+          processedFile = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1920,
+            quality: 0.85,
+            maxSizeMB: 5,
+          })
+        } catch (error) {
+          console.warn('Не удалось сжать изображение, используем оригинал:', error)
+          processedFile = file
+        }
+      }
+
+      setReceiptFile(processedFile)
+
+      // Создаем превью из сжатого файла
+      if (typeof window !== 'undefined' && typeof (window as any).FileReader !== 'undefined') {
+        const reader = new (window as any).FileReader()
+        reader.onload = (e: ProgressEvent<FileReader>) => {
+          const base64 = e.target?.result as string
+          setReceiptPreview(base64)
+        }
+        reader.onerror = () => {
+          alert('Ошибка при загрузке фото. Попробуйте еще раз.')
+        }
+        reader.readAsDataURL(processedFile)
+      }
+
+      // Если есть requestId, сразу загружаем
+      if (requestId) {
+        await uploadReceipt(processedFile)
+      }
+    } catch (error) {
+      console.error('Ошибка обработки изображения:', error)
+      alert('Ошибка при обработке фото. Попробуйте еще раз.')
     }
   }
 
@@ -657,7 +679,7 @@ function DepositStep3Content() {
       uploadReceipt: 'Загрузить чек об оплате',
       receiptUploaded: 'Чек загружен',
       uploadReceiptDesc: 'Загрузите скриншот или фото чека об оплате',
-      receiptFileTypes: 'PNG, JPG до 10MB',
+      receiptFileTypes: 'PNG, JPG до 20MB',
       uploading: 'Загрузка...',
       paidButton: 'Я оплатил',
       paymentConfirmed: 'Заявка отправлена в обработку',
@@ -680,7 +702,7 @@ function DepositStep3Content() {
       uploadReceipt: 'Upload payment receipt',
       receiptUploaded: 'Receipt uploaded',
       uploadReceiptDesc: 'Upload a screenshot or photo of the payment receipt',
-      receiptFileTypes: 'PNG, JPG up to 10MB',
+      receiptFileTypes: 'PNG, JPG up to 20MB',
       uploading: 'Uploading...',
       paidButton: 'I paid',
       paymentConfirmed: 'Request submitted for processing',
@@ -703,7 +725,7 @@ function DepositStep3Content() {
       uploadReceipt: 'Төлөм чегин жүктөө',
       receiptUploaded: 'Чек жүктөлдү',
       uploadReceiptDesc: 'Төлөм чегинин скриншотун же сүрөтүн жүктөңүз',
-      receiptFileTypes: 'PNG, JPG 10MB чейин',
+      receiptFileTypes: 'PNG, JPG 20MB чейин',
       uploading: 'Жүктөлүүдө...',
       paidButton: 'Мен төлөдүм',
       paymentConfirmed: 'Өтүнүч иштетүүгө жөнөтүлдү',
@@ -726,7 +748,7 @@ function DepositStep3Content() {
       uploadReceipt: 'To\'lov kvitansiyasini yuklash',
       receiptUploaded: 'Kvitansiya yuklandi',
       uploadReceiptDesc: 'To\'lov kvitansiyasining skrinshotini yoki rasmini yuklang',
-      receiptFileTypes: 'PNG, JPG 10MB gacha',
+      receiptFileTypes: 'PNG, JPG 20MB gacha',
       uploading: 'Yuklanmoqda...',
       paidButton: 'To\'lov qildim',
       paymentConfirmed: 'So\'rov qayta ishlash uchun yuborildi',

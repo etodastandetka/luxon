@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import BankButtons from '../../../components/BankButtons'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getApiBase } from '../../../utils/fetch'
+import { compressImage, fileToBase64 } from '../../../utils/imageCompression'
 
 
 declare global {
@@ -328,25 +329,58 @@ const router = useRouter()
     setPhone(value)
   }
 
-  const handleQrPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQrPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
-        alert('Ошибка: FileReader недоступен. Пожалуйста, используйте другой браузер.')
-        return
+    if (!file) return
+
+    if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
+      alert('Ошибка: FileReader недоступен. Пожалуйста, используйте другой браузер.')
+      return
+    }
+
+    // Проверка типа файла
+    if (!file.type.startsWith('image/')) {
+      alert('Пожалуйста, выберите изображение (PNG, JPG)')
+      return
+    }
+
+    // Проверка размера файла (20MB - увеличили лимит, так как будем сжимать)
+    if (file.size > 20 * 1024 * 1024) {
+      alert('Размер файла не должен превышать 20MB')
+      return
+    }
+
+    try {
+      // Сжимаем изображение, если оно большое
+      let processedFile = file
+      if (file.size > 2 * 1024 * 1024) {
+        try {
+          processedFile = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1920,
+            quality: 0.85,
+            maxSizeMB: 5,
+          })
+        } catch (error) {
+          console.warn('Не удалось сжать изображение, используем оригинал:', error)
+          processedFile = file
+        }
       }
-      
-      setQrPhoto(file)
-      const reader = new (window as any).FileReader()
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const base64 = e.target?.result as string
+
+      setQrPhoto(processedFile)
+
+      // Конвертируем в base64 с опциональным сжатием
+      try {
+        const base64 = await fileToBase64(processedFile, false) // Уже сжато выше
         setQrPhotoPreview(base64)
         localStorage.setItem('withdraw_qr_photo', base64)
-      }
-      reader.onerror = () => {
+      } catch (error) {
+        console.error('Ошибка конвертации в base64:', error)
         alert('Ошибка при загрузке фото. Попробуйте еще раз.')
       }
-      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('Ошибка обработки изображения:', error)
+      alert('Ошибка при обработке фото. Попробуйте еще раз.')
     }
   }
 
@@ -439,7 +473,7 @@ const router = useRouter()
                     {qrPhoto ? 'Файл выбран' : t.uploadQr}
                   </p>
                   <p className="text-xs text-white/60 mt-1">
-                    {qrPhoto ? qrPhoto.name : 'PNG, JPG до 10MB'}
+                    {qrPhoto ? qrPhoto.name : 'PNG, JPG до 20MB'}
                   </p>
                 </div>
               </div>

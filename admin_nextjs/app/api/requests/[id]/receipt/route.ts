@@ -54,10 +54,10 @@ export async function POST(
       )
     }
 
-    // Проверка размера файла (10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // Проверка размера файла (20MB - увеличили для поддержки больших фото с iPhone)
+    if (file.size > 20 * 1024 * 1024) {
       return NextResponse.json(
-        createApiResponse(null, 'File size must be less than 10MB'),
+        createApiResponse(null, 'File size must be less than 20MB'),
         { status: 400 }
       )
     }
