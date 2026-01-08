@@ -1394,8 +1394,9 @@ export default function RequestDetailPage() {
             }}
           >
             {isValidPhotoUrl(request.photoFileUrl) ? (
-              request.photoFileUrl.startsWith('data:') ? (
-                // Для base64 используем обычный img тег (Next.js Image не поддерживает data URLs корректно)
+              request.photoFileUrl.startsWith('data:') || request.photoFileUrl.startsWith('/api/') ? (
+                // Для base64 и относительных URL API используем обычный img тег
+                // (Next.js Image не поддерживает data URLs и может не работать с /api/ путями)
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={request.photoFileUrl}
@@ -1412,7 +1413,7 @@ export default function RequestDetailPage() {
                   }}
                 />
               ) : (
-                // Для относительных и абсолютных URL используем Next.js Image
+                // Для абсолютных URL (http/https) используем Next.js Image
                 <Image
                   src={request.photoFileUrl}
                   alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
@@ -1469,8 +1470,9 @@ export default function RequestDetailPage() {
               </svg>
             </button>
             
-                    {request.photoFileUrl.startsWith('data:') ? (
-                      // Для base64 используем обычный img тег (Next.js Image не поддерживает data URLs корректно)
+                    {request.photoFileUrl.startsWith('data:') || request.photoFileUrl.startsWith('/api/') ? (
+                      // Для base64 и относительных URL API используем обычный img тег
+                      // (Next.js Image не поддерживает data URLs и может не работать с /api/ путями)
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={request.photoFileUrl}
@@ -1483,7 +1485,7 @@ export default function RequestDetailPage() {
                         }}
                       />
                     ) : (
-                      // Для относительных и абсолютных URL используем Next.js Image
+                      // Для абсолютных URL (http/https) используем Next.js Image
                       <Image
                         src={request.photoFileUrl}
                         alt={request.requestType === 'withdraw' ? 'Фото QR-кода' : 'Фото чека'}
