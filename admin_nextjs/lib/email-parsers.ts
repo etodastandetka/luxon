@@ -79,9 +79,28 @@ const DATETIME_RE = /(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}:\d{2})/
  * Парсинг email от Demirbank
  * Поддерживает русский: "Вам поступил перевод с помощью QR-платежа на сумму 100.53 KGS от 22.09.2025 22:13:24."
  * Поддерживает кыргызский: "100.36 KGS суммасында которуу келип түштү. 07.12.2025 10:14:42"
+ * ВАЖНО: Обрабатывает только ВХОДЯЩИЕ переводы, пропускает исходящие
  */
 export function parseDemirbankEmail(text: string): ParsedEmail | null {
   if (!text) return null
+
+  // ВАЖНО: Проверяем, что это ВХОДЯЩИЙ перевод, а не исходящий
+  // Исходящие переводы содержат: "Вы осуществили перевод" или "осуществили перевод"
+  // Входящие переводы содержат: "Вам поступил перевод" или "поступил перевод"
+  const isOutgoing = /(?:Вы\s+)?осуществили\s+перевод|осуществили\s+перевод/i.test(text)
+  const isIncoming = /(?:Вам\s+)?поступил\s+перевод|поступил\s+перевод|которуу\s+келип\s+түштү/i.test(text)
+  
+  // Если это исходящий перевод - пропускаем
+  if (isOutgoing && !isIncoming) {
+    console.log('⏭️ Skipping outgoing transfer email (not processing)')
+    return null
+  }
+  
+  // Если не можем определить тип - пропускаем для безопасности
+  if (!isIncoming && !isOutgoing) {
+    console.log('⚠️ Cannot determine transfer direction, skipping for safety')
+    return null
+  }
 
   // Пробуем сначала русский вариант, потом кыргызский
   let amountMatch = text.match(AMOUNT_RE_RU)
