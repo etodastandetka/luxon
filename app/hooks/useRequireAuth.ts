@@ -11,9 +11,10 @@ export function useRequireAuth() {
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null) // null = проверка, true = авторизован, false = не авторизован
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
-    let mounted = true
+    mountedRef.current = true
     
     // Проверяем авторизацию
     const checkAuth = (): boolean => {
@@ -23,7 +24,7 @@ export function useRequireAuth() {
         if (tg) {
           // Если это Mini App - разрешаем доступ (даже если данные еще не загружены)
           // Telegram Mini App всегда предоставляет данные пользователя
-          if (mounted) {
+          if (mountedRef.current) {
             setIsAuthorized(true)
           }
           return true
@@ -36,14 +37,14 @@ export function useRequireAuth() {
       
       // Если есть пользователь или ID - авторизован
       if (user || userId) {
-        if (mounted) {
+        if (mountedRef.current) {
           setIsAuthorized(true)
         }
         return true
       }
       
       // Если нет - не авторизован
-      if (mounted) {
+      if (mountedRef.current) {
         setIsAuthorized(false)
       }
       return false
@@ -55,20 +56,25 @@ export function useRequireAuth() {
     if (!isAuth) {
       // Даем небольшую задержку для загрузки данных в Mini App
       timeoutRef.current = setTimeout(() => {
-        if (!mounted) return
+        if (!mountedRef.current) return
         
         // Повторная проверка после задержки
         const isAuthRetry = checkAuth()
-        if (!isAuthRetry && mounted) {
+        if (!isAuthRetry && mountedRef.current) {
           // Редиректим на главную страницу только если точно не авторизован
-          router.replace('/')
+          try {
+            router.replace('/')
+          } catch (error) {
+            // Игнорируем ошибки роутера
+            console.error('Router error:', error)
+          }
         }
       }, 100)
     }
     
     // Всегда возвращаем функцию очистки
     return () => {
-      mounted = false
+      mountedRef.current = false
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null
