@@ -243,20 +243,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="LUX ON" />
         
         {/* Иконки для iOS */}
-        <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="144x144" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="120x120" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="114x114" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="76x76" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="72x72" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="60x60" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="57x57" href="/icon-192.png" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" sizes="144x144" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" sizes="120x120" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" sizes="114x114" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" sizes="76x76" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" sizes="72x72" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" sizes="60x60" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" sizes="57x57" href="/luxon.jpg" />
+        <link rel="apple-touch-icon" href="/luxon.jpg" />
         
         {/* Иконки для Android */}
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+        <link rel="icon" type="image/jpeg" sizes="192x192" href="/luxon.jpg" />
+        <link rel="icon" type="image/jpeg" sizes="512x512" href="/luxon.jpg" />
         
         {/* Полифиллы для старых браузеров - загружаем первыми */}
         <script
