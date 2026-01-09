@@ -663,37 +663,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 # Загружаем настройки если они устарели
                 if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
                     await load_settings()
-            
-            # Формируем список банков через инлайн кнопки
-            enabled_banks = settings_cache.get('withdrawal_banks', [])
-            all_banks = [
-                ('kompanion', 'Компаньон'),
-                ('demirbank', 'DemirBank'),
-                ('omoney', 'O!Money'),
-                ('balance', 'Balance.kg'),
-                ('bakai', 'Bakai'),
-                ('megapay', 'MegaPay'),
-                ('mbank', 'MBank')
-            ]
-            
-            # Формируем инлайн кнопки
-            keyboard = []
-            all_banks_list = []
-            for bank_key, bank_name in all_banks:
-                is_enabled = bank_key in enabled_banks or bank_key == 'kompanion'
-                if is_enabled:
-                    all_banks_list.append(InlineKeyboardButton(f"🏦 {bank_name}", callback_data=f"withdraw_bank_{bank_key}"))
-            
-            # Разделяем на пары (по 2 в ряд)
-            for i in range(0, len(all_banks_list), 2):
-                if i + 1 < len(all_banks_list):
-                    keyboard.append([all_banks_list[i], all_banks_list[i + 1]])
-                else:
-                    keyboard.append([all_banks_list[i]])
-            
-            keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
+                
+                # Формируем список банков через инлайн кнопки
+                enabled_banks = settings_cache.get('withdrawal_banks', [])
+                all_banks = [
+                    ('kompanion', 'Компаньон'),
+                    ('demirbank', 'DemirBank'),
+                    ('omoney', 'O!Money'),
+                    ('balance', 'Balance.kg'),
+                    ('bakai', 'Bakai'),
+                    ('megapay', 'MegaPay'),
+                    ('mbank', 'MBank')
+                ]
+                
+                # Формируем инлайн кнопки
+                keyboard = []
+                all_banks_list = []
+                for bank_key, bank_name in all_banks:
+                    is_enabled = bank_key in enabled_banks or bank_key == 'kompanion'
+                    if is_enabled:
+                        all_banks_list.append(InlineKeyboardButton(f"🏦 {bank_name}", callback_data=f"withdraw_bank_{bank_key}"))
+                
+                # Разделяем на пары (по 2 в ряд)
+                for i in range(0, len(all_banks_list), 2):
+                    if i + 1 < len(all_banks_list):
+                        keyboard.append([all_banks_list[i], all_banks_list[i + 1]])
+                    else:
+                        keyboard.append([all_banks_list[i]])
+                
+                keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
                 await update.message.reply_text(
                     f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker.upper()}\n\nВыберите банк для получения средств:",
                     parse_mode='HTML',
