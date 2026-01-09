@@ -13,7 +13,7 @@ interface LeaderboardUser {
 
 export default function RatingBlock() {
   const router = useRouter()
-  const { topPlayers, loading } = useHomePageData()
+  const { topPlayers } = useHomePageData()
 
   const getRankIcon = (rankType: string) => {
     switch (rankType) {
@@ -60,11 +60,7 @@ export default function RatingBlock() {
         </button>
       </div>
       <div className="space-y-2">
-        {loading ? (
-          <div className="text-sm text-white/50 text-center py-2">
-            Рейтинг загружается...
-          </div>
-        ) : topPlayers.length > 0 ? (
+        {topPlayers.length > 0 ? (
           topPlayers.map((player, index) => (
             <div
               key={player.userId}

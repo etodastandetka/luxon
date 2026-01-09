@@ -242,10 +242,12 @@ const getInitialData = (): HomePageData => {
     }
   }
   
+  // Возвращаем пустые данные без флага загрузки, чтобы контент показывался сразу
+  // Данные загрузятся в фоне через useEffect
   return {
     transactions: [],
     topPlayers: [],
-    loading: true,
+    loading: false,
   }
 }
 

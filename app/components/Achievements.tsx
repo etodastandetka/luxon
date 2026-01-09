@@ -17,7 +17,7 @@ interface Achievement {
 
 export default function Achievements() {
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null)
-  const { transactions, loading } = useHomePageData()
+  const { transactions } = useHomePageData()
 
   // Вычисляем достижения на основе загруженных транзакций
   // Показываем достижения всегда, даже если транзакций нет (будут все не разблокированы)
@@ -152,11 +152,7 @@ export default function Achievements() {
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {loading && !transactions.length ? (
-          <div className="col-span-2 text-sm text-white/50 text-center py-2">
-            Достижения загружаются...
-          </div>
-        ) : achievements.length > 0 ? (
+        {achievements.length > 0 ? (
           achievements.map((achievement) => (
             <div
               key={achievement.id}
