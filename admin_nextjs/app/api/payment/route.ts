@@ -758,6 +758,11 @@ export async function POST(request: NextRequest) {
         console.error('Failed to send withdrawal notification to group:', err)
       })
       
+      // Отправляем в дополнительную группу для выводов
+      sendTelegramGroupMessage(groupMessage, '-1003654117842').catch(err => {
+        console.error('Failed to send withdrawal notification to withdrawals group:', err)
+      })
+      
       // Отправляем browser notification через Service Worker
       // Это будет обработано когда dashboard откроется и обнаружит новую заявку
     }
