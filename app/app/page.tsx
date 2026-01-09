@@ -163,18 +163,35 @@ export default function HomePage() {
     return { isTelegramWebApp: false, user: null }
   })()
   
-  const [isTelegramWebApp] = useState(initialState.isTelegramWebApp)
+  const [isTelegramWebApp, setIsTelegramWebApp] = useState(initialState.isTelegramWebApp)
   const [user, setUser] = useState<TelegramUser | null>(initialState.user)
   const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
   
   const userInitialized = useRef(false)
   
+  // Обновляем isTelegramWebApp при монтировании (на случай редиректа)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const tg = (window as any).Telegram?.WebApp
+    const isWebApp = !!tg && !!tg.initDataUnsafe?.user // Проверяем не только наличие объекта, но и реальные данные пользователя
+    
+    setIsTelegramWebApp(isWebApp)
+  }, [])
+  
   // Функция для обновления пользователя (для синхронизации с другими вкладками и периодических проверок)
   const updateUser = useCallback(() => {
     if (typeof window === 'undefined') return
     
+    // Проверяем, действительно ли это Telegram WebApp (не только наличие объекта, но и реальные данные пользователя)
+    const tg = (window as any).Telegram?.WebApp
+    const isWebApp = !!tg && !!tg.initDataUnsafe?.user
+    
+    // Обновляем состояние isTelegramWebApp
+    setIsTelegramWebApp(isWebApp)
+    
     // Если это Telegram WebApp - получаем пользователя из WebApp
-    if (isTelegramWebApp) {
+    if (isWebApp) {
       const telegramUser = initTelegramWebApp()
       if (telegramUser) {
         setUser((currentUser) => {
@@ -190,6 +207,9 @@ export default function HomePage() {
           }
           return currentUser
         })
+      } else {
+        // Если WebApp есть, но пользователя нет - сбрасываем
+        setUser(null)
       }
     } else {
       // Если это обычный сайт - проверяем localStorage
@@ -209,9 +229,10 @@ export default function HomePage() {
         }
       } catch (e) {
         // Игнорируем ошибки парсинга
+        setUser(null)
       }
     }
-  }, [isTelegramWebApp, language])
+  }, [language])
   
   // Периодическая проверка пользователя (для синхронизации с другими вкладками)
   useEffect(() => {
