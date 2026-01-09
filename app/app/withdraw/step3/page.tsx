@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
@@ -172,6 +172,159 @@ export default function WithdrawStep3() {
   const idSectionRef = useRef<HTMLDivElement>(null)
   const codeSectionRef = useRef<HTMLDivElement>(null)
 
+  // Проверка кода (без автоматической отправки)
+  const handleCheckCode = useCallback(async () => {
+    if (!userId.trim() || !siteCode.trim()) {
+      return
+    }
+
+    if (isCheckingCode || isSubmitting) {
+      return
+    }
+
+    setIsCheckingCode(true)
+    setError(null)
+    setWithdrawAmount(null)
+    
+    try {
+      const base = getApiBase()
+      
+      const response = await safeFetch(`${base}/api/withdraw-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookmaker: bookmaker,
+          playerId: userId,
+          code: siteCode.trim(),
+        }),
+        timeout: 30000,
+        retries: 2,
+        retryDelay: 1000
+      })
+
+      if (!response.ok) {
+        let errorText = ''
+        let errorData: any = null
+        try {
+          errorText = await response.text()
+          try {
+            errorData = JSON.parse(errorText)
+          } catch (e) {}
+        } catch (e) {}
+        
+        let errorMessage = `Ошибка сервера: ${response.status}`
+        if (errorData?.error) {
+          errorMessage = errorData.error
+        } else if (errorData?.message) {
+          errorMessage = errorData.message
+        } else if (errorText && errorText.length < 200) {
+          errorMessage = errorText
+        }
+        
+        setError(errorMessage)
+        setIsCheckingCode(false)
+        return
+      }
+
+      const data = await response.json()
+      
+      if (data.success) {
+        let amount: number | null = null
+        
+        if (data.data && data.data.amount !== undefined && data.data.amount !== null) {
+          amount = parseFloat(String(data.data.amount))
+        } else if (data.amount !== undefined && data.amount !== null) {
+          amount = parseFloat(String(data.amount))
+        }
+        
+        if (amount !== null && !isNaN(amount) && amount > 0) {
+          setWithdrawAmount(amount)
+          setIsCheckingCode(false)
+          // НЕ отправляем автоматически - ждем нажатия кнопки
+        } else {
+          setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
+          setIsCheckingCode(false)
+        }
+      } else {
+        let errorMessage = data.error || data.message || 'Код неверный или вывод не найден'
+        setError(errorMessage)
+        setIsCheckingCode(false)
+      }
+    } catch (error: any) {
+      console.error('Ошибка проверки кода:', error)
+      setError('Ошибка проверки кода. Попробуйте еще раз.')
+      setIsCheckingCode(false)
+    }
+  }, [userId, siteCode, bookmaker, isCheckingCode, isSubmitting])
+
+  useEffect(() => {
+    
+    const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
+    const savedBank = localStorage.getItem('withdraw_bank')
+    const savedQrPhoto = localStorage.getItem('withdraw_qr_photo')
+    const savedPhone = localStorage.getItem('withdraw_phone')
+    
+    if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone) {
+      router.push('/withdraw/step1')
+      return
+    }
+
+    setBookmaker(savedBookmaker)
+    setBank(savedBank)
+    setQrPhoto(savedQrPhoto)
+    setPhone(savedPhone)
+
+    
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop()?.split(';').shift()
+      return null
+    }
+    
+    const cookieName = `user_id_${savedBookmaker}`
+    const savedUserId = getCookie(cookieName)
+    
+    if (savedUserId) {
+      setUserId(savedUserId)
+      
+      // Проверяем, не был ли уже отправлен этот вывод
+      const telegramUserId = getTelegramUserId()
+      if (telegramUserId) {
+        const withdrawKey = `withdraw_${savedBookmaker}_${savedUserId}`
+        const wasSubmitted = localStorage.getItem(withdrawKey)
+        if (wasSubmitted) {
+          setIsAlreadySubmitted(true)
+        }
+      }
+    }
+  }, [router])
+
+  
+  useEffect(() => {
+    // Проверяем, не был ли уже отправлен этот вывод при изменении userId или siteCode
+    if (bookmaker && userId.trim()) {
+      const withdrawKey = `withdraw_${bookmaker}_${userId}`
+      const wasSubmitted = localStorage.getItem(withdrawKey)
+      if (wasSubmitted) {
+        setIsAlreadySubmitted(true)
+      } else {
+        setIsAlreadySubmitted(false)
+      }
+    }
+    
+    // Автоматически проверяем код (но НЕ отправляем заявку)
+    if (userId.trim() && siteCode.trim() && !isCheckingCode && !isSubmitting && !withdrawAmount && !error && !isAlreadySubmitted) {
+      const timer = setTimeout(() => {
+        handleCheckCode()
+      }, 500)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [userId, siteCode, bookmaker, isAlreadySubmitted, isCheckingCode, isSubmitting, withdrawAmount, error])
+
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
     return null
@@ -286,94 +439,8 @@ export default function WithdrawStep3() {
       
       return () => clearTimeout(timer)
     }
-  }, [userId, siteCode, bookmaker, isAlreadySubmitted])
-
-  // Проверка кода (без автоматической отправки)
-  const handleCheckCode = async () => {
-    if (!userId.trim() || !siteCode.trim()) {
-      return
-    }
-
-    if (isCheckingCode || isSubmitting) {
-      return
-    }
-
-    setIsCheckingCode(true)
-    setError(null)
-    setWithdrawAmount(null)
-    
-    try {
-      const base = getApiBase()
-      
-      const response = await safeFetch(`${base}/api/withdraw-check`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bookmaker: bookmaker,
-          playerId: userId,
-          code: siteCode.trim(),
-        }),
-        timeout: 30000,
-        retries: 2,
-        retryDelay: 1000
-      })
-
-      if (!response.ok) {
-        let errorText = ''
-        let errorData: any = null
-        try {
-          errorText = await response.text()
-          try {
-            errorData = JSON.parse(errorText)
-          } catch (e) {}
-        } catch (e) {}
-        
-        let errorMessage = `Ошибка сервера: ${response.status}`
-        if (errorData?.error) {
-          errorMessage = errorData.error
-        } else if (errorData?.message) {
-          errorMessage = errorData.message
-        } else if (errorText && errorText.length < 200) {
-          errorMessage = errorText
-        }
-        
-        setError(errorMessage)
-        setIsCheckingCode(false)
-        return
-      }
-
-      const data = await response.json()
-      
-      if (data.success) {
-        let amount: number | null = null
-        
-        if (data.data && data.data.amount !== undefined && data.data.amount !== null) {
-          amount = parseFloat(String(data.data.amount))
-        } else if (data.amount !== undefined && data.amount !== null) {
-          amount = parseFloat(String(data.amount))
-        }
-        
-        if (amount !== null && !isNaN(amount) && amount > 0) {
-          setWithdrawAmount(amount)
-          setIsCheckingCode(false)
-          // НЕ отправляем автоматически - ждем нажатия кнопки
-        } else {
-          setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
-          setIsCheckingCode(false)
-        }
-      } else {
-        let errorMessage = data.error || data.message || 'Код неверный или вывод не найден'
-        setError(errorMessage)
-        setIsCheckingCode(false)
-      }
-    } catch (error: any) {
-      console.error('Ошибка проверки кода:', error)
-      setError('Ошибка проверки кода. Попробуйте еще раз.')
-      setIsCheckingCode(false)
-    }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, siteCode, bookmaker, isAlreadySubmitted, isCheckingCode, isSubmitting, withdrawAmount, error])
   
   // Обработчик нажатия кнопки "Отправить"
   const handleSubmit = async () => {

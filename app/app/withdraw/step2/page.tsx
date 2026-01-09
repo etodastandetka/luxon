@@ -168,6 +168,104 @@ export default function WithdrawStep2() {
   const phoneSectionRef = useRef<HTMLDivElement>(null)
   const qrSectionRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    
+    const bookmaker = localStorage.getItem('withdraw_bookmaker')
+    if (!bookmaker) {
+      router.push('/withdraw/step1')
+    }
+  }, [router])
+
+  
+  useEffect(() => {
+    async function loadBankSettings() {
+      try {
+        const base = getApiBase()
+        const { getTelegramUserId } = await import('../../../utils/telegram')
+        const telegramUserId = getTelegramUserId()
+        const url = telegramUserId 
+          ? `${base}/api/public/payment-settings?user_id=${telegramUserId}`
+          : `${base}/api/public/payment-settings`
+        const res = await fetch(url, { cache: 'no-store' })
+        const data = await res.json()
+        
+        if (data && data.withdrawals && data.withdrawals.banks && Array.isArray(data.withdrawals.banks)) {
+          const bankCodeMapping: Record<string, string> = {
+            'kompanion': 'kompanion',
+            'odengi': 'omoney',
+            'bakai': 'bakai',
+            'balance': 'balance',
+            'megapay': 'megapay',
+            'mbank': 'mbank',
+            'demir': 'demirbank',
+            'demirbank': 'demirbank'
+          }
+          const mappedBanks: string[] = []
+          for (const b of data.withdrawals.banks) {
+            const code = b.code || b
+            const mapped = bankCodeMapping[code] || code
+            if (mapped) mappedBanks.push(mapped)
+          }
+          setEnabledBanks(mappedBanks)
+        }
+      } catch (error) {
+        console.error('Error loading bank settings:', error)
+      }
+    }
+    loadBankSettings()
+  }, [])
+
+  
+  useEffect(() => {
+    const savedBank = localStorage.getItem('withdraw_bank')
+    const savedPhone = localStorage.getItem('withdraw_phone')
+    const savedQrPhoto = localStorage.getItem('withdraw_qr_photo')
+    
+    if (savedBank) {
+      setBank(savedBank)
+    }
+    
+    if (savedPhone) {
+      setPhone(savedPhone.startsWith('+') ? savedPhone : `+${savedPhone}`)
+    }
+    
+    if (savedQrPhoto) {
+      setQrPhotoPreview(savedQrPhoto)
+    }
+  }, [])
+
+  
+  useEffect(() => {
+    if (bank) {
+      setTimeout(() => {
+        if (phoneSectionRef.current) {
+          const elementPosition = phoneSectionRef.current.getBoundingClientRect().top
+          const offsetPosition = elementPosition + window.pageYOffset - 20
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          })
+        }
+      }, 200)
+    }
+  }, [bank])
+
+  
+  useEffect(() => {
+    if (qrPhotoPreview) {
+      setTimeout(() => {
+        if (qrSectionRef.current) {
+          const elementPosition = qrSectionRef.current.getBoundingClientRect().top
+          const offsetPosition = elementPosition + window.pageYOffset - 20
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          })
+        }
+      }, 200)
+    }
+  }, [qrPhotoPreview])
+
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
     return null

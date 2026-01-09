@@ -166,11 +166,6 @@ function DepositStep2Content() {
   const [idValid, setIdValid] = useState<boolean | null>(null)
   const [bookmaker, setBookmaker] = useState('')
 
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
-
   // Инициализируем bookmaker из searchParams или localStorage
   useEffect(() => {
     const bookmakerFromParams = searchParams.get('bookmaker')
@@ -314,7 +309,7 @@ function DepositStep2Content() {
       }
     }
     loadDepositSettings()
-  }, [bookmaker, router, checkPlayerId])
+  }, [bookmaker, router, checkPlayerId, searchParams])
 
   // Проверяем ID при изменении (с задержкой)
   useEffect(() => {
@@ -329,6 +324,11 @@ function DepositStep2Content() {
 
     return () => clearTimeout(timer)
   }, [accountId, needsIdCheck, checkPlayerId])
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   const handleContinue = async () => {
     if (!accountId.trim()) {
