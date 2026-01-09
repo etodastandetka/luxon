@@ -338,7 +338,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Отправляем текст с Reply клавиатурой
     try:
         await update.message.reply_text(
-            welcome_text,
+            f"{welcome_text}\n\nВыберите действие:",
             reply_markup=reply_markup
         )
         logger.info(f"✅ Ответ отправлен пользователю {user_id}")
@@ -411,7 +411,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 🔒 Финансовый контроль обеспечен личным отделом безопасности"""
         
         await update.message.reply_text(
-            welcome_text,
+            f"{welcome_text}\n\nВыберите действие:",
             reply_markup=reply_markup
         )
         return
@@ -1577,7 +1577,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         # Отправляем приветственное сообщение
         try:
             await query.message.reply_text(
-                welcome_text,
+                f"{welcome_text}\n\nВыберите действие:",
                 reply_markup=reply_markup
             )
         except Exception as e:
@@ -1616,17 +1616,17 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         try:
             await query.edit_message_text(
-                welcome_text,
+                f"{welcome_text}\n\nВыберите действие:",
                 parse_mode='HTML'
             )
             await query.message.reply_text(
-                "Выберите действие:",
+                " ",
                 reply_markup=reply_markup
             )
         except:
             # Если не удалось отредактировать сообщение, отправляем новое
             await query.message.reply_text(
-                welcome_text,
+                f"{welcome_text}\n\nВыберите действие:",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
@@ -1677,11 +1677,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 🔒 Финансовый контроль обеспечен личным отделом безопасности"""
                 
                 await query.edit_message_text(
-                    welcome_text,
+                    f"{welcome_text}\n\nВыберите действие:",
                     parse_mode='HTML'
                 )
                 await query.message.reply_text(
-                    "Выберите действие:",
+                    " ",
                     reply_markup=reply_markup
                 )
                 logger.info(f"✅ Основное меню отправлено пользователю {user_id} после проверки подписки")
@@ -1811,13 +1811,6 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
             
             # Отправляем сообщение об отмене
             try:
-                await bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    text="⏰ <b>Пополнение отменено, время оплаты прошло</b>",
-                    parse_mode='HTML'
-                )
-                
                 # Создаем Reply клавиатуру с кнопками
                 reply_keyboard = [
                     [
@@ -1827,11 +1820,17 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 ]
                 reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
                 
+                await bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text="⏰ <b>Пополнение отменено, время оплаты прошло</b>\n\n❌ <b>Не переводите по старым реквизитам</b>\n\nНачните заново, нажав на <b>Пополнить</b>",
+                    parse_mode='HTML'
+                )
+                
                 await bot.send_message(
                     chat_id=chat_id,
-                    text="❌ <b>Не переводите по старым реквизитам</b>\n\nНачните заново, нажав на <b>Пополнить</b>",
-                    reply_markup=reply_markup,
-                    parse_mode='HTML'
+                    text="Выберите действие:",
+                    reply_markup=reply_markup
                 )
             except Exception as e:
                 logger.error(f"❌ Ошибка при отправке сообщения об отмене для пользователя {user_id}: {e}")
