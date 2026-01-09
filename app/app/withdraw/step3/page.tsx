@@ -250,18 +250,18 @@ const router = useRouter()
 
   
   useEffect(() => {
-    
+    // Автоматически проверяем код (но НЕ отправляем заявку)
     if (userId.trim() && siteCode.trim() && !isCheckingCode && !isSubmitting && !withdrawAmount && !error) {
-      
       const timer = setTimeout(() => {
-        handleCheckAndSubmit()
+        handleCheckCode()
       }, 500)
       
       return () => clearTimeout(timer)
     }
   }, [userId, siteCode])
 
-  const handleCheckAndSubmit = async () => {
+  // Проверка кода (без автоматической отправки)
+  const handleCheckCode = async () => {
     if (!userId.trim() || !siteCode.trim()) {
       return
     }
@@ -276,7 +276,6 @@ const router = useRouter()
     
     try {
       const base = getApiBase()
-      
       
       const response = await safeFetch(`${base}/api/withdraw-check`, {
         method: 'POST',
@@ -331,9 +330,7 @@ const router = useRouter()
         if (amount !== null && !isNaN(amount) && amount > 0) {
           setWithdrawAmount(amount)
           setIsCheckingCode(false)
-          
-          
-          await submitRequest(amount)
+          // НЕ отправляем автоматически - ждем нажатия кнопки
         } else {
           setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
           setIsCheckingCode(false)
@@ -348,6 +345,21 @@ const router = useRouter()
       setError('Ошибка проверки кода. Попробуйте еще раз.')
       setIsCheckingCode(false)
     }
+  }
+  
+  // Обработчик нажатия кнопки "Отправить"
+  const handleSubmit = async () => {
+    if (!withdrawAmount || withdrawAmount <= 0) {
+      setError('Сначала проверьте код подтверждения')
+      return
+    }
+    
+    if (!userId.trim() || !siteCode.trim()) {
+      setError('Заполните все поля')
+      return
+    }
+    
+    await submitRequest(withdrawAmount)
   }
 
   const submitRequest = async (amount: number) => {
@@ -598,12 +610,19 @@ const router = useRouter()
         
         {withdrawAmount !== null && withdrawAmount > 0 && (
           <div className="p-4 bg-green-900/30 border border-green-500 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl">✅</span>
               <p className="text-sm text-green-300 font-semibold">
                 Код проверен! Сумма: {withdrawAmount.toLocaleString()} сом
               </p>
             </div>
+            <button 
+              className="btn btn-primary w-full"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? t.submitting : (language === 'en' ? 'Submit' : 'Отправить')}
+            </button>
           </div>
         )}
         
