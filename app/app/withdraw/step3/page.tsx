@@ -344,7 +344,9 @@ export default function WithdrawStep3() {
       siteCodePlaceholder: 'Введите код',
       checking: 'Проверка кода...',
       submitting: 'Отправка заявки...',
-      back: 'Назад'
+      back: 'Назад',
+      checkCode: 'Проверить код',
+      submit: 'Отправить'
     },
     en: {
       title: 'Withdraw',
@@ -354,7 +356,9 @@ export default function WithdrawStep3() {
       siteCodePlaceholder: 'Enter code',
       checking: 'Checking code...',
       submitting: 'Submitting request...',
-      back: 'Back'
+      back: 'Back',
+      checkCode: 'Check Code',
+      submit: 'Submit'
     },
     ky: {
       title: 'Акчаны чыгаруу',
@@ -364,7 +368,9 @@ export default function WithdrawStep3() {
       siteCodePlaceholder: 'Код киргизиңиз',
       checking: 'Код текшерилуүдө...',
       submitting: 'Өтүнүч жөнөтүлүүдө...',
-      back: 'Артка'
+      back: 'Артка',
+      checkCode: 'Код текшерүү',
+      submit: 'Жөнөтүү'
     },
     uz: {
       title: 'Pulni yechib olish',
@@ -374,7 +380,9 @@ export default function WithdrawStep3() {
       siteCodePlaceholder: 'Kod kiriting',
       checking: 'Kod tekshirilmoqda...',
       submitting: 'So\'rov yuborilmoqda...',
-      back: 'Orqaga'
+      back: 'Orqaga',
+      checkCode: 'Kodni tekshirish',
+      submit: 'Yuborish'
     }
   }
 
@@ -666,6 +674,18 @@ export default function WithdrawStep3() {
           </div>
         )}
         
+        {/* Кнопка проверки кода, если код еще не проверен */}
+        {!withdrawAmount && !isCheckingCode && !error && userId.trim() && siteCode.trim() && (
+          <button 
+            className="btn btn-primary w-full"
+            onClick={handleCheckCode}
+            disabled={isSubmitting || isAlreadySubmitted}
+          >
+            {t.checkCode}
+          </button>
+        )}
+        
+        {/* Блок с результатом проверки и кнопкой отправки */}
         {withdrawAmount !== null && withdrawAmount > 0 && (
           <div className="p-4 bg-green-900/30 border border-green-500 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
@@ -686,7 +706,7 @@ export default function WithdrawStep3() {
                 onClick={handleSubmit}
                 disabled={isSubmitting || isAlreadySubmitted}
               >
-                {isSubmitting ? t.submitting : (language === 'en' ? 'Submit' : 'Отправить')}
+                {isSubmitting ? t.submitting : t.submit}
               </button>
             )}
           </div>
