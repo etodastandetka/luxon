@@ -93,7 +93,8 @@ export function parseDemirbankEmail(text: string): ParsedEmail | null {
   // Если это исходящий перевод - пропускаем
   if (isOutgoing && !isIncoming) {
     console.log('⏭️ Skipping outgoing transfer email (not processing)')
-    return null
+    // Возвращаем специальный объект, чтобы watcher знал, что нужно пометить как прочитанное
+    return { amount: 0, isoDatetime: null, bank: 'demirbank', _skip: true } as any
   }
   
   // Если не можем определить тип - пропускаем для безопасности

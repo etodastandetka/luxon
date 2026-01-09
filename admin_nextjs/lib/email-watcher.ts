@@ -143,6 +143,21 @@ async function processEmail(
             return
           }
 
+          // Проверяем, не является ли это исходящим переводом (который нужно пропустить)
+          if ((paymentData as any)._skip) {
+            console.log(`⏭️ Skipping outgoing transfer email (UID: ${uid}), marking as read`)
+            // Помечаем как прочитанное
+            imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
+              if (err) {
+                console.error(`❌ Error marking outgoing transfer email as seen:`, err)
+              } else {
+                console.log(`✅ Outgoing transfer email UID ${uid} marked as read`)
+              }
+              resolve()
+            })
+            return
+          }
+
           const { amount, isoDatetime, bank } = paymentData
 
             console.log(
