@@ -1242,8 +1242,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
+            # Определяем адрес в зависимости от казино
+            bookmaker_lower = data['bookmaker'].lower()
+            if '1xbet' in bookmaker_lower or '1x' in bookmaker_lower:
+                address_text = "tsum lux"
+            else:
+                address_text = "Lux on 24/7"
+            
+            instruction_text = f"""💸 <b>Вывод средств</b>
+
+Казино: {data['bookmaker'].upper()}
+Банк: {data['bank']}
+Телефон: {data['phone']}
+ID игрока: {data['player_id']}
+
+📍 Заходим👇🏻
+📍1. Настройки!
+📍2. Вывести со счета!
+📍3. Касса
+📍4. Сумму для Вывода!
+📍(Город Бишкек, улица тут в улице пишешь типа {address_text})
+📍5. Подтвердить
+📍6. Получить Код!
+📍7. Отправить его нам"""
+            
             await update.message.reply_text(
-                f"💸 <b>Вывод средств</b>\n\nКазино: {data['bookmaker'].upper()}\nБанк: {data['bank']}\nТелефон: {data['phone']}\nID игрока: {data['player_id']}\n\nВведите код подтверждения с сайта казино:",
+                instruction_text,
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
