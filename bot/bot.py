@@ -151,7 +151,9 @@ TRANSLATIONS = {
         'request_id_label': "🆔 <b>ID заявки:</b> #{request_id}",
         'waiting_processing': "Ожидайте обработки заявки администратором.",
         'waiting_money': "Ожидайте поступление денег. Ваша заявка будет обработана в ближайшее время.",
-        'deposit_amount_prompt': "Введите сумму пополнения (от 35 до 100,000 сом) или выберите из кнопок:",
+        'deposit_amount_prompt': "Введите сумму пополнения или выберите из кнопок:",
+        'min_amount_deposit': "Минимум: 35 сом",
+        'max_amount_deposit': "Максимум: 100,000 сом",
         'invalid_amount_format': "❌ Введите корректную сумму (число) или выберите из кнопок",
         'amount_range_error': "❌ Сумма должна быть от 35 до 100,000 сом",
         'invalid_player_id_format': "❌ Введите корректный ID игрока (только цифры)",
@@ -965,8 +967,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             casino_name = get_casino_name(data.get('bookmaker', ''))
             deposit_title = get_text('deposit_title')
             casino_label = get_text('casino_label', casino_name=casino_name)
+            deposit_amount_prompt = get_text('deposit_amount_prompt')
+            min_amount = get_text('min_amount_deposit')
+            max_amount = get_text('max_amount_deposit')
             await update.message.reply_text(
-                f"{deposit_title}\n\n{casino_label}\n🆔 ID игрока: {data['player_id']}\n\nВведите сумму пополнения (от 35 до 100,000 сом) или выберите из кнопок:",
+                f"{deposit_title}\n\n{casino_label}\n🆔 ID игрока: {data['player_id']}\n\n{deposit_amount_prompt}\n{min_amount}\n{max_amount}",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
