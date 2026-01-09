@@ -74,6 +74,131 @@ CASINO_NAMES = {
     '888starz': '888STARZ'
 }
 
+# Функция для получения названия казино
+def get_casino_name(bookmaker: str) -> str:
+    """Получает отформатированное название казино"""
+    if not bookmaker:
+        return ''
+    bookmaker_lower = bookmaker.lower()
+    return CASINO_NAMES.get(bookmaker_lower, bookmaker.upper())
+
+# Словарь переводов
+TRANSLATIONS = {
+    'ru': {
+        'welcome': "Привет, {user_name}!\n\nПополнение | Вывод\nиз букмекерских контор!\n\n📥 Пополнение — 0%\n📤 Вывод — 0%\n🕒 Работаем 24/7\n\n👨‍💻 Поддержка: @operator_luxon_bot\n💬 Чат для всех: @luxon_chat\n\n🔒 Финансовый контроль обеспечен личным отделом безопасности",
+        'select_action': "Выберите действие:",
+        'deposit': "💰 Пополнить",
+        'withdraw': "💸 Вывести",
+        'support': "👨‍💻 Тех поддержка",
+        'transactions': "📊 Мои транзакции",
+        'info': "ℹ️ Информация",
+        'faq': "📖 Инструкция",
+        'deposit_title': "💰 <b>Пополнение счета</b>",
+        'withdraw_title': "💸 <b>Вывод средств</b>",
+        'select_casino': "Выберите казино:",
+        'casino_label': "Казино: {casino_name}",
+        'bank_label': "Банк: {bank_name}",
+        'phone_label': "Телефон: {phone}",
+        'enter_player_id': "Введите ваш ID игрока в казино:",
+        'select_bank': "Выберите банк для получения средств:",
+        'enter_phone': "Введите номер телефона (начинается с +996):",
+        'enter_phone_format': "Введите номер телефона в формате +996XXXXXXXXX:",
+        'phone_saved_button': "📱 {phone}",
+        'cancel_request': "❌ Отменить заявку",
+        'send_qr_code': "Отправьте фото QR-кода кошелька:",
+        'qr_received': "QR-код: ✅ Загружен",
+        'enter_account_id': "Введите ваш ID игрока в казино:",
+        'enter_withdraw_code': "Введите код для вывода:",
+        'enter_withdraw_amount': "Введите сумму для вывода:",
+        'min_amount': "Минимум: {min} KGS",
+        'max_amount': "Максимум: {max} KGS",
+        'invalid_phone': "❌ Номер телефона должен начинаться с +996",
+        'invalid_phone_length': "❌ Неверный формат номера телефона",
+        'invalid_code': "❌ Пожалуйста, введите корректный код.",
+        'invalid_id': "❌ Пожалуйста, введите корректный ID.",
+        'invalid_amount': "❌ Пожалуйста, введите корректную сумму.",
+        'amount_too_small': "❌ Минимальная сумма: {min} KGS",
+        'amount_too_large': "❌ Максимальная сумма: {max} KGS",
+        'withdrawal_request_sent': "✅ <b>Заявка на вывод создана!</b>\n\n📋 <b>Детали заявки:</b>\n🆔 <b>ID:</b> {account_id}\n📱 <b>Телефон:</b> {phone}\n🏦 <b>Банк:</b> {bank}\n💸 <b>Казино:</b> {casino_name}\n\n⏳ <b>Время обработки:</b> до 30 минут\n\n📝 <b>Важно:</b> Просто ожидайте ответа от бота. Если вы напишете оператору, это не ускорит процесс. Спасибо за понимание!",
+        'deposit_request_sent': "✅ <b>Заявка отправлена!</b>\n\n🆔 <b>ID заявки:</b> {request_id}\n💰 <b>Сумма:</b> {amount:.2f} KGS\n🆔 <b>ID {casino_name}:</b> {account_id}\n\n⏳ Ожидайте подтверждения от оператора.\n📞 Время обработки: до 30 минут",
+        'processing_time': "⏳ Время обработки: до 30 минут",
+        'wait_for_bot_response': "📨 Просто ожидайте ответа от бота, никуда писать не нужно.",
+        'operator_will_check': "👨‍💼 Оператор проверит вашу заявку как можно скорее.",
+        'dont_write_operator': "⚠️ Если вы напишете оператору, это не ускорит процесс. Спасибо за понимание!",
+        'saved_phone_label': "📱 Сохраненный номер:",
+        'saved_id_label': "💾 Сохраненный ID:",
+        'error_occurred': "❌ Произошла ошибка при обработке. Попробуйте еще раз или введите /start",
+        'please_select_from_buttons': "❌ Пожалуйста, выберите из предложенных кнопок",
+        'deposit_disabled': "❌ Пополнение временно отключено. Попробуйте позже.",
+        'withdraw_disabled': "❌ Вывод временно отключен. Попробуйте позже.",
+        'error_processing': "❌ Произошла ошибка при обработке выбора. Попробуйте еще раз или введите /start",
+        'how_to_get_code': "Как получить код:",
+        'code_instructions': "1. Заходим на сайт букмекера\n2. Вывести со счета\n3. Выбираем наличные\n4. Пишем сумму\n5. Город: Бишкек\n6. Улица: Lux Kassa\n\nДальше делаем все по инструкции после получения кода введите его здесь",
+        'enter_confirmation_code': "Введите код подтверждения:",
+        'checking_code': "🔍 Проверяю код вывода...",
+        'code_checked_success': "✅ Код проверен! Сумма: {amount} сом",
+        'code_invalid': "❌ Код неверный или вывод не найден",
+        'withdraw_instruction_title': "📍 Заходим👇🏻",
+        'withdraw_instruction_steps': "📍1. Настройки!\n📍2. Вывести со счета!\n📍3. Касса\n📍4. Сумму для Вывода!\n📍(Город Бишкек, улица: {address})\n📍5. Подтвердить\n📍6. Получить Код!\n📍7. Отправить его нам",
+        'timer_expired': "⏰ <b>Пополнение отменено, время оплаты прошло</b>\n\n❌ <b>Не переводите по старым реквизитам</b>\n\nНачните заново, нажав на <b>Пополнить</b>",
+        'timer_label': "⏰ <b>Таймер: {timer_text}</b>",
+        'send_receipt_photo': "После оплаты отправьте фото чека:",
+        'please_send_qr': "❌ Пожалуйста, отправьте фото QR-кода",
+        'please_send_receipt': "❌ Пожалуйста, отправьте фото чека.",
+        'amount_not_found': "⚠️ Сумма вывода не найдена. Проверьте код и попробуйте ещё раз.",
+        'amount_parse_error': "⚠️ Ошибка при обработке суммы вывода. Попробуйте ещё раз.",
+        'withdraw_check_error': "⚠️ Не удалось проверить сумму вывода. Попробуйте еще раз.",
+        'request_id_label': "🆔 <b>ID заявки:</b> #{request_id}",
+        'waiting_processing': "Ожидайте обработки заявки администратором.",
+        'waiting_money': "Ожидайте поступление денег. Ваша заявка будет обработана в ближайшее время.",
+        'deposit_amount_prompt': "Введите сумму пополнения (от 35 до 100,000 сом) или выберите из кнопок:",
+        'invalid_amount_format': "❌ Введите корректную сумму (число) или выберите из кнопок",
+        'amount_range_error': "❌ Сумма должна быть от 35 до 100,000 сом",
+        'invalid_player_id_format': "❌ Введите корректный ID игрока (только цифры)",
+        'invalid_code_empty': "❌ Введите код подтверждения",
+        'select_bank_for_payment': "Выберите способ оплаты:",
+        'payment_instruction_qr': "ℹ️ Оплатите и отправьте скриншот чека в течении 5 минут, чек должен быть в формате картинки 📎",
+        'no_payment_methods': "❌ Нет доступных способов оплаты. Обратитесь к администратору.",
+        'qr_generating': "Генерирую QR code...",
+        'no_qr_data': "❌ Ошибка при получении ссылок на оплату. Попробуйте еще раз.",
+        'press_button_to_pay': "Нажмите кнопку ниже для оплаты:",
+        'enter_correct_code': "❌ Введите код подтверждения",
+        'no_photo_required': "❌ Сейчас не требуется отправка фото. Следуйте инструкциям выше.",
+        'error_processing_casino': "❌ Произошла ошибка при обработке выбора казино. Попробуйте еще раз или введите /start",
+        'error_processing_bank': "❌ Произошла ошибка при обработке выбора банка. Попробуйте еще раз или введите /start",
+        'please_send_receipt_after_payment': "❌ Пожалуйста, отправьте фото чека после оплаты",
+        'error_creating_request': "❌ Ошибка создания заявки: {error}",
+        'error_processing_photo': "❌ Ошибка при обработке фото: {error}",
+        'error_creating_withdraw': "❌ Ошибка создания заявки на вывод",
+        'request_not_created': "❌ Заявка не создана: {error}",
+        'invalid_amount_check': "⚠️ Сумма вывода не найдена. Проверьте код и попробуйте ещё раз.",
+        'withdraw_check_failed': "⚠️ Не удалось проверить сумму вывода. Попробуйте еще раз.",
+        'withdraw_execute_failed': "❌ Ошибка выполнения вывода. Попробуйте еще раз.",
+        'withdraw_check_timeout': "⚠️ Не удалось проверить сумму вывода. Попробуйте еще раз.",
+        'server_unavailable': "❌ Сервер недоступен. Пожалуйста, убедитесь, что админ-панель запущена.",
+        'request_creation_error': "❌ Ошибка создания заявки. Попробуйте еще раз.",
+        'amount_range_error_deposit': "❌ Сумма должна быть от 35 до 100,000 сом",
+        'invalid_amount_format_deposit': "❌ Введите корректную сумму (число) или выберите из кнопок",
+    }
+}
+
+def get_text(key: str, lang: str = 'ru', **kwargs) -> str:
+    """Получает переведенный текст с подстановкой переменных"""
+    translations = TRANSLATIONS.get(lang, TRANSLATIONS['ru'])
+    text = translations.get(key, key)
+    
+    # Если есть {casino_name} в тексте, но не передано, пытаемся получить из kwargs или использовать значение по умолчанию
+    if '{casino_name}' in text and 'casino_name' not in kwargs:
+        casino_key = kwargs.get('bookmaker') or kwargs.get('casino') or ''
+        kwargs['casino_name'] = get_casino_name(casino_key)
+    
+    # Подставляем переменные
+    try:
+        return text.format(**kwargs)
+    except KeyError as e:
+        logger.warning(f"⚠️ Отсутствует переменная {e} в тексте '{key}'")
+        return text
+
 async def load_settings():
     """Загружает настройки из API"""
     try:
@@ -320,25 +445,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ]
     reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
     
-    # Текст приветствия
-    welcome_text = f"""Привет, {user.first_name}!
-
-Пополнение | Вывод
-из букмекерских контор!
-
-📥 Пополнение — 0%
-📤 Вывод — 0%
-🕒 Работаем 24/7
-
-👨‍💻 Поддержка: @operator_luxon_bot
-💬 Чат для всех: @luxon_chat
-
-🔒 Финансовый контроль обеспечен личным отделом безопасности"""
+    # Текст приветствия (используем переводы)
+    welcome_text = get_text('welcome', user_name=user.first_name)
+    select_action = get_text('select_action')
     
     # Отправляем текст с Reply клавиатурой
     try:
         await update.message.reply_text(
-            f"{welcome_text}\n\nВыберите действие:",
+            f"{welcome_text}\n\n{select_action}",
             reply_markup=reply_markup
         )
         logger.info(f"✅ Ответ отправлен пользователю {user_id}")
@@ -396,22 +510,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
         
         # Отправляем приветственное сообщение (как в /start)
-        welcome_text = f"""Привет, {user.first_name}!
-
-Пополнение | Вывод
-из букмекерских контор!
-
-📥 Пополнение — 0%
-📤 Вывод — 0%
-🕒 Работаем 24/7
-
-👨‍💻 Поддержка: @operator_luxon_bot
-💬 Чат для всех: @luxon_chat
-
-🔒 Финансовый контроль обеспечен личным отделом безопасности"""
+        welcome_text = get_text('welcome', user_name=user.first_name)
+        select_action = get_text('select_action')
         
         await update.message.reply_text(
-            f"{welcome_text}\n\nВыберите действие:",
+            f"{welcome_text}\n\n{select_action}",
             reply_markup=reply_markup
         )
         return
@@ -479,8 +582,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
+            deposit_title = get_text('deposit_title')
+            select_casino = get_text('select_casino')
             await update.message.reply_text(
-                "💰 <b>Пополнение счета</b>\n\nВыберите казино:",
+                f"{deposit_title}\n\n{select_casino}",
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
@@ -488,7 +593,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             # Проверяем, включены ли выводы
             if not settings_cache.get('withdrawals_enabled', True):
                 await update.message.reply_text(
-                    "❌ Вывод временно отключен. Попробуйте позже.",
+                    get_text('withdraw_disabled'),
                     parse_mode='HTML'
                 )
                 logger.info(f"❌ Выводы отключены, пользователь {user_id} попытался вывести")
@@ -569,7 +674,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 
                 bookmaker = bookmaker_map.get(message_text)
                 if not bookmaker:
-                    await update.message.reply_text("❌ Пожалуйста, выберите казино из предложенных кнопок")
+                    await update.message.reply_text(get_text('please_select_from_buttons'))
                     return
                 
                 data['bookmaker'] = bookmaker
@@ -602,15 +707,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
                 reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
                 
+                casino_name = get_casino_name(bookmaker)
+                deposit_title = get_text('deposit_title')
+                casino_label = get_text('casino_label', casino_name=casino_name)
+                enter_player_id = get_text('enter_player_id')
                 await update.message.reply_text(
-                    f"💰 <b>Пополнение счета</b>\n\nКазино: {bookmaker.upper()}\n\nВведите ваш ID игрока в казино:",
+                    f"{deposit_title}\n\n{casino_label}\n\n{enter_player_id}",
                     parse_mode='HTML',
                     reply_markup=reply_markup
                 )
                 return
             except Exception as e:
                 logger.error(f"❌ Ошибка при обработке выбора казино для пополнения: {e}", exc_info=True)
-                await update.message.reply_text("❌ Произошла ошибка при обработке выбора казино. Попробуйте еще раз или введите /start")
+                await update.message.reply_text(get_text('error_processing_casino'))
                 return
         
         # Обработка выбора казино для вывода
@@ -634,7 +743,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 
                 bookmaker = bookmaker_map.get(message_text)
                 if not bookmaker:
-                    await update.message.reply_text("❌ Пожалуйста, выберите казино из предложенных кнопок")
+                    await update.message.reply_text(get_text('please_select_from_buttons'))
                     return
                 
                 data['bookmaker'] = bookmaker
@@ -694,15 +803,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
                 reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
                 
+                casino_name = get_casino_name(bookmaker)
+                withdraw_title = get_text('withdraw_title')
+                casino_label = get_text('casino_label', casino_name=casino_name)
+                select_bank = get_text('select_bank')
                 await update.message.reply_text(
-                    f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker.upper()}\n\nВыберите банк для получения средств:",
+                    f"{withdraw_title}\n\n{casino_label}\n\n{select_bank}",
                     parse_mode='HTML',
                     reply_markup=reply_markup
                 )
                 return
             except Exception as e:
                 logger.error(f"❌ Ошибка при обработке выбора казино для вывода: {e}", exc_info=True)
-                await update.message.reply_text("❌ Произошла ошибка при обработке выбора казино. Попробуйте еще раз или введите /start")
+                await update.message.reply_text(get_text('error_processing_casino'))
                 return
         
         # Обработка выбора банка для вывода
@@ -727,7 +840,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             bank = bank_map.get(message_text)
             if not bank:
-                await update.message.reply_text("❌ Пожалуйста, выберите банк из предложенных кнопок")
+                await update.message.reply_text(get_text('please_select_from_buttons'))
                 return
             
             data['bank'] = bank
@@ -745,35 +858,61 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             f"{API_URL}/api/public/casino-account",
                             params={"user_id": str(user_id), "casino_id": "phone"}
                         )
+                        logger.info(f"🔍 Запрос сохраненного телефона: статус {response.status_code} для пользователя {user_id}")
                         if response.status_code == 200:
                             result = response.json()
-                            if result.get('success') and result.get('data', {}).get('phone'):
-                                saved_phone = result.get('data', {}).get('phone')
-                                # Сохраняем в локальное состояние для быстрого доступа
-                                if 'saved_phones' not in data:
-                                    data['saved_phones'] = {}
-                                data['saved_phones']['phone'] = saved_phone
-                                user_states[user_id]['data'] = data
-                                logger.info(f"✅ Получен сохраненный телефон из API для пользователя {user_id}: {saved_phone}")
+                            logger.info(f"📋 Ответ API для телефона: {result}")
+                            
+                            # Проверяем успешность и наличие телефона (может быть строкой или None)
+                            phone_value = None
+                            if result.get('success'):
+                                phone_value = result.get('data', {}).get('phone')
+                            
+                            # Проверяем что телефон есть и не пустой
+                            if phone_value is not None and phone_value != 'null' and phone_value != '':
+                                phone_str = str(phone_value).strip()
+                                if phone_str:
+                                    saved_phone = phone_str
+                                    # Сохраняем в локальное состояние для быстрого доступа
+                                    if 'saved_phones' not in data:
+                                        data['saved_phones'] = {}
+                                    data['saved_phones']['phone'] = saved_phone
+                                    user_states[user_id]['data'] = data
+                                    logger.info(f"✅ Получен сохраненный телефон из API для пользователя {user_id}: {saved_phone}")
+                                else:
+                                    logger.info(f"ℹ️ Сохраненный телефон пустой для пользователя {user_id}")
                             else:
-                                logger.info(f"ℹ️ Сохраненный телефон не найден в API для пользователя {user_id}")
+                                logger.info(f"ℹ️ Сохраненный телефон не найден в API для пользователя {user_id} (phone_value: {phone_value}, type: {type(phone_value)})")
                         else:
-                            logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона")
+                            try:
+                                error_text = response.text[:200]
+                                logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона: {error_text}")
+                            except:
+                                logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона")
                 except Exception as e:
-                    logger.warning(f"❌ Не удалось получить сохраненный телефон из API: {e}")
+                    logger.warning(f"❌ Не удалось получить сохраненный телефон из API: {e}", exc_info=True)
             
             # Создаем Reply клавиатуру с сохраненным номером и кнопкой отмены
             keyboard_buttons = []
-            if saved_phone:
+            logger.info(f"🔍 Проверка сохраненного телефона для пользователя {user_id}: saved_phone = {saved_phone} (type: {type(saved_phone)})")
+            if saved_phone and saved_phone != 'None' and saved_phone != 'null' and str(saved_phone).strip():
                 # Всегда показываем сохраненный номер как кнопку для быстрой отправки
-                keyboard_buttons.append([KeyboardButton(f"📱 {saved_phone}")])
-                logger.info(f"📱 Добавлена кнопка с сохраненным телефоном: {saved_phone}")
+                phone_str = str(saved_phone).strip()
+                keyboard_buttons.append([KeyboardButton(f"📱 {phone_str}")])
+                logger.info(f"📱 ✅ Добавлена кнопка с сохраненным телефоном: {phone_str}")
+            else:
+                logger.info(f"📱 ❌ Сохраненный телефон не найден или пустой: {saved_phone}")
             keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
-            bookmaker_name = data.get('bookmaker', '').upper()
+            bookmaker_name = get_casino_name(data.get('bookmaker', ''))
+            bank_name = BANK_NAMES.get(bank.lower(), bank)
+            withdraw_title = get_text('withdraw_title')
+            casino_label = get_text('casino_label', casino_name=bookmaker_name)
+            bank_label = get_text('bank_label', bank_name=bank_name)
+            enter_phone = get_text('enter_phone')
             await update.message.reply_text(
-                f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker_name}\nБанк: {bank}\n\nВведите номер телефона (начинается с +996):",
+                f"{withdraw_title}\n\n{casino_label}\n{bank_label}\n\n{enter_phone}",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
@@ -823,8 +962,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
+            casino_name = get_casino_name(data.get('bookmaker', ''))
+            deposit_title = get_text('deposit_title')
+            casino_label = get_text('casino_label', casino_name=casino_name)
             await update.message.reply_text(
-                f"💰 <b>Пополнение счета</b>\n\nКазино: {data['bookmaker'].upper()}\nID игрока: {data['player_id']}\n\nВведите сумму пополнения (от 35 до 100,000 сом) или выберите из кнопок:",
+                f"{deposit_title}\n\n{casino_label}\n🆔 ID игрока: {data['player_id']}\n\nВведите сумму пополнения (от 35 до 100,000 сом) или выберите из кнопок:",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
@@ -841,13 +983,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     amount = float(message_text.replace(',', '.').strip())
                 except ValueError as e:
                     logger.error(f"❌ Ошибка парсинга суммы: {e}, message_text='{message_text}'")
-                    await update.message.reply_text("❌ Введите корректную сумму (число) или выберите из кнопок")
+                    await update.message.reply_text(get_text('invalid_amount_format_deposit'))
                     return
             
             logger.info(f"💰 Сумма распознана: {amount}")
             if amount < 35 or amount > 100000:
                 logger.warning(f"⚠️ Сумма вне диапазона: {amount}")
-                await update.message.reply_text("❌ Сумма должна быть от 35 до 100,000 сом")
+                await update.message.reply_text(get_text('amount_range_error_deposit'))
                 return
             
             # Добавляем случайные копейки к сумме (1-99 копеек), если сумма целая
@@ -862,7 +1004,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             # Отправляем сообщение о генерации QR и очищаем клавиатуру
             generating_message = await update.message.reply_text(
-                "⏳ Генерирую QR code...",
+                f"⏳ {get_text('qr_generating')}",
                 reply_markup=ReplyKeyboardRemove()
             )
             
@@ -961,10 +1103,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             logger.info(f"📤 Отправляю сообщение с кнопками банков для пользователя {user_id}")
                             
                             # Отправляем сообщение с кнопками банков (заявка будет создана после отправки фото)
+                            casino_name = get_casino_name(data.get('bookmaker', ''))
+                            deposit_title = get_text('deposit_title')
+                            casino_label = get_text('casino_label', casino_name=casino_name)
                             timer_message = await update.message.reply_text(
-                                f"💰 <b>Пополнение счета</b>\n\n"
+                                f"{deposit_title}\n\n"
                                 f"💰 <b>Сумма:</b> {amount} сом\n"
-                                f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
+                                f"{casino_label}\n"
                                 f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
                                 f"⏰ <b>Таймер: {timer_text}</b>\n\n"
                                 f"После оплаты отправьте фото чека:",
@@ -1044,9 +1189,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 # Если нет фото, но есть текст - возможно пользователь выбрал банк через callback
                 # Или просто ждем фото
                 if step == 'deposit_bank':
-                    await update.message.reply_text("❌ Пожалуйста, отправьте фото чека после оплаты")
+                    await update.message.reply_text(get_text('please_send_receipt_after_payment'))
                 else:
-                    await update.message.reply_text("❌ Пожалуйста, отправьте фото чека")
+                    await update.message.reply_text(get_text('please_send_receipt'))
                 return
             
             # Получаем фото в base64 и создаем заявку
@@ -1092,30 +1237,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         if result.get('success') != False:
                             request_id = result.get('id') or result.get('data', {}).get('id') or 'N/A'
                             
+                            # Используем переводы с динамическим названием казино
+                            casino_name = get_casino_name(data.get('bookmaker', ''))
+                            success_message = get_text(
+                                'deposit_request_sent',
+                                request_id=request_id,
+                                amount=float(data.get('amount', 0)),
+                                account_id=data.get('player_id', ''),
+                                casino_name=casino_name
+                            )
                             await update.message.reply_text(
-                                f"✅ <b>Ваша заявка отправлена!</b>\n\n"
-                                f"💰 <b>Сумма:</b> {data['amount']} сом\n"
-                                f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
-                                f"🆔 <b>ID игрока:</b> {data['player_id']}\n"
-                                f"🆔 <b>ID заявки:</b> #{request_id}\n\n"
-                                f"Ожидайте обработки заявки администратором.",
+                                success_message,
                                 parse_mode='HTML',
                                 reply_markup=ReplyKeyboardRemove()
                             )
                         else:
                             error_msg = result.get('error') or 'Неизвестная ошибка'
                             logger.error(f"❌ Заявка не создана: {error_msg}")
-                            await update.message.reply_text(f"❌ Ошибка создания заявки: {error_msg}")
+                            await update.message.reply_text(get_text('error_creating_request', error=error_msg))
                     else:
                         error_text = payment_response.text
                         logger.error(f"❌ Ошибка создания заявки: {error_text}")
-                        await update.message.reply_text(f"❌ Ошибка создания заявки: {error_text[:200]}")
+                        await update.message.reply_text(get_text('error_creating_request', error=error_text[:200]))
                 
                 # Очищаем состояние
                 del user_states[user_id]
             except Exception as e:
                 logger.error(f"❌ Ошибка при обработке фото чека: {e}", exc_info=True)
-                await update.message.reply_text(f"❌ Ошибка при обработке фото: {str(e)[:200]}")
+                await update.message.reply_text(get_text('error_processing_photo', error=str(e)[:200]))
             return
         
         # Обработка вывода
@@ -1128,11 +1277,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             # Проверка формата телефона
             if not phone.startswith('+996'):
-                await update.message.reply_text('❌ Номер телефона должен начинаться с +996')
+                error_msg = get_text('invalid_phone')
+                await update.message.reply_text(error_msg)
                 return
             
             if len(phone) < 13 or len(phone) > 16:
-                await update.message.reply_text('❌ Неверный формат номера телефона')
+                error_msg = get_text('invalid_phone_length')
+                await update.message.reply_text(error_msg)
                 return
             
             # Сохраняем номер телефона через API (всегда, даже если была ошибка)
@@ -1175,8 +1326,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
+            casino_name = get_casino_name(data.get('bookmaker', ''))
+            bank_name = BANK_NAMES.get(data.get('bank', '').lower(), data.get('bank', ''))
+            withdraw_title = get_text('withdraw_title')
+            casino_label = get_text('casino_label', casino_name=casino_name)
+            bank_label = get_text('bank_label', bank_name=bank_name)
+            phone_label = get_text('phone_label', phone=phone)
+            send_qr = get_text('send_qr_code')
             await update.message.reply_text(
-                f"💸 <b>Вывод средств</b>\n\nКазино: {data['bookmaker'].upper()}\nБанк: {data['bank']}\nТелефон: {phone}\n\nОтправьте фото QR-кода кошелька:",
+                f"{withdraw_title}\n\n{casino_label}\n{bank_label}\n{phone_label}\n\n{send_qr}",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
@@ -1191,7 +1349,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 photo_file_id = update.message.document.file_id
             
             if not photo_file_id:
-                await update.message.reply_text("❌ Пожалуйста, отправьте фото QR-кода")
+                await update.message.reply_text(get_text('please_send_qr'))
                 return
             
             # Сохраняем file_id фото
@@ -1229,8 +1387,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
+            casino_name = get_casino_name(data.get('bookmaker', ''))
+            bank_name = BANK_NAMES.get(data.get('bank', '').lower(), data.get('bank', ''))
+            withdraw_title = get_text('withdraw_title')
+            casino_label = get_text('casino_label', casino_name=casino_name)
+            bank_label = get_text('bank_label', bank_name=bank_name)
+            phone_label = get_text('phone_label', phone=data.get('phone', ''))
+            qr_received = get_text('qr_received')
+            enter_account_id = get_text('enter_account_id')
             await update.message.reply_text(
-                f"💸 <b>Вывод средств</b>\n\nКазино: {data['bookmaker'].upper()}\nБанк: {data['bank']}\nТелефон: {data['phone']}\nQR-код: ✅ Загружен\n\nВведите ваш ID игрока в казино:",
+                f"{withdraw_title}\n\n{casino_label}\n{bank_label}\n{phone_label}\n{qr_received}\n\n{enter_account_id}",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
@@ -1281,12 +1447,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             else:
                 address_text = "Lux on 24/7"
             
-            instruction_text = f"""💸 <b>Вывод средств</b>
+            # Используем переводы с динамическим названием казино
+            casino_name = get_casino_name(data.get('bookmaker', ''))
+            bank_name = BANK_NAMES.get(data.get('bank', '').lower(), data.get('bank', ''))
+            withdraw_title = get_text('withdraw_title')
+            casino_label = get_text('casino_label', casino_name=casino_name)
+            bank_label = get_text('bank_label', bank_name=bank_name)
+            phone_label = get_text('phone_label', phone=data.get('phone', ''))
+            account_id_label = f"🆔 ID игрока: {data.get('player_id', '')}"
+            
+            instruction_text = f"""{withdraw_title}
 
-Казино: {data['bookmaker'].upper()}
-Банк: {data['bank']}
-Телефон: {data['phone']}
-ID игрока: {data['player_id']}
+{casino_label}
+{bank_label}
+{phone_label}
+{account_id_label}
 
 📍 Заходим👇🏻
 📍1. Настройки!
@@ -1307,7 +1482,7 @@ ID игрока: {data['player_id']}
         
         elif step == 'withdraw_code':
             if not message_text or not message_text.strip():
-                await update.message.reply_text("❌ Введите код подтверждения")
+                await update.message.reply_text(get_text('invalid_code_empty'))
                 return
             
             withdrawal_code = message_text.strip()
@@ -1317,7 +1492,7 @@ ID игрока: {data['player_id']}
             withdraw_amount = 0
             amount_check_ok = True
             try:
-                checking_msg = await update.message.reply_text("🔍 Проверяю код вывода...")
+                checking_msg = await update.message.reply_text(get_text('checking_code'))
                 
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     response = await client.post(
@@ -1857,12 +2032,15 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
+                casino_name = get_casino_name(current_data.get('bookmaker', ''))
+                deposit_title = get_text('deposit_title')
+                casino_label = get_text('casino_label', casino_name=casino_name)
                 await bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=message_id,
-                    text=f"💰 <b>Пополнение счета</b>\n\n"
+                    text=f"{deposit_title}\n\n"
                          f"💰 <b>Сумма:</b> {current_data.get('amount', 0)} сом\n"
-                         f"🎰 <b>Казино:</b> {current_data.get('bookmaker', '').upper()}\n"
+                         f"{casino_label}\n"
                          f"🆔 <b>ID игрока:</b> {current_data.get('player_id', '')}\n\n"
                          f"⏰ <b>Таймер: {timer_text}</b>\n\n"
                          f"После оплаты отправьте фото чека:",
@@ -1980,7 +2158,7 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                             logger.error(f"Текст ответа: {response_text}")
                         except:
                             pass
-                        await update.message.reply_text("❌ Ошибка выполнения вывода. Попробуйте еще раз.")
+                        await update.message.reply_text(get_text('withdraw_execute_failed'))
                         await start(update, context)
                         return
                     
@@ -2040,7 +2218,7 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                     logger.error(f"Текст ответа: {response_text}")
                 except:
                     pass
-                await update.message.reply_text('❌ Ошибка создания заявки. Попробуйте еще раз.')
+                await update.message.reply_text(get_text('request_creation_error'))
                 await start(update, context)
                 return
             
@@ -2055,17 +2233,23 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                     return
                 
                 if request_id:
+                    # Используем переводы с динамическим названием казино
+                    casino_name = get_casino_name(data.get('bookmaker', ''))
+                    bank_name = BANK_NAMES.get(data.get('bank', '').lower(), data.get('bank', ''))
+                    
                     # Форматируем сумму
                     amount_str = f"{withdraw_amount:.2f}".rstrip('0').rstrip('.')
                     
-                    success_message = f"✅ Сумма вывода на {amount_str} сом получена.\n\n"
-                    success_message += f"🎰 Казино: {data['bookmaker'].upper()}\n"
-                    success_message += f"🏦 Банк: {data['bank']}\n"
-                    success_message += f"📱 Телефон: {data['phone']}\n"
-                    success_message += f"🆔 ID: {data['player_id']}\n\n"
-                    success_message += "Ожидайте поступление денег. Ваша заявка будет обработана в ближайшее время."
+                    # Используем перевод для сообщения об успешной заявке
+                    success_message = get_text(
+                        'withdrawal_request_sent',
+                        account_id=data.get('player_id', ''),
+                        phone=data.get('phone', ''),
+                        bank=bank_name,
+                        casino_name=casino_name
+                    )
                     
-                    request_created_msg = await update.message.reply_text(success_message)
+                    request_created_msg = await update.message.reply_text(success_message, parse_mode='HTML')
                     
                     # Сохраняем ID сообщения в заявке
                     if request_created_msg.message_id:
@@ -2078,7 +2262,7 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                         except Exception as e:
                             logger.warning(f"Не удалось сохранить ID сообщения: {e}")
                 else:
-                    await update.message.reply_text('❌ Ошибка создания заявки')
+                    await update.message.reply_text(get_text('error_creating_withdraw'))
             else:
                 # Статус не 200 - показываем детальное сообщение об ошибке из JSON (как в клиентском сайте)
                 error_message = result.get('error') or result.get('message') or f'Ошибка создания заявки ({payment_response.status_code})'
@@ -2144,17 +2328,28 @@ async def submit_deposit_request(query, context: ContextTypes.DEFAULT_TYPE, user
                         ]
                         reply_markup = InlineKeyboardMarkup(keyboard)
                         
+                        # Используем переводы с динамическим названием казино
+                        casino_name = get_casino_name(data.get('bookmaker', ''))
+                        bank_name = BANK_NAMES.get(data.get('bank', '').lower(), data.get('bank', ''))
+                        
+                        deposit_title = get_text('deposit_title')
+                        casino_label = get_text('casino_label', casino_name=casino_name)
+                        bank_label = get_text('bank_label', bank_name=bank_name)
+                        
                         await query.edit_message_text(
                             f"✅ <b>Заявка на пополнение создана!</b>\n\n"
                             f"💰 Сумма: {data['amount']} сом\n"
-                            f"🎰 Казино: {data['bookmaker'].upper()}\n"
+                            f"{casino_label}\n"
                             f"🆔 ID игрока: {data['player_id']}\n"
-                            f"🏦 Банк: {data['bank']}\n\n"
+                            f"{bank_label}\n\n"
                             f"Нажмите кнопку ниже для оплаты:",
                             reply_markup=reply_markup,
                             parse_mode='HTML'
                         )
                     else:
+                        # Используем переводы
+                        deposit_title = get_text('deposit_title')
+                        
                         await query.edit_message_text(
                             f"✅ <b>Заявка на пополнение создана!</b>\n\n"
                             f"💰 Сумма: {data['amount']} сом\n"
