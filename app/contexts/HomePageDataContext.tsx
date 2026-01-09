@@ -258,28 +258,85 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
   const subscribedRef = useRef(false)
   const userIdRef = useRef<string | null>(null)
 
+  // Проверяем userId при монтировании и при изменениях
   useEffect(() => {
     mountedRef.current = true
     const currentUserId = getTelegramUserId()
     
-    // Если пользователь изменился, очищаем кеш и перезагружаем данные
+    // Если пользователь изменился или появился (был null, стал не null), перезагружаем данные
     if (userIdRef.current !== currentUserId) {
+      const previousUserId = userIdRef.current
       userIdRef.current = currentUserId
-      if (currentUserId) {
+      
+      // Если пользователь появился (раньше был null, теперь есть) или изменился, очищаем кеш
+      if (currentUserId && (previousUserId !== currentUserId)) {
         const cacheKey = `homepage_${currentUserId}`
         dataCache.delete(cacheKey)
         globalData = null
         isLoading = false
         loadingPromise = null
+        
+        // Сразу загружаем данные для нового пользователя
+        loadAllData().then(result => {
+          if (mountedRef.current) {
+            console.log('📊 Data loaded for user:', currentUserId, 'transactions:', result.transactions.length)
+            setData(result)
+          }
+        }).catch(error => {
+          console.error('❌ Error loading data for user:', error)
+          if (mountedRef.current) {
+            setData({ transactions: [], topPlayers: [], loading: false })
+          }
+        })
+      }
+    }
+  }, []) // Запускаем только при монтировании
+  
+  // Отдельный эффект для периодической проверки userId (если он появится позже)
+  useEffect(() => {
+    const checkUserId = () => {
+      const currentUserId = getTelegramUserId()
+      if (!currentUserId) {
+        // Если userId еще нет, проверяем снова через небольшую задержку
+        return
+      }
+      
+      if (userIdRef.current !== currentUserId) {
+        userIdRef.current = currentUserId
+        // Перезагружаем данные
+        const cacheKey = `homepage_${currentUserId}`
+        dataCache.delete(cacheKey)
+        globalData = null
+        isLoading = false
+        loadingPromise = null
+        
+        loadAllData().then(result => {
+          if (mountedRef.current) {
+            console.log('📊 Data loaded after userId appeared:', currentUserId, 'transactions:', result.transactions.length)
+            setData(result)
+          }
+        }).catch(error => {
+          console.error('❌ Error loading data after userId appeared:', error)
+        })
       }
     }
     
-    // Подписываемся на обновления (только один раз)
+    // Проверяем сразу
+    checkUserId()
+    
+    // Проверяем с интервалом на случай, если userId появится позже
+    const interval = setInterval(checkUserId, 500)
+    
+    return () => clearInterval(interval)
+  }, [])
+  
+  // Подписываемся на обновления (только один раз)
+  useEffect(() => {
     if (!subscribedRef.current) {
       subscribedRef.current = true
       const callback = (newData: HomePageData) => {
         if (mountedRef.current) {
-          console.log('📊 HomePageData updated:', {
+          console.log('📊 HomePageData updated via callback:', {
             transactions: newData.transactions.length,
             topPlayers: newData.topPlayers.length,
             loading: newData.loading
@@ -302,17 +359,21 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
           }
         })
       } else {
-        // Загружаем данные сразу, не ждем
-        loadAllData().then(result => {
-          if (mountedRef.current) {
-            setData(result)
-          }
-        }).catch(error => {
-          console.error('❌ Error loading data:', error)
-          if (mountedRef.current) {
-            setData({ transactions: [], topPlayers: [], loading: false })
-          }
-        })
+        // Загружаем данные сразу при первой подписке
+        const currentUserId = getTelegramUserId()
+        if (currentUserId) {
+          loadAllData().then(result => {
+            if (mountedRef.current) {
+              console.log('📊 Initial data loaded:', currentUserId, 'transactions:', result.transactions.length)
+              setData(result)
+            }
+          }).catch(error => {
+            console.error('❌ Error loading initial data:', error)
+            if (mountedRef.current) {
+              setData({ transactions: [], topPlayers: [], loading: false })
+            }
+          })
+        }
       }
 
       return () => {
@@ -320,19 +381,104 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
         mountedRef.current = false
       }
     }
-    
-    // Если данные уже загружены из кеша, обновляем их в фоне
-    if (!data.loading && data.transactions.length === 0 && data.topPlayers.length === 0) {
-      // Если кеш пустой, загружаем данные
-      loadAllData().then(result => {
-        if (mountedRef.current) {
-          setData(result)
-        }
-      }).catch(error => {
-        console.error('❌ Error in background refresh:', error)
-      })
+  }, [])
+  
+  // Периодическое обновление данных для актуальной статистики
+  useEffect(() => {
+    const currentUserId = getTelegramUserId()
+    if (!currentUserId) {
+      return
     }
-  }, [data]) // Зависимость от data для проверки пустого кеша
+    
+    // Обновляем данные периодически (каждые 30 секунд) чтобы статистика была актуальной
+    const refreshInterval = setInterval(() => {
+      if (mountedRef.current && userIdRef.current === currentUserId) {
+        // Очищаем кеш перед обновлением для получения актуальных данных
+        const cacheKey = `homepage_${currentUserId}`
+        dataCache.delete(cacheKey)
+        globalData = null
+        isLoading = false
+        loadingPromise = null
+        
+        loadAllData().then(result => {
+          if (mountedRef.current) {
+            console.log('🔄 Periodic data refresh:', currentUserId, 'transactions:', result.transactions.length)
+            setData(result)
+          }
+        }).catch(error => {
+          console.error('❌ Error in periodic refresh:', error)
+        })
+      }
+    }, 30000) // Обновляем каждые 30 секунд
+    
+    // Обновляем при фокусе окна (когда пользователь возвращается на вкладку)
+    const handleFocus = () => {
+      if (mountedRef.current && userIdRef.current === currentUserId) {
+        const cacheKey = `homepage_${currentUserId}`
+        dataCache.delete(cacheKey)
+        globalData = null
+        isLoading = false
+        loadingPromise = null
+        
+        loadAllData().then(result => {
+          if (mountedRef.current) {
+            console.log('🔄 Focus refresh:', currentUserId, 'transactions:', result.transactions.length)
+            setData(result)
+          }
+        }).catch(error => {
+          console.error('❌ Error in focus refresh:', error)
+        })
+      }
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    
+    // Обновляем при видимости страницы
+    const handleVisibilityChange = () => {
+      if (!document.hidden && mountedRef.current && userIdRef.current === currentUserId) {
+        const cacheKey = `homepage_${currentUserId}`
+        dataCache.delete(cacheKey)
+        globalData = null
+        isLoading = false
+        loadingPromise = null
+        
+        loadAllData().then(result => {
+          if (mountedRef.current) {
+            console.log('🔄 Visibility refresh:', currentUserId, 'transactions:', result.transactions.length)
+            setData(result)
+          }
+        }).catch(error => {
+          console.error('❌ Error in visibility refresh:', error)
+        })
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Если данные пустые, загружаем сразу
+    if (!data.transactions.length && !data.topPlayers.length) {
+      const cacheKey = `homepage_${currentUserId}`
+      const cached = dataCache.get(cacheKey)
+      
+      // Если в кеше нет данных или они устарели, загружаем
+      if (!cached || Date.now() - cached.timestamp >= CACHE_TTL) {
+        loadAllData().then(result => {
+          if (mountedRef.current) {
+            console.log('📊 Reloading empty data:', currentUserId, 'transactions:', result.transactions.length)
+            setData(result)
+          }
+        }).catch(error => {
+          console.error('❌ Error reloading empty data:', error)
+        })
+      }
+    }
+    
+    return () => {
+      clearInterval(refreshInterval)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [data.transactions.length, data.topPlayers.length]) // Перезагружаем при изменении данных
 
   // Отслеживаем изменение пользователя и перезагружаем данные
   useEffect(() => {
