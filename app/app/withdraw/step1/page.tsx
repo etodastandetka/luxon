@@ -162,41 +162,6 @@ export default function WithdrawStep1() {
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
 
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
-
-  const translations = {
-    ru: {
-      title: 'Вывод средств',
-      selectBookmaker: 'Выберите казино',
-      next: 'Далее',
-      back: 'Назад'
-    },
-    en: {
-      title: 'Withdraw',
-      selectBookmaker: 'Select casino',
-      next: 'Next',
-      back: 'Back'
-    },
-    ky: {
-      title: 'Акчаны чыгаруу',
-      selectBookmaker: 'Казинодо тандаңыз',
-      next: 'Кийинки',
-      back: 'Артка'
-    },
-    uz: {
-      title: 'Pulni yechib olish',
-      selectBookmaker: 'Kazinoni tanlang',
-      next: 'Keyingi',
-      back: 'Orqaga'
-    }
-  }
-
-  const t = translations[language as keyof typeof translations] || translations.ru
-
-  
   useEffect(() => {
     async function checkSettings() {
       try {
@@ -239,6 +204,40 @@ export default function WithdrawStep1() {
       setBookmaker(savedBookmaker)
     }
   }, [])
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
+
+  const translations = {
+    ru: {
+      title: 'Вывод средств',
+      selectBookmaker: 'Выберите казино',
+      next: 'Далее',
+      back: 'Назад'
+    },
+    en: {
+      title: 'Withdraw',
+      selectBookmaker: 'Select casino',
+      next: 'Next',
+      back: 'Back'
+    },
+    ky: {
+      title: 'Акчаны чыгаруу',
+      selectBookmaker: 'Казинодо тандаңыз',
+      next: 'Кийинки',
+      back: 'Артка'
+    },
+    uz: {
+      title: 'Pulni yechib olish',
+      selectBookmaker: 'Kazinoni tanlang',
+      next: 'Keyingi',
+      back: 'Orqaga'
+    }
+  }
+
+  const t = translations[language as keyof typeof translations] || translations.ru
 
   const handleNext = () => {
     if (!bookmaker) {

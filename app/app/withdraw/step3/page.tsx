@@ -323,7 +323,7 @@ export default function WithdrawStep3() {
       
       return () => clearTimeout(timer)
     }
-  }, [userId, siteCode, bookmaker, isAlreadySubmitted, isCheckingCode, isSubmitting, withdrawAmount, error])
+  }, [userId, siteCode, bookmaker, isAlreadySubmitted, isCheckingCode, isSubmitting, withdrawAmount, error, handleCheckCode])
 
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
@@ -374,73 +374,6 @@ export default function WithdrawStep3() {
   }
 
   const t = translations[language as keyof typeof translations] || translations.ru
-
-  useEffect(() => {
-    
-    const savedBookmaker = localStorage.getItem('withdraw_bookmaker')
-    const savedBank = localStorage.getItem('withdraw_bank')
-    const savedQrPhoto = localStorage.getItem('withdraw_qr_photo')
-    const savedPhone = localStorage.getItem('withdraw_phone')
-    
-    if (!savedBookmaker || !savedBank || !savedQrPhoto || !savedPhone) {
-      router.push('/withdraw/step1')
-      return
-    }
-
-    setBookmaker(savedBookmaker)
-    setBank(savedBank)
-    setQrPhoto(savedQrPhoto)
-    setPhone(savedPhone)
-
-    
-    const getCookie = (name: string) => {
-      const value = `; ${document.cookie}`
-      const parts = value.split(`; ${name}=`)
-      if (parts.length === 2) return parts.pop()?.split(';').shift()
-      return null
-    }
-    
-    const cookieName = `user_id_${savedBookmaker}`
-    const savedUserId = getCookie(cookieName)
-    
-    if (savedUserId) {
-      setUserId(savedUserId)
-      
-      // Проверяем, не был ли уже отправлен этот вывод
-      const telegramUserId = getTelegramUserId()
-      if (telegramUserId) {
-        const withdrawKey = `withdraw_${savedBookmaker}_${savedUserId}`
-        const wasSubmitted = localStorage.getItem(withdrawKey)
-        if (wasSubmitted) {
-          setIsAlreadySubmitted(true)
-        }
-      }
-    }
-  }, [router])
-
-  
-  useEffect(() => {
-    // Проверяем, не был ли уже отправлен этот вывод при изменении userId или siteCode
-    if (bookmaker && userId.trim()) {
-      const withdrawKey = `withdraw_${bookmaker}_${userId}`
-      const wasSubmitted = localStorage.getItem(withdrawKey)
-      if (wasSubmitted) {
-        setIsAlreadySubmitted(true)
-      } else {
-        setIsAlreadySubmitted(false)
-      }
-    }
-    
-    // Автоматически проверяем код (но НЕ отправляем заявку)
-    if (userId.trim() && siteCode.trim() && !isCheckingCode && !isSubmitting && !withdrawAmount && !error && !isAlreadySubmitted) {
-      const timer = setTimeout(() => {
-        handleCheckCode()
-      }, 500)
-      
-      return () => clearTimeout(timer)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, siteCode, bookmaker, isAlreadySubmitted, isCheckingCode, isSubmitting, withdrawAmount, error])
   
   // Обработчик нажатия кнопки "Отправить"
   const handleSubmit = async () => {
