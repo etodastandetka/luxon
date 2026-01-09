@@ -8,6 +8,7 @@ import { getApiBase, safeFetch } from '../../../utils/fetch'
 import { getTelegramUserId, getTelegramUser } from '../../../utils/telegram'
 import { DEPOSIT_CONFIG } from '../../../config/app'
 import { compressImage, fileToBase64 } from '../../../utils/imageCompression'
+import { useRequireAuth } from '../../../hooks/useRequireAuth'
 
 declare global {
   interface Window {
@@ -159,7 +160,13 @@ function DepositStep3Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { language } = useLanguage()
+  const isAuthorized = useRequireAuth()
   const [selectedBank, setSelectedBank] = useState('')
+  
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
   const [loading, setLoading] = useState(false)
   const [paymentUrls, setPaymentUrls] = useState<Record<string, string>>({})
   const [enabledBanks, setEnabledBanks] = useState<string[]>([])
@@ -241,19 +248,34 @@ function DepositStep3Content() {
     const requestIdFromUrl = searchParams.get('requestId')
     if (requestIdFromUrl && !requestId) {
       // Загружаем фото только если requestId есть в URL, но еще не загружен в state
-      fetch(`${getApiBase()}/api/requests/${requestIdFromUrl}/photo`)
+      const telegramUserId = getTelegramUserId()
+      const photoUrl = telegramUserId 
+        ? `${getApiBase()}/api/requests/${requestIdFromUrl}/photo?user_id=${telegramUserId}`
+        : `${getApiBase()}/api/requests/${requestIdFromUrl}/photo`
+      
+      fetch(photoUrl)
         .then(response => {
           if (response.ok) {
             return response.json()
           }
+          console.warn('⚠️ Не удалось загрузить фото чека:', response.status, response.statusText)
           return null
         })
         .then(data => {
           if (data && data.success && data.data && data.data.photoFileUrl) {
-            setReceiptPreview(data.data.photoFileUrl)
+            let photoUrl = data.data.photoFileUrl
+            
+            // Если URL относительный, добавляем базовый URL
+            if (photoUrl && photoUrl.startsWith('/api/')) {
+              photoUrl = `${getApiBase()}${photoUrl}`
+            }
+            
+            setReceiptPreview(photoUrl)
             setReceiptUploaded(true)
             setRequestId(parseInt(requestIdFromUrl))
-            console.log('✅ Фото чека загружено из API')
+            console.log('✅ Фото чека загружено из API:', photoUrl.substring(0, 50) + '...')
+          } else {
+            console.warn('⚠️ Фото чека не найдено в ответе API')
           }
         })
         .catch(error => {
@@ -484,6 +506,18 @@ function DepositStep3Content() {
       
       if (data.success) {
         console.log('✅ Чек загружен успешно')
+        
+        // Обновляем preview с URL из ответа
+        if (data.data && data.data.url) {
+          let photoUrl = data.data.url
+          // Если URL относительный, добавляем базовый URL
+          if (photoUrl && photoUrl.startsWith('/api/')) {
+            photoUrl = `${base}${photoUrl}`
+          }
+          setReceiptPreview(photoUrl)
+          console.log('✅ URL фото чека обновлен:', photoUrl.substring(0, 50) + '...')
+        }
+        
         // Показываем успешное сообщение (используем message из ответа или дефолтное)
         const successMessage = data.message || 'Чек успешно загружен'
         alert(successMessage)
@@ -943,11 +977,19 @@ function DepositStep3Content() {
               <div className="flex flex-col items-center space-y-2">
                 {receiptPreview ? (
                   <>
-                    <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-green-400/50">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-green-400/50 bg-gray-800">
                       <img 
                         src={receiptPreview} 
                         alt="Receipt preview" 
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error('Ошибка загрузки изображения чека:', receiptPreview)
+                          // Показываем placeholder при ошибке
+                          e.currentTarget.style.display = 'none'
+                        }}
+                        onLoad={() => {
+                          console.log('✅ Изображение чека успешно загружено')
+                        }}
                       />
                     </div>
                     <div className="text-center">

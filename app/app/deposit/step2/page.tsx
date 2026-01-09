@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import QuickAmounts from '../../../components/QuickAmounts'
 import { getApiBase } from '../../../utils/fetch'
+import { useRequireAuth } from '../../../hooks/useRequireAuth'
 
 declare global {
   interface Window {
@@ -156,7 +157,13 @@ function DepositStep2Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { language } = useLanguage()
+  const isAuthorized = useRequireAuth()
   const [accountId, setAccountId] = useState('')
+  
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
   const [amount, setAmount] = useState('')
   const [minAmount, setMinAmount] = useState(35)
   const [maxAmount, setMaxAmount] = useState(100000)

@@ -6,6 +6,7 @@ import BankButtons from '../../../components/BankButtons'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getApiBase } from '../../../utils/fetch'
 import { compressImage, fileToBase64 } from '../../../utils/imageCompression'
+import { useRequireAuth } from '../../../hooks/useRequireAuth'
 
 
 declare global {
@@ -158,7 +159,13 @@ export default function WithdrawStep2() {
   useBankUiTheme()
 const router = useRouter()
   const { language } = useLanguage()
+  const isAuthorized = useRequireAuth()
   const [bank, setBank] = useState('')
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
   const [enabledBanks, setEnabledBanks] = useState<string[]>([])
   const [phone, setPhone] = useState('+996')
   const [qrPhoto, setQrPhoto] = useState<File | null>(null)

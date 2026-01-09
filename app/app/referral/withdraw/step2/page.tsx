@@ -6,12 +6,19 @@ import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
 import { safeFetch, getApiBase } from '../../../../utils/fetch'
 import { getTelegramUserId } from '../../../../utils/telegram'
+import { useRequireAuth } from '../../../../hooks/useRequireAuth'
 
 function ReferralWithdrawStep2Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { language } = useLanguage()
+  const isAuthorized = useRequireAuth()
   const [accountId, setAccountId] = useState('')
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
   const [loading, setLoading] = useState(false)
   const [availableBalance, setAvailableBalance] = useState(0)
   const bookmaker = searchParams.get('bookmaker') || ''

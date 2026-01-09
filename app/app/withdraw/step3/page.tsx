@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
 import { checkUserBlocked, getTelegramUserId } from '../../../utils/telegram'
 import { safeFetch, getApiBase } from '../../../utils/fetch'
+import { useRequireAuth } from '../../../hooks/useRequireAuth'
 
 
 declare global {
@@ -157,7 +158,13 @@ export default function WithdrawStep3() {
   useBankUiTheme()
 const router = useRouter()
   const { language } = useLanguage()
+  const isAuthorized = useRequireAuth()
   const [userId, setUserId] = useState('')
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
   const [siteCode, setSiteCode] = useState('')
   const [isCheckingCode, setIsCheckingCode] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)

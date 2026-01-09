@@ -5,9 +5,16 @@ import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
 import { getApiBase, safeFetchJson } from '../../utils/fetch'
 import { getTelegramUserId, getTelegramUser } from '../../utils/telegram'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 export default function ReferralPage() {
+  const isAuthorized = useRequireAuth()
   const [referralLink, setReferralLink] = useState('')
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
   const [earned, setEarned] = useState(0)
   const [referralCount, setReferralCount] = useState(0)
   const [loading, setLoading] = useState(false)

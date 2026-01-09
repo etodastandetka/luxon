@@ -4,6 +4,7 @@ import FixedHeaderControls from '../../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../../components/LanguageContext'
 import PageTransition from '../../../../components/PageTransition'
+import { useRequireAuth } from '../../../../hooks/useRequireAuth'
 
 const bookmakers = [
   { id: '1xbet', name: '1xBet', icon: '🎰' },
@@ -17,7 +18,13 @@ const bookmakers = [
 export default function ReferralWithdrawStep1() {
   const router = useRouter()
   const { language } = useLanguage()
+  const isAuthorized = useRequireAuth()
   const [selectedBookmaker, setSelectedBookmaker] = useState<string>('')
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   const handleContinue = () => {
     if (!selectedBookmaker) {

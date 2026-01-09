@@ -6,6 +6,7 @@ import FixedHeaderControls from '../../components/FixedHeaderControls'
 import { getTelegramUserId } from '../../utils/telegram'
 import { getApiBase } from '../../utils/fetch'
 import { HistoryIcon, BackIcon } from '../../components/Icons'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 interface Transaction {
   id: string
@@ -19,10 +20,16 @@ interface Transaction {
 }
 
 export default function HistoryPage(){
+  const isAuthorized = useRequireAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw'>('all')
   const { language } = useLanguage()
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   useEffect(() => {
     loadTransactions()

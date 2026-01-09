@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import BookmakerGrid from '../../../components/BookmakerGrid'
 import { useLanguage } from '../../../components/LanguageContext'
 import { getApiBase } from '../../../utils/fetch'
+import { useRequireAuth } from '../../../hooks/useRequireAuth'
 
 
 declare global {
@@ -157,9 +158,15 @@ export default function DepositStep1() {
   useBankUiTheme()
   const router = useRouter()
   const { language } = useLanguage()
+  const isAuthorized = useRequireAuth()
   const [bookmaker, setBookmaker] = useState<string>('')
   const [depositsEnabled, setDepositsEnabled] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   const translations = {
     ru: {
