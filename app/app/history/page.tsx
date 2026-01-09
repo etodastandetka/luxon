@@ -15,6 +15,7 @@ interface Transaction {
   amount: number
   status: string
   date: string
+  withdrawalCode?: string
 }
 
 export default function HistoryPage(){
@@ -49,7 +50,8 @@ export default function HistoryPage(){
       date: 'Дата',
       bookmaker: 'Букмекер',
       backToMain: 'На главную',
-      all: 'Все'
+      all: 'Все',
+      confirmationCode: 'Код подтверждения'
     },
     en: {
       title: 'Transaction History',
@@ -72,7 +74,8 @@ export default function HistoryPage(){
       date: 'Date',
       bookmaker: 'Bookmaker',
       backToMain: 'Back to main',
-      all: 'All'
+      all: 'All',
+      confirmationCode: 'Confirmation code'
     },
     ky: {
       title: 'Операциялар тарыхы',
@@ -179,7 +182,8 @@ export default function HistoryPage(){
             bank: tx.bank || '',
             amount: tx.amount || 0,
             status: finalStatus,
-            date: tx.date || tx.created_at || new Date().toISOString()
+            date: tx.date || tx.created_at || new Date().toISOString(),
+            withdrawalCode: tx.withdrawalCode || tx.withdrawal_code || null
           }
         })
         
@@ -464,6 +468,12 @@ export default function HistoryPage(){
                     <div className="text-xs text-white/50">
                       {formatDate(transaction.date)}
                     </div>
+                    {transaction.type === 'withdraw' && transaction.withdrawalCode && (
+                      <div className="text-xs text-white/70 mt-1">
+                        <span className="text-white/50">{t.confirmationCode}: </span>
+                        <span className="font-mono font-semibold">{transaction.withdrawalCode}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="text-right space-y-1 ml-4">
                     <div className={`font-bold text-lg ${
