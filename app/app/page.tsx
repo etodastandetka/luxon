@@ -131,153 +131,117 @@ function HolidayEffects() {
 
 
 export default function HomePage() {
-  // Проверяем Telegram WebApp сразу при инициализации, чтобы избежать мигания виджета входа
-  const [isTelegramWebApp, setIsTelegramWebApp] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return !!(window as any).Telegram?.WebApp
-    }
-    return false
-  })
-  
-  // Проверяем пользователя из localStorage сразу при инициализации, чтобы избежать мигания виджета
-  const [user, setUser] = useState<TelegramUser | null>(() => {
-    if (typeof window !== 'undefined') {
-      // Если это Telegram WebApp, проверяем через initTelegramWebApp
-      if ((window as any).Telegram?.WebApp) {
-        const telegramUser = initTelegramWebApp()
-        if (telegramUser) {
-          return telegramUser
-        }
-      }
-      // Если не WebApp, проверяем localStorage
-      try {
-        const savedUserStr = localStorage.getItem('telegram_user')
-        if (savedUserStr) {
-          return JSON.parse(savedUserStr)
-        }
-      } catch (e) {
-        // Игнорируем ошибки парсинга
-      }
-    }
-    return null
-  })
-  const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
-  const [userCheckComplete, setUserCheckComplete] = useState(false) // Флаг завершения проверки пользователя
   const { language } = useLanguage()
   const { settings, loading: settingsLoading } = useBotSettings()
-
-  const userInitialized = useRef(false)
-  const userChecked = useRef(false)
   
-  // Функция для проверки и обновления пользователя
-  const checkAndUpdateUser = useCallback(() => {
-    // Если пользователь уже установлен при инициализации, не проверяем повторно сразу
-    if (!userChecked.current && user) {
-      userChecked.current = true
-      return
-    }
-    userChecked.current = true
-    // Проверяем, запущено ли приложение в Telegram WebApp
-    const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null
-    if (tg) {
-      setIsTelegramWebApp(true)
+  // ИНИЦИАЛИЗАЦИЯ: Проверяем все сразу при создании компонента (синхронно)
+  const initialState = (() => {
+    if (typeof window === 'undefined') {
+      return { isTelegramWebApp: false, user: null }
     }
     
-    // Сначала пробуем через мини-приложение
-    const telegramUser = initTelegramWebApp()
-    if (telegramUser) {
-      if (!userInitialized.current) {
-        userInitialized.current = true
-        setUser(telegramUser)
-        syncWithBot(telegramUser, "app_opened", {
-          page: "home",
-          language,
-        }).catch(() => {})
-      } else {
-        // Обновляем пользователя если ID изменился
+    const tg = (window as any).Telegram?.WebApp
+    const isWebApp = !!tg
+    
+    // Если это Telegram WebApp - получаем пользователя из WebApp
+    if (isWebApp) {
+      const telegramUser = initTelegramWebApp()
+      return { isTelegramWebApp: true, user: telegramUser }
+    }
+    
+    // Если это обычный сайт - проверяем localStorage
+    try {
+      const savedUserStr = localStorage.getItem('telegram_user')
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr)
+        return { isTelegramWebApp: false, user: savedUser }
+      }
+    } catch (e) {
+      // Игнорируем ошибки парсинга
+    }
+    
+    return { isTelegramWebApp: false, user: null }
+  })()
+  
+  const [isTelegramWebApp] = useState(initialState.isTelegramWebApp)
+  const [user, setUser] = useState<TelegramUser | null>(initialState.user)
+  const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
+  
+  const userInitialized = useRef(false)
+  
+  // Функция для обновления пользователя (для синхронизации с другими вкладками и периодических проверок)
+  const updateUser = useCallback(() => {
+    if (typeof window === 'undefined') return
+    
+    // Если это Telegram WebApp - получаем пользователя из WebApp
+    if (isTelegramWebApp) {
+      const telegramUser = initTelegramWebApp()
+      if (telegramUser) {
         setUser((currentUser) => {
           if (!currentUser || currentUser.id !== telegramUser.id) {
+            if (!userInitialized.current) {
+              userInitialized.current = true
+              syncWithBot(telegramUser, "app_opened", {
+                page: "home",
+                language,
+              }).catch(() => {})
+            }
             return telegramUser
           }
           return currentUser
         })
       }
     } else {
-      // Если не через мини-приложение, проверяем localStorage напрямую (виджет авторизации)
-      // Но только если пользователь еще не установлен, чтобы не перезаписывать уже установленного
-      setUser((currentUser) => {
-        if (currentUser) {
-          // Если пользователь уже установлен, проверяем только если он изменился
-          if (typeof window !== 'undefined') {
-            try {
-              const savedUserStr = localStorage.getItem('telegram_user')
-              if (savedUserStr) {
-                const savedUser = JSON.parse(savedUserStr)
-                if (currentUser.id !== savedUser.id) {
-                  return savedUser
-                }
-              } else {
-                // Если пользователя нет в localStorage, но он был установлен - оставляем как есть
-                // (может быть из кэша или другой сессии)
-              }
-            } catch (e) {
-              // Ошибка парсинга - оставляем текущего пользователя
+      // Если это обычный сайт - проверяем localStorage
+      try {
+        const savedUserStr = localStorage.getItem('telegram_user')
+        if (savedUserStr) {
+          const savedUser = JSON.parse(savedUserStr)
+          setUser((currentUser) => {
+            if (!currentUser || currentUser.id !== savedUser.id) {
+              return savedUser
             }
-          }
-          return currentUser
+            return currentUser
+          })
         } else {
-          // Если пользователь не установлен, проверяем localStorage
-          if (typeof window !== 'undefined') {
-            try {
-              const savedUserStr = localStorage.getItem('telegram_user')
-              if (savedUserStr) {
-                return JSON.parse(savedUserStr)
-              }
-            } catch (e) {
-              // Ошибка парсинга
-            }
-          }
-          return null
+          // Если пользователя нет в localStorage - сбрасываем
+          setUser(null)
         }
-      })
+      } catch (e) {
+        // Игнорируем ошибки парсинга
+      }
     }
-  }, [language])
+  }, [isTelegramWebApp, language])
   
+  // Периодическая проверка пользователя (для синхронизации с другими вкладками)
   useEffect(() => {
-    // Проверяем пользователя только если он еще не установлен при инициализации
-    // Это предотвращает мигание виджета входа
+    // Первая проверка только если пользователь не был установлен при инициализации
     if (!user) {
-      checkAndUpdateUser()
-    } else {
-      userChecked.current = true
+      updateUser()
+    } else if (isTelegramWebApp && !userInitialized.current) {
+      userInitialized.current = true
+      syncWithBot(user, "app_opened", {
+        page: "home",
+        language,
+      }).catch(() => {})
     }
-    
-    // Помечаем проверку как завершенную после небольшой задержки, чтобы дать время на установку user
-    const checkTimeout = setTimeout(() => {
-      setUserCheckComplete(true)
-    }, 100)
     
     // Периодически проверяем наличие пользователя (на случай если авторизация произошла в другом окне)
     const interval = setInterval(() => {
-      if (!user) {
-        checkAndUpdateUser()
-      }
-    }, 1000) // Проверяем каждую секунду, если пользователь не авторизован
+      updateUser()
+    }, 2000) // Проверяем каждые 2 секунды
     
     // Проверяем при фокусе окна
     const handleFocus = () => {
-      if (!user) {
-        checkAndUpdateUser()
-      }
+      updateUser()
     }
     window.addEventListener('focus', handleFocus)
     
     return () => {
-      clearTimeout(checkTimeout)
       clearInterval(interval)
       window.removeEventListener('focus', handleFocus)
     }
-  }, [checkAndUpdateUser, user])
+  }, [updateUser, user, isTelegramWebApp, language])
 
   // Слушаем сообщения от окна авторизации (для виджета)
   useEffect(() => {
@@ -431,8 +395,8 @@ export default function HomePage() {
       <FixedHeaderControls />
 
       <div className="wb-wrap space-y-6">
-        {/* Показываем виджет входа только если НЕ в Telegram Mini App (для обычного сайта) и проверка завершена */}
-        {!user && !isTelegramWebApp && userCheckComplete && (
+        {/* Показываем виджет входа только если НЕ в Telegram Mini App (для обычного сайта) и пользователь не авторизован */}
+        {!user && !isTelegramWebApp && (
           <section className="wb-section" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
             <h2 className="wb-h2" style={{ marginBottom: '1rem' }}>
               {language === 'en' ? 'Sign in with Telegram' : 'Вход через Telegram'}
