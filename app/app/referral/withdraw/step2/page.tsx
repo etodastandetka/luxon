@@ -14,14 +14,14 @@ function ReferralWithdrawStep2Content() {
   const { language } = useLanguage()
   const isAuthorized = useRequireAuth()
   const [accountId, setAccountId] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [availableBalance, setAvailableBalance] = useState(0)
+  const bookmaker = searchParams.get('bookmaker') || ''
 
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
     return null
   }
-  const [loading, setLoading] = useState(false)
-  const [availableBalance, setAvailableBalance] = useState(0)
-  const bookmaker = searchParams.get('bookmaker') || ''
 
   useEffect(() => {
     // Загружаем доступный баланс

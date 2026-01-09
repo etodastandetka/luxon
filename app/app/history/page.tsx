@@ -26,14 +26,14 @@ export default function HistoryPage(){
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw'>('all')
   const { language } = useLanguage()
 
+  useEffect(() => {
+    loadTransactions()
+  }, [filter])
+
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
     return null
   }
-
-  useEffect(() => {
-    loadTransactions()
-  }, [filter])
 
   const translations = {
     ru: {

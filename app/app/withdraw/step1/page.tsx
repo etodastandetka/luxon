@@ -154,19 +154,18 @@ function useBankUiTheme() {
 }
 
 export default function WithdrawStep1() {
-  
   useBankUiTheme()
-const router = useRouter()
+  const router = useRouter()
   const { language } = useLanguage()
   const isAuthorized = useRequireAuth()
   const [bookmaker, setBookmaker] = useState<string>('')
+  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
+  const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
 
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
     return null
   }
-  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true)
-  const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
 
   const translations = {
     ru: {

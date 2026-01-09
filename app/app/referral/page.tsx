@@ -10,11 +10,6 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 export default function ReferralPage() {
   const isAuthorized = useRequireAuth()
   const [referralLink, setReferralLink] = useState('')
-
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
   const [earned, setEarned] = useState(0)
   const [referralCount, setReferralCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -37,6 +32,11 @@ export default function ReferralPage() {
   })
   const { language, setLanguage } = useLanguage()
   const router = useRouter()
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
   
   const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage)

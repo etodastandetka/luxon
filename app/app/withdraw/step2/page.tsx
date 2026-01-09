@@ -155,17 +155,11 @@ function useBankUiTheme() {
 }
 
 export default function WithdrawStep2() {
-  
   useBankUiTheme()
-const router = useRouter()
+  const router = useRouter()
   const { language } = useLanguage()
   const isAuthorized = useRequireAuth()
   const [bank, setBank] = useState('')
-
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
   const [enabledBanks, setEnabledBanks] = useState<string[]>([])
   const [phone, setPhone] = useState('+996')
   const [qrPhoto, setQrPhoto] = useState<File | null>(null)
@@ -173,6 +167,11 @@ const router = useRouter()
   const bankSectionRef = useRef<HTMLDivElement>(null)
   const phoneSectionRef = useRef<HTMLDivElement>(null)
   const qrSectionRef = useRef<HTMLDivElement>(null)
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   const translations = {
     ru: {

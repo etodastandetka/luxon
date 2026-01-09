@@ -153,20 +153,19 @@ function useBankUiTheme() {
 }
 
 export default function WithdrawWaitingPage() {
-  
   useBankUiTheme()
-const router = useRouter()
+  const router = useRouter()
   const { language } = useLanguage()
   const isAuthorized = useRequireAuth()
   const [status, setStatus] = useState<'waiting' | 'success' | 'error'>('waiting')
+  const [requestId, setRequestId] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null)
+  const [requestAmount, setRequestAmount] = useState<string | null>(null)
 
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
     return null
   }
-  const [requestId, setRequestId] = useState<string | null>(null)
-  const [rejectionReason, setRejectionReason] = useState<string | null>(null)
-  const [requestAmount, setRequestAmount] = useState<string | null>(null)
 
   const translations = {
     ru: {
