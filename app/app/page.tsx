@@ -479,75 +479,77 @@ export default function HomePage() {
       <div className="wb-wrap space-y-6">
         {/* Показываем виджет входа только если НЕ в Telegram Mini App (для обычного сайта) и пользователь не авторизован */}
         {!user && !isTelegramWebApp && (
-          <section className="wb-section" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+          <section className="wb-section" style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
             <div style={{
-              background: 'linear-gradient(135deg, rgba(82, 209, 106, 0.15), rgba(18, 89, 50, 0.15))',
-              border: '1px solid rgba(82, 209, 106, 0.3)',
-              borderRadius: '24px',
-              padding: '3rem 2rem',
+              background: 'linear-gradient(135deg, rgba(82, 209, 106, 0.12), rgba(18, 89, 50, 0.12))',
+              border: '1px solid rgba(82, 209, 106, 0.25)',
+              borderRadius: '20px',
+              padding: '2rem 1.5rem',
               backdropFilter: 'blur(12px)',
-              boxShadow: '0 16px 42px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(82, 209, 106, 0.1) inset',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(82, 209, 106, 0.1) inset',
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              maxWidth: '480px',
+              margin: '0 auto'
             }}>
               {/* Декоративный градиент */}
               <div style={{
                 position: 'absolute',
-                top: '-50%',
-                right: '-50%',
-                width: '200%',
-                height: '200%',
-                background: 'radial-gradient(circle, rgba(82, 209, 106, 0.1) 0%, transparent 70%)',
+                top: '-30%',
+                right: '-30%',
+                width: '150%',
+                height: '150%',
+                background: 'radial-gradient(circle, rgba(82, 209, 106, 0.08) 0%, transparent 70%)',
                 pointerEvents: 'none'
               }} />
               
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <div style={{
-                  fontSize: '2.5rem',
-                  marginBottom: '1rem',
-                  filter: 'drop-shadow(0 4px 8px rgba(82, 209, 106, 0.3))'
+                  fontSize: '1.75rem',
+                  marginBottom: '0.75rem',
+                  filter: 'drop-shadow(0 2px 4px rgba(82, 209, 106, 0.3))'
                 }}>
                   ✨
                 </div>
                 <h2 className="wb-h2" style={{ 
-                  marginBottom: '0.75rem',
+                  marginBottom: '0.5rem',
                   background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(82, 209, 106, 0.9))',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
-                  fontSize: '1.75rem',
+                  fontSize: '1.5rem',
                   fontWeight: '700',
                   letterSpacing: '-0.02em'
                 }}>
                   {language === 'en' ? 'Sign in with Telegram' : 'Вход через Telegram'}
                 </h2>
                 <p className="wb-p" style={{ 
-                  marginBottom: '2rem', 
-                  opacity: 0.85,
-                  fontSize: '1rem',
-                  color: 'rgba(255, 255, 255, 0.9)'
+                  marginBottom: '1.5rem', 
+                  opacity: 0.8,
+                  fontSize: '0.9rem',
+                  color: 'rgba(255, 255, 255, 0.85)'
                 }}>
                   {language === 'en' 
-                    ? 'Please sign in to continue using our services' 
-                    : 'Пожалуйста, войдите, чтобы продолжить пользоваться нашими услугами'}
+                    ? 'Please sign in to continue' 
+                    : 'Пожалуйста, войдите, чтобы продолжить'}
                 </p>
                 
-                {/* Обертка для виджета с кастомными стилями */}
+                {/* Компактная обертка для виджета */}
                 <div style={{
                   display: 'inline-block',
-                  borderRadius: '16px',
+                  borderRadius: '14px',
                   overflow: 'hidden',
-                  boxShadow: '0 8px 24px rgba(82, 209, 106, 0.25), 0 0 0 1px rgba(82, 209, 106, 0.2)',
-                  transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 16px rgba(82, 209, 106, 0.2), 0 0 0 1px rgba(82, 209, 106, 0.15)',
+                  transition: 'all 0.2s ease',
                   transform: 'scale(1)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.02)'
-                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(82, 209, 106, 0.35), 0 0 0 1px rgba(82, 209, 106, 0.3)'
+                  e.currentTarget.style.transform = 'scale(1.01)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(82, 209, 106, 0.3), 0 0 0 1px rgba(82, 209, 106, 0.2)'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(82, 209, 106, 0.25), 0 0 0 1px rgba(82, 209, 106, 0.2)'
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(82, 209, 106, 0.2), 0 0 0 1px rgba(82, 209, 106, 0.15)'
                 }}
                 >
                   <TelegramLoginWidget botName="Lux_on_bot" />
@@ -1308,32 +1310,44 @@ export default function HomePage() {
           .wb-row,
         }
 
-        /* Кастомизация Telegram Login Widget */
+        /* Кастомизация Telegram Login Widget - компактная версия */
         .telegram-login-widget iframe {
-          border-radius: 16px !important;
+          border-radius: 14px !important;
           overflow: hidden !important;
-          box-shadow: 0 8px 24px rgba(82, 209, 106, 0.25) !important;
-          transition: all 0.3s ease !important;
-        }
-
-        .telegram-login-widget iframe:hover {
-          box-shadow: 0 12px 32px rgba(82, 209, 106, 0.35) !important;
-          transform: translateY(-2px) !important;
+          border: none !important;
+          width: 100% !important;
+          max-width: 280px !important;
+          height: 48px !important;
         }
 
         /* Стили для кнопки Telegram внутри iframe */
         .telegram-login-widget :global(button) {
           background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%) !important;
-          border-radius: 16px !important;
+          border-radius: 14px !important;
           border: none !important;
-          box-shadow: 0 8px 24px rgba(0, 136, 204, 0.3) !important;
-          transition: all 0.3s ease !important;
+          padding: 12px 24px !important;
+          font-size: 15px !important;
+          font-weight: 600 !important;
+          height: 48px !important;
+          min-width: 240px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 10px !important;
+          box-shadow: 0 4px 12px rgba(0, 136, 204, 0.25) !important;
+          transition: all 0.2s ease !important;
+          cursor: pointer !important;
         }
 
         .telegram-login-widget :global(button:hover) {
           background: linear-gradient(135deg, #0099dd 0%, #0077bb 100%) !important;
-          box-shadow: 0 12px 32px rgba(0, 136, 204, 0.4) !important;
-          transform: translateY(-2px) !important;
+          box-shadow: 0 6px 16px rgba(0, 136, 204, 0.35) !important;
+          transform: translateY(-1px) !important;
+        }
+
+        .telegram-login-widget :global(button:active) {
+          transform: translateY(0) !important;
+          box-shadow: 0 2px 8px rgba(0, 136, 204, 0.3) !important;
         }
       `}</style>
     </main>
