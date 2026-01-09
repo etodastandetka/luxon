@@ -1364,31 +1364,60 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             # Получаем сохраненный ID для этого казино из user_states
             saved_id = data.get('saved_player_ids', {}).get(data['bookmaker'], '')
+            logger.info(f"🔍 Проверка сохраненного ID для пользователя {user_id}, казино {data.get('bookmaker', '')}: saved_id = {saved_id} (type: {type(saved_id)})")
             
             # Пытаемся получить сохраненный ID из API (нормализуем название казино)
-            if not saved_id:
+            if not saved_id or saved_id == 'None' or saved_id == 'null' or not str(saved_id).strip():
                 try:
                     async with httpx.AsyncClient(timeout=5.0) as client:
                         response = await client.get(
                             f"{API_URL}/api/public/casino-account",
                             params={"user_id": str(user_id), "casino_id": data['bookmaker'].lower()}
                         )
+                        logger.info(f"🔍 Запрос сохраненного ID: статус {response.status_code} для пользователя {user_id}, казино {data['bookmaker']}")
                         if response.status_code == 200:
                             result = response.json()
-                            if result.get('success') and result.get('data', {}).get('accountId'):
-                                saved_id = result.get('data', {}).get('accountId')
-                                # Сохраняем в user_states для быстрого доступа
-                                if 'saved_player_ids' not in data:
-                                    data['saved_player_ids'] = {}
-                                data['saved_player_ids'][data['bookmaker']] = saved_id
-                                user_states[user_id]['data'] = data
+                            logger.info(f"📋 Ответ API для ID: {result}")
+                            
+                            # Проверяем успешность и наличие ID
+                            account_id_value = None
+                            if result.get('success'):
+                                account_id_value = result.get('data', {}).get('accountId')
+                            
+                            # Проверяем что ID есть и не пустой
+                            if account_id_value is not None and account_id_value != 'null' and account_id_value != '':
+                                id_str = str(account_id_value).strip()
+                                if id_str:
+                                    saved_id = id_str
+                                    # Сохраняем в user_states для быстрого доступа
+                                    if 'saved_player_ids' not in data:
+                                        data['saved_player_ids'] = {}
+                                    data['saved_player_ids'][data['bookmaker']] = saved_id
+                                    user_states[user_id]['data'] = data
+                                    logger.info(f"✅ Получен сохраненный ID из API для пользователя {user_id}, казино {data['bookmaker']}: {saved_id}")
+                                else:
+                                    logger.info(f"ℹ️ Сохраненный ID пустой для пользователя {user_id}, казино {data['bookmaker']}")
+                            else:
+                                logger.info(f"ℹ️ Сохраненный ID не найден в API для пользователя {user_id}, казино {data['bookmaker']} (accountId_value: {account_id_value}, type: {type(account_id_value)})")
+                        else:
+                            try:
+                                error_text = response.text[:200]
+                                logger.warning(f"⚠️ API вернул статус {response.status_code} при получении ID: {error_text}")
+                            except:
+                                logger.warning(f"⚠️ API вернул статус {response.status_code} при получении ID")
                 except Exception as e:
-                    logger.warning(f"Не удалось получить сохраненный ID из API: {e}")
+                    logger.warning(f"❌ Не удалось получить сохраненный ID из API: {e}", exc_info=True)
             
             # Создаем Reply клавиатуру с сохраненным ID и кнопкой отмены
             keyboard_buttons = []
-            if saved_id:
-                keyboard_buttons.append([KeyboardButton(f"ID: {saved_id}")])
+            logger.info(f"🔍 Проверка сохраненного ID перед добавлением в клавиатуру: saved_id = {saved_id} (type: {type(saved_id)})")
+            if saved_id and saved_id != 'None' and saved_id != 'null' and str(saved_id).strip():
+                # Всегда показываем сохраненный ID как кнопку для быстрой отправки
+                id_str = str(saved_id).strip()
+                keyboard_buttons.append([KeyboardButton(f"ID: {id_str}")])
+                logger.info(f"🆔 ✅ Добавлена кнопка с сохраненным ID: {id_str}")
+            else:
+                logger.info(f"🆔 ❌ Сохраненный ID не найден или пустой: {saved_id}")
             keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
