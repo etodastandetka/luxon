@@ -167,6 +167,7 @@ const router = useRouter()
   const [bank, setBank] = useState('')
   const [phone, setPhone] = useState('')
   const [qrPhoto, setQrPhoto] = useState('')
+  const [isAlreadySubmitted, setIsAlreadySubmitted] = useState(false)
   const idSectionRef = useRef<HTMLDivElement>(null)
   const codeSectionRef = useRef<HTMLDivElement>(null)
 
@@ -245,20 +246,41 @@ const router = useRouter()
     
     if (savedUserId) {
       setUserId(savedUserId)
+      
+      // Проверяем, не был ли уже отправлен этот вывод
+      const telegramUserId = getTelegramUserId()
+      if (telegramUserId) {
+        const withdrawKey = `withdraw_${savedBookmaker}_${savedUserId}`
+        const wasSubmitted = localStorage.getItem(withdrawKey)
+        if (wasSubmitted) {
+          setIsAlreadySubmitted(true)
+        }
+      }
     }
   }, [router])
 
   
   useEffect(() => {
+    // Проверяем, не был ли уже отправлен этот вывод при изменении userId или siteCode
+    if (bookmaker && userId.trim()) {
+      const withdrawKey = `withdraw_${bookmaker}_${userId}`
+      const wasSubmitted = localStorage.getItem(withdrawKey)
+      if (wasSubmitted) {
+        setIsAlreadySubmitted(true)
+      } else {
+        setIsAlreadySubmitted(false)
+      }
+    }
+    
     // Автоматически проверяем код (но НЕ отправляем заявку)
-    if (userId.trim() && siteCode.trim() && !isCheckingCode && !isSubmitting && !withdrawAmount && !error) {
+    if (userId.trim() && siteCode.trim() && !isCheckingCode && !isSubmitting && !withdrawAmount && !error && !isAlreadySubmitted) {
       const timer = setTimeout(() => {
         handleCheckCode()
       }, 500)
       
       return () => clearTimeout(timer)
     }
-  }, [userId, siteCode])
+  }, [userId, siteCode, bookmaker, isAlreadySubmitted])
 
   // Проверка кода (без автоматической отправки)
   const handleCheckCode = async () => {
@@ -349,6 +371,11 @@ const router = useRouter()
   
   // Обработчик нажатия кнопки "Отправить"
   const handleSubmit = async () => {
+    if (isAlreadySubmitted) {
+      setError('Этот вывод уже был отправлен. Нельзя отправить повторно.')
+      return
+    }
+    
     if (!withdrawAmount || withdrawAmount <= 0) {
       setError('Сначала проверьте код подтверждения')
       return
@@ -366,6 +393,12 @@ const router = useRouter()
     if (isSubmitting) {
       return
     }
+    
+    // Проверяем, не был ли уже отправлен этот конкретный вывод
+    if (isAlreadySubmitted) {
+      setError('Этот вывод уже был отправлен. Нельзя отправить повторно.')
+      return
+    }
 
     setIsSubmitting(true)
     setError(null)
@@ -378,6 +411,15 @@ const router = useRouter()
         throw new Error('Не удалось определить ID пользователя. Перезагрузите страницу.')
       }
 
+      // Проверяем, не был ли уже отправлен этот конкретный вывод (bookmaker + playerId)
+      const withdrawKey = `withdraw_${bookmaker}_${userId}`
+      const wasSubmitted = localStorage.getItem(withdrawKey)
+      if (wasSubmitted) {
+        setIsAlreadySubmitted(true)
+        setIsSubmitting(false)
+        setError('Этот вывод уже был отправлен. Нельзя отправить повторно.')
+        return
+      }
       
       const isBlocked = await checkUserBlocked(telegramUserId)
       if (isBlocked) {
@@ -518,23 +560,28 @@ const router = useRouter()
       }
       
       if (result.success !== false) {
-        
+        // Сохраняем общий флаг для пользователя
         const submitKey = `withdraw_submitted_${telegramUserId}`
         localStorage.setItem(submitKey, 'true')
         
+        // Сохраняем специфичный ключ для этого конкретного вывода (bookmaker + playerId)
+        const withdrawKey = `withdraw_${bookmaker}_${userId}`
+        localStorage.setItem(withdrawKey, 'true')
+        setIsAlreadySubmitted(true)
         
+        // Сохраняем cookie с ID игрока
         const cookieName = `user_id_${bookmaker}`
         const expires = new Date()
         expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000))
         document.cookie = `${cookieName}=${userId}; expires=${expires.toUTCString()}; path=/`
         
-        
+        // Очищаем данные формы
         localStorage.removeItem('withdraw_bookmaker')
         localStorage.removeItem('withdraw_bank')
         localStorage.removeItem('withdraw_qr_photo')
         localStorage.removeItem('withdraw_phone')
         
-        
+        // Переходим на главную
         router.push('/')
       } else {
         throw new Error(result.error || 'Неизвестная ошибка')
@@ -616,13 +663,21 @@ const router = useRouter()
                 Код проверен! Сумма: {withdrawAmount.toLocaleString()} сом
               </p>
             </div>
-            <button 
-              className="btn btn-primary w-full"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? t.submitting : (language === 'en' ? 'Submit' : 'Отправить')}
-            </button>
+            {isAlreadySubmitted ? (
+              <div className="p-3 bg-yellow-900/30 border border-yellow-500 rounded-lg">
+                <p className="text-sm text-yellow-300 font-semibold">
+                  ⚠️ Этот вывод уже был отправлен. Нельзя отправить повторно.
+                </p>
+              </div>
+            ) : (
+              <button 
+                className="btn btn-primary w-full"
+                onClick={handleSubmit}
+                disabled={isSubmitting || isAlreadySubmitted}
+              >
+                {isSubmitting ? t.submitting : (language === 'en' ? 'Submit' : 'Отправить')}
+              </button>
+            )}
           </div>
         )}
         
