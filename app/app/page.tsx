@@ -215,10 +215,11 @@ export default function HomePage() {
   
   // Периодическая проверка пользователя (для синхронизации с другими вкладками)
   useEffect(() => {
-    // Первая проверка только если пользователь не был установлен при инициализации
-    if (!user) {
-      updateUser()
-    } else if (isTelegramWebApp && !userInitialized.current) {
+    // Немедленная проверка при монтировании (на случай если пользователь вернулся после авторизации)
+    updateUser()
+    
+    // Если пользователь уже есть и это WebApp - инициализируем синхронизацию
+    if (user && isTelegramWebApp && !userInitialized.current) {
       userInitialized.current = true
       syncWithBot(user, "app_opened", {
         page: "home",
@@ -226,22 +227,82 @@ export default function HomePage() {
       }).catch(() => {})
     }
     
+    // Проверяем URL параметры на наличие успешной авторизации
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const authError = urlParams.get('auth_error')
+      
+      // Если нет ошибки авторизации, проверяем пользователя несколько раз с интервалами
+      // (на случай если он только что авторизовался и вернулся на страницу)
+      if (!authError) {
+        // Первая проверка через 100ms
+        const check1 = setTimeout(() => {
+          updateUser()
+        }, 100)
+        
+        // Вторая проверка через 500ms
+        const check2 = setTimeout(() => {
+          updateUser()
+        }, 500)
+        
+        // Третья проверка через 1000ms
+        const check3 = setTimeout(() => {
+          updateUser()
+        }, 1000)
+        
+        // Очищаем URL от параметров авторизации после проверки
+        if (urlParams.has('auth_error') || window.location.search.includes('auth')) {
+          setTimeout(() => {
+            window.history.replaceState({}, '', window.location.pathname)
+          }, 2000)
+        }
+        
+        return () => {
+          clearTimeout(check1)
+          clearTimeout(check2)
+          clearTimeout(check3)
+        }
+      }
+    }
+  }, [updateUser, user, isTelegramWebApp, language])
+  
+  // Периодическая проверка и обработка событий фокуса/видимости
+  useEffect(() => {
     // Периодически проверяем наличие пользователя (на случай если авторизация произошла в другом окне)
     const interval = setInterval(() => {
       updateUser()
-    }, 2000) // Проверяем каждые 2 секунды
+    }, 1000) // Проверяем каждую секунду для более быстрой реакции
     
-    // Проверяем при фокусе окна
+    // Проверяем при фокусе окна (когда пользователь возвращается на вкладку)
     const handleFocus = () => {
+      // Немедленная проверка при возврате на вкладку
       updateUser()
+      // Дополнительная проверка через 200ms на случай задержки
+      setTimeout(() => {
+        updateUser()
+      }, 200)
     }
     window.addEventListener('focus', handleFocus)
+    
+    // Проверяем при видимости страницы (Page Visibility API)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Немедленная проверка при возврате видимости
+        updateUser()
+        // Дополнительная проверка через 200ms
+        setTimeout(() => {
+          updateUser()
+        }, 200)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     
     return () => {
       clearInterval(interval)
       window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [updateUser, user, isTelegramWebApp, language])
+  }, [updateUser])
 
   // Слушаем сообщения от окна авторизации (для виджета)
   useEffect(() => {
