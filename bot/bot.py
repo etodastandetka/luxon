@@ -688,6 +688,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
             reply_markup = InlineKeyboardMarkup(keyboard)
             
+            # Очищаем старую Reply клавиатуру перед отправкой инлайн кнопок
+            await update.message.reply_text(
+                " ",
+                reply_markup=ReplyKeyboardRemove()
+            )
+            
             await update.message.reply_text(
                 f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker.upper()}\n\nВыберите банк для получения средств:",
                 parse_mode='HTML',
@@ -780,7 +786,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             user_states[user_id] = state
             
             # Отправляем сообщение о генерации QR и очищаем клавиатуру
-            await update.message.reply_text(
+            generating_message = await update.message.reply_text(
                 "⏳ Генерирую QR code...",
                 reply_markup=ReplyKeyboardRemove()
             )
@@ -863,6 +869,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             
                             if not keyboard:
                                 logger.warning(f"⚠️ Нет ссылок для банков, отправляю сообщение без кнопок")
+                                # Удаляем сообщение "Генерирую QR code..."
+                                try:
+                                    await generating_message.delete()
+                                except Exception as e:
+                                    logger.warning(f"⚠️ Не удалось удалить сообщение 'Генерирую QR code...': {e}")
                                 await update.message.reply_text(
                                     f"❌ Не удалось получить ссылки для оплаты. Обратитесь в поддержку.",
                                     parse_mode='HTML'
@@ -895,6 +906,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             user_states[user_id]['data']['bank_links'] = bank_links
                             user_states[user_id]['data']['timer_seconds'] = timer_seconds
                             
+                            # Удаляем сообщение "Генерирую QR code..."
+                            try:
+                                await generating_message.delete()
+                            except Exception as e:
+                                logger.warning(f"⚠️ Не удалось удалить сообщение 'Генерирую QR code...': {e}")
+                            
                             # Запускаем таймер как фоновую задачу
                             timer_task = asyncio.create_task(
                                 update_timer(context.bot, user_id, timer_seconds, data, timer_message.message_id, timer_message.chat.id)
@@ -906,6 +923,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             return
                         else:
                             logger.error(f"❌ QR данные не содержат success или data: {qr_data}")
+                            # Удаляем сообщение "Генерирую QR code..."
+                            try:
+                                await generating_message.delete()
+                            except Exception as e:
+                                logger.warning(f"⚠️ Не удалось удалить сообщение 'Генерирую QR code...': {e}")
                             await update.message.reply_text(
                                 f"❌ Ошибка при получении ссылок на оплату. Попробуйте еще раз."
                             )
@@ -913,12 +935,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     else:
                         error_text = qr_response.text
                         logger.error(f"❌ Ошибка при получении QR ссылок: status={qr_response.status_code}, error={error_text}")
+                        # Удаляем сообщение "Генерирую QR code..."
+                        try:
+                            await generating_message.delete()
+                        except Exception as e:
+                            logger.warning(f"⚠️ Не удалось удалить сообщение 'Генерирую QR code...': {e}")
                         await update.message.reply_text(
                             f"❌ Ошибка при получении ссылок на оплату. Попробуйте еще раз."
                         )
                         return
             except Exception as e:
                 logger.error(f"❌ Ошибка при создании заявки или получении ссылок: {e}")
+                # Удаляем сообщение "Генерирую QR code..."
+                try:
+                    await generating_message.delete()
+                except Exception as delete_error:
+                    logger.warning(f"⚠️ Не удалось удалить сообщение 'Генерирую QR code...': {delete_error}")
                 await update.message.reply_text(
                     f"❌ Ошибка при создании заявки. Попробуйте еще раз или обратитесь в поддержку."
                 )
