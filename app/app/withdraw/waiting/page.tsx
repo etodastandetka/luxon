@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
@@ -162,6 +162,107 @@ export default function WithdrawWaitingPage() {
   const [rejectionReason, setRejectionReason] = useState<string | null>(null)
   const [requestAmount, setRequestAmount] = useState<string | null>(null)
 
+  const checkWithdrawStatus = useCallback(async () => {
+    if (!requestId) return
+
+    try {
+      const apiUrl = getApiBase()
+      
+      const response = await fetch(`${apiUrl}/api/requests/${requestId}`)
+      
+      if (!response.ok) {
+        console.error('Failed to fetch request status:', response.status)
+        return
+      }
+
+      const data = await response.json()
+      
+      
+      if (data.success && data.data) {
+        const requestStatus = data.data.status
+        const statusDetail = data.data.statusDetail || data.data.status_detail
+        const amount = data.data.amount
+
+        if (amount) {
+          setRequestAmount(amount)
+        }
+
+
+        
+        const isCompleted = requestStatus === 'completed' || 
+                           requestStatus === 'approved' || 
+                           requestStatus === 'paid'
+        
+        if (isCompleted) {
+          setStatus('success')
+          
+          
+          localStorage.removeItem('withdraw_transaction_id')
+          localStorage.removeItem('withdraw_request_id')
+          localStorage.removeItem('withdraw_bookmaker')
+          localStorage.removeItem('withdraw_bank')
+          localStorage.removeItem('withdraw_qr_photo')
+          localStorage.removeItem('withdraw_phone')
+          localStorage.removeItem('withdraw_user_id')
+          localStorage.removeItem('withdraw_site_code')
+          localStorage.removeItem('withdraw_amount')
+          localStorage.removeItem('withdraw_request_created')
+        } else if (['rejected', 'declined', 'failed'].includes(requestStatus)) {
+          setStatus('error')
+          
+          
+          if (statusDetail) {
+            try {
+              
+              const parsed = JSON.parse(statusDetail)
+              if (parsed.reason || parsed.message) {
+                setRejectionReason(parsed.reason || parsed.message)
+              } else {
+                setRejectionReason(statusDetail)
+              }
+            } catch {
+              
+              setRejectionReason(statusDetail)
+            }
+          }
+        } else {
+        }
+      } else {
+        console.error('Invalid response data:', data)
+      }
+    } catch (error) {
+      console.error('Error checking withdrawal status:', error)
+      
+    }
+  }, [requestId])
+
+  useEffect(() => {
+    
+    const transactionId = localStorage.getItem('withdraw_transaction_id') || localStorage.getItem('withdraw_request_id')
+    if (!transactionId) {
+      
+      router.push('/')
+      return
+    }
+
+    setRequestId(transactionId)
+  }, [router])
+
+  useEffect(() => {
+    if (!requestId) return
+
+    
+    checkWithdrawStatus()
+
+    
+    const interval = setInterval(() => {
+      checkWithdrawStatus()
+    }, 3000)
+
+    return () => clearInterval(interval)
+    
+  }, [requestId, checkWithdrawStatus])
+
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
     return null
@@ -243,107 +344,6 @@ export default function WithdrawWaitingPage() {
   }
 
   const t = translations[language as keyof typeof translations] || translations.ru
-
-  useEffect(() => {
-    
-    const transactionId = localStorage.getItem('withdraw_transaction_id') || localStorage.getItem('withdraw_request_id')
-    if (!transactionId) {
-      
-      router.push('/')
-      return
-    }
-
-    setRequestId(transactionId)
-  }, [router])
-
-  useEffect(() => {
-    if (!requestId) return
-
-    
-    checkWithdrawStatus()
-
-    
-    const interval = setInterval(() => {
-      checkWithdrawStatus()
-    }, 3000)
-
-    return () => clearInterval(interval)
-    
-  }, [requestId])
-
-  const checkWithdrawStatus = async () => {
-    if (!requestId) return
-
-    try {
-      const apiUrl = getApiBase()
-      
-      const response = await fetch(`${apiUrl}/api/requests/${requestId}`)
-      
-      if (!response.ok) {
-        console.error('Failed to fetch request status:', response.status)
-        return
-      }
-
-      const data = await response.json()
-      
-      
-      if (data.success && data.data) {
-        const requestStatus = data.data.status
-        const statusDetail = data.data.statusDetail || data.data.status_detail
-        const amount = data.data.amount
-
-        if (amount) {
-          setRequestAmount(amount)
-        }
-
-
-        
-        const isCompleted = requestStatus === 'completed' || 
-                           requestStatus === 'approved' || 
-                           requestStatus === 'paid'
-        
-        if (isCompleted) {
-          setStatus('success')
-          
-          
-          localStorage.removeItem('withdraw_transaction_id')
-          localStorage.removeItem('withdraw_request_id')
-          localStorage.removeItem('withdraw_bookmaker')
-          localStorage.removeItem('withdraw_bank')
-          localStorage.removeItem('withdraw_qr_photo')
-          localStorage.removeItem('withdraw_phone')
-          localStorage.removeItem('withdraw_user_id')
-          localStorage.removeItem('withdraw_site_code')
-          localStorage.removeItem('withdraw_amount')
-          localStorage.removeItem('withdraw_request_created')
-        } else if (['rejected', 'declined', 'failed'].includes(requestStatus)) {
-          setStatus('error')
-          
-          
-          if (statusDetail) {
-            try {
-              
-              const parsed = JSON.parse(statusDetail)
-              if (parsed.reason || parsed.message) {
-                setRejectionReason(parsed.reason || parsed.message)
-              } else {
-                setRejectionReason(statusDetail)
-              }
-            } catch {
-              
-              setRejectionReason(statusDetail)
-            }
-          }
-        } else {
-        }
-      } else {
-        console.error('Invalid response data:', data)
-      }
-    } catch (error) {
-      console.error('Error checking withdrawal status:', error)
-      
-    }
-  }
 
   return (
     <div className="h-screen overflow-hidden flex flex-col p-2">
