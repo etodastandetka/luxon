@@ -20,23 +20,25 @@ export default function Achievements() {
   const { transactions, loading } = useHomePageData()
 
   // Вычисляем достижения на основе загруженных транзакций
-  // Не ждем loading - используем данные из кеша сразу
+  // Показываем достижения всегда, даже если транзакций нет (будут все не разблокированы)
   const achievements = useMemo<Achievement[]>(() => {
-    if (!transactions.length) {
-      return []
-    }
-      
-      const successful = transactions.filter((t: any) => 
-        t.status === 'completed' || t.status === 'approved'
-      )
-      
-      const deposits = successful.filter((t: any) => t.type === 'deposit')
-      const withdrawals = successful.filter((t: any) => t.type === 'withdraw')
-      
-      const totalDeposits = Math.round(deposits.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) * 100) / 100
-      const totalWithdrawals = Math.round(withdrawals.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) * 100) / 100
-      const depositCount = deposits.length
-      const withdrawalCount = withdrawals.length
+    // Всегда вычисляем достижения, даже если транзакций нет
+    // Если транзакций нет, все достижения будут с нулевым прогрессом (не разблокированы)
+    const successful = (transactions || []).filter((t: any) => 
+      t?.status === 'completed' || t?.status === 'approved'
+    )
+    
+    const deposits = successful.filter((t: any) => t?.type === 'deposit')
+    const withdrawals = successful.filter((t: any) => t?.type === 'withdraw')
+    
+    const totalDeposits = deposits.length > 0 
+      ? Math.round(deposits.reduce((sum: number, t: any) => sum + (t?.amount || 0), 0) * 100) / 100
+      : 0
+    const totalWithdrawals = withdrawals.length > 0
+      ? Math.round(withdrawals.reduce((sum: number, t: any) => sum + (t?.amount || 0), 0) * 100) / 100
+      : 0
+    const depositCount = deposits.length
+    const withdrawalCount = withdrawals.length
       
       // Определяем достижения с инструкциями
       const allAchievements: Achievement[] = [
@@ -150,7 +152,11 @@ export default function Achievements() {
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {achievements.length > 0 ? (
+        {loading && !transactions.length ? (
+          <div className="col-span-2 text-sm text-white/50 text-center py-2">
+            Достижения загружаются...
+          </div>
+        ) : achievements.length > 0 ? (
           achievements.map((achievement) => (
             <div
               key={achievement.id}
@@ -189,11 +195,7 @@ export default function Achievements() {
             )}
           </div>
           ))
-        ) : (
-          <div className="col-span-2 text-sm text-white/50 text-center py-2">
-            Достижения загружаются...
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* Модальное окно с инструкцией */}

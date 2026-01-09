@@ -60,7 +60,11 @@ export default function RatingBlock() {
         </button>
       </div>
       <div className="space-y-2">
-        {topPlayers.length > 0 ? (
+        {loading ? (
+          <div className="text-sm text-white/50 text-center py-2">
+            Рейтинг загружается...
+          </div>
+        ) : topPlayers.length > 0 ? (
           topPlayers.map((player, index) => (
             <div
               key={player.userId}
@@ -85,7 +89,7 @@ export default function RatingBlock() {
           ))
         ) : (
           <div className="text-sm text-white/50 text-center py-2">
-            Рейтинг загружается...
+            Рейтинг пока пуст
           </div>
         )}
       </div>
