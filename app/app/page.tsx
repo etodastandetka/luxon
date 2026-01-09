@@ -139,15 +139,43 @@ export default function HomePage() {
     return false
   })
   
-  const [user, setUser] = useState<TelegramUser | null>(null)
+  // Проверяем пользователя из localStorage сразу при инициализации, чтобы избежать мигания виджета
+  const [user, setUser] = useState<TelegramUser | null>(() => {
+    if (typeof window !== 'undefined') {
+      // Если это Telegram WebApp, проверяем через initTelegramWebApp
+      if ((window as any).Telegram?.WebApp) {
+        const telegramUser = initTelegramWebApp()
+        if (telegramUser) {
+          return telegramUser
+        }
+      }
+      // Если не WebApp, проверяем localStorage
+      try {
+        const savedUserStr = localStorage.getItem('telegram_user')
+        if (savedUserStr) {
+          return JSON.parse(savedUserStr)
+        }
+      } catch (e) {
+        // Игнорируем ошибки парсинга
+      }
+    }
+    return null
+  })
   const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
   const { language } = useLanguage()
   const { settings, loading: settingsLoading } = useBotSettings()
 
   const userInitialized = useRef(false)
+  const userChecked = useRef(false)
   
   // Функция для проверки и обновления пользователя
   const checkAndUpdateUser = useCallback(() => {
+    // Если пользователь уже установлен при инициализации, не проверяем повторно сразу
+    if (!userChecked.current && user) {
+      userChecked.current = true
+      return
+    }
+    userChecked.current = true
     // Проверяем, запущено ли приложение в Telegram WebApp
     const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null
     if (tg) {
@@ -175,31 +203,53 @@ export default function HomePage() {
       }
     } else {
       // Если не через мини-приложение, проверяем localStorage напрямую (виджет авторизации)
-      if (typeof window !== 'undefined') {
-        try {
-          const savedUserStr = localStorage.getItem('telegram_user')
-          if (savedUserStr) {
-            const savedUser = JSON.parse(savedUserStr)
-            setUser((currentUser) => {
-              if (!currentUser || currentUser.id !== savedUser.id) {
-                return savedUser
+      // Но только если пользователь еще не установлен, чтобы не перезаписывать уже установленного
+      setUser((currentUser) => {
+        if (currentUser) {
+          // Если пользователь уже установлен, проверяем только если он изменился
+          if (typeof window !== 'undefined') {
+            try {
+              const savedUserStr = localStorage.getItem('telegram_user')
+              if (savedUserStr) {
+                const savedUser = JSON.parse(savedUserStr)
+                if (currentUser.id !== savedUser.id) {
+                  return savedUser
+                }
+              } else {
+                // Если пользователя нет в localStorage, но он был установлен - оставляем как есть
+                // (может быть из кэша или другой сессии)
               }
-              return currentUser
-            })
-          } else {
-            // Если нет пользователя в localStorage, сбрасываем состояние
-            setUser(null)
+            } catch (e) {
+              // Ошибка парсинга - оставляем текущего пользователя
+            }
           }
-        } catch (e) {
-          // Ошибка парсинга - сбрасываем пользователя
-          setUser(null)
+          return currentUser
+        } else {
+          // Если пользователь не установлен, проверяем localStorage
+          if (typeof window !== 'undefined') {
+            try {
+              const savedUserStr = localStorage.getItem('telegram_user')
+              if (savedUserStr) {
+                return JSON.parse(savedUserStr)
+              }
+            } catch (e) {
+              // Ошибка парсинга
+            }
+          }
+          return null
         }
-      }
+      })
     }
   }, [language])
   
   useEffect(() => {
-    checkAndUpdateUser()
+    // Проверяем пользователя только если он еще не установлен при инициализации
+    // Это предотвращает мигание виджета входа
+    if (!user) {
+      checkAndUpdateUser()
+    } else {
+      userChecked.current = true
+    }
     
     // Периодически проверяем наличие пользователя (на случай если авторизация произошла в другом окне)
     const interval = setInterval(() => {
