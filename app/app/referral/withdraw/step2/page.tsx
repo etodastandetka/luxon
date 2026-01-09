@@ -18,16 +18,6 @@ function ReferralWithdrawStep2Content() {
   const [availableBalance, setAvailableBalance] = useState(0)
   const bookmaker = searchParams.get('bookmaker') || ''
 
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
-
-  useEffect(() => {
-    // Загружаем доступный баланс
-    loadAvailableBalance()
-  }, [])
-
   const loadAvailableBalance = async () => {
     try {
       // Используем оптимизированную функцию для получения ID
@@ -69,6 +59,16 @@ function ReferralWithdrawStep2Content() {
         name: error?.name
       })
     }
+  }
+
+  useEffect(() => {
+    // Загружаем доступный баланс
+    loadAvailableBalance()
+  }, [])
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
   }
 
   const handleSubmit = async () => {

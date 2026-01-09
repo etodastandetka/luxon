@@ -32,38 +32,11 @@ export default function ReferralPage() {
   })
   const { language, setLanguage } = useLanguage()
   const router = useRouter()
-
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
   
   const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage)
     localStorage.setItem('user_language', newLanguage)
   }
-
-  useEffect(() => {
-    // Загружаем данные сразу, без задержки
-    // Используем функцию напрямую, чтобы избежать проблем с зависимостями
-    let mounted = true
-    
-    const loadData = async () => {
-      try {
-        await loadReferralData()
-      } catch (error) {
-        if (mounted) {
-          console.error('Error loading referral data:', error)
-        }
-      }
-    }
-    
-    loadData()
-    
-    return () => {
-      mounted = false
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadReferralData = async () => {
     setLoading(true)
@@ -384,6 +357,33 @@ export default function ReferralPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    // Загружаем данные сразу, без задержки
+    // Используем функцию напрямую, чтобы избежать проблем с зависимостями
+    let mounted = true
+    
+    const loadData = async () => {
+      try {
+        await loadReferralData()
+      } catch (error) {
+        if (mounted) {
+          console.error('Error loading referral data:', error)
+        }
+      }
+    }
+    
+    loadData()
+    
+    return () => {
+      mounted = false
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
   }
 
   const translations = {
