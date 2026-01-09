@@ -162,6 +162,7 @@ export default function HomePage() {
     return null
   })
   const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
+  const [userCheckComplete, setUserCheckComplete] = useState(false) // Флаг завершения проверки пользователя
   const { language } = useLanguage()
   const { settings, loading: settingsLoading } = useBotSettings()
 
@@ -251,6 +252,11 @@ export default function HomePage() {
       userChecked.current = true
     }
     
+    // Помечаем проверку как завершенную после небольшой задержки, чтобы дать время на установку user
+    const checkTimeout = setTimeout(() => {
+      setUserCheckComplete(true)
+    }, 100)
+    
     // Периодически проверяем наличие пользователя (на случай если авторизация произошла в другом окне)
     const interval = setInterval(() => {
       if (!user) {
@@ -267,10 +273,11 @@ export default function HomePage() {
     window.addEventListener('focus', handleFocus)
     
     return () => {
+      clearTimeout(checkTimeout)
       clearInterval(interval)
       window.removeEventListener('focus', handleFocus)
     }
-  }, [checkAndUpdateUser])
+  }, [checkAndUpdateUser, user])
 
   // Слушаем сообщения от окна авторизации (для виджета)
   useEffect(() => {
@@ -424,8 +431,8 @@ export default function HomePage() {
       <FixedHeaderControls />
 
       <div className="wb-wrap space-y-6">
-        {/* Показываем виджет входа только если НЕ в Telegram Mini App (для обычного сайта) */}
-        {!user && !isTelegramWebApp && (
+        {/* Показываем виджет входа только если НЕ в Telegram Mini App (для обычного сайта) и проверка завершена */}
+        {!user && !isTelegramWebApp && userCheckComplete && (
           <section className="wb-section" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
             <h2 className="wb-h2" style={{ marginBottom: '1rem' }}>
               {language === 'en' ? 'Sign in with Telegram' : 'Вход через Telegram'}
