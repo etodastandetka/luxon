@@ -1320,11 +1320,11 @@ export default function HomePage() {
           height: 44px !important;
         }
 
-        /* Стили для кнопки Telegram внутри iframe */
+        /* Стили для кнопки Telegram внутри iframe - без фона */
         .telegram-login-widget :global(button) {
-          background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%) !important;
+          background: transparent !important;
           border-radius: 12px !important;
-          border: none !important;
+          border: 1px solid rgba(82, 209, 106, 0.3) !important;
           padding: 10px 20px !important;
           font-size: 14px !important;
           font-weight: 600 !important;
@@ -1334,20 +1334,21 @@ export default function HomePage() {
           align-items: center !important;
           justify-content: center !important;
           gap: 8px !important;
-          box-shadow: 0 3px 10px rgba(0, 136, 204, 0.25) !important;
+          box-shadow: none !important;
           transition: all 0.2s ease !important;
           cursor: pointer !important;
+          color: rgba(255, 255, 255, 0.95) !important;
         }
 
         .telegram-login-widget :global(button:hover) {
-          background: linear-gradient(135deg, #0099dd 0%, #0077bb 100%) !important;
-          box-shadow: 0 5px 14px rgba(0, 136, 204, 0.35) !important;
+          background: rgba(82, 209, 106, 0.1) !important;
+          border-color: rgba(82, 209, 106, 0.5) !important;
           transform: translateY(-1px) !important;
         }
 
         .telegram-login-widget :global(button:active) {
           transform: translateY(0) !important;
-          box-shadow: 0 2px 6px rgba(0, 136, 204, 0.3) !important;
+          background: rgba(82, 209, 106, 0.15) !important;
         }
       `}</style>
     </main>
