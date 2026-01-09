@@ -34,23 +34,62 @@ export default function UserProfile() {
     }
   }, [])
 
+  // Периодически обновляем пользователя (на случай если он изменился)
+  useEffect(() => {
+    const updateUser = () => {
+      const telegramUser = getTelegramUser()
+      if (telegramUser && (!user || user.id !== telegramUser.id)) {
+        setUser(telegramUser)
+      }
+    }
+    
+    // Обновляем сразу
+    updateUser()
+    
+    // Обновляем при фокусе окна
+    const handleFocus = () => updateUser()
+    window.addEventListener('focus', handleFocus)
+    
+    // Обновляем при видимости страницы
+    const handleVisibilityChange = () => {
+      if (!document.hidden) updateUser()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [user])
+
   // Вычисляем статистику из общих данных (без отдельного запроса)
   // Показываем сразу с нулями, не ждем загрузки
+  // Используем transactions.length в зависимостях для принудительного пересчета
   const stats = useMemo<UserStats>(() => {
-    const deposits = transactions.filter((t: any) => 
-      t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')
+    // Используем новый массив для гарантии обновления
+    const transactionsArray = Array.isArray(transactions) ? transactions : []
+    
+    const deposits = transactionsArray.filter((t: any) => 
+      t?.type === 'deposit' && (t?.status === 'completed' || t?.status === 'approved')
     )
-    const withdraws = transactions.filter((t: any) => 
-      t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')
+    const withdraws = transactionsArray.filter((t: any) => 
+      t?.type === 'withdraw' && (t?.status === 'completed' || t?.status === 'approved')
     )
     
-    return {
+    const result = {
       totalDeposits: deposits.length,
       totalWithdraws: withdraws.length,
-      totalDepositAmount: deposits.reduce((sum: number, t: any) => sum + (t.amount || 0), 0),
-      totalWithdrawAmount: withdraws.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
+      totalDepositAmount: deposits.reduce((sum: number, t: any) => sum + (t?.amount || 0), 0),
+      totalWithdrawAmount: withdraws.reduce((sum: number, t: any) => sum + (t?.amount || 0), 0)
     }
-  }, [transactions])
+    
+    // Логируем для отладки (только если есть изменения)
+    if (result.totalDeposits > 0 || result.totalWithdraws > 0) {
+      console.log('📊 UserProfile stats updated:', result)
+    }
+    
+    return result
+  }, [transactions, transactions.length]) // Добавляем transactions.length для принудительного обновления
 
   const translations = {
     ru: {
