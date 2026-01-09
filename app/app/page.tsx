@@ -479,55 +479,55 @@ export default function HomePage() {
       <div className="wb-wrap space-y-6">
         {/* Показываем виджет входа только если НЕ в Telegram Mini App (для обычного сайта) и пользователь не авторизован */}
         {!user && !isTelegramWebApp && (
-          <section className="wb-section" style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
+          <section className="wb-section" style={{ textAlign: 'center', padding: '1rem' }}>
             <div style={{
               background: 'linear-gradient(135deg, rgba(82, 209, 106, 0.12), rgba(18, 89, 50, 0.12))',
               border: '1px solid rgba(82, 209, 106, 0.25)',
-              borderRadius: '20px',
-              padding: '2rem 1.5rem',
+              borderRadius: '16px',
+              padding: '1.5rem 1.25rem',
               backdropFilter: 'blur(12px)',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(82, 209, 106, 0.1) inset',
+              boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(82, 209, 106, 0.1) inset',
               position: 'relative',
               overflow: 'hidden',
-              maxWidth: '480px',
+              maxWidth: '400px',
               margin: '0 auto'
             }}>
               {/* Декоративный градиент */}
               <div style={{
                 position: 'absolute',
-                top: '-30%',
-                right: '-30%',
-                width: '150%',
-                height: '150%',
-                background: 'radial-gradient(circle, rgba(82, 209, 106, 0.08) 0%, transparent 70%)',
+                top: '-20%',
+                right: '-20%',
+                width: '120%',
+                height: '120%',
+                background: 'radial-gradient(circle, rgba(82, 209, 106, 0.06) 0%, transparent 70%)',
                 pointerEvents: 'none'
               }} />
               
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <div style={{
-                  fontSize: '1.75rem',
-                  marginBottom: '0.75rem',
+                  fontSize: '1.5rem',
+                  marginBottom: '0.5rem',
                   filter: 'drop-shadow(0 2px 4px rgba(82, 209, 106, 0.3))'
                 }}>
                   ✨
                 </div>
                 <h2 className="wb-h2" style={{ 
-                  marginBottom: '0.5rem',
+                  marginBottom: '0.375rem',
                   background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(82, 209, 106, 0.9))',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
-                  fontSize: '1.5rem',
+                  fontSize: '1.25rem',
                   fontWeight: '700',
                   letterSpacing: '-0.02em'
                 }}>
                   {language === 'en' ? 'Sign in with Telegram' : 'Вход через Telegram'}
                 </h2>
                 <p className="wb-p" style={{ 
-                  marginBottom: '1.5rem', 
-                  opacity: 0.8,
-                  fontSize: '0.9rem',
-                  color: 'rgba(255, 255, 255, 0.85)'
+                  marginBottom: '1.25rem', 
+                  opacity: 0.75,
+                  fontSize: '0.85rem',
+                  color: 'rgba(255, 255, 255, 0.8)'
                 }}>
                   {language === 'en' 
                     ? 'Please sign in to continue' 
@@ -537,7 +537,7 @@ export default function HomePage() {
                 {/* Компактная обертка для виджета */}
                 <div style={{
                   display: 'inline-block',
-                  borderRadius: '14px',
+                  borderRadius: '12px',
                   overflow: 'hidden',
                   boxShadow: '0 4px 16px rgba(82, 209, 106, 0.2), 0 0 0 1px rgba(82, 209, 106, 0.15)',
                   transition: 'all 0.2s ease',
@@ -1312,42 +1312,42 @@ export default function HomePage() {
 
         /* Кастомизация Telegram Login Widget - компактная версия */
         .telegram-login-widget iframe {
-          border-radius: 14px !important;
+          border-radius: 12px !important;
           overflow: hidden !important;
           border: none !important;
           width: 100% !important;
-          max-width: 280px !important;
-          height: 48px !important;
+          max-width: 260px !important;
+          height: 44px !important;
         }
 
         /* Стили для кнопки Telegram внутри iframe */
         .telegram-login-widget :global(button) {
           background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%) !important;
-          border-radius: 14px !important;
+          border-radius: 12px !important;
           border: none !important;
-          padding: 12px 24px !important;
-          font-size: 15px !important;
+          padding: 10px 20px !important;
+          font-size: 14px !important;
           font-weight: 600 !important;
-          height: 48px !important;
-          min-width: 240px !important;
+          height: 44px !important;
+          min-width: 220px !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
-          gap: 10px !important;
-          box-shadow: 0 4px 12px rgba(0, 136, 204, 0.25) !important;
+          gap: 8px !important;
+          box-shadow: 0 3px 10px rgba(0, 136, 204, 0.25) !important;
           transition: all 0.2s ease !important;
           cursor: pointer !important;
         }
 
         .telegram-login-widget :global(button:hover) {
           background: linear-gradient(135deg, #0099dd 0%, #0077bb 100%) !important;
-          box-shadow: 0 6px 16px rgba(0, 136, 204, 0.35) !important;
+          box-shadow: 0 5px 14px rgba(0, 136, 204, 0.35) !important;
           transform: translateY(-1px) !important;
         }
 
         .telegram-login-widget :global(button:active) {
           transform: translateY(0) !important;
-          box-shadow: 0 2px 8px rgba(0, 136, 204, 0.3) !important;
+          box-shadow: 0 2px 6px rgba(0, 136, 204, 0.3) !important;
         }
       `}</style>
     </main>
