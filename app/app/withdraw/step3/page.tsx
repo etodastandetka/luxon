@@ -224,6 +224,7 @@ export default function WithdrawStep3() {
         }
         
         setError(errorMessage)
+        setWithdrawAmount(null) // Сбрасываем сумму при ошибке, чтобы скрыть кнопку
         setIsCheckingCode(false)
         return
       }
@@ -241,20 +242,24 @@ export default function WithdrawStep3() {
         
         if (amount !== null && !isNaN(amount) && amount > 0) {
           setWithdrawAmount(amount)
+          setError(null) // Очищаем ошибку при успешной проверке
           setIsCheckingCode(false)
           // НЕ отправляем автоматически - ждем нажатия кнопки
         } else {
           setError('Не удалось получить сумму вывода. Попробуйте еще раз.')
+          setWithdrawAmount(null) // Сбрасываем сумму при ошибке
           setIsCheckingCode(false)
         }
       } else {
         let errorMessage = data.error || data.message || 'Код неверный или вывод не найден'
         setError(errorMessage)
+        setWithdrawAmount(null) // Сбрасываем сумму при ошибке, чтобы скрыть кнопку
         setIsCheckingCode(false)
       }
     } catch (error: any) {
       console.error('Ошибка проверки кода:', error)
       setError('Ошибка проверки кода. Попробуйте еще раз.')
+      setWithdrawAmount(null) // Сбрасываем сумму при ошибке, чтобы скрыть кнопку
       setIsCheckingCode(false)
     }
   }, [userId, siteCode, bookmaker, isCheckingCode, isSubmitting])
