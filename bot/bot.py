@@ -779,6 +779,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             state['step'] = 'deposit_bank'
             user_states[user_id] = state
             
+            # Отправляем сообщение о генерации QR и очищаем клавиатуру
+            await update.message.reply_text(
+                "⏳ Генерирую QR code...",
+                reply_markup=ReplyKeyboardRemove()
+            )
+            
             # Получаем только QR ссылки (заявку создадим после отправки фото)
             try:
                 async with httpx.AsyncClient(timeout=5.0) as client:
