@@ -16,6 +16,13 @@ export function useRequireAuth() {
   useEffect(() => {
     mountedRef.current = true
     
+    // Безопасное обновление состояния
+    const safeSetState = (value: boolean) => {
+      if (mountedRef.current) {
+        setIsAuthorized(value)
+      }
+    }
+    
     // Проверяем авторизацию
     const checkAuth = (): boolean => {
       // В Mini App пользователь всегда авторизован, если есть WebApp
@@ -24,9 +31,7 @@ export function useRequireAuth() {
         if (tg) {
           // Если это Mini App - разрешаем доступ (даже если данные еще не загружены)
           // Telegram Mini App всегда предоставляет данные пользователя
-          if (mountedRef.current) {
-            setIsAuthorized(true)
-          }
+          safeSetState(true)
           return true
         }
       }
@@ -37,16 +42,12 @@ export function useRequireAuth() {
       
       // Если есть пользователь или ID - авторизован
       if (user || userId) {
-        if (mountedRef.current) {
-          setIsAuthorized(true)
-        }
+        safeSetState(true)
         return true
       }
       
       // Если нет - не авторизован
-      if (mountedRef.current) {
-        setIsAuthorized(false)
-      }
+      safeSetState(false)
       return false
     }
 
@@ -62,12 +63,17 @@ export function useRequireAuth() {
         const isAuthRetry = checkAuth()
         if (!isAuthRetry && mountedRef.current) {
           // Редиректим на главную страницу только если точно не авторизован
-          try {
-            router.replace('/')
-          } catch (error) {
-            // Игнорируем ошибки роутера
-            console.error('Router error:', error)
-          }
+          // Используем setTimeout для асинхронного редиректа, чтобы избежать ошибок
+          setTimeout(() => {
+            if (mountedRef.current) {
+              try {
+                router.replace('/')
+              } catch (error) {
+                // Игнорируем ошибки роутера
+                console.error('Router error:', error)
+              }
+            }
+          }, 0)
         }
       }, 100)
     }
