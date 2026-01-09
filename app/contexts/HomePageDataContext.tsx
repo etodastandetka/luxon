@@ -346,7 +346,8 @@ export function HomePageDataProvider({ children }: { children: ReactNode }) {
       globalData = null
       isLoading = false
       loadingPromise = null
-      setData({ transactions: [], topPlayers: [], loading: true })
+      // Не устанавливаем loading: true, чтобы контент показывался сразу
+      setData({ transactions: [], topPlayers: [], loading: false })
       loadAllData().then(result => {
         if (mountedRef.current) {
           setData(result)

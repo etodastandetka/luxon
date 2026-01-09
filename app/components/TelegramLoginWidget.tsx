@@ -96,12 +96,21 @@ export default function TelegramLoginWidget({ botName, onAuth }: TelegramLoginWi
       return
     }
 
-    if (!isLoaded) return
+    // Очищаем контейнер только если там есть старый скрипт
+    const existingScript = containerRef.current.querySelector('script')
+    if (existingScript && existingScript.getAttribute('data-telegram-login') !== botName.replace('@', '')) {
+      containerRef.current.innerHTML = ''
+    } else if (!existingScript) {
+      containerRef.current.innerHTML = ''
+    }
 
-    // Очищаем контейнер
-    containerRef.current.innerHTML = ''
+    // Проверяем, не создан ли уже виджет с правильным ботом
+    const currentScript = containerRef.current.querySelector(`script[data-telegram-login="${botName.replace('@', '')}"]`)
+    if (currentScript) {
+      return // Виджет уже создан
+    }
 
-    // Создаем виджет
+    // Создаем виджет сразу, скрипт загрузится автоматически
     const script = document.createElement('script')
     script.async = true
     script.src = 'https://telegram.org/js/telegram-widget.js?22'
@@ -111,7 +120,7 @@ export default function TelegramLoginWidget({ botName, onAuth }: TelegramLoginWi
     script.setAttribute('data-request-access', 'write')
     
     containerRef.current.appendChild(script)
-  }, [isLoaded, botName, isLocalhost, isAuthenticated, language])
+  }, [botName, isLocalhost, isAuthenticated, language])
 
   // Всегда рендерим контейнер для избежания ошибки гидратации
   // Содержимое управляется через useEffect (будет пустым если авторизован)
