@@ -165,7 +165,6 @@ export default function HomePage() {
   
   const [isTelegramWebApp, setIsTelegramWebApp] = useState(initialState.isTelegramWebApp)
   const [user, setUser] = useState<TelegramUser | null>(initialState.user)
-  const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
   
   const userInitialized = useRef(false)
   
@@ -381,6 +380,7 @@ export default function HomePage() {
 
   const { transactions, loading: transactionsLoading } = useHomePageData()
 
+  // Вычисляем статистику напрямую из транзакций - всегда актуально
   const computedStats = useMemo(() => {
     let deposits = 0
     let withdraws = 0
@@ -393,21 +393,6 @@ export default function HomePage() {
     }
     return { deposits, withdraws }
   }, [transactions])
-
-  // Обновляем статистику при загрузке транзакций
-  useEffect(() => {
-    // Если транзакции загружены (не loading), обновляем статистику
-    if (!transactionsLoading) {
-      setUserStats(computedStats)
-    }
-  }, [computedStats, transactionsLoading])
-
-  // Принудительно обновляем статистику при изменении пользователя
-  useEffect(() => {
-    if (user && !transactionsLoading) {
-      setUserStats(computedStats)
-    }
-  }, [user?.id, transactionsLoading, computedStats])
 
   const translations = {
     ru: {
@@ -585,11 +570,11 @@ export default function HomePage() {
           <div className="wb-hero-cards">
             <div className="wb-mini">
               <div className="wb-mini-label">{t.depCount}</div>
-              <div className="wb-mini-value">{userStats?.deposits ?? 0}</div>
+              <div className="wb-mini-value">{computedStats.deposits}</div>
             </div>
             <div className="wb-mini">
               <div className="wb-mini-label">{t.wdrCount}</div>
-              <div className="wb-mini-value">{userStats?.withdraws ?? 0}</div>
+              <div className="wb-mini-value">{computedStats.withdraws}</div>
             </div>
           </div>
 
