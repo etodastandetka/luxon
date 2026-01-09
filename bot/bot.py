@@ -558,12 +558,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             # Формируем список доступных казино через Reply клавиатуру
             all_casinos = [
-                ('1xbet', '🎰 1XBET'),
-                ('1win', '🎰 1WIN'),
-                ('melbet', '🎰 MELBET'),
-                ('mostbet', '🎰 MOSTBET'),
-                ('winwin', '🎰 WINWIN'),
-                ('888starz', '🎰 888STARZ')
+                ('1xbet', '1XBET'),
+                ('1win', '1WIN'),
+                ('melbet', 'MELBET'),
+                ('mostbet', 'MOSTBET'),
+                ('winwin', 'WINWIN'),
+                ('888starz', '888STARZ')
             ]
             
             # Фильтруем доступные казино
@@ -609,12 +609,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             # Формируем список доступных казино через Reply клавиатуру
             all_casinos = [
-                ('1xbet', '🎰 1XBET'),
-                ('1win', '🎰 1WIN'),
-                ('melbet', '🎰 MELBET'),
-                ('mostbet', '🎰 MOSTBET'),
-                ('winwin', '🎰 WINWIN'),
-                ('888starz', '🎰 888STARZ')
+                ('1xbet', '1XBET'),
+                ('1win', '1WIN'),
+                ('melbet', 'MELBET'),
+                ('mostbet', 'MOSTBET'),
+                ('winwin', 'WINWIN'),
+                ('888starz', '888STARZ')
             ]
             
             # Фильтруем доступные казино
@@ -660,12 +660,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             try:
                 # Определяем казино по тексту кнопки
                 bookmaker_map = {
-                    '🎰 1XBET': '1xbet',
-                    '🎰 1WIN': '1win',
-                    '🎰 MELBET': 'melbet',
-                    '🎰 MOSTBET': 'mostbet',
-                    '🎰 WINWIN': 'winwin',
-                    '🎰 888STARZ': '888starz',
                     '1XBET': '1xbet',
                     '1WIN': '1win',
                     'MELBET': 'melbet',
@@ -705,7 +699,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 # Создаем Reply клавиатуру с сохраненным ID и кнопкой отмены
                 keyboard_buttons = []
                 if saved_id:
-                    keyboard_buttons.append([KeyboardButton(f"ID: {saved_id}")])
+                    keyboard_buttons.append([KeyboardButton(str(saved_id))])
                 keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
                 reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
                 
@@ -729,12 +723,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             try:
                 # Определяем казино по тексту кнопки
                 bookmaker_map = {
-                    '🎰 1XBET': '1xbet',
-                    '🎰 1WIN': '1win',
-                    '🎰 MELBET': 'melbet',
-                    '🎰 MOSTBET': 'mostbet',
-                    '🎰 WINWIN': 'winwin',
-                    '🎰 888STARZ': '888starz',
                     '1XBET': '1xbet',
                     '1WIN': '1win',
                     'MELBET': 'melbet',
@@ -797,9 +785,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 # Группируем кнопки по 2 в ряд
                 keyboard_buttons = []
                 for i in range(0, len(enabled_banks_list), 2):
-                    row = [KeyboardButton(f"🏦 {enabled_banks_list[i][1]}")]
+                    row = [KeyboardButton(enabled_banks_list[i][1])]
                     if i + 1 < len(enabled_banks_list):
-                        row.append(KeyboardButton(f"🏦 {enabled_banks_list[i + 1][1]}"))
+                        row.append(KeyboardButton(enabled_banks_list[i + 1][1]))
                     keyboard_buttons.append(row)
                 
                 keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
@@ -824,13 +812,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         if step == 'withdraw_bank':
             # Определяем банк по тексту кнопки
             bank_map = {
-                '🏦 Компаньон': 'kompanion',
-                '🏦 DemirBank': 'demirbank',
-                '🏦 O!Money': 'omoney',
-                '🏦 Balance.kg': 'balance',
-                '🏦 Bakai': 'bakai',
-                '🏦 MegaPay': 'megapay',
-                '🏦 MBank': 'mbank',
                 'Компаньон': 'kompanion',
                 'DemirBank': 'demirbank',
                 'O!Money': 'omoney',
@@ -939,14 +920,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         
         # Обработка пополнения
         if step == 'deposit_player_id':
-            # Проверяем, не нажата ли кнопка с сохраненным ID
-            if message_text and message_text.startswith("ID: "):
-                player_id = message_text.replace("ID: ", "").strip()
-            else:
-                if not message_text or not message_text.strip().isdigit():
-                    await update.message.reply_text("❌ Введите корректный ID игрока (только цифры)")
-                    return
-                player_id = message_text.strip()
+            # Проверяем, не нажата ли кнопка с сохраненным ID (теперь кнопка содержит только цифры без префикса "ID: ")
+            if not message_text or not message_text.strip().isdigit():
+                await update.message.reply_text(get_text('invalid_player_id_format'))
+                return
+            player_id = message_text.strip()
             
             # Сохраняем ID для этого казино в user_states
             if 'saved_player_ids' not in data:
@@ -1433,7 +1411,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if saved_id and saved_id != 'None' and saved_id != 'null' and str(saved_id).strip():
                 # Всегда показываем сохраненный ID как кнопку для быстрой отправки
                 id_str = str(saved_id).strip()
-                keyboard_buttons.append([KeyboardButton(f"ID: {id_str}")])
+                keyboard_buttons.append([KeyboardButton(id_str)])
                 logger.info(f"🆔 ✅ Добавлена кнопка с сохраненным ID: {id_str}")
             else:
                 logger.info(f"🆔 ❌ Сохраненный ID не найден или пустой: {saved_id}")
@@ -1456,14 +1434,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
         
         elif step == 'withdraw_player_id':
-            # Проверяем, не нажата ли кнопка с сохраненным ID
-            if message_text and message_text.startswith("ID: "):
-                player_id = message_text.replace("ID: ", "").strip()
-            else:
-                if not message_text or not message_text.strip().isdigit():
-                    await update.message.reply_text("❌ Введите корректный ID игрока (только цифры)")
-                    return
-                player_id = message_text.strip()
+            # Проверяем, не нажата ли кнопка с сохраненным ID (теперь кнопка содержит только цифры без префикса "ID: ")
+            if not message_text or not message_text.strip().isdigit():
+                await update.message.reply_text(get_text('invalid_player_id_format'))
+                return
+            player_id = message_text.strip()
             
             # Сохраняем ID для этого казино в user_states
             if 'saved_player_ids' not in data:
