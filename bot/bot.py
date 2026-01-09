@@ -658,7 +658,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
                 await load_settings()
             
-            # Формируем список банков через Reply клавиатуру
+            # Формируем список банков через инлайн кнопки
             enabled_banks = settings_cache.get('withdrawal_banks', [])
             all_banks = [
                 ('kompanion', 'Компаньон'),
@@ -670,14 +670,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 ('mbank', 'MBank')
             ]
             
-            keyboard_buttons = []
+            # Формируем инлайн кнопки
+            keyboard = []
+            all_banks_list = []
             for bank_key, bank_name in all_banks:
                 is_enabled = bank_key in enabled_banks or bank_key == 'kompanion'
                 if is_enabled:
-                    keyboard_buttons.append([KeyboardButton(f"🏦 {bank_name}")])
+                    all_banks_list.append(InlineKeyboardButton(f"🏦 {bank_name}", callback_data=f"withdraw_bank_{bank_key}"))
             
-            keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
-            reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+            # Разделяем на пары (по 2 в ряд)
+            for i in range(0, len(all_banks_list), 2):
+                if i + 1 < len(all_banks_list):
+                    keyboard.append([all_banks_list[i], all_banks_list[i + 1]])
+                else:
+                    keyboard.append([all_banks_list[i]])
+            
+            keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
+            reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
                 f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker.upper()}\n\nВыберите банк для получения средств:",
@@ -686,64 +695,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return
         
-        # Обработка выбора банка для вывода
-        if step == 'withdraw_bank':
-            # Определяем банк по тексту кнопки
-            bank_map = {
-                '🏦 Компаньон': 'kompanion',
-                '🏦 DemirBank': 'demirbank',
-                '🏦 O!Money': 'omoney',
-                '🏦 Balance.kg': 'balance',
-                '🏦 Bakai': 'bakai',
-                '🏦 MegaPay': 'megapay',
-                '🏦 MBank': 'mbank',
-                'Компаньон': 'kompanion',
-                'DemirBank': 'demirbank',
-                'O!Money': 'omoney',
-                'Balance.kg': 'balance',
-                'Bakai': 'bakai',
-                'MegaPay': 'megapay',
-                'MBank': 'mbank'
-            }
-            
-            bank = bank_map.get(message_text)
-            if not bank:
-                await update.message.reply_text("❌ Пожалуйста, выберите банк из предложенных кнопок")
-                return
-            
-            data['bank'] = bank
-            state['step'] = 'withdraw_phone'
-            user_states[user_id] = state
-            
-            # Получаем сохраненный номер телефона из API
-            saved_phone = None
-            try:
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    response = await client.get(
-                        f"{API_URL}/api/public/casino-account",
-                        params={"user_id": str(user_id), "casino_id": "phone"}
-                    )
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get('success') and result.get('data', {}).get('phone'):
-                            saved_phone = result.get('data', {}).get('phone')
-            except Exception as e:
-                logger.warning(f"Не удалось получить сохраненный телефон из API: {e}")
-            
-            # Создаем Reply клавиатуру с сохраненным номером и кнопкой отмены
-            keyboard_buttons = []
-            if saved_phone:
-                keyboard_buttons.append([KeyboardButton(f"📱 {saved_phone}")])
-            keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
-            reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
-            
-            bookmaker_name = data.get('bookmaker', '').upper()
-            await update.message.reply_text(
-                f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker_name}\nБанк: {bank}\n\nВведите номер телефона (начинается с +996):",
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
-            return
+        # Обработка выбора банка для вывода теперь через callback (withdraw_bank_*)
+        # Убрана обработка через текст сообщения
         
         # Обработка пополнения
         if step == 'deposit_player_id':
@@ -913,10 +866,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
                             reply_markup = InlineKeyboardMarkup(keyboard)
                             
-                            # Создаем Reply клавиатуру с кнопкой отмены
-                            keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
-                            reply_markup_keyboard = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
-                            
                             logger.info(f"📤 Отправляю сообщение с кнопками банков для пользователя {user_id}")
                             
                             # Отправляем сообщение с кнопками банков (заявка будет создана после отправки фото)
@@ -926,7 +875,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 f"🎰 <b>Казино:</b> {data['bookmaker'].upper()}\n"
                                 f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
                                 f"⏰ <b>Таймер: {timer_text}</b>\n\n"
-                                f"💳 <b>Выберите банк для оплаты:</b>\n\n"
                                 f"После оплаты отправьте фото чека:",
                                 reply_markup=reply_markup,
                                 parse_mode='HTML'
@@ -936,15 +884,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             data['timer_message_id'] = timer_message.message_id
                             data['timer_chat_id'] = timer_message.chat.id
                             user_states[user_id]['data'] = data
-                            
-                            # Отправляем Reply клавиатуру отдельным сообщением
-                            try:
-                                await update.message.reply_text(
-                                    "💳 Выберите банк для оплаты:",
-                                    reply_markup=reply_markup_keyboard
-                                )
-                            except Exception as e:
-                                logger.warning(f"⚠️ Не удалось отправить Reply клавиатуру: {e}")
                             
                             # Сохраняем ссылки в состоянии для последующего использования
                             user_states[user_id]['data']['bank_links'] = bank_links
@@ -1509,6 +1448,81 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Обработка callback'ов для выбора казино и банков убрана
     # Теперь выбор происходит через Reply клавиатуру в handle_message
     
+    # Обработка выбора банка для вывода
+    if callback_data and callback_data.startswith("withdraw_bank_"):
+        bank_key = callback_data.replace("withdraw_bank_", "")
+        user_id = user.id
+        
+        if user_id not in user_states:
+            await query.answer("❌ Сессия истекла. Начните заново.", show_alert=True)
+            return
+        
+        state = user_states[user_id]
+        step = state.get('step', '')
+        data = state.get('data', {})
+        
+        if step != 'withdraw_bank':
+            await query.answer("❌ Неверный шаг. Начните заново.", show_alert=True)
+            return
+        
+        bank_names_map = {
+            'kompanion': 'Компаньон',
+            'demirbank': 'DemirBank',
+            'omoney': 'O!Money',
+            'balance': 'Balance.kg',
+            'bakai': 'Bakai',
+            'megapay': 'MegaPay',
+            'mbank': 'MBank'
+        }
+        
+        bank_name = bank_names_map.get(bank_key, bank_key)
+        data['bank'] = bank_key
+        state['step'] = 'withdraw_phone'
+        user_states[user_id] = state
+        
+        # Получаем сохраненный номер телефона из API
+        saved_phone = None
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(
+                    f"{API_URL}/api/public/casino-account",
+                    params={"user_id": str(user_id), "casino_id": "phone"}
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get('success') and result.get('data', {}).get('phone'):
+                        saved_phone = result.get('data', {}).get('phone')
+        except Exception as e:
+            logger.warning(f"Не удалось получить сохраненный телефон из API: {e}")
+        
+        # Создаем Reply клавиатуру с сохраненным номером и кнопкой отмены
+        keyboard_buttons = []
+        if saved_phone:
+            keyboard_buttons.append([KeyboardButton(f"📱 {saved_phone}")])
+        keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
+        reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+        
+        bookmaker_name = data.get('bookmaker', '').upper()
+        
+        # Обновляем сообщение
+        try:
+            await query.edit_message_text(
+                f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker_name}\nБанк: {bank_name}\n\nВведите номер телефона (начинается с +996):",
+                parse_mode='HTML'
+            )
+            # Отправляем Reply клавиатуру отдельным сообщением
+            await query.message.reply_text(" ", reply_markup=reply_markup)
+        except Exception as e:
+            logger.warning(f"Не удалось обновить сообщение: {e}")
+            await query.message.reply_text(
+                f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker_name}\nБанк: {bank_name}\n\nВведите номер телефона (начинается с +996):",
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        
+        await query.answer()
+        return
+    
     # Обработка отмены заявки
     if callback_data == "cancel_request":
         logger.info(f"🛑 Пользователь {user_id} отменил заявку через инлайн-кнопку")
@@ -1770,7 +1784,6 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                          f"🎰 <b>Казино:</b> {current_data.get('bookmaker', '').upper()}\n"
                          f"🆔 <b>ID игрока:</b> {current_data.get('player_id', '')}\n\n"
                          f"⏰ <b>Таймер: {timer_text}</b>\n\n"
-                         f"💳 <b>Выберите банк для оплаты:</b>\n\n"
                          f"После оплаты отправьте фото чека:",
                     reply_markup=reply_markup,
                     parse_mode='HTML'
