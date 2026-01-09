@@ -734,20 +734,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             state['step'] = 'withdraw_phone'
             user_states[user_id] = state
             
-            # Получаем сохраненный номер телефона из API
-            saved_phone = None
-            try:
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    response = await client.get(
-                        f"{API_URL}/api/public/casino-account",
-                        params={"user_id": str(user_id), "casino_id": "phone"}
-                    )
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get('success') and result.get('data', {}).get('phone'):
-                            saved_phone = result.get('data', {}).get('phone')
-            except Exception as e:
-                logger.warning(f"Не удалось получить сохраненный телефон из API: {e}")
+            # Получаем сохраненный номер телефона (сначала из локального состояния, потом из API)
+            saved_phone = data.get('saved_phones', {}).get('phone')
+            if not saved_phone:
+                try:
+                    async with httpx.AsyncClient(timeout=5.0) as client:
+                        response = await client.get(
+                            f"{API_URL}/api/public/casino-account",
+                            params={"user_id": str(user_id), "casino_id": "phone"}
+                        )
+                        if response.status_code == 200:
+                            result = response.json()
+                            if result.get('success') and result.get('data', {}).get('phone'):
+                                saved_phone = result.get('data', {}).get('phone')
+                                # Сохраняем в локальное состояние для быстрого доступа
+                                if 'saved_phones' not in data:
+                                    data['saved_phones'] = {}
+                                data['saved_phones']['phone'] = saved_phone
+                                user_states[user_id]['data'] = data
+                except Exception as e:
+                    logger.warning(f"Не удалось получить сохраненный телефон из API: {e}")
             
             # Создаем Reply клавиатуру с сохраненным номером и кнопкой отмены
             keyboard_buttons = []
@@ -1123,7 +1129,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             # Сохраняем номер телефона через API
             try:
                 async with httpx.AsyncClient(timeout=5.0) as client:
-                    await client.post(
+                    response = await client.post(
                         f"{API_URL}/api/public/casino-account",
                         json={
                             "user_id": str(user_id),
@@ -1132,6 +1138,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         },
                         headers={"Content-Type": "application/json"}
                     )
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get('success'):
+                            # Сохраняем в локальное состояние для быстрого доступа
+                            if 'saved_phones' not in data:
+                                data['saved_phones'] = {}
+                            data['saved_phones']['phone'] = phone
+                            user_states[user_id]['data'] = data
             except Exception as e:
                 logger.warning(f"Не удалось сохранить телефон через API: {e}")
             
