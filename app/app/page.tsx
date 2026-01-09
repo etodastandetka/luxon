@@ -131,9 +131,16 @@ function HolidayEffects() {
 
 
 export default function HomePage() {
+  // Проверяем Telegram WebApp сразу при инициализации, чтобы избежать мигания виджета входа
+  const [isTelegramWebApp, setIsTelegramWebApp] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return !!(window as any).Telegram?.WebApp
+    }
+    return false
+  })
+  
   const [user, setUser] = useState<TelegramUser | null>(null)
   const [userStats, setUserStats] = useState<{ deposits: number; withdraws: number } | null>(null)
-  const [isTelegramWebApp, setIsTelegramWebApp] = useState(false)
   const { language } = useLanguage()
   const { settings, loading: settingsLoading } = useBotSettings()
 
