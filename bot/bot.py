@@ -849,50 +849,67 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             state['step'] = 'withdraw_phone'
             user_states[user_id] = state
             
-            # Получаем сохраненный номер телефона (сначала из локального состояния, потом из API)
-            saved_phone = data.get('saved_phones', {}).get('phone')
+            # Получаем сохраненный номер телефона (всегда проверяем API для актуальности)
+            saved_phone = None
+            local_phone = data.get('saved_phones', {}).get('phone')
+            logger.info(f"🔍 Локальный сохраненный телефон для пользователя {user_id}: {local_phone}")
             
-            # Если нет в локальном состоянии, пытаемся получить из API
-            if not saved_phone:
-                try:
-                    async with httpx.AsyncClient(timeout=10.0) as client:
-                        response = await client.get(
-                            f"{API_URL}/api/public/casino-account",
-                            params={"user_id": str(user_id), "casino_id": "phone"}
-                        )
-                        logger.info(f"🔍 Запрос сохраненного телефона: статус {response.status_code} для пользователя {user_id}")
-                        if response.status_code == 200:
-                            result = response.json()
-                            logger.info(f"📋 Ответ API для телефона: {result}")
-                            
-                            # Проверяем успешность и наличие телефона (может быть строкой или None)
-                            phone_value = None
-                            if result.get('success'):
-                                phone_value = result.get('data', {}).get('phone')
-                            
-                            # Проверяем что телефон есть и не пустой
-                            if phone_value is not None and phone_value != 'null' and phone_value != '':
-                                phone_str = str(phone_value).strip()
-                                if phone_str:
-                                    saved_phone = phone_str
-                                    # Сохраняем в локальное состояние для быстрого доступа
-                                    if 'saved_phones' not in data:
-                                        data['saved_phones'] = {}
-                                    data['saved_phones']['phone'] = saved_phone
-                                    user_states[user_id]['data'] = data
-                                    logger.info(f"✅ Получен сохраненный телефон из API для пользователя {user_id}: {saved_phone}")
-                                else:
-                                    logger.info(f"ℹ️ Сохраненный телефон пустой для пользователя {user_id}")
-                            else:
-                                logger.info(f"ℹ️ Сохраненный телефон не найден в API для пользователя {user_id} (phone_value: {phone_value}, type: {type(phone_value)})")
+            # Всегда пытаемся получить из API (локальное состояние может быть устаревшим)
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    response = await client.get(
+                        f"{API_URL}/api/public/casino-account",
+                        params={"user_id": str(user_id), "casino_id": "phone"}
+                    )
+                    logger.info(f"🔍 Запрос сохраненного телефона: статус {response.status_code} для пользователя {user_id}")
+                    if response.status_code == 200:
+                        result = response.json()
+                        logger.info(f"📋 Полный ответ API для телефона: {result}")
+                        
+                        # Проверяем успешность и наличие телефона (может быть строкой или None)
+                        phone_value = None
+                        if result.get('success'):
+                            phone_value = result.get('data', {}).get('phone')
+                            logger.info(f"📋 phone_value из API: {phone_value} (type: {type(phone_value)})")
                         else:
-                            try:
-                                error_text = response.text[:200]
-                                logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона: {error_text}")
-                            except:
-                                logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона")
-                except Exception as e:
-                    logger.warning(f"❌ Не удалось получить сохраненный телефон из API: {e}", exc_info=True)
+                            logger.warning(f"⚠️ API вернул success=false: {result}")
+                        
+                        # Проверяем что телефон есть и не пустой
+                        if phone_value is not None and phone_value != 'null' and phone_value != '' and str(phone_value).strip():
+                            phone_str = str(phone_value).strip()
+                            saved_phone = phone_str
+                            # Сохраняем в локальное состояние для быстрого доступа
+                            if 'saved_phones' not in data:
+                                data['saved_phones'] = {}
+                            data['saved_phones']['phone'] = saved_phone
+                            user_states[user_id]['data'] = data
+                            logger.info(f"✅ Получен сохраненный телефон из API для пользователя {user_id}: {saved_phone}")
+                        else:
+                            logger.info(f"ℹ️ Сохраненный телефон не найден в API для пользователя {user_id} (phone_value: {repr(phone_value)}, type: {type(phone_value)})")
+                            # Если в локальном состоянии есть телефон, используем его как запасной вариант
+                            if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
+                                saved_phone = str(local_phone).strip()
+                                logger.info(f"📱 Используем локальный сохраненный телефон как запасной вариант: {saved_phone}")
+                    else:
+                        try:
+                            error_text = response.text[:200]
+                            logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона: {error_text}")
+                            # Если API не работает, используем локальное состояние
+                            if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
+                                saved_phone = str(local_phone).strip()
+                                logger.info(f"📱 Используем локальный сохраненный телефон (API недоступен): {saved_phone}")
+                        except:
+                            logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона")
+                            # Если API не работает, используем локальное состояние
+                            if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
+                                saved_phone = str(local_phone).strip()
+                                logger.info(f"📱 Используем локальный сохраненный телефон (API недоступен): {saved_phone}")
+            except Exception as e:
+                logger.warning(f"❌ Не удалось получить сохраненный телефон из API: {e}", exc_info=True)
+                # Если API не работает, используем локальное состояние
+                if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
+                    saved_phone = str(local_phone).strip()
+                    logger.info(f"📱 Используем локальный сохраненный телефон (ошибка API): {saved_phone}")
             
             # Создаем Reply клавиатуру с сохраненным номером и кнопкой отмены
             keyboard_buttons = []
@@ -1320,8 +1337,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if 'saved_phones' not in data:
                 data['saved_phones'] = {}
             data['saved_phones']['phone'] = phone
-            user_states[user_id]['data'] = data
-            logger.info(f"💾 Телефон сохранен в локальное состояние для пользователя {user_id}: {phone}")
+            # Обновляем состояние пользователя
+            if user_id in user_states:
+                user_states[user_id]['data'] = data
+            logger.info(f"💾 Телефон сохранен в локальное состояние для пользователя {user_id}: {phone} (saved_to_api: {saved_to_api})")
             
             data['phone'] = phone
             state['step'] = 'withdraw_qr'
