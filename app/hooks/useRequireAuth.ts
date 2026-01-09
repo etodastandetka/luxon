@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getTelegramUser, getTelegramUserId, getTelegramWebApp } from '../utils/telegram'
 
@@ -10,6 +10,7 @@ import { getTelegramUser, getTelegramUserId, getTelegramWebApp } from '../utils/
 export function useRequireAuth() {
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null) // null = проверка, true = авторизован, false = не авторизован
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -53,25 +54,25 @@ export function useRequireAuth() {
     
     if (!isAuth) {
       // Даем небольшую задержку для загрузки данных в Mini App
-      const timeout = setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         if (!mounted) return
         
         // Повторная проверка после задержки
         const isAuthRetry = checkAuth()
-        if (!isAuthRetry) {
+        if (!isAuthRetry && mounted) {
           // Редиректим на главную страницу только если точно не авторизован
           router.replace('/')
         }
       }, 100)
-      
-      return () => {
-        mounted = false
-        clearTimeout(timeout)
-      }
     }
     
+    // Всегда возвращаем функцию очистки
     return () => {
       mounted = false
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
     }
   }, [router])
 
