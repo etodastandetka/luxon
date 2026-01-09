@@ -121,6 +121,9 @@ export default function TelegramLoginWidget({ botName, onAuth }: TelegramLoginWi
       ref={containerRef} 
       className="telegram-login-widget" 
       suppressHydrationWarning
+      style={{
+        display: 'inline-block'
+      }}
     />
   )
 }
