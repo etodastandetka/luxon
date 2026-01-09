@@ -461,11 +461,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 ('888starz', '🎰 888STARZ')
             ]
             
-            keyboard_buttons = []
+            # Фильтруем доступные казино
+            enabled_casinos = []
             for casino_key, casino_name in all_casinos:
                 is_enabled = settings_cache.get('casinos', {}).get(casino_key, True)
                 if is_enabled:
-                    keyboard_buttons.append([KeyboardButton(casino_name)])
+                    enabled_casinos.append((casino_key, casino_name))
+            
+            # Группируем кнопки по 2 в ряд
+            keyboard_buttons = []
+            for i in range(0, len(enabled_casinos), 2):
+                row = [KeyboardButton(enabled_casinos[i][1])]
+                if i + 1 < len(enabled_casinos):
+                    row.append(KeyboardButton(enabled_casinos[i + 1][1]))
+                keyboard_buttons.append(row)
             
             keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
@@ -501,11 +510,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 ('888starz', '🎰 888STARZ')
             ]
             
-            keyboard_buttons = []
+            # Фильтруем доступные казино
+            enabled_casinos = []
             for casino_key, casino_name in all_casinos:
                 is_enabled = settings_cache.get('casinos', {}).get(casino_key, True)
                 if is_enabled:
-                    keyboard_buttons.append([KeyboardButton(casino_name)])
+                    enabled_casinos.append((casino_key, casino_name))
+            
+            # Группируем кнопки по 2 в ряд
+            keyboard_buttons = []
+            for i in range(0, len(enabled_casinos), 2):
+                row = [KeyboardButton(enabled_casinos[i][1])]
+                if i + 1 < len(enabled_casinos):
+                    row.append(KeyboardButton(enabled_casinos[i + 1][1]))
+                keyboard_buttons.append(row)
             
             keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
