@@ -550,113 +550,119 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         
         # Обработка выбора казино для пополнения
         if step == 'deposit_bookmaker':
-            # Определяем казино по тексту кнопки
-            bookmaker_map = {
-                '🎰 1XBET': '1xbet',
-                '🎰 1WIN': '1win',
-                '🎰 MELBET': 'melbet',
-                '🎰 MOSTBET': 'mostbet',
-                '🎰 WINWIN': 'winwin',
-                '🎰 888STARZ': '888starz',
-                '1XBET': '1xbet',
-                '1WIN': '1win',
-                'MELBET': 'melbet',
-                'MOSTBET': 'mostbet',
-                'WINWIN': 'winwin',
-                '888STARZ': '888starz'
-            }
-            
-            bookmaker = bookmaker_map.get(message_text)
-            if not bookmaker:
-                await update.message.reply_text("❌ Пожалуйста, выберите казино из предложенных кнопок")
+            try:
+                # Определяем казино по тексту кнопки
+                bookmaker_map = {
+                    '🎰 1XBET': '1xbet',
+                    '🎰 1WIN': '1win',
+                    '🎰 MELBET': 'melbet',
+                    '🎰 MOSTBET': 'mostbet',
+                    '🎰 WINWIN': 'winwin',
+                    '🎰 888STARZ': '888starz',
+                    '1XBET': '1xbet',
+                    '1WIN': '1win',
+                    'MELBET': 'melbet',
+                    'MOSTBET': 'mostbet',
+                    'WINWIN': 'winwin',
+                    '888STARZ': '888starz'
+                }
+                
+                bookmaker = bookmaker_map.get(message_text)
+                if not bookmaker:
+                    await update.message.reply_text("❌ Пожалуйста, выберите казино из предложенных кнопок")
+                    return
+                
+                data['bookmaker'] = bookmaker
+                state['step'] = 'deposit_player_id'
+                user_states[user_id] = state
+                
+                # Получаем сохраненный ID для этого казино
+                saved_id = data.get('saved_player_ids', {}).get(bookmaker, '')
+                if not saved_id:
+                    try:
+                        async with httpx.AsyncClient(timeout=5.0) as client:
+                            response = await client.get(
+                                f"{API_URL}/api/public/casino-account",
+                                params={"user_id": str(user_id), "casino_id": bookmaker.lower()}
+                            )
+                            if response.status_code == 200:
+                                result = response.json()
+                                if result.get('success') and result.get('data', {}).get('accountId'):
+                                    saved_id = result.get('data', {}).get('accountId')
+                                    if 'saved_player_ids' not in data:
+                                        data['saved_player_ids'] = {}
+                                    data['saved_player_ids'][bookmaker] = saved_id
+                    except Exception as e:
+                        logger.warning(f"Не удалось получить сохраненный ID из API: {e}")
+                
+                # Создаем Reply клавиатуру с сохраненным ID и кнопкой отмены
+                keyboard_buttons = []
+                if saved_id:
+                    keyboard_buttons.append([KeyboardButton(f"ID: {saved_id}")])
+                keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
+                reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+                
+                await update.message.reply_text(
+                    f"💰 <b>Пополнение счета</b>\n\nКазино: {bookmaker.upper()}\n\nВведите ваш ID игрока в казино:",
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
                 return
-            
-            data['bookmaker'] = bookmaker
-            state['step'] = 'deposit_player_id'
-            user_states[user_id] = state
-            
-            # Получаем сохраненный ID для этого казино
-            saved_id = data.get('saved_player_ids', {}).get(bookmaker, '')
-            if not saved_id:
-                try:
-                    async with httpx.AsyncClient(timeout=5.0) as client:
-                        response = await client.get(
-                            f"{API_URL}/api/public/casino-account",
-                            params={"user_id": str(user_id), "casino_id": bookmaker.lower()}
-                        )
-                        if response.status_code == 200:
-                            result = response.json()
-                            if result.get('success') and result.get('data', {}).get('accountId'):
-                                saved_id = result.get('data', {}).get('accountId')
-                                if 'saved_player_ids' not in data:
-                                    data['saved_player_ids'] = {}
-                                data['saved_player_ids'][bookmaker] = saved_id
-                except Exception as e:
-                    logger.warning(f"Не удалось получить сохраненный ID из API: {e}")
-            
-            # Создаем Reply клавиатуру с сохраненным ID и кнопкой отмены
-            keyboard_buttons = []
-            if saved_id:
-                keyboard_buttons.append([KeyboardButton(f"ID: {saved_id}")])
-            keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
-            reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
-            
-            await update.message.reply_text(
-                f"💰 <b>Пополнение счета</b>\n\nКазино: {bookmaker.upper()}\n\nВведите ваш ID игрока в казино:",
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
-            return
+            except Exception as e:
+                logger.error(f"❌ Ошибка при обработке выбора казино для пополнения: {e}", exc_info=True)
+                await update.message.reply_text("❌ Произошла ошибка при обработке выбора казино. Попробуйте еще раз или введите /start")
+                return
         
         # Обработка выбора казино для вывода
         if step == 'withdraw_bookmaker':
-            # Определяем казино по тексту кнопки
-            bookmaker_map = {
-                '🎰 1XBET': '1xbet',
-                '🎰 1WIN': '1win',
-                '🎰 MELBET': 'melbet',
-                '🎰 MOSTBET': 'mostbet',
-                '🎰 WINWIN': 'winwin',
-                '🎰 888STARZ': '888starz',
-                '1XBET': '1xbet',
-                '1WIN': '1win',
-                'MELBET': 'melbet',
-                'MOSTBET': 'mostbet',
-                'WINWIN': 'winwin',
-                '888STARZ': '888starz'
-            }
-            
-            bookmaker = bookmaker_map.get(message_text)
-            if not bookmaker:
-                await update.message.reply_text("❌ Пожалуйста, выберите казино из предложенных кнопок")
-                return
-            
-            data['bookmaker'] = bookmaker
-            state['step'] = 'withdraw_bank'
-            user_states[user_id] = state
-            
-            # Получаем сохраненный ID для этого казино
-            saved_id = data.get('saved_player_ids', {}).get(bookmaker, '')
-            if not saved_id:
-                try:
-                    async with httpx.AsyncClient(timeout=5.0) as client:
-                        response = await client.get(
-                            f"{API_URL}/api/public/casino-account",
-                            params={"user_id": str(user_id), "casino_id": bookmaker.lower()}
-                        )
-                        if response.status_code == 200:
-                            result = response.json()
-                            if result.get('success') and result.get('data', {}).get('accountId'):
-                                saved_id = result.get('data', {}).get('accountId')
-                                if 'saved_player_ids' not in data:
-                                    data['saved_player_ids'] = {}
-                                data['saved_player_ids'][bookmaker] = saved_id
-                except Exception as e:
-                    logger.warning(f"Не удалось получить сохраненный ID из API: {e}")
-            
-            # Загружаем настройки если они устарели
-            if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
-                await load_settings()
+            try:
+                # Определяем казино по тексту кнопки
+                bookmaker_map = {
+                    '🎰 1XBET': '1xbet',
+                    '🎰 1WIN': '1win',
+                    '🎰 MELBET': 'melbet',
+                    '🎰 MOSTBET': 'mostbet',
+                    '🎰 WINWIN': 'winwin',
+                    '🎰 888STARZ': '888starz',
+                    '1XBET': '1xbet',
+                    '1WIN': '1win',
+                    'MELBET': 'melbet',
+                    'MOSTBET': 'mostbet',
+                    'WINWIN': 'winwin',
+                    '888STARZ': '888starz'
+                }
+                
+                bookmaker = bookmaker_map.get(message_text)
+                if not bookmaker:
+                    await update.message.reply_text("❌ Пожалуйста, выберите казино из предложенных кнопок")
+                    return
+                
+                data['bookmaker'] = bookmaker
+                state['step'] = 'withdraw_bank'
+                user_states[user_id] = state
+                
+                # Получаем сохраненный ID для этого казино
+                saved_id = data.get('saved_player_ids', {}).get(bookmaker, '')
+                if not saved_id:
+                    try:
+                        async with httpx.AsyncClient(timeout=5.0) as client:
+                            response = await client.get(
+                                f"{API_URL}/api/public/casino-account",
+                                params={"user_id": str(user_id), "casino_id": bookmaker.lower()}
+                            )
+                            if response.status_code == 200:
+                                result = response.json()
+                                if result.get('success') and result.get('data', {}).get('accountId'):
+                                    saved_id = result.get('data', {}).get('accountId')
+                                    if 'saved_player_ids' not in data:
+                                        data['saved_player_ids'] = {}
+                                    data['saved_player_ids'][bookmaker] = saved_id
+                    except Exception as e:
+                        logger.warning(f"Не удалось получить сохраненный ID из API: {e}")
+                
+                # Загружаем настройки если они устарели
+                if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
+                    await load_settings()
             
             # Формируем список банков через инлайн кнопки
             enabled_banks = settings_cache.get('withdrawal_banks', [])
@@ -688,18 +694,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard.append([InlineKeyboardButton("❌ Отменить заявку", callback_data="cancel_request")])
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            # Очищаем старую Reply клавиатуру перед отправкой инлайн кнопок
-            await update.message.reply_text(
-                " ",
-                reply_markup=ReplyKeyboardRemove()
-            )
-            
-            await update.message.reply_text(
-                f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker.upper()}\n\nВыберите банк для получения средств:",
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
-            return
+                await update.message.reply_text(
+                    f"💸 <b>Вывод средств</b>\n\nКазино: {bookmaker.upper()}\n\nВыберите банк для получения средств:",
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
+                return
+            except Exception as e:
+                logger.error(f"❌ Ошибка при обработке выбора казино для вывода: {e}", exc_info=True)
+                await update.message.reply_text("❌ Произошла ошибка при обработке выбора казино. Попробуйте еще раз или введите /start")
+                return
         
         # Обработка выбора банка для вывода теперь через callback (withdraw_bank_*)
         # Убрана обработка через текст сообщения
@@ -1549,7 +1553,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 parse_mode='HTML'
             )
             # Отправляем Reply клавиатуру отдельным сообщением
-            await query.message.reply_text(" ", reply_markup=reply_markup)
+            await query.message.reply_text("👇", reply_markup=reply_markup)
         except Exception as e:
             logger.warning(f"Не удалось обновить сообщение: {e}")
             await query.message.reply_text(
