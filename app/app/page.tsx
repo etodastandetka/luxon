@@ -132,7 +132,7 @@ function HolidayEffects() {
 
 export default function HomePage() {
   const { language } = useLanguage()
-  const { settings, loading: settingsLoading } = useBotSettings()
+  const { settings } = useBotSettings()
   
   // ИНИЦИАЛИЗАЦИЯ: Проверяем все сразу при создании компонента (синхронно)
   const initialState = (() => {
@@ -430,14 +430,13 @@ export default function HomePage() {
   }
 
   const t = translations[language as keyof typeof translations] || translations.ru
-  const ready = !settingsLoading
   
-  // Проверяем паузу
-  const isPaused = (settings as any)?.pause === true
+  // Проверяем паузу (используем settings даже если они еще загружаются из кеша)
+  const isPaused = settings && (settings as any)?.pause === true
   const maintenanceMessage = (settings as any)?.maintenance_message || 'Технические работы. Попробуйте позже.'
 
   // Если пауза включена, показываем сообщение
-  if (ready && isPaused) {
+  if (isPaused) {
     return (
       <main className="wb-page wb-ready" style={{ paddingTop: "0.5rem", paddingBottom: "110px" }}>
         <HolidayEffects />
@@ -456,8 +455,9 @@ export default function HomePage() {
     )
   }
 
+  // Всегда показываем контент, не ждем загрузки настроек
   return (
-    <main className={`wb-page ${ready ? "wb-ready" : "wb-loading"}`} style={{ paddingTop: "0.5rem", paddingBottom: "110px" }}>
+    <main className="wb-page wb-ready" style={{ paddingTop: "0.5rem", paddingBottom: "110px" }}>
       <HolidayEffects />
       <FixedHeaderControls />
 
