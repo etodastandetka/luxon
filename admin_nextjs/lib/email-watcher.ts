@@ -433,9 +433,21 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           console.warn(`⚠️ IMAP network error in checkEmails (${(err as any).code}): ${err.message || err} (${consecutiveNetworkErrors} consecutive errors)`)
           lastNetworkErrorLog = now
         }
+        // Закрываем соединение перед resolve
+        try {
+          imap.end()
+        } catch (e) {
+          // Игнорируем ошибки при закрытии
+        }
         // Не reject при сетевых ошибках, просто resolve чтобы продолжить работу
         resolve()
         return
+      }
+      // Для других ошибок тоже закрываем соединение
+      try {
+        imap.end()
+      } catch (e) {
+        // Игнорируем ошибки при закрытии
       }
       reject(err)
     })
@@ -568,6 +580,11 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
         console.error(`   Password: ${settings.password ? '✓ set' : '✗ missing'}`)
         if (idleInterval) clearInterval(idleInterval)
         if (keepAliveInterval) clearInterval(keepAliveInterval)
+        try {
+          imap.end()
+        } catch (e) {
+          // Игнорируем ошибки при закрытии
+        }
         reject(err)
       } else if ((err as any).code === 'ENOTFOUND' || (err as any).code === 'ETIMEDOUT' || (err as any).code === 'ECONNREFUSED') {
         // Сетевые ошибки - не критичные, логируем с rate limiting
@@ -580,7 +597,19 @@ async function startIdleMode(settings: WatcherSettings): Promise<void> {
           console.warn(`⚠️ IMAP network error (${(err as any).code}): ${err.message || err} (${consecutiveNetworkErrors} consecutive errors)`)
           lastNetworkErrorLog = now
         }
-        // Не останавливаем интервалы, пусть продолжает пытаться
+        // Закрываем соединение
+        try {
+          if (idleInterval) clearInterval(idleInterval)
+          if (keepAliveInterval) clearInterval(keepAliveInterval)
+          imap.end()
+        } catch (e) {
+          // Игнорируем ошибки при закрытии
+        }
+        // Переподключаемся через небольшую задержку (через resolve, чтобы основной цикл перезапустил)
+        setTimeout(() => {
+          console.log('🔄 Will reconnect after network error...')
+          resolve() // Разрешаем промис, чтобы основной цикл перезапустил подключение
+        }, 10000) // Переподключаемся через 10 секунд
         // Не reject, чтобы не прерывать цикл переподключения
       } else {
         console.error('❌ IMAP connection error:', err)
