@@ -98,7 +98,8 @@ export default function HistoryPage(){
       date: 'Күн',
       bookmaker: 'Букмекер',
       backToMain: '🔙 Башкы менюга',
-      all: 'Баары'
+      all: 'Баары',
+      confirmationCode: 'Ырастоо коду'
     },
     uz: {
       title: 'Operatsiyalar tarixi',
@@ -121,7 +122,8 @@ export default function HistoryPage(){
       date: 'Sana',
       bookmaker: 'Bukmeker',
       backToMain: '🔙 Asosiy menyuga',
-      all: 'Barchasi'
+      all: 'Barchasi',
+      confirmationCode: 'Tasdiqlash kodi'
     }
   }
 
