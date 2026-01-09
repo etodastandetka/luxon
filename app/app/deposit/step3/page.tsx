@@ -162,11 +162,6 @@ function DepositStep3Content() {
   const { language } = useLanguage()
   const isAuthorized = useRequireAuth()
   const [selectedBank, setSelectedBank] = useState('')
-  
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
   const [loading, setLoading] = useState(false)
   const [paymentUrls, setPaymentUrls] = useState<Record<string, string>>({})
   const [enabledBanks, setEnabledBanks] = useState<string[]>([])
@@ -180,6 +175,11 @@ function DepositStep3Content() {
   const bookmaker = searchParams.get('bookmaker') || (typeof window !== 'undefined' ? localStorage.getItem('deposit_bookmaker') : '') || ''
   const accountId = searchParams.get('accountId') || ''
   const amount = searchParams.get('amount') || ''
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   // Инициализация и восстановление таймера из localStorage
   useEffect(() => {

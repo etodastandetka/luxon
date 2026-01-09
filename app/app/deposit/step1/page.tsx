@@ -153,8 +153,34 @@ function useBankUiTheme() {
   }, [])
 }
 
+const translations = {
+  ru: {
+    title: 'Пополнение счета',
+    selectBookmaker: 'Выберите казино',
+    next: 'Далее',
+    back: 'Назад'
+  },
+  en: {
+    title: 'Deposit',
+    selectBookmaker: 'Select casino',
+    next: 'Next',
+    back: 'Back'
+  },
+  ky: {
+    title: 'Эсепти толтуруу',
+    selectBookmaker: 'Казинодо тандаңыз',
+    next: 'Кийинки',
+    back: 'Артка'
+  },
+  uz: {
+    title: 'Hisobni to\'ldirish',
+    selectBookmaker: 'Kazinoni tanlang',
+    next: 'Keyingi',
+    back: 'Orqaga'
+  }
+}
+
 export default function DepositStep1() {
-  
   useBankUiTheme()
   const router = useRouter()
   const { language } = useLanguage()
@@ -163,41 +189,8 @@ export default function DepositStep1() {
   const [depositsEnabled, setDepositsEnabled] = useState(true)
   const [disabledCasinos, setDisabledCasinos] = useState<string[]>([])
 
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
-
-  const translations = {
-    ru: {
-      title: 'Пополнение счета',
-      selectBookmaker: 'Выберите казино',
-      next: 'Далее',
-      back: 'Назад'
-    },
-    en: {
-      title: 'Deposit',
-      selectBookmaker: 'Select casino',
-      next: 'Next',
-      back: 'Back'
-    },
-    ky: {
-      title: 'Эсепти толтуруу',
-      selectBookmaker: 'Казинодо тандаңыз',
-      next: 'Кийинки',
-      back: 'Артка'
-    },
-    uz: {
-      title: 'Hisobni to\'ldirish',
-      selectBookmaker: 'Kazinoni tanlang',
-      next: 'Keyingi',
-      back: 'Orqaga'
-    }
-  }
-
   const t = translations[language as keyof typeof translations] || translations.ru
 
-  
   useEffect(() => {
     async function checkSettings() {
       try {
@@ -233,13 +226,17 @@ export default function DepositStep1() {
     checkSettings()
   }, [])
 
-  
   useEffect(() => {
     const savedBookmaker = localStorage.getItem('deposit_bookmaker')
     if (savedBookmaker) {
       setBookmaker(savedBookmaker)
     }
   }, [])
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   const handleNext = () => {
     if (!bookmaker) {

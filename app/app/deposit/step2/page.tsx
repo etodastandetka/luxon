@@ -159,17 +159,17 @@ function DepositStep2Content() {
   const { language } = useLanguage()
   const isAuthorized = useRequireAuth()
   const [accountId, setAccountId] = useState('')
-  
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
   const [amount, setAmount] = useState('')
   const [minAmount, setMinAmount] = useState(35)
   const [maxAmount, setMaxAmount] = useState(100000)
   const [checkingId, setCheckingId] = useState(false)
   const [idValid, setIdValid] = useState<boolean | null>(null)
   const [bookmaker, setBookmaker] = useState('')
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   // Инициализируем bookmaker из searchParams или localStorage
   useEffect(() => {
