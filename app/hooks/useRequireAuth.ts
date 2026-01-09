@@ -1,6 +1,5 @@
 "use client"
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { getTelegramUser, getTelegramUserId, getTelegramWebApp } from '../utils/telegram'
 
 /**
@@ -8,9 +7,9 @@ import { getTelegramUser, getTelegramUserId, getTelegramWebApp } from '../utils/
  * Редиректит на главную страницу, если пользователь не авторизован
  */
 export function useRequireAuth() {
-  const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null) // null = проверка, true = авторизован, false = не авторизован
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
 
   useEffect(() => {
@@ -61,16 +60,16 @@ export function useRequireAuth() {
         
         // Повторная проверка после задержки
         const isAuthRetry = checkAuth()
-        if (!isAuthRetry && mountedRef.current) {
+        if (!isAuthRetry && mountedRef.current && typeof window !== 'undefined') {
           // Редиректим на главную страницу только если точно не авторизован
-          // Используем setTimeout для асинхронного редиректа, чтобы избежать ошибок
-          setTimeout(() => {
-            if (mountedRef.current) {
+          // Используем window.location для более надежного редиректа
+          redirectTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current && typeof window !== 'undefined') {
               try {
-                router.replace('/')
+                window.location.href = '/'
               } catch (error) {
-                // Игнорируем ошибки роутера
-                console.error('Router error:', error)
+                // Игнорируем ошибки
+                console.error('Redirect error:', error)
               }
             }
           }, 0)
@@ -85,8 +84,12 @@ export function useRequireAuth() {
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null
       }
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
+        redirectTimeoutRef.current = null
+      }
     }
-  }, [router])
+  }, []) // Пустой массив зависимостей - эффект выполняется только при монтировании
 
   return isAuthorized
 }
