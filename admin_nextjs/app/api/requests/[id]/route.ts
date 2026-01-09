@@ -102,6 +102,7 @@ export async function GET(
         processedBy: true,
         bank: true,
         phone: true,
+        withdrawalCode: true,
         // photoFileUrl не загружаем в основном запросе - он загружается отдельно через /photo endpoint
         paymentMethod: true,
         createdAt: true,

@@ -21,6 +21,7 @@ interface RequestDetail {
   processedBy: string | null
   bank: string | null
   phone: string | null
+  withdrawalCode: string | null
   photoFileUrl: string | null
   userNote: string | null
   paymentMethod: string | null
@@ -1787,6 +1788,12 @@ export default function RequestDetailPage() {
               <span className="text-sm text-gray-400">ID счета:</span>
               <span className="text-sm font-medium text-white">{request.accountId || 'N/A'}</span>
             </div>
+            {request.requestType === 'withdraw' && request.withdrawalCode && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-400">Код подтверждения:</span>
+                <span className="text-sm font-medium text-white font-mono">{request.withdrawalCode}</span>
+              </div>
+            )}
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-400">Дата создания:</span>
             <span className="text-sm font-medium text-white">{requestComputed?.formattedCreatedAt || ''}</span>
