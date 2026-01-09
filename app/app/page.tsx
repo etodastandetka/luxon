@@ -174,15 +174,26 @@ export default function HomePage() {
         })
       }
     } else {
-      // Если не через мини-приложение, проверяем localStorage (виджет авторизации)
-      const savedUser = getTelegramUser(false) // Не используем кэш
-      if (savedUser) {
-        setUser((currentUser) => {
-          if (!currentUser || currentUser.id !== savedUser.id) {
-            return savedUser
+      // Если не через мини-приложение, проверяем localStorage напрямую (виджет авторизации)
+      if (typeof window !== 'undefined') {
+        try {
+          const savedUserStr = localStorage.getItem('telegram_user')
+          if (savedUserStr) {
+            const savedUser = JSON.parse(savedUserStr)
+            setUser((currentUser) => {
+              if (!currentUser || currentUser.id !== savedUser.id) {
+                return savedUser
+              }
+              return currentUser
+            })
+          } else {
+            // Если нет пользователя в localStorage, сбрасываем состояние
+            setUser(null)
           }
-          return currentUser
-        })
+        } catch (e) {
+          // Ошибка парсинга - сбрасываем пользователя
+          setUser(null)
+        }
       }
     }
   }, [language])
