@@ -176,11 +176,6 @@ function DepositStep3Content() {
   const accountId = searchParams.get('accountId') || ''
   const amount = searchParams.get('amount') || ''
 
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
-
   // Инициализация и восстановление таймера из localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -375,7 +370,12 @@ function DepositStep3Content() {
       }
     }
     loadBankSettingsAndQR()
-  }, [bookmaker, accountId, amount, router])
+  }, [bookmaker, accountId, amount, router, searchParams])
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   const handleBankSelect = async (bankCode: string) => {
     setSelectedBank(bankCode)
