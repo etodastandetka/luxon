@@ -12,15 +12,19 @@ export function useRequireAuth() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null) // null = проверка, true = авторизован, false = не авторизован
 
   useEffect(() => {
+    let mounted = true
+    
     // Проверяем авторизацию
-    const checkAuth = () => {
+    const checkAuth = (): boolean => {
       // В Mini App пользователь всегда авторизован, если есть WebApp
       if (typeof window !== 'undefined') {
         const tg = getTelegramWebApp()
         if (tg) {
           // Если это Mini App - разрешаем доступ (даже если данные еще не загружены)
           // Telegram Mini App всегда предоставляет данные пользователя
-          setIsAuthorized(true)
+          if (mounted) {
+            setIsAuthorized(true)
+          }
           return true
         }
       }
@@ -31,27 +35,43 @@ export function useRequireAuth() {
       
       // Если есть пользователь или ID - авторизован
       if (user || userId) {
-        setIsAuthorized(true)
+        if (mounted) {
+          setIsAuthorized(true)
+        }
         return true
       }
       
       // Если нет - не авторизован
-      setIsAuthorized(false)
+      if (mounted) {
+        setIsAuthorized(false)
+      }
       return false
     }
 
     // Первая проверка
-    if (!checkAuth()) {
+    const isAuth = checkAuth()
+    
+    if (!isAuth) {
       // Даем небольшую задержку для загрузки данных в Mini App
       const timeout = setTimeout(() => {
+        if (!mounted) return
+        
         // Повторная проверка после задержки
-        if (!checkAuth()) {
+        const isAuthRetry = checkAuth()
+        if (!isAuthRetry) {
           // Редиректим на главную страницу только если точно не авторизован
           router.replace('/')
         }
       }, 100)
       
-      return () => clearTimeout(timeout)
+      return () => {
+        mounted = false
+        clearTimeout(timeout)
+      }
+    }
+    
+    return () => {
+      mounted = false
     }
   }, [router])
 
