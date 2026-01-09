@@ -736,9 +736,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             # Получаем сохраненный номер телефона (сначала из локального состояния, потом из API)
             saved_phone = data.get('saved_phones', {}).get('phone')
+            
+            # Если нет в локальном состоянии, пытаемся получить из API
             if not saved_phone:
                 try:
-                    async with httpx.AsyncClient(timeout=5.0) as client:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
                         response = await client.get(
                             f"{API_URL}/api/public/casino-account",
                             params={"user_id": str(user_id), "casino_id": "phone"}
@@ -752,13 +754,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     data['saved_phones'] = {}
                                 data['saved_phones']['phone'] = saved_phone
                                 user_states[user_id]['data'] = data
+                                logger.info(f"✅ Получен сохраненный телефон из API для пользователя {user_id}: {saved_phone}")
+                            else:
+                                logger.info(f"ℹ️ Сохраненный телефон не найден в API для пользователя {user_id}")
+                        else:
+                            logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона")
                 except Exception as e:
-                    logger.warning(f"Не удалось получить сохраненный телефон из API: {e}")
+                    logger.warning(f"❌ Не удалось получить сохраненный телефон из API: {e}")
             
             # Создаем Reply клавиатуру с сохраненным номером и кнопкой отмены
             keyboard_buttons = []
             if saved_phone:
+                # Всегда показываем сохраненный номер как кнопку для быстрой отправки
                 keyboard_buttons.append([KeyboardButton(f"📱 {saved_phone}")])
+                logger.info(f"📱 Добавлена кнопка с сохраненным телефоном: {saved_phone}")
             keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
@@ -1126,9 +1135,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 await update.message.reply_text('❌ Неверный формат номера телефона')
                 return
             
-            # Сохраняем номер телефона через API
+            # Сохраняем номер телефона через API (всегда, даже если была ошибка)
+            saved_to_api = False
             try:
-                async with httpx.AsyncClient(timeout=5.0) as client:
+                async with httpx.AsyncClient(timeout=10.0) as client:
                     response = await client.post(
                         f"{API_URL}/api/public/casino-account",
                         json={
@@ -1141,13 +1151,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     if response.status_code == 200:
                         result = response.json()
                         if result.get('success'):
-                            # Сохраняем в локальное состояние для быстрого доступа
-                            if 'saved_phones' not in data:
-                                data['saved_phones'] = {}
-                            data['saved_phones']['phone'] = phone
-                            user_states[user_id]['data'] = data
+                            saved_to_api = True
+                            logger.info(f"✅ Телефон успешно сохранен в API для пользователя {user_id}: {phone}")
+                        else:
+                            logger.warning(f"⚠️ API вернул success=false при сохранении телефона: {result}")
+                    else:
+                        logger.warning(f"⚠️ API вернул статус {response.status_code} при сохранении телефона")
             except Exception as e:
-                logger.warning(f"Не удалось сохранить телефон через API: {e}")
+                logger.warning(f"❌ Не удалось сохранить телефон через API: {e}")
+            
+            # ВСЕГДА сохраняем в локальное состояние для быстрого доступа (даже если API не сработал)
+            if 'saved_phones' not in data:
+                data['saved_phones'] = {}
+            data['saved_phones']['phone'] = phone
+            user_states[user_id]['data'] = data
+            logger.info(f"💾 Телефон сохранен в локальное состояние для пользователя {user_id}: {phone}")
             
             data['phone'] = phone
             state['step'] = 'withdraw_qr'
