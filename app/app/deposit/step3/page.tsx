@@ -470,23 +470,28 @@ function DepositStep3Content() {
       setReceiptFile(processedFile)
 
       // Конвертируем в base64 через Promise для гарантированного обновления
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          const result = e.target?.result
-          if (result && typeof result === 'string') {
-            resolve(result)
-          } else {
-            reject(new Error('Неверный формат данных'))
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            const result = e.target?.result
+            if (result && typeof result === 'string') {
+              resolve(result)
+            } else {
+              reject(new Error('Неверный формат данных'))
+            }
           }
-        }
-        reader.onerror = () => {
-          reject(new Error('Ошибка чтения файла'))
-        }
-        reader.readAsDataURL(processedFile)
-      })
-      
-      setReceiptPreview(base64)
+          reader.onerror = () => {
+            reject(new Error('Ошибка чтения файла'))
+          }
+          reader.readAsDataURL(processedFile)
+        })
+        
+        setReceiptPreview(base64)
+      } catch (error) {
+        alert('Ошибка при загрузке фото. Попробуйте еще раз.')
+        return
+      }
 
       // Если есть requestId, сразу загружаем
       if (requestId) {
