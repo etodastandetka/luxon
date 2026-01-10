@@ -982,48 +982,22 @@ function DepositStep3Content() {
             />
             <label 
               htmlFor="receipt-upload"
-              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl bg-gradient-to-br transition-all duration-300 cursor-pointer group relative ${
-                receiptPreview 
-                  ? 'border-green-400/50 bg-green-800/40' 
-                  : 'border-green-400/30 bg-green-900/20 hover:border-green-400/50 hover:bg-green-800/30'
-              } ${uploadingReceipt ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-green-400/30 rounded-xl bg-gradient-to-br from-green-900/20 to-green-800/30 hover:border-green-400/50 hover:bg-green-800/40 transition-all duration-300 cursor-pointer group relative"
             >
-              <div className="flex flex-col items-center space-y-2 w-full">
-                {receiptPreview ? (
-                  <>
-                    <div className="w-8 h-8 rounded-full bg-green-500/30 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-green-300">
-                        {t.receiptUploaded}
-                      </p>
-                      {receiptFile && (
-                        <p className="text-xs text-white/60 mt-1 truncate max-w-full">
-                          {receiptFile.name || 'Без названия.jpg'}
-                        </p>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
-                      <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-white group-hover:text-green-300 transition-colors">
-                        {uploadingReceipt ? t.uploading : t.uploadReceipt}
-                      </p>
-                      <p className="text-xs text-white/60 mt-1">
-                        {t.receiptFileTypes}
-                      </p>
-                    </div>
-                  </>
-                )}
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-white group-hover:text-green-300 transition-colors">
+                    {receiptFile ? 'Файл выбран' : (uploadingReceipt ? t.uploading : t.uploadReceipt)}
+                  </p>
+                  <p className="text-xs text-white/60 mt-1">
+                    {receiptFile ? receiptFile.name : t.receiptFileTypes}
+                  </p>
+                </div>
               </div>
             </label>
           </div>
