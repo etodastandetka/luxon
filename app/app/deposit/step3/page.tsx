@@ -464,17 +464,73 @@ function DepositStep3Content() {
 
       setReceiptFile(processedFile)
 
-      // Создаем превью из сжатого файла
-      if (typeof window !== 'undefined' && typeof (window as any).FileReader !== 'undefined') {
-        const reader = new (window as any).FileReader()
-        reader.onload = (e: ProgressEvent<FileReader>) => {
-          const base64 = e.target?.result as string
-          setReceiptPreview(base64)
+      // Создаем превью из сжатого файла (используем Promise для синхронизации)
+      if (typeof window !== 'undefined') {
+        const createPreview = (): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            try {
+              const reader = new FileReader()
+              reader.onload = (e) => {
+                const result = e.target?.result
+                if (result && typeof result === 'string') {
+                  console.log('✅ Preview создан через FileReader, длина base64:', result.length)
+                  resolve(result)
+                } else {
+                  console.error('❌ Ошибка: результат FileReader не является строкой', typeof result)
+                  reject(new Error('Invalid FileReader result'))
+                }
+              }
+              reader.onerror = (e) => {
+                console.error('❌ Ошибка FileReader:', e)
+                reject(new Error('FileReader error'))
+              }
+              reader.readAsDataURL(processedFile)
+              console.log('📸 Запущен FileReader для создания preview')
+            } catch (error) {
+              console.error('❌ Ошибка при создании FileReader:', error)
+              reject(error)
+            }
+          })
         }
-        reader.onerror = () => {
-          alert('Ошибка при загрузке фото. Попробуйте еще раз.')
-        }
-        reader.readAsDataURL(processedFile)
+
+        // Пытаемся создать preview через FileReader
+        createPreview()
+          .then((previewUrl) => {
+            console.log('✅ Preview готов, устанавливаем в state')
+            setReceiptPreview(previewUrl)
+            // Принудительно обновляем состояние
+            setTimeout(() => {
+              setReceiptPreview((prev) => {
+                if (prev !== previewUrl) {
+                  console.log('🔄 Принудительно обновляем preview')
+                  return previewUrl
+                }
+                return prev
+              })
+            }, 100)
+          })
+          .catch((error) => {
+            console.warn('⚠️ FileReader не сработал, используем object URL:', error)
+            // Создаем object URL как fallback
+            try {
+              const objectUrl = URL.createObjectURL(processedFile)
+              console.log('✅ Создан object URL как fallback:', objectUrl)
+              setReceiptPreview(objectUrl)
+              // Принудительно обновляем состояние
+              setTimeout(() => {
+                setReceiptPreview((prev) => {
+                  if (prev !== objectUrl) {
+                    console.log('🔄 Принудительно обновляем object URL preview')
+                    return objectUrl
+                  }
+                  return prev
+                })
+              }, 100)
+            } catch (urlError) {
+              console.error('❌ Ошибка при создании object URL:', urlError)
+              alert('Ошибка при обработке фото. Попробуйте еще раз.')
+            }
+          })
       }
 
       // Если есть requestId, сразу загружаем
@@ -507,15 +563,25 @@ function DepositStep3Content() {
       if (data.success) {
         console.log('✅ Чек загружен успешно')
         
-        // Обновляем preview с URL из ответа
+        // Обновляем preview с URL из ответа только если URL валидный
         if (data.data && data.data.url) {
           let photoUrl = data.data.url
           // Если URL относительный, добавляем базовый URL
           if (photoUrl && photoUrl.startsWith('/api/')) {
             photoUrl = `${base}${photoUrl}`
           }
-          setReceiptPreview(photoUrl)
-          console.log('✅ URL фото чека обновлен:', photoUrl.substring(0, 50) + '...')
+          
+          // Проверяем, что URL валидный, перед обновлением preview
+          if (photoUrl && (photoUrl.startsWith('http') || photoUrl.startsWith('data:') || photoUrl.startsWith('blob:'))) {
+            console.log('✅ Обновляем preview на URL с сервера:', photoUrl.substring(0, 50) + '...')
+            setReceiptPreview(photoUrl)
+          } else {
+            console.warn('⚠️ URL с сервера невалидный, сохраняем текущий preview')
+            // Сохраняем текущий preview (base64), если URL невалидный
+          }
+        } else {
+          console.warn('⚠️ URL не получен от сервера, сохраняем текущий preview')
+          // Сохраняем текущий preview (base64), если URL не получен
         }
         
         // Показываем успешное сообщение (используем message из ответа или дефолтное)
@@ -526,6 +592,8 @@ function DepositStep3Content() {
       } else {
         // Ошибка: используем только error, не message (message может быть успешным сообщением)
         const errorMessage = data.error || `Ошибка сервера: ${response.status}`
+        console.error('❌ Ошибка загрузки чека:', errorMessage)
+        // НЕ удаляем preview при ошибке загрузки - оставляем локальный preview
         alert(`Ошибка загрузки чека: ${errorMessage}`)
       }
     } catch (error: any) {
@@ -974,31 +1042,45 @@ function DepositStep3Content() {
                   : 'border-green-400/30 bg-green-900/20 hover:border-green-400/50 hover:bg-green-800/30'
               } ${uploadingReceipt ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <div className="flex flex-col items-center space-y-2">
+              <div className="flex flex-col items-center space-y-2 w-full">
                 {receiptPreview ? (
                   <>
-                    <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-green-400/50 bg-gray-800">
+                    <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-green-400/50 bg-gray-800 flex items-center justify-center">
                       <img 
                         src={receiptPreview} 
                         alt="Receipt preview" 
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
+                        style={{ maxWidth: '100%', maxHeight: '100%' }}
                         onError={(e) => {
-                          console.error('Ошибка загрузки изображения чека:', receiptPreview)
-                          // Показываем placeholder при ошибке
-                          e.currentTarget.style.display = 'none'
+                          console.error('❌ Ошибка загрузки изображения чека. Preview URL:', receiptPreview?.substring(0, 50))
+                          console.error('Тип preview:', typeof receiptPreview)
+                          // Не скрываем изображение, показываем placeholder
+                          e.currentTarget.onerror = null
+                          // Используем простой placeholder вместо base64 SVG
+                          e.currentTarget.style.backgroundColor = '#505050'
+                          e.currentTarget.style.display = 'flex'
+                          e.currentTarget.style.alignItems = 'center'
+                          e.currentTarget.style.justifyContent = 'center'
+                          e.currentTarget.alt = 'Ошибка загрузки изображения'
                         }}
                         onLoad={() => {
-                          console.log('✅ Изображение чека успешно загружено')
+                          console.log('✅ Изображение чека успешно загружено и отображено')
+                          console.log('Preview URL:', receiptPreview?.substring(0, 100))
                         }}
                       />
                     </div>
-                    <div className="text-center">
+                    <div className="text-center w-full">
                       <p className="text-sm font-medium text-green-300">
                         {t.receiptUploaded}
                       </p>
                       {receiptFile && (
+                        <p className="text-xs text-white/60 mt-1 truncate max-w-full">
+                          {receiptFile.name || 'Без названия.jpg'}
+                        </p>
+                      )}
+                      {!receiptFile && receiptPreview && (
                         <p className="text-xs text-white/60 mt-1">
-                          {receiptFile.name}
+                          Чек загружен
                         </p>
                       )}
                     </div>
