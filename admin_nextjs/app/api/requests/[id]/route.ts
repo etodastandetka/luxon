@@ -103,7 +103,7 @@ export async function GET(
         bank: true,
         phone: true,
         withdrawalCode: true,
-        // photoFileUrl не загружаем в основном запросе - он загружается отдельно через /photo endpoint
+        photoFileUrl: true, // Добавляем photoFileUrl для отображения фото чеков (deposit) и QR-кодов (withdraw)
         paymentMethod: true,
         createdAt: true,
         updatedAt: true,
@@ -208,13 +208,13 @@ export async function GET(
       amount: t.amount ? t.amount.toString() : null,
     }))
 
-    // photoFileUrl НЕ включаем в основной ответ - он загружается отдельно через /photo endpoint
-    // Это значительно уменьшает размер ответа и ускоряет загрузку
+    // Включаем photoFileUrl в основной ответ для отображения фото чеков (deposit) и QR-кодов (withdraw)
+    // Фото загружается вместе с данными заявки для удобства отображения в админке
     const responseData = {
       ...requestData,
       userId: requestData.userId.toString(),
       amount: requestData.amount ? requestData.amount.toString() : null,
-      photoFileUrl: null, // Всегда null - загружается отдельно
+      photoFileUrl: requestData.photoFileUrl || null, // Включаем photoFileUrl из запроса для отображения фото чеков
       paymentMethod: requestData.paymentMethod || null,
       cryptoPayment: requestData.cryptoPayment ? {
         ...requestData.cryptoPayment,

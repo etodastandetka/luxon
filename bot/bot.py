@@ -537,7 +537,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     # Обработка кнопок Reply клавиатуры (должна быть ПЕРЕД проверкой user_states)
     # Отвечаем ВСЕМ пользователям, независимо от подписки на канал
-    if message_text in ["💰 Пополнить", "💸 Вывести", "👨‍💻 Тех поддержка", "📊 История", "📖 Инструкция"]:
+    # Получаем тексты кнопок из переводов для сравнения
+    btn_deposit = get_text('deposit')
+    btn_withdraw = get_text('withdraw')
+    btn_support = get_text('support')
+    btn_faq = get_text('faq')
+    
+    if message_text in [btn_deposit, btn_withdraw, btn_support, "📊 История", btn_faq]:
         logger.info(f"📨 Пользователь {user_id} нажал кнопку: {message_text}")
         
         # Загружаем настройки если они устарели
@@ -554,7 +560,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             logger.info(f"⏸️ Бот на паузе, пользователь {user_id} попытался использовать функцию")
             return
         
-        if message_text == "💰 Пополнить":
+        if message_text == btn_deposit:
             # Проверяем, включены ли депозиты
             if not settings_cache.get('deposits_enabled', True):
                 await update.message.reply_text(
@@ -605,7 +611,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-        else:
+        elif message_text == btn_withdraw:
             # Проверяем, включены ли выводы
             if not settings_cache.get('withdrawals_enabled', True):
                 await update.message.reply_text(
@@ -654,7 +660,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-        elif message_text == "👨‍💻 Тех поддержка":
+        elif message_text == btn_support:
             # Отправляем webapp ссылку на тех поддержку
             keyboard = [
                 [InlineKeyboardButton("🚀 Открыть поддержку", web_app=WebAppInfo(url=f"{WEBSITE_URL}/support"))]
@@ -676,7 +682,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-        elif message_text == "📖 Инструкция":
+        elif message_text == btn_faq:
             # Отправляем webapp ссылку на инструкцию
             keyboard = [
                 [InlineKeyboardButton("🚀 Открыть инструкцию", web_app=WebAppInfo(url=f"{WEBSITE_URL}/instruction"))]
