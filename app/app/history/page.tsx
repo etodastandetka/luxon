@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
@@ -25,15 +25,6 @@ export default function HistoryPage(){
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw'>('all')
   const { language } = useLanguage()
-
-  useEffect(() => {
-    loadTransactions()
-  }, [filter])
-
-  // Не показываем контент, пока проверяется авторизация
-  if (isAuthorized === null || isAuthorized === false) {
-    return null
-  }
 
   const translations = {
     ru: {
@@ -136,7 +127,7 @@ export default function HistoryPage(){
 
   const t = translations[language as keyof typeof translations] || translations.ru
 
-  const loadTransactions = async () => {
+  const loadTransactions = useCallback(async () => {
     setLoading(true)
     try {
       // Получаем ID пользователя из Telegram WebApp
@@ -207,17 +198,29 @@ export default function HistoryPage(){
     } finally {
       setLoading(false)
     }
-  }
+  }, [filter])
+
+  useEffect(() => {
+    loadTransactions()
+  }, [loadTransactions])
 
   // Функция для совместимости с HTML шаблоном
-  const displayRealTransactions = () => {
+  const displayRealTransactions = useCallback(() => {
     loadTransactions()
-  }
+  }, [loadTransactions])
 
   // Делаем функцию доступной глобально для HTML шаблона
   useEffect(() => {
     (window as any).displayRealTransactions = displayRealTransactions
-  }, [])
+    return () => {
+      delete (window as any).displayRealTransactions
+    }
+  }, [displayRealTransactions])
+
+  // Не показываем контент, пока проверяется авторизация
+  if (isAuthorized === null || isAuthorized === false) {
+    return null
+  }
 
   const formatDate = (dateString: string) => {
     try {
