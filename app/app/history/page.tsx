@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
-import { getTelegramUserId } from '../../utils/telegram'
+import { getTelegramUser, getTelegramUserId } from '../../utils/telegram'
 import { getApiBase } from '../../utils/fetch'
 import { HistoryIcon, BackIcon } from '../../components/Icons'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
@@ -130,24 +130,25 @@ export default function HistoryPage(){
   const loadTransactions = useCallback(async () => {
     setLoading(true)
     try {
-      // Получаем ID пользователя из Telegram WebApp
-      const userId = getTelegramUserId()
+      // Получаем данные пользователя из Telegram WebApp (используем тот же подход, что в профиле)
+      const telegramUser = getTelegramUser()
       
-      console.log('=== DEBUG: History - User ID ===')
-      console.log('User ID:', userId)
-      console.log('================================')
-      
-      const finalUserId = userId || 'test_user_123'
-      
-      if (!userId) {
-        console.log('❌ User ID not found, using test user ID')
+      // Если пользователь не найден, не делаем запрос
+      if (!telegramUser || !telegramUser.id) {
+        console.log('❌ User not found in Telegram WebApp')
+        setTransactions([])
+        setLoading(false)
+        return
       }
+
+      // Используем числовой ID из объекта пользователя (как в профиле)
+      const userId = telegramUser.id
 
       // Запрашиваем историю транзакций пользователя с админ-панели API
       const apiUrl = getApiBase()
       
       // Формируем параметры запроса в зависимости от фильтра
-      let url = `${apiUrl}/api/transaction-history?user_id=${finalUserId}`
+      let url = `${apiUrl}/api/transaction-history?user_id=${userId}`
       if (filter === 'deposit') {
         url += '&type=deposit'
       } else if (filter === 'withdraw') {
@@ -155,6 +156,16 @@ export default function HistoryPage(){
       }
       
       const response = await fetch(url)
+      
+      // Проверяем статус ответа
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Error loading transactions:', errorData)
+        setTransactions([])
+        setLoading(false)
+        return
+      }
+      
       const data = await response.json()
       
       // Админ-панель возвращает данные в формате { success: true, data: { transactions: [...] } }
