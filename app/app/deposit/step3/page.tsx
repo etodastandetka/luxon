@@ -462,75 +462,25 @@ function DepositStep3Content() {
         }
       }
 
+      console.log('📁 Файл обработан:', {
+        name: processedFile.name,
+        size: processedFile.size,
+        type: processedFile.type
+      })
+      
       setReceiptFile(processedFile)
+      console.log('📁 receiptFile установлен в state')
 
-      // Создаем превью из сжатого файла (используем Promise для синхронизации)
-      if (typeof window !== 'undefined') {
-        const createPreview = (): Promise<string> => {
-          return new Promise((resolve, reject) => {
-            try {
-              const reader = new FileReader()
-              reader.onload = (e) => {
-                const result = e.target?.result
-                if (result && typeof result === 'string') {
-                  console.log('✅ Preview создан через FileReader, длина base64:', result.length)
-                  resolve(result)
-                } else {
-                  console.error('❌ Ошибка: результат FileReader не является строкой', typeof result)
-                  reject(new Error('Invalid FileReader result'))
-                }
-              }
-              reader.onerror = (e) => {
-                console.error('❌ Ошибка FileReader:', e)
-                reject(new Error('FileReader error'))
-              }
-              reader.readAsDataURL(processedFile)
-              console.log('📸 Запущен FileReader для создания preview')
-            } catch (error) {
-              console.error('❌ Ошибка при создании FileReader:', error)
-              reject(error)
-            }
-          })
-        }
-
-        // Пытаемся создать preview через FileReader
-        createPreview()
-          .then((previewUrl) => {
-            console.log('✅ Preview готов, устанавливаем в state')
-            setReceiptPreview(previewUrl)
-            // Принудительно обновляем состояние
-            setTimeout(() => {
-              setReceiptPreview((prev) => {
-                if (prev !== previewUrl) {
-                  console.log('🔄 Принудительно обновляем preview')
-                  return previewUrl
-                }
-                return prev
-              })
-            }, 100)
-          })
-          .catch((error) => {
-            console.warn('⚠️ FileReader не сработал, используем object URL:', error)
-            // Создаем object URL как fallback
-            try {
-              const objectUrl = URL.createObjectURL(processedFile)
-              console.log('✅ Создан object URL как fallback:', objectUrl)
-              setReceiptPreview(objectUrl)
-              // Принудительно обновляем состояние
-              setTimeout(() => {
-                setReceiptPreview((prev) => {
-                  if (prev !== objectUrl) {
-                    console.log('🔄 Принудительно обновляем object URL preview')
-                    return objectUrl
-                  }
-                  return prev
-                })
-              }, 100)
-            } catch (urlError) {
-              console.error('❌ Ошибка при создании object URL:', urlError)
-              alert('Ошибка при обработке фото. Попробуйте еще раз.')
-            }
-          })
+      // Конвертируем в base64 используя ту же функцию, что и в выводе
+      try {
+        console.log('📸 Конвертируем файл в base64 через fileToBase64...')
+        const base64 = await fileToBase64(processedFile, false) // Уже сжато выше
+        console.log('✅ Base64 создан, длина:', base64.length)
+        setReceiptPreview(base64)
+        console.log('✅ Preview установлен в state')
+      } catch (error) {
+        console.error('❌ Ошибка конвертации в base64:', error)
+        alert('Ошибка при загрузке фото. Попробуйте еще раз.')
       }
 
       // Если есть requestId, сразу загружаем
@@ -561,39 +511,40 @@ function DepositStep3Content() {
       const data = await response.json()
       
       if (data.success) {
-        console.log('✅ Чек загружен успешно')
+        console.log('✅ Чек загружен успешно на сервер')
+        console.log('📋 Ответ сервера:', data)
         
-        // Обновляем preview с URL из ответа только если URL валидный
+        // НЕ перезаписываем локальный preview - оставляем base64 preview для отображения
+        // URL с сервера можно использовать для загрузки, но локальный preview более надежен
         if (data.data && data.data.url) {
           let photoUrl = data.data.url
           // Если URL относительный, добавляем базовый URL
           if (photoUrl && photoUrl.startsWith('/api/')) {
             photoUrl = `${base}${photoUrl}`
           }
-          
-          // Проверяем, что URL валидный, перед обновлением preview
-          if (photoUrl && (photoUrl.startsWith('http') || photoUrl.startsWith('data:') || photoUrl.startsWith('blob:'))) {
-            console.log('✅ Обновляем preview на URL с сервера:', photoUrl.substring(0, 50) + '...')
-            setReceiptPreview(photoUrl)
-          } else {
-            console.warn('⚠️ URL с сервера невалидный, сохраняем текущий preview')
-            // Сохраняем текущий preview (base64), если URL невалидный
-          }
+          console.log('📸 URL фото на сервере:', photoUrl.substring(0, 100) + '...')
+          // НЕ обновляем preview на URL с сервера - оставляем локальный base64 preview
+          // Это гарантирует, что фото всегда будет видно, даже если URL с сервера недоступен
         } else {
-          console.warn('⚠️ URL не получен от сервера, сохраняем текущий preview')
-          // Сохраняем текущий preview (base64), если URL не получен
+          console.log('⚠️ URL не получен от сервера, используем локальный preview')
         }
+        
+        // Обновляем состояние, чтобы показать, что чек загружен на сервер
+        // НО НЕ меняем receiptPreview - оставляем локальный base64 preview
+        setReceiptUploaded(true)
         
         // Показываем успешное сообщение (используем message из ответа или дефолтное)
         const successMessage = data.message || 'Чек успешно загружен'
-        alert(successMessage)
-        // Обновляем состояние, чтобы показать, что чек загружен
-        setReceiptUploaded(true)
+        console.log('✅ Состояние обновлено: receiptUploaded = true, preview сохранен')
+        
+        // НЕ показываем alert, чтобы не мешать пользователю - просто обновляем состояние
+        // alert(successMessage)
       } else {
         // Ошибка: используем только error, не message (message может быть успешным сообщением)
         const errorMessage = data.error || `Ошибка сервера: ${response.status}`
-        console.error('❌ Ошибка загрузки чека:', errorMessage)
+        console.error('❌ Ошибка загрузки чека на сервер:', errorMessage)
         // НЕ удаляем preview при ошибке загрузки - оставляем локальный preview
+        // Пользователь все равно видит фото, даже если загрузка на сервер не удалась
         alert(`Ошибка загрузки чека: ${errorMessage}`)
       }
     } catch (error: any) {
@@ -1045,42 +996,18 @@ function DepositStep3Content() {
               <div className="flex flex-col items-center space-y-2 w-full">
                 {receiptPreview ? (
                   <>
-                    <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-green-400/50 bg-gray-800 flex items-center justify-center">
-                      <img 
-                        src={receiptPreview} 
-                        alt="Receipt preview" 
-                        className="w-full h-full object-contain"
-                        style={{ maxWidth: '100%', maxHeight: '100%' }}
-                        onError={(e) => {
-                          console.error('❌ Ошибка загрузки изображения чека. Preview URL:', receiptPreview?.substring(0, 50))
-                          console.error('Тип preview:', typeof receiptPreview)
-                          // Не скрываем изображение, показываем placeholder
-                          e.currentTarget.onerror = null
-                          // Используем простой placeholder вместо base64 SVG
-                          e.currentTarget.style.backgroundColor = '#505050'
-                          e.currentTarget.style.display = 'flex'
-                          e.currentTarget.style.alignItems = 'center'
-                          e.currentTarget.style.justifyContent = 'center'
-                          e.currentTarget.alt = 'Ошибка загрузки изображения'
-                        }}
-                        onLoad={() => {
-                          console.log('✅ Изображение чека успешно загружено и отображено')
-                          console.log('Preview URL:', receiptPreview?.substring(0, 100))
-                        }}
-                      />
+                    <div className="w-8 h-8 rounded-full bg-green-500/30 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                     </div>
-                    <div className="text-center w-full">
+                    <div className="text-center">
                       <p className="text-sm font-medium text-green-300">
                         {t.receiptUploaded}
                       </p>
                       {receiptFile && (
                         <p className="text-xs text-white/60 mt-1 truncate max-w-full">
                           {receiptFile.name || 'Без названия.jpg'}
-                        </p>
-                      )}
-                      {!receiptFile && receiptPreview && (
-                        <p className="text-xs text-white/60 mt-1">
-                          Чек загружен
                         </p>
                       )}
                     </div>
@@ -1105,6 +1032,31 @@ function DepositStep3Content() {
               </div>
             </label>
           </div>
+          
+          {/* Предварительный просмотр - как в выводе */}
+          {receiptPreview && (
+            <div className="mt-4 p-4 bg-black/20 rounded-xl border border-green-400/20">
+              <div className="text-center mb-3">
+                <span className="text-sm text-green-400 font-medium">Предварительный просмотр:</span>
+              </div>
+              <div className="flex justify-center">
+                <img 
+                  src={receiptPreview} 
+                  alt="Receipt Preview" 
+                  className="max-w-xs max-h-48 rounded-lg shadow-lg border border-green-400/30 object-contain"
+                  onError={(e) => {
+                    console.error('❌ Ошибка загрузки изображения чека. Preview URL:', receiptPreview?.substring(0, 50))
+                    console.error('Тип preview:', typeof receiptPreview)
+                    e.currentTarget.style.display = 'none'
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Изображение чека успешно загружено и отображено')
+                    console.log('Preview URL:', receiptPreview?.substring(0, 100))
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </section>
 
       <div className="flex gap-3">
