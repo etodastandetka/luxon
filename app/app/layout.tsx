@@ -7,7 +7,7 @@ import { HomePageDataProvider } from '../contexts/HomePageDataContext'
 import BottomNavigation from '../components/BottomNavigation'
 import Snowflakes from '../components/Snowflakes'
 import OldDeviceWarning from '../components/OldDeviceWarning'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { getApiBase } from '../utils/fetch'
 import { getTelegramUserId } from '../utils/telegram'
@@ -16,11 +16,16 @@ import { initIOSColorFixes } from '../utils/ios-color-fix'
 function BlockedChecker({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const isMountedRef = useRef(true)
 
   useEffect(() => {
+    isMountedRef.current = true
+    
     // Пропускаем проверку на странице блокировки
     if (pathname === '/blocked') {
-      return
+      return () => {
+        isMountedRef.current = false
+      }
     }
 
     // Получаем ID пользователя из Telegram WebApp (оптимизированная функция)
@@ -30,11 +35,16 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
     if (userId) {
       const checkUserStatus = async () => {
         try {
+          if (!isMountedRef.current) return
+          
           const apiUrl = getApiBase()
           const response = await fetch(`${apiUrl}/api/public/check-user-status?user_id=${userId}`)
+          
+          if (!isMountedRef.current) return
+          
           const data = await response.json()
           
-          if (data.success && data.data.isBlocked) {
+          if (isMountedRef.current && data.success && data.data.isBlocked) {
             router.push('/blocked')
             return
           }
@@ -47,6 +57,8 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
       // Регистрируем реферала, если есть реферальный код в start_param
       const registerReferral = async () => {
         try {
+          if (!isMountedRef.current) return
+          
           const tg = (window as any).Telegram?.WebApp
           
           // Пробуем получить startParam из разных источников (безопасный доступ)
@@ -131,13 +143,17 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
                 }),
               })
               
+              if (!isMountedRef.current) return
+              
               const data = await response.json()
               console.log('📋 Ответ API регистрации реферала:', data)
               
-              if (data.success) {
-                console.log('✅ Реферал успешно зарегистрирован')
-              } else {
-                console.log('⚠️ Ошибка регистрации реферала:', data.error)
+              if (isMountedRef.current) {
+                if (data.success) {
+                  console.log('✅ Реферал успешно зарегистрирован')
+                } else {
+                  console.log('⚠️ Ошибка регистрации реферала:', data.error)
+                }
               }
             } else {
               console.log('⚠️ Некорректный реферальный код:', { referrerId, userId, isValid: referrerId && referrerId !== userId && /^\d+$/.test(referrerId) })
@@ -153,6 +169,10 @@ function BlockedChecker({ children }: { children: React.ReactNode }) {
       
       checkUserStatus()
       registerReferral()
+    }
+    
+    return () => {
+      isMountedRef.current = false
     }
   }, [pathname, router])
 

@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
@@ -25,6 +25,7 @@ export default function HistoryPage(){
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw'>('all')
   const { language } = useLanguage()
+  const isMountedRef = useRef(true)
 
   const translations = {
     ru: {
@@ -128,6 +129,8 @@ export default function HistoryPage(){
   const t = translations[language as keyof typeof translations] || translations.ru
 
   const loadTransactions = useCallback(async () => {
+    if (!isMountedRef.current) return
+    
     setLoading(true)
     try {
       // Получаем данные пользователя из Telegram WebApp (используем тот же подход, что в профиле)
@@ -136,6 +139,7 @@ export default function HistoryPage(){
       // Если пользователь не найден, не делаем запрос
       if (!telegramUser || !telegramUser.id) {
         console.log('❌ User not found in Telegram WebApp')
+        if (!isMountedRef.current) return
         setTransactions([])
         setLoading(false)
         return
@@ -165,6 +169,7 @@ export default function HistoryPage(){
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         console.error('❌ Error loading transactions:', errorData)
+        if (!isMountedRef.current) return
         setTransactions([])
         setLoading(false)
         return
@@ -216,26 +221,41 @@ export default function HistoryPage(){
         })
         
         console.log('📊 Formatted transactions:', formattedTransactions.length)
-        setTransactions(formattedTransactions)
+        if (isMountedRef.current) {
+          setTransactions(formattedTransactions)
+        }
       } else {
         console.error('❌ Error loading transactions - API returned error:', data.error || data)
-        setTransactions([])
+        if (isMountedRef.current) {
+          setTransactions([])
+        }
       }
     } catch (error) {
       console.error('Error loading transactions:', error)
-      setTransactions([])
+      if (isMountedRef.current) {
+        setTransactions([])
+      }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
   }, [filter])
 
   useEffect(() => {
+    isMountedRef.current = true
     loadTransactions()
+    
+    return () => {
+      isMountedRef.current = false
+    }
   }, [loadTransactions])
 
   // Функция для совместимости с HTML шаблоном
   const displayRealTransactions = useCallback(() => {
-    loadTransactions()
+    if (isMountedRef.current) {
+      loadTransactions()
+    }
   }, [loadTransactions])
 
   // Делаем функцию доступной глобально для HTML шаблона
