@@ -595,18 +595,22 @@ function DepositStep3Content() {
 
       // Создаем заявку только при нажатии "Оплатил" (с фото сразу, как в боте)
       if (!requestId) {
-        // Конвертируем фото в base64, если оно есть (как в боте)
+        // Используем уже готовый base64 из receiptPreview, если он есть
+        // Если нет, конвертируем из файла (как в боте)
         let receipt_photo_base64: string | null = null
-        if (receiptFile) {
+        
+        if (receiptPreview && receiptPreview.startsWith('data:')) {
+          // Используем уже готовый base64 из preview
+          receipt_photo_base64 = receiptPreview
+        } else if (receiptFile) {
+          // Конвертируем фото в base64 (как в боте)
           try {
             const base64 = await new Promise<string>((resolve, reject) => {
               const reader = new FileReader()
               reader.onload = (e) => {
                 const result = e.target?.result
                 if (result && typeof result === 'string') {
-                  // В боте отправляется как data:image/jpeg;base64,{base64_data}
-                  // Но API ожидает только base64 часть после запятой или полный data URL
-                  // Попробуем отправить полный data URL как в боте
+                  // В боте отправляется полный data URL: data:image/jpeg;base64,{base64_data}
                   resolve(result)
                 } else {
                   reject(new Error('Неверный формат данных'))
