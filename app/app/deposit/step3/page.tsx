@@ -593,8 +593,39 @@ function DepositStep3Content() {
       // Получаем данные пользователя из Telegram
       const telegramUser = getTelegramUser()
 
-      // Создаем заявку только при нажатии "Оплатил" (после загрузки фото)
+      // Создаем заявку только при нажатии "Оплатил" (с фото сразу, как в боте)
       if (!requestId) {
+        // Конвертируем фото в base64, если оно есть (как в боте)
+        let receipt_photo_base64: string | null = null
+        if (receiptFile) {
+          try {
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onload = (e) => {
+                const result = e.target?.result
+                if (result && typeof result === 'string') {
+                  // В боте отправляется как data:image/jpeg;base64,{base64_data}
+                  // Но API ожидает только base64 часть после запятой или полный data URL
+                  // Попробуем отправить полный data URL как в боте
+                  resolve(result)
+                } else {
+                  reject(new Error('Неверный формат данных'))
+                }
+              }
+              reader.onerror = () => {
+                reject(new Error('Ошибка чтения файла'))
+              }
+              reader.readAsDataURL(receiptFile)
+            })
+            receipt_photo_base64 = base64
+          } catch (error) {
+            console.error('Ошибка конвертации фото в base64:', error)
+            alert('Ошибка при обработке фото. Попробуйте еще раз.')
+            setLoading(false)
+            return
+          }
+        }
+        
         const response = await safeFetch(`${base}/api/payment`, {
           method: 'POST',
           headers: {
@@ -610,6 +641,7 @@ function DepositStep3Content() {
             telegram_username: telegramUser?.username || null,
             telegram_first_name: telegramUser?.first_name || null,
             telegram_last_name: telegramUser?.last_name || null,
+            receipt_photo: receipt_photo_base64, // Фото чека отправляем сразу, как в боте
           }),
           timeout: 30000,
           retries: 2,
@@ -681,14 +713,9 @@ function DepositStep3Content() {
             }
           }
           
-          // Загружаем чек после создания заявки
-          if (receiptFile) {
-            await uploadReceipt(receiptFile)
-          } else if (!receiptUploaded) {
-            // Если фото не было загружено, предупреждаем
-            alert('⚠️ Внимание: фото чека не загружено. Пожалуйста, загрузите фото чека.')
-            setLoading(false)
-            return
+          // Фото уже отправлено при создании заявки, поэтому отдельно загружать не нужно
+          if (receipt_photo_base64) {
+            setReceiptUploaded(true)
           }
         }
       } else {
