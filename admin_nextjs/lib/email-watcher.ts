@@ -94,6 +94,29 @@ async function processEmail(
               console.log(`📨 Email preview: ${preview}...`)
             }
 
+            // РАННЯЯ ПРОВЕРКА: Если это уведомление об исходящем переводе или служебное письмо банка
+            // - пометим как прочитанное сразу, не пытаясь парсить
+            const isOutgoingNotificationPatterns = [
+              /(?:Вы\s+)?осуществили\s+перевод/i,
+              /Важно!\s*Банк\s+никогда\s+не\s+отправляет\s+электронные\s+письма/i,
+              /Уважаемый(?:\(ая\))?\s+\S+.*(?:осуществили|перевод|QR-платежа).*(?:Важно|Банк\s+никогда)/i,
+            ]
+            
+            const isOutgoingNotification = isOutgoingNotificationPatterns.some(pattern => pattern.test(text))
+            
+            if (isOutgoingNotification) {
+              console.log(`⏭️ Email UID ${uid} is outgoing transfer notification, marking as read immediately`)
+              imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
+                if (err) {
+                  console.error(`❌ Error marking outgoing notification email as seen:`, err)
+                } else {
+                  console.log(`✅ Outgoing notification email UID ${uid} marked as read (skipped)`)
+                }
+                resolve()
+              })
+              return
+            }
+
             // ВАЖНО: Проверяем дату письма - если письмо старше 7 дней, сразу помечаем как прочитанное
             // (увеличено до 7 дней, чтобы обрабатывать письма, которые пришли недавно)
             const emailDate = parsed.date || new Date()
