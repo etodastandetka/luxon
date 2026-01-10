@@ -433,6 +433,11 @@ function DepositStep3Content() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (typeof window === 'undefined' || typeof (window as any).FileReader === 'undefined') {
+      alert('Ошибка: FileReader недоступен. Пожалуйста, используйте другой браузер.')
+      return
+    }
+
     // Проверка типа файла
     if (!file.type.startsWith('image/')) {
       alert('Пожалуйста, выберите изображение (PNG, JPG)')
@@ -462,24 +467,14 @@ function DepositStep3Content() {
         }
       }
 
-      console.log('📁 Файл обработан:', {
-        name: processedFile.name,
-        size: processedFile.size,
-        type: processedFile.type
-      })
-      
       setReceiptFile(processedFile)
-      console.log('📁 receiptFile установлен в state')
 
-      // Конвертируем в base64 используя ту же функцию, что и в выводе
+      // Конвертируем в base64 с опциональным сжатием (точно как в выводе)
       try {
-        console.log('📸 Конвертируем файл в base64 через fileToBase64...')
         const base64 = await fileToBase64(processedFile, false) // Уже сжато выше
-        console.log('✅ Base64 создан, длина:', base64.length)
         setReceiptPreview(base64)
-        console.log('✅ Preview установлен в state')
       } catch (error) {
-        console.error('❌ Ошибка конвертации в base64:', error)
+        console.error('Ошибка конвертации в base64:', error)
         alert('Ошибка при загрузке фото. Попробуйте еще раз.')
       }
 
@@ -1044,15 +1039,6 @@ function DepositStep3Content() {
                   src={receiptPreview} 
                   alt="Receipt Preview" 
                   className="max-w-xs max-h-48 rounded-lg shadow-lg border border-green-400/30 object-contain"
-                  onError={(e) => {
-                    console.error('❌ Ошибка загрузки изображения чека. Preview URL:', receiptPreview?.substring(0, 50))
-                    console.error('Тип preview:', typeof receiptPreview)
-                    e.currentTarget.style.display = 'none'
-                  }}
-                  onLoad={() => {
-                    console.log('✅ Изображение чека успешно загружено и отображено')
-                    console.log('Preview URL:', receiptPreview?.substring(0, 100))
-                  }}
                 />
               </div>
             </div>
