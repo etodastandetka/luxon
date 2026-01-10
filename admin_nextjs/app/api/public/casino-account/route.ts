@@ -169,12 +169,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверка формата account_id (должен быть числом)
-    if (!/^\d+$/.test(account_id)) {
-      return NextResponse.json(
-        createApiResponse(null, 'Invalid account_id format (must be numeric)'),
-        { status: 400 }
-      )
+    // Проверка формата account_id (должен быть числом, но для телефона разрешаем формат +996XXXXXXXXX)
+    if (casino_id.toLowerCase() !== 'phone') {
+      // Для казино account_id должен быть числом
+      if (!/^\d+$/.test(account_id)) {
+        return NextResponse.json(
+          createApiResponse(null, 'Invalid account_id format (must be numeric)'),
+          { status: 400 }
+        )
+      }
+    } else {
+      // Для телефона проверяем формат +996XXXXXXXXX
+      if (!/^\+996\d{9}$/.test(account_id)) {
+        return NextResponse.json(
+          createApiResponse(null, 'Invalid phone format (must be +996XXXXXXXXX)'),
+          { status: 400 }
+        )
+      }
     }
 
     let userBigInt: bigint

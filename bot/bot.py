@@ -863,13 +863,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             if 'saved_phones' not in data:
                                 data['saved_phones'] = {}
                             data['saved_phones']['phone'] = saved_phone
-                            user_states[user_id]['data'] = data
+                            # Обновляем состояние правильно
+                            state['data'] = data
+                            user_states[user_id] = state
                             logger.info(f"✅ Получен сохраненный телефон из API для пользователя {user_id}: {saved_phone}")
                         else:
                             logger.info(f"ℹ️ Сохраненный телефон не найден в API для пользователя {user_id} (phone_value: {repr(phone_value)}, type: {type(phone_value)})")
                             # Если в локальном состоянии есть телефон, используем его как запасной вариант
                             if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
                                 saved_phone = str(local_phone).strip()
+                                # Обновляем состояние правильно
+                                if 'saved_phones' not in data:
+                                    data['saved_phones'] = {}
+                                data['saved_phones']['phone'] = saved_phone
+                                state['data'] = data
+                                user_states[user_id] = state
                                 logger.info(f"📱 Используем локальный сохраненный телефон как запасной вариант: {saved_phone}")
                     else:
                         try:
@@ -878,18 +886,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             # Если API не работает, используем локальное состояние
                             if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
                                 saved_phone = str(local_phone).strip()
+                                # Обновляем состояние правильно
+                                if 'saved_phones' not in data:
+                                    data['saved_phones'] = {}
+                                data['saved_phones']['phone'] = saved_phone
+                                state['data'] = data
+                                user_states[user_id] = state
                                 logger.info(f"📱 Используем локальный сохраненный телефон (API недоступен): {saved_phone}")
                         except:
                             logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона")
                             # Если API не работает, используем локальное состояние
                             if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
                                 saved_phone = str(local_phone).strip()
+                                # Обновляем состояние правильно
+                                if 'saved_phones' not in data:
+                                    data['saved_phones'] = {}
+                                data['saved_phones']['phone'] = saved_phone
+                                state['data'] = data
+                                user_states[user_id] = state
                                 logger.info(f"📱 Используем локальный сохраненный телефон (API недоступен): {saved_phone}")
             except Exception as e:
                 logger.warning(f"❌ Не удалось получить сохраненный телефон из API: {e}", exc_info=True)
                 # Если API не работает, используем локальное состояние
                 if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
                     saved_phone = str(local_phone).strip()
+                    # Обновляем состояние правильно
+                    if 'saved_phones' not in data:
+                        data['saved_phones'] = {}
+                    data['saved_phones']['phone'] = saved_phone
+                    state['data'] = data
+                    user_states[user_id] = state
                     logger.info(f"📱 Используем локальный сохраненный телефон (ошибка API): {saved_phone}")
             
             # Создаем Reply клавиатуру с сохраненным номером и кнопкой отмены
