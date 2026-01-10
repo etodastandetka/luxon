@@ -265,15 +265,19 @@ export default function HistoryPage(){
     }
   }, [])
 
-  // Загружаем транзакции при изменении фильтра и при первой загрузке
+  // Загружаем транзакции при первой загрузке и при изменении фильтра
   useEffect(() => {
     // В Telegram Mini App пользователь всегда авторизован, поэтому можно загружать сразу
     const isMiniApp = typeof window !== 'undefined' && !!getTelegramWebApp()
     
     // Загружаем если:
-    // 1. Авторизация подтверждена (true), или
-    // 2. Это Mini App (даже если авторизация еще проверяется)
-    const shouldLoad = (isAuthorized === true || (isMiniApp && isAuthorized !== false)) && isMountedRef.current
+    // 1. Авторизация подтверждена (true) - всегда загружаем
+    // 2. Это Mini App и авторизация еще проверяется (null) - для первой загрузки
+    // Не загружаем только если авторизация точно false
+    const shouldLoad = isMountedRef.current && (
+      isAuthorized === true || 
+      (isMiniApp && isAuthorized !== false)
+    )
     
     if (shouldLoad) {
       console.log('🔄 Loading transactions - isAuthorized:', isAuthorized, 'filter:', filter, 'isMiniApp:', isMiniApp)
