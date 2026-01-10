@@ -144,6 +144,8 @@ export default function HistoryPage(){
       // Используем числовой ID из объекта пользователя (как в профиле)
       const userId = telegramUser.id
 
+      console.log('👤 Loading transactions for user ID:', userId)
+
       // Запрашиваем историю транзакций пользователя с админ-панели API
       const apiUrl = getApiBase()
       
@@ -155,23 +157,38 @@ export default function HistoryPage(){
         url += '&type=withdraw'
       }
       
+      console.log('📡 Fetching transactions from:', url)
+      
       const response = await fetch(url)
       
       // Проверяем статус ответа
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('Error loading transactions:', errorData)
+        console.error('❌ Error loading transactions:', errorData)
         setTransactions([])
         setLoading(false)
         return
       }
       
       const data = await response.json()
+      console.log('✅ API Response:', { 
+        success: data.success, 
+        hasData: !!data.data, 
+        transactionsCount: data.data?.transactions?.length || data.transactions?.length || 0,
+        transactions: data.data?.transactions || data.transactions || []
+      })
       
       // Админ-панель возвращает данные в формате { success: true, data: { transactions: [...] } }
       const transactionsData = data.data?.transactions || data.transactions || []
       
-      if (data.success !== false && transactionsData.length >= 0) {
+      console.log('📦 Transactions data:', { 
+        rawCount: transactionsData.length, 
+        firstTransaction: transactionsData[0] 
+      })
+      
+      // Проверяем успешность ответа - если success не false, то считаем успешным
+      // (API может не всегда возвращать success: true, но если нет ошибки - всё ок)
+      if (data.success !== false) {
         // Преобразуем данные в формат для отображения
         const formattedTransactions = transactionsData.map((tx: any) => {
           // Определяем статус: если pending/deferred и прошло больше 5 минут - это отменено
@@ -188,19 +205,20 @@ export default function HistoryPage(){
           
           return {
             id: tx.id?.toString() || '',
-            type: tx.type || tx.request_type || 'deposit',
+            type: tx.type || tx.request_type || tx.requestType || 'deposit',
             bookmaker: tx.bookmaker || '',
             bank: tx.bank || '',
             amount: tx.amount || 0,
             status: finalStatus,
-            date: tx.date || tx.created_at || new Date().toISOString(),
+            date: tx.date || tx.created_at || tx.createdAt || new Date().toISOString(),
             withdrawalCode: tx.withdrawalCode || tx.withdrawal_code || null
           }
         })
         
+        console.log('📊 Formatted transactions:', formattedTransactions.length)
         setTransactions(formattedTransactions)
       } else {
-        console.error('Error loading transactions:', data.error || data)
+        console.error('❌ Error loading transactions - API returned error:', data.error || data)
         setTransactions([])
       }
     } catch (error) {
