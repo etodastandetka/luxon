@@ -1017,17 +1017,25 @@ function DepositStep3Content() {
             </label>
           </div>
           
-          {/* Предварительный просмотр - как в выводе */}
+          {/* Предварительный просмотр - как в админ-панели */}
           {receiptPreview && (
             <div className="mt-4 p-4 bg-black/20 rounded-xl border border-green-400/20">
               <div className="text-center mb-3">
                 <span className="text-sm text-green-400 font-medium">Предварительный просмотр:</span>
               </div>
-              <div className="flex justify-center">
+              <div className="flex justify-center bg-gray-900 rounded-lg overflow-hidden" style={{ minHeight: '200px' }}>
                 <img 
                   src={receiptPreview} 
                   alt="Receipt Preview" 
-                  className="max-w-xs max-h-48 rounded-lg shadow-lg border border-green-400/30 object-contain"
+                  className="w-full h-auto max-h-96 rounded-lg object-contain"
+                  style={{ display: 'block' }}
+                  onError={(e) => {
+                    console.error('❌ Ошибка загрузки изображения чека')
+                    e.currentTarget.style.display = 'none'
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Изображение чека успешно загружено')
+                  }}
                 />
               </div>
             </div>
