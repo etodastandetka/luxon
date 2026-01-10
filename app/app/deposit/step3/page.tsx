@@ -469,14 +469,18 @@ function DepositStep3Content() {
 
       setReceiptFile(processedFile)
 
-      // Конвертируем в base64 с опциональным сжатием (точно как в выводе)
-      try {
-        const base64 = await fileToBase64(processedFile, false) // Уже сжато выше
-        setReceiptPreview(base64)
-      } catch (error) {
-        console.error('Ошибка конвертации в base64:', error)
+      // Конвертируем в base64 напрямую через FileReader (простой и надежный способ)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result
+        if (result && typeof result === 'string') {
+          setReceiptPreview(result)
+        }
+      }
+      reader.onerror = () => {
         alert('Ошибка при загрузке фото. Попробуйте еще раз.')
       }
+      reader.readAsDataURL(processedFile)
 
       // Если есть requestId, сразу загружаем
       if (requestId) {
