@@ -443,6 +443,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [
             KeyboardButton("💰 Пополнить"),
             KeyboardButton("💸 Вывести")
+        ],
+        [
+            KeyboardButton("👨‍💻 Тех поддержка"),
+            KeyboardButton("📊 История")
+        ],
+        [
+            KeyboardButton("📖 Инструкция")
         ]
     ]
     reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -507,6 +514,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             [
                 KeyboardButton("💰 Пополнить"),
                 KeyboardButton("💸 Вывести")
+            ],
+            [
+                KeyboardButton("👨‍💻 Тех поддержка"),
+                KeyboardButton("📊 История")
+            ],
+            [
+                KeyboardButton("📖 Инструкция")
             ]
         ]
         reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -523,7 +537,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     # Обработка кнопок Reply клавиатуры (должна быть ПЕРЕД проверкой user_states)
     # Отвечаем ВСЕМ пользователям, независимо от подписки на канал
-    if message_text in ["💰 Пополнить", "💸 Вывести"]:
+    if message_text in ["💰 Пополнить", "💸 Вывести", "👨‍💻 Тех поддержка", "📊 История", "📖 Инструкция"]:
         logger.info(f"📨 Пользователь {user_id} нажал кнопку: {message_text}")
         
         # Загружаем настройки если они устарели
@@ -637,6 +651,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             await update.message.reply_text(
                 "💸 <b>Вывод средств</b>\n\nВыберите казино:",
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+        elif message_text == "👨‍💻 Тех поддержка":
+            # Отправляем webapp ссылку на тех поддержку
+            keyboard = [
+                [InlineKeyboardButton("🚀 Открыть поддержку", web_app=WebAppInfo(url=f"{WEBSITE_URL}/support"))]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                "👨‍💻 <b>Техническая поддержка</b>\n\nНажмите на кнопку ниже, чтобы открыть раздел поддержки:",
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+        elif message_text == "📊 История":
+            # Отправляем webapp ссылку на историю транзакций
+            keyboard = [
+                [InlineKeyboardButton("🚀 Открыть историю", web_app=WebAppInfo(url=f"{WEBSITE_URL}/history"))]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                "📊 <b>История транзакций</b>\n\nНажмите на кнопку ниже, чтобы открыть историю ваших транзакций:",
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+        elif message_text == "📖 Инструкция":
+            # Отправляем webapp ссылку на инструкцию
+            keyboard = [
+                [InlineKeyboardButton("🚀 Открыть инструкцию", web_app=WebAppInfo(url=f"{WEBSITE_URL}/instruction"))]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                "📖 <b>Инструкция</b>\n\nНажмите на кнопку ниже, чтобы открыть инструкцию:",
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
@@ -1858,6 +1905,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             [
                 KeyboardButton("💰 Пополнить"),
                 KeyboardButton("💸 Вывести")
+            ],
+            [
+                KeyboardButton("👨‍💻 Тех поддержка"),
+                KeyboardButton("📊 История")
+            ],
+            [
+                KeyboardButton("📖 Инструкция")
             ]
         ]
         reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -1899,6 +1953,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             [
                 KeyboardButton("💰 Пополнить"),
                 KeyboardButton("💸 Вывести")
+            ],
+            [
+                KeyboardButton("👨‍💻 Тех поддержка"),
+                KeyboardButton("📊 История")
+            ],
+            [
+                KeyboardButton("📖 Инструкция")
             ]
         ]
         reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -1960,6 +2021,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                     [
                         KeyboardButton("💰 Пополнить"),
                         KeyboardButton("💸 Вывести")
+                    ],
+                    [
+                        KeyboardButton("👨‍💻 Тех поддержка"),
+                        KeyboardButton("📊 История")
+                    ],
+                    [
+                        KeyboardButton("📖 Инструкция")
                     ]
                 ]
                 reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -2123,6 +2191,13 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                     [
                         KeyboardButton("💰 Пополнить"),
                         KeyboardButton("💸 Вывести")
+                    ],
+                    [
+                        KeyboardButton("👨‍💻 Тех поддержка"),
+                        KeyboardButton("📊 История")
+                    ],
+                    [
+                        KeyboardButton("📖 Инструкция")
                     ]
                 ]
                 reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
