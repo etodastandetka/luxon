@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
-import { getTelegramUser, getTelegramUserId } from '../../utils/telegram'
+import { getTelegramUser, getTelegramUserId, getTelegramWebApp } from '../../utils/telegram'
 import { getApiBase } from '../../utils/fetch'
 import { HistoryIcon, BackIcon } from '../../components/Icons'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
@@ -242,15 +242,6 @@ export default function HistoryPage(){
     }
   }, [filter])
 
-  useEffect(() => {
-    isMountedRef.current = true
-    loadTransactions()
-    
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [loadTransactions])
-
   // Функция для совместимости с HTML шаблоном
   const displayRealTransactions = useCallback(() => {
     if (isMountedRef.current) {
@@ -266,9 +257,52 @@ export default function HistoryPage(){
     }
   }, [displayRealTransactions])
 
+  // Инициализация компонента
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  // Загружаем транзакции при изменении фильтра и при первой загрузке
+  useEffect(() => {
+    // В Telegram Mini App пользователь всегда авторизован, поэтому можно загружать сразу
+    const isMiniApp = typeof window !== 'undefined' && !!getTelegramWebApp()
+    
+    // Загружаем если:
+    // 1. Авторизация подтверждена (true), или
+    // 2. Это Mini App (даже если авторизация еще проверяется)
+    const shouldLoad = (isAuthorized === true || (isMiniApp && isAuthorized !== false)) && isMountedRef.current
+    
+    if (shouldLoad) {
+      console.log('🔄 Loading transactions - isAuthorized:', isAuthorized, 'filter:', filter, 'isMiniApp:', isMiniApp)
+      loadTransactions()
+    } else {
+      console.log('⏳ Skipping load - isAuthorized:', isAuthorized, 'isMiniApp:', isMiniApp, 'mounted:', isMountedRef.current)
+    }
+  }, [filter, isAuthorized, loadTransactions])
+
   // Не показываем контент, пока проверяется авторизация
   if (isAuthorized === null || isAuthorized === false) {
-    return null
+    // Показываем loading вместо null, чтобы хуки всегда выполнялись
+    return (
+      <main className="space-y-6">
+        <FixedHeaderControls />
+        <div className="text-center py-12">
+          <div style={{
+            animation: 'spin 1s linear infinite',
+            borderRadius: '50%',
+            height: '48px',
+            width: '48px',
+            border: '2px solid #22c55e',
+            borderTopColor: 'transparent',
+            margin: '0 auto 16px'
+          }}></div>
+          <div style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Загрузка...</div>
+        </div>
+      </main>
+    )
   }
 
   const formatDate = (dateString: string) => {
