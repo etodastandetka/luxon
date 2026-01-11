@@ -413,3 +413,15 @@ model DailyShift {
   @@index([isClosed])
   @@map("daily_shifts")
 }
+
+// Message Templates
+model MessageTemplate {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(200)
+  text      String   @db.Text
+  category  String?  @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("message_templates")
+}

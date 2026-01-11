@@ -40,7 +40,9 @@ export async function POST(
 
     const { searchParams } = new URL(request.url)
     const channel = searchParams.get('channel') || 'bot'
-    const isBridgeMode = process.env.CHAT_BRIDGE_MODE === 'true'
+    // В режиме mini_app (чат оператора) сообщения НЕ отправляются в бот, только сохраняются локально
+    // В режиме bot (чат из деталей заявки) сообщения отправляются в бот
+    const isBridgeMode = channel === 'mini_app' || process.env.CHAT_BRIDGE_MODE === 'true'
 
     // Проверяем, есть ли файл в запросе (FormData)
     const contentType = request.headers.get('content-type') || ''

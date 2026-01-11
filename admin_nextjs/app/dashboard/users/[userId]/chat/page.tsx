@@ -52,6 +52,8 @@ export default function ChatPage() {
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
   const [replyingToId, setReplyingToId] = useState<number | null>(null)
   const [zoomImage, setZoomImage] = useState<string | null>(null)
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [templates, setTemplates] = useState<any[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -98,6 +100,22 @@ export default function ChatPage() {
       setLoading(false)
     }
   }, [params.userId, channel])
+
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const response = await fetch('/api/message-templates')
+      const data = await response.json()
+      if (data.success) {
+        setTemplates(data.data || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch templates:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchTemplates()
+  }, [fetchTemplates])
 
   useEffect(() => {
     if (!params.userId) return
@@ -556,19 +574,19 @@ export default function ChatPage() {
         </div>
 
         {/* Поле ввода */}
-        <div className="p-4 bg-gray-800 border-t border-gray-700 flex-shrink-0">
+        <div className="p-4 bg-gray-800 border-t border-gray-700 flex-shrink-0 relative z-10">
           {/* Preview ответа */}
           {replyingToId && (() => {
             const replyToMessage = messages.find(m => m.id === replyingToId)
             return replyToMessage ? (
-              <div className="mb-2 p-2 bg-gray-700 rounded-lg flex items-center justify-between">
+              <div className="mb-2 p-2 bg-gray-700 rounded-lg flex items-center justify-between border border-gray-600 relative z-20">
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-400">Ответ на:</div>
+                  <div className="text-xs text-gray-400 mb-0.5">Ответ на:</div>
                   <div className="text-sm text-white truncate">{getReplyPreview(replyToMessage as any)}</div>
                 </div>
                 <button
                   onClick={() => setReplyingToId(null)}
-                  className="ml-2 text-gray-400 hover:text-white"
+                  className="ml-2 p-1 text-gray-400 hover:text-white hover:bg-gray-600 rounded transition-colors"
                 >
                   ✕
                 </button>
@@ -626,10 +644,42 @@ export default function ChatPage() {
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+              title="Прикрепить файл"
             >
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
+            </button>
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0 relative"
+              title="Шаблоны ответов"
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {showTemplates && templates.length > 0 && (
+                <div className="absolute bottom-full left-0 mb-2 w-64 bg-gray-800 rounded-lg border border-gray-700 max-h-64 overflow-y-auto z-50 shadow-xl">
+                  <div className="p-2 text-xs text-gray-400 border-b border-gray-700 bg-gray-900">Шаблоны ответов</div>
+                  {templates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => {
+                        setNewMessage(template.text)
+                        setShowTemplates(false)
+                        inputRef.current?.focus()
+                      }}
+                      className="w-full p-3 text-left hover:bg-gray-700 transition-colors border-b border-gray-700/50 last:border-0"
+                    >
+                      <div className="text-sm text-white font-medium">{template.title}</div>
+                      {template.category && (
+                        <div className="text-xs text-gray-400 mt-0.5">{template.category}</div>
+                      )}
+                      <div className="text-xs text-gray-500 mt-1 line-clamp-2">{template.text}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </button>
             <input
               ref={inputRef}
