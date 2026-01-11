@@ -741,7 +741,7 @@ export default function SupportPage() {
             </button>
           </div>
         </div>
-      </main>
+      </div>
     </>
   )
 }
