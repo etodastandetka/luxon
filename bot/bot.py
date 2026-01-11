@@ -1259,23 +1259,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 except:
                                                     watermark_font_large = watermark_font
                                                 
-                                                # Рисуем водяной знак с одинаковым углом поворота (более видимый)
+                                                # Рисуем водяной знак с одинаковым углом поворота (без перекрытий)
+                                                # Все водяные знаки в одну сторону (45 градусов)
+                                                angle = 45  # Одинаковый угол для всех
+                                                
+                                                # Сначала получаем реальный размер текста
+                                                temp_measure = Image.new('RGBA', (500, 500), (0, 0, 0, 0))
+                                                temp_measure_draw = ImageDraw.Draw(temp_measure)
+                                                bbox_wm = temp_measure_draw.textbbox((0, 0), watermark_text, font=watermark_font_large)
+                                                wm_text_width = bbox_wm[2] - bbox_wm[0]
+                                                wm_text_height = bbox_wm[3] - bbox_wm[1]
+                                                # Размер временного изображения должен быть достаточно большим для поворота
+                                                wm_temp_size = int(max(wm_text_width, wm_text_height) * 1.8)
+                                                
                                                 for i in range(-4, 5):
                                                     for j in range(-4, 5):
-                                                        x = img_width // 2 + i * 150
-                                                        y = img_height // 2 + j * 180
-                                                        # Все водяные знаки в одну сторону (45 градусов)
-                                                        angle = 45  # Одинаковый угол для всех
+                                                        # Увеличиваем шаг между водяными знаками, чтобы они не перекрывались
+                                                        x = img_width // 2 + i * 200
+                                                        y = img_height // 2 + j * 220
                                                         
-                                                        # Создаем временное изображение для повернутого текста (больший размер)
-                                                        wm_temp_size = 300
+                                                        # Создаем временное изображение для повернутого текста
                                                         wm_temp = Image.new('RGBA', (wm_temp_size, wm_temp_size), (0, 0, 0, 0))
                                                         wm_draw = ImageDraw.Draw(wm_temp)
-                                                        bbox_wm = wm_draw.textbbox((0, 0), watermark_text, font=watermark_font_large)
-                                                        wm_width = bbox_wm[2] - bbox_wm[0]
-                                                        wm_height = bbox_wm[3] - bbox_wm[1]
-                                                        wm_draw.text(((wm_temp_size - wm_width) // 2, (wm_temp_size - wm_height) // 2), watermark_text, 
-                                                                   fill=(160, 160, 160, 150), font=watermark_font_large)  # Более видимый серый водяной знак (альфа 150 из 255, темнее цвет)
+                                                        wm_draw.text(((wm_temp_size - wm_text_width) // 2, (wm_temp_size - wm_text_height) // 2), watermark_text, 
+                                                                   fill=(160, 160, 160, 150), font=watermark_font_large)  # Более видимый серый водяной знак
                                                         wm_rotated = wm_temp.rotate(angle, expand=False, fillcolor=(0, 0, 0, 0))
                                                         # Накладываем повернутый водяной знак
                                                         img.paste(wm_rotated, (x - wm_temp_size // 2, y - wm_temp_size // 2), wm_rotated)
