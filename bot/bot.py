@@ -1203,11 +1203,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         casino_name = get_casino_name(data.get('bookmaker', ''))
                                         deposit_title = get_text('deposit_title')
                                         
-                                        # Генерируем QR-код с текстом
+                                        # Генерируем QR-код с текстом (увеличенный box_size для больших модулей)
                                         qr = qrcode.QRCode(
                                             version=1,
                                             error_correction=qrcode.constants.ERROR_CORRECT_L,
-                                            box_size=10,
+                                            box_size=20,  # Значительно увеличенный размер модулей QR-кода
                                             border=4,
                                         )
                                         qr.add_data(omoney_url)
@@ -1217,8 +1217,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         qr_img = qr.make_image(fill_color="black", back_color="white")
                                         
                                         # Создаем новое изображение с белым фоном (увеличенный размер для большего QR-кода)
-                                        img_width = 700
-                                        img_height = 900  # Увеличили размер для большего QR-кода
+                                        img_width = 800
+                                        img_height = 1000  # Увеличили размер для большего QR-кода
                                         img = Image.new('RGBA', (img_width, img_height), (255, 255, 255, 255))  # RGBA для поддержки прозрачности водяных знаков
                                         
                                         # Добавляем водяной знак "LUXON" на фон (полупрозрачный серый)
@@ -1305,7 +1305,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.debug(f"Не удалось добавить fallback водяной знак: {e2}")
                                         
                                         # Вставляем QR-код в центр (с отступом сверху, увеличенный размер)
-                                        qr_size = 580  # Еще больше увеличенный размер QR-кода
+                                        qr_size = 650  # Максимально большой размер QR-кода
                                         qr_img_resized = qr_img.resize((qr_size, qr_size))
                                         qr_x = (img_width - qr_size) // 2
                                         qr_y = 30
