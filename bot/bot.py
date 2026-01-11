@@ -1194,6 +1194,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             omoney_url = bank_links.get('O!Money') or bank_links.get('omoney') or (list(bank_links.values())[0] if bank_links else None)
                             if omoney_url:
                                 try:
+                                    # Логируем доступность библиотеки
+                                    if not QRCODE_AVAILABLE:
+                                        logger.warning("⚠️ Библиотека qrcode не установлена! Установите: pip install qrcode[pil]")
+                                    
                                     if QRCODE_AVAILABLE:
                                         # Подготавливаем данные для текста на изображении
                                         casino_name = get_casino_name(data.get('bookmaker', ''))
@@ -1410,14 +1414,86 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         logger.info(f"✅ QR-код сгенерирован: размер {img_width}x{img_height}, шрифт: {font_path or 'default'}, текст добавлен")
                                     else:
                                         # Fallback на онлайн API если библиотеки нет
+                                        logger.warning("⚠️ Библиотека qrcode недоступна, используем онлайн API")
                                         qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(omoney_url, safe='')}"
                                         async with httpx.AsyncClient(timeout=10.0) as qr_client:
                                             qr_response = await qr_client.get(qr_code_url)
                                             if qr_response.status_code == 200:
-                                                qr_image = BytesIO(qr_response.content)
+                                                # Загружаем готовый QR-код и добавляем на него текст
+                                                qr_img_online = Image.open(BytesIO(qr_response.content))
+                                                
+                                                # Подготавливаем данные для текста
+                                                casino_name = get_casino_name(data.get('bookmaker', ''))
+                                                deposit_title = get_text('deposit_title')
+                                                
+                                                # Создаем новое изображение с белым фоном
+                                                img_width = 500
+                                                img_height = 800
+                                                img = Image.new('RGB', (img_width, img_height), 'white')
+                                                
+                                                # Вставляем QR-код
+                                                qr_size = 350
+                                                qr_img_resized = qr_img_online.resize((qr_size, qr_size))
+                                                qr_x = (img_width - qr_size) // 2
+                                                qr_y = 20
+                                                img.paste(qr_img_resized, (qr_x, qr_y))
+                                                
+                                                # Добавляем текст (используем стандартный шрифт, но хотя бы попробуем)
+                                                draw = ImageDraw.Draw(img)
+                                                try:
+                                                    # Пробуем найти шрифт
+                                                    font_paths = [
+                                                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                                                        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                                                        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+                                                    ]
+                                                    font_info = None
+                                                    for path in font_paths:
+                                                        if os.path.exists(path):
+                                                            try:
+                                                                font_info = ImageFont.truetype(path, 16)
+                                                                break
+                                                            except:
+                                                                continue
+                                                    
+                                                    if not font_info:
+                                                        font_info = ImageFont.load_default()
+                                                    
+                                                    # Добавляем текст под QR-кодом
+                                                    current_y = qr_y + qr_size + 30
+                                                    
+                                                    def draw_text_line(text, y_pos, font_obj, color='black'):
+                                                        try:
+                                                            bbox = draw.textbbox((0, 0), text, font=font_obj)
+                                                            text_width = bbox[2] - bbox[0]
+                                                            if text_width > 0:
+                                                                text_x = (img_width - text_width) // 2
+                                                                draw.text((text_x, y_pos), text, fill=color, font=font_obj)
+                                                                return bbox[3] - bbox[1]
+                                                        except:
+                                                            pass
+                                                        return 20
+                                                    
+                                                    current_y += draw_text_line("QR-kod dlya oplaty", current_y, font_info, 'black') + 10
+                                                    current_y += draw_text_line(deposit_title, current_y, font_info, 'black') + 10
+                                                    current_y += draw_text_line(f"Summa: {amount:.2f} som", current_y, font_info, 'black') + 10
+                                                    current_y += draw_text_line(f"Casino: {casino_name}", current_y, font_info, 'black') + 10
+                                                    current_y += draw_text_line(f"ID igroka: {data['player_id']}", current_y, font_info, 'black') + 10
+                                                    current_y += draw_text_line(f"Timer: {timer_text}", current_y, font_info, 'red') + 10
+                                                    current_y += draw_text_line("Posle oplaty otpravte foto cheka:", current_y, font_info, 'black') + 10
+                                                    
+                                                except Exception as e:
+                                                    logger.error(f"❌ Ошибка при добавлении текста на QR-код из онлайн API: {e}")
+                                                
+                                                # Сохраняем в BytesIO
+                                                qr_image = BytesIO()
+                                                img.save(qr_image, format='PNG')
+                                                qr_image.seek(0)
                                                 qr_image.name = 'qr_code.png'
+                                                logger.info(f"✅ QR-код из онлайн API обработан, текст добавлен")
                                             else:
                                                 qr_image = None
+                                                logger.error(f"❌ Не удалось загрузить QR-код из онлайн API: status={qr_response.status_code}")
                                     
                                     # Подготавливаем текст для caption
                                     casino_name = get_casino_name(data.get('bookmaker', ''))
