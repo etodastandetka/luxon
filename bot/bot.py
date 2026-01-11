@@ -1186,7 +1186,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             omoney_url = bank_links.get('O!Money') or bank_links.get('omoney') or (list(bank_links.values())[0] if bank_links else None)
                             if omoney_url:
                                 try:
-                                    qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={omoney_url}"
+                                    qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(omoney_url, safe='')}"
                                     async with httpx.AsyncClient(timeout=10.0) as qr_client:
                                         qr_response = await qr_client.get(qr_code_url)
                                         if qr_response.status_code == 200:
