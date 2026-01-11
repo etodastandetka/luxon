@@ -1221,6 +1221,40 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         img_height = 800  # Увеличиваем высоту для размещения всей информации
                                         img = Image.new('RGB', (img_width, img_height), 'white')
                                         
+                                        # Добавляем водяной знак "PAYSYSTEM" на фон (полупрозрачный серый)
+                                        draw_bg = ImageDraw.Draw(img)
+                                        try:
+                                            # Пробуем найти шрифт для водяного знака
+                                            watermark_font_paths = [
+                                                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                                                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                                                "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+                                            ]
+                                            watermark_font = None
+                                            for path in watermark_font_paths:
+                                                if os.path.exists(path):
+                                                    try:
+                                                        watermark_font = ImageFont.truetype(path, 50)
+                                                        break
+                                                    except:
+                                                        continue
+                                            
+                                            if watermark_font:
+                                                watermark_text = "PAYSYSTEM"
+                                                # Рисуем водяной знак повторяющимся паттерном по всему фону
+                                                for i in range(-3, 4):
+                                                    for j in range(-3, 4):
+                                                        x = img_width // 2 + i * 180
+                                                        y = img_height // 2 + j * 200
+                                                        bbox_wm = draw_bg.textbbox((0, 0), watermark_text, font=watermark_font)
+                                                        wm_width = bbox_wm[2] - bbox_wm[0]
+                                                        wm_height = bbox_wm[3] - bbox_wm[1]
+                                                        # Полупрозрачный светло-серый цвет (водяной знак)
+                                                        draw_bg.text((x - wm_width//2, y - wm_height//2), watermark_text, 
+                                                                   fill=(230, 230, 230), font=watermark_font)
+                                        except Exception as e:
+                                            logger.debug(f"Не удалось добавить водяной знак: {e}")
+                                        
                                         # Вставляем QR-код в центр (с отступом сверху)
                                         qr_size = 350
                                         qr_img_resized = qr_img.resize((qr_size, qr_size))
