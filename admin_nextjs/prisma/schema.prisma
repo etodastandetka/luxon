@@ -293,21 +293,21 @@ model IncomingPayment {
 
 // Chat Messages
 model ChatMessage {
-  id                Int      @id @default(autoincrement())
-  userId            BigInt   @map("user_id") @db.BigInt
-  messageText       String?  @map("message_text") @db.Text
-  messageType       String   @default("text") @map("message_type") @db.VarChar(20)
-  mediaUrl          String?  @map("media_url") @db.Text
-  direction         String   @default("in") @db.VarChar(10) // 'in' - от пользователя, 'out' - от админа
-  telegramMessageId BigInt?  @map("telegram_message_id") @db.BigInt
-  channel           String   @default("bot") @db.VarChar(20) // bot
-  replyToId         Int?     @map("reply_to_id") // ID сообщения, на которое отвечаем
+  id                Int       @id @default(autoincrement())
+  userId            BigInt    @map("user_id") @db.BigInt
+  messageText       String?   @map("message_text") @db.Text
+  messageType       String    @default("text") @map("message_type") @db.VarChar(20)
+  mediaUrl          String?   @map("media_url") @db.Text
+  direction         String    @default("in") @db.VarChar(10) // 'in' - от пользователя, 'out' - от админа
+  telegramMessageId BigInt?   @map("telegram_message_id") @db.BigInt
+  channel           String    @default("bot") @db.VarChar(20) // bot
+  replyToId         Int?      @map("reply_to_id") // ID сообщения, на которое отвечаем
   editedAt          DateTime? @map("edited_at") // Время последнего редактирования
-  isDeleted         Boolean  @default(false) @map("is_deleted") // Флаг удаления
-  createdAt         DateTime @default(now()) @map("created_at")
+  isDeleted         Boolean   @default(false) @map("is_deleted") // Флаг удаления
+  createdAt         DateTime  @default(now()) @map("created_at")
 
-  replyTo           ChatMessage? @relation("MessageReplies", fields: [replyToId], references: [id])
-  replies           ChatMessage[] @relation("MessageReplies")
+  replyTo ChatMessage?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies ChatMessage[] @relation("MessageReplies")
 
   @@index([userId, createdAt])
   @@index([channel, userId, createdAt])
@@ -381,14 +381,14 @@ model CryptoPayment {
 
 // Banners for main page carousel
 model Banner {
-  id         Int       @id @default(autoincrement())
-  image_url  String?   @db.Text
-  video_url  String?   @db.Text
-  link       String?   @db.Text
-  is_active  Boolean   @default(true) @map("is_active")
-  order      Int       @default(0)
-  created_at DateTime  @default(now()) @map("created_at")
-  updated_at DateTime  @updatedAt @map("updated_at")
+  id         Int      @id @default(autoincrement())
+  image_url  String?  @db.Text
+  video_url  String?  @db.Text
+  link       String?  @db.Text
+  is_active  Boolean  @default(true) @map("is_active")
+  order      Int      @default(0)
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
 
   @@index([is_active])
   @@index([order])
@@ -397,17 +397,17 @@ model Banner {
 
 // Daily Shifts (Дневные смены)
 model DailyShift {
-  id                Int      @id @default(autoincrement())
-  shiftDate         DateTime @unique @map("shift_date") // Дата смены (только дата, без времени)
-  depositsSum       Decimal  @default(0) @map("deposits_sum") @db.Decimal(12, 2)
-  withdrawalsSum    Decimal  @default(0) @map("withdrawals_sum") @db.Decimal(12, 2)
-  netProfit         Decimal  @default(0) @map("net_profit") @db.Decimal(12, 2) // Чистая прибыль: 8% от пополнений + 2% от выводов
-  depositsCount     Int      @default(0) @map("deposits_count")
-  withdrawalsCount  Int      @default(0) @map("withdrawals_count")
-  isClosed          Boolean  @default(false) @map("is_closed") // Закрыта ли смена
-  closedAt          DateTime? @map("closed_at") // Когда была закрыта смена
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id               Int       @id @default(autoincrement())
+  shiftDate        DateTime  @unique @map("shift_date") // Дата смены (только дата, без времени)
+  depositsSum      Decimal   @default(0) @map("deposits_sum") @db.Decimal(12, 2)
+  withdrawalsSum   Decimal   @default(0) @map("withdrawals_sum") @db.Decimal(12, 2)
+  netProfit        Decimal   @default(0) @map("net_profit") @db.Decimal(12, 2) // Чистая прибыль: 8% от пополнений + 2% от выводов
+  depositsCount    Int       @default(0) @map("deposits_count")
+  withdrawalsCount Int       @default(0) @map("withdrawals_count")
+  isClosed         Boolean   @default(false) @map("is_closed") // Закрыта ли смена
+  closedAt         DateTime? @map("closed_at") // Когда была закрыта смена
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   @@index([shiftDate])
   @@index([isClosed])
