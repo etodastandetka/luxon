@@ -675,7 +675,7 @@ export default function WithdrawStep3() {
         )}
         
         {/* Кнопка проверки кода, если код еще не проверен */}
-        {!withdrawAmount && !isCheckingCode && !error && userId.trim() && siteCode.trim() && (
+        {!withdrawAmount && !isCheckingCode && userId.trim() && siteCode.trim() && (
           <button 
             className="btn btn-primary w-full"
             onClick={handleCheckCode}
