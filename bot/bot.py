@@ -1347,46 +1347,60 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода по диагонали (как на втором фото)
                                         text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
                                         
+                                        # Увеличиваем размер шрифта для текста поверх QR-кода (более заметный)
+                                        try:
+                                            font_overlay = ImageFont.truetype(font_path, 40) if font_path else font_large
+                                        except:
+                                            font_overlay = font_large
+                                        
                                         # Создаем временное изображение для повернутого текста
                                         # Размеры для временного изображения (больше, чтобы текст поместился при повороте)
-                                        temp_img_size = max(img_width, img_height) * 2
+                                        temp_img_size = max(img_width, img_height) * 3
                                         temp_img = Image.new('RGBA', (temp_img_size, temp_img_size), (0, 0, 0, 0))
                                         temp_draw = ImageDraw.Draw(temp_img)
                                         
                                         # Получаем размеры текста
-                                        bbox = temp_draw.textbbox((0, 0), text_overlay, font=font_large)
+                                        bbox = temp_draw.textbbox((0, 0), text_overlay, font=font_overlay)
                                         text_width = bbox[2] - bbox[0]
                                         text_height = bbox[3] - bbox[1]
                                         
                                         # Рисуем текст на временном изображении (красный, полупрозрачный)
                                         # Используем полупрозрачный красный цвет (R, G, B, Alpha)
-                                        text_color = (220, 0, 0, 200)  # Красный с прозрачностью ~78%
+                                        text_color = (220, 0, 0, 180)  # Красный с прозрачностью ~70% (более видимый)
                                         text_x_temp = (temp_img_size - text_width) // 2
                                         text_y_temp = (temp_img_size - text_height) // 2
-                                        temp_draw.text((text_x_temp, text_y_temp), text_overlay, fill=text_color, font=font_large)
+                                        temp_draw.text((text_x_temp, text_y_temp), text_overlay, fill=text_color, font=font_overlay)
                                         
-                                        # Поворачиваем текст по диагонали (около -45 градусов от нижнего левого к верхнему правому)
-                                        rotated_text = temp_img.rotate(-35, expand=False, fillcolor=(0, 0, 0, 0))
+                                        # Поворачиваем текст по диагонали (около -40 градусов от нижнего левого к верхнему правому)
+                                        rotation_angle = -40
+                                        rotated_text = temp_img.rotate(rotation_angle, expand=False, fillcolor=(0, 0, 0, 0))
                                         
-                                        # Вычисляем позицию для наложения текста поверх QR-кода
-                                        # Размещаем по диагонали от нижнего левого к верхнему правому углу QR-кода
-                                        overlay_x = qr_x + 30  # Отступ от левого края QR-кода
-                                        overlay_y = qr_y + qr_size - 150  # Отступ от нижнего края QR-кода
+                                        # Вычисляем позицию для центрирования текста по диагонали QR-кода
+                                        # Центр QR-кода
+                                        qr_center_x = qr_x + qr_size // 2
+                                        qr_center_y = qr_y + qr_size // 2
                                         
-                                        # Вырезаем нужную область из повернутого текста и накладываем на основное изображение
-                                        # Берем область вокруг центра повернутого изображения
+                                        # Центр повернутого текста на временном изображении
                                         center_x = temp_img_size // 2
                                         center_y = temp_img_size // 2
-                                        crop_x1 = center_x - text_width // 2 - 50
-                                        crop_y1 = center_y - text_height // 2 - 50
-                                        crop_x2 = center_x + text_width // 2 + 50
-                                        crop_y2 = center_y + text_height // 2 + 50
+                                        
+                                        # Вырезаем область вокруг центра повернутого текста
+                                        # Увеличиваем область crop для безопасности
+                                        crop_padding = 100
+                                        crop_x1 = center_x - text_width // 2 - crop_padding
+                                        crop_y1 = center_y - text_height // 2 - crop_padding
+                                        crop_x2 = center_x + text_width // 2 + crop_padding
+                                        crop_y2 = center_y + text_height // 2 + crop_padding
                                         
                                         text_crop = rotated_text.crop((crop_x1, crop_y1, crop_x2, crop_y2))
                                         
+                                        # Вычисляем позицию для наложения текста так, чтобы центр текста совпадал с центром QR-кода
+                                        crop_width = crop_x2 - crop_x1
+                                        crop_height = crop_y2 - crop_y1
+                                        paste_x = qr_center_x - crop_width // 2
+                                        paste_y = qr_center_y - crop_height // 2
+                                        
                                         # Накладываем текст поверх QR-кода с альфа-каналом
-                                        paste_x = overlay_x
-                                        paste_y = overlay_y
                                         img.paste(text_crop, (paste_x, paste_y), text_crop)
                                         
                                         # Текст "ОТСКАНИРУЙТЕ QR" под QR-кодом
