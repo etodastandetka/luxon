@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import FixedHeaderControls from '../../../components/FixedHeaderControls'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '../../../components/LanguageContext'
@@ -9,6 +9,128 @@ import { getTelegramUserId, getTelegramUser } from '../../../utils/telegram'
 import { DEPOSIT_CONFIG } from '../../../config/app'
 import { compressImage, fileToBase64 } from '../../../utils/imageCompression'
 import { useRequireAuth } from '../../../hooks/useRequireAuth'
+
+// Компонент QR-кода с текстом
+function QRCodeWithText({ url }: { url: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const generateQRCode = async () => {
+      if (!canvasRef.current || !url) return
+
+      try {
+        // Загружаем QR-код через API
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(url)}`
+        
+        // Создаем изображение QR-кода
+        const qrImage = new Image()
+        qrImage.crossOrigin = 'anonymous'
+        
+        qrImage.onload = () => {
+          const canvas = canvasRef.current!
+          const ctx = canvas.getContext('2d')!
+          
+          // Размеры canvas
+          const canvasWidth = 500
+          const canvasHeight = 600
+          canvas.width = canvasWidth
+          canvas.height = canvasHeight
+          
+          // Белый фон
+          ctx.fillStyle = 'white'
+          ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+          
+          // Рисуем QR-код
+          const qrSize = 350
+          const qrX = (canvasWidth - qrSize) / 2
+          const qrY = 80
+          ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
+          
+          // Настройки текста
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          
+          // Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода
+          const textOverlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
+          ctx.font = 'bold 32px Arial'
+          const textMetrics = ctx.measureText(textOverlay)
+          const textWidth = textMetrics.width
+          const textHeight = 40
+          const textX = canvasWidth / 2
+          const textY = qrY + (qrSize - textHeight) / 2
+          
+          // Белый фон для текста с красной рамкой
+          const padding = 10
+          ctx.fillStyle = 'white'
+          ctx.fillRect(textX - textWidth / 2 - padding, textY - padding, textWidth + padding * 2, textHeight + padding * 2)
+          ctx.strokeStyle = 'red'
+          ctx.lineWidth = 2
+          ctx.strokeRect(textX - textWidth / 2 - padding, textY - padding, textWidth + padding * 2, textHeight + padding * 2)
+          
+          // Красный текст
+          ctx.fillStyle = 'red'
+          ctx.fillText(textOverlay, textX, textY)
+          
+          // Текст "ОТСКАНИРУЙТЕ QR" под QR-кодом
+          ctx.font = 'bold 24px Arial'
+          ctx.fillStyle = 'black'
+          const textBelow1 = "ОТСКАНИРУЙТЕ QR"
+          ctx.fillText(textBelow1, canvasWidth / 2, qrY + qrSize + 30)
+          
+          // Текст "В любом банке"
+          ctx.font = '20px Arial'
+          ctx.fillStyle = 'blue'
+          const textBelow2 = "В любом банке"
+          ctx.fillText(textBelow2, canvasWidth / 2, qrY + qrSize + 70)
+          
+          // Преобразуем canvas в data URL
+          setQrImageUrl(canvas.toDataURL('image/png'))
+        }
+        
+        qrImage.onerror = () => {
+          // Fallback на простой QR-код без текста
+          setQrImageUrl(qrCodeUrl)
+        }
+        
+        qrImage.src = qrCodeUrl
+      } catch (error) {
+        console.error('Error generating QR code:', error)
+        // Fallback на простой QR-код
+        setQrImageUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`)
+      }
+    }
+
+    generateQRCode()
+  }, [url])
+
+  if (!qrImageUrl) {
+    return (
+      <section className="card space-y-3">
+        <div className="label text-center">QR-код для оплаты</div>
+        <div className="flex justify-center">
+          <div className="w-64 h-64 rounded-lg border border-white/20 bg-white/10 animate-pulse"></div>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="card space-y-3">
+      <div className="label text-center">QR-код для оплаты</div>
+      <div className="flex justify-center">
+        <div className="relative">
+          <img 
+            src={qrImageUrl} 
+            alt="QR код для оплаты" 
+            className="w-full max-w-[500px] h-auto rounded-lg border border-white/20"
+          />
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+      </div>
+    </section>
+  )
+}
 
 declare global {
   interface Window {
