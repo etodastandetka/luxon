@@ -1194,6 +1194,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             if omoney_url:
                                 try:
                                     if QRCODE_AVAILABLE:
+                                        # Подготавливаем данные для текста на изображении
+                                        casino_name = get_casino_name(data.get('bookmaker', ''))
+                                        deposit_title = get_text('deposit_title')
+                                        
                                         # Генерируем QR-код с текстом
                                         qr = qrcode.QRCode(
                                             version=1,
@@ -1209,14 +1213,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Создаем новое изображение с белым фоном (больше места для текста)
                                         img_width = 500
-                                        img_height = 600
+                                        img_height = 800  # Увеличиваем высоту для размещения всей информации
                                         img = Image.new('RGB', (img_width, img_height), 'white')
                                         
                                         # Вставляем QR-код в центр (с отступом сверху)
                                         qr_size = 350
                                         qr_img_resized = qr_img.resize((qr_size, qr_size))
                                         qr_x = (img_width - qr_size) // 2
-                                        qr_y = 80
+                                        qr_y = 20
                                         img.paste(qr_img_resized, (qr_x, qr_y))
                                         
                                         # Добавляем текст
@@ -1227,11 +1231,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                             font_large = ImageFont.truetype("arial.ttf", 32)
                                             font_medium = ImageFont.truetype("arial.ttf", 24)
                                             font_small = ImageFont.truetype("arial.ttf", 20)
+                                            font_info = ImageFont.truetype("arial.ttf", 16)
                                         except:
                                             # Fallback на стандартный шрифт
                                             font_large = ImageFont.load_default()
                                             font_medium = ImageFont.load_default()
                                             font_small = ImageFont.load_default()
+                                            font_info = ImageFont.load_default()
                                         
                                         # Текст поверх QR-кода (диагонально)
                                         text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
@@ -1264,8 +1270,59 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         bbox3 = draw.textbbox((0, 0), text_below2, font=font_small)
                                         text_width3 = bbox3[2] - bbox3[0]
                                         text_x3 = (img_width - text_width3) // 2
-                                        text_y3 = text_y2 + 40
+                                        text_y3 = text_y2 + 35
                                         draw.text((text_x3, text_y3), text_below2, fill='blue', font=font_small)
+                                        
+                                        # Добавляем детальную информацию под QR-кодом
+                                        current_y = text_y3 + 50
+                                        
+                                        # Заголовок "QR-код для оплаты"
+                                        title_text = "📱 QR-код для оплаты"
+                                        bbox_title = draw.textbbox((0, 0), title_text, font=font_medium)
+                                        text_x_title = (img_width - (bbox_title[2] - bbox_title[0])) // 2
+                                        draw.text((text_x_title, current_y), title_text, fill='black', font=font_medium)
+                                        current_y += 40
+                                        
+                                        # Пополнение счета
+                                        deposit_text = deposit_title
+                                        bbox_dep = draw.textbbox((0, 0), deposit_text, font=font_small)
+                                        text_x_dep = (img_width - (bbox_dep[2] - bbox_dep[0])) // 2
+                                        draw.text((text_x_dep, current_y), deposit_text, fill='black', font=font_small)
+                                        current_y += 35
+                                        
+                                        # Сумма
+                                        amount_text = f"💰 Сумма: {amount:.2f} сом"
+                                        bbox_amount = draw.textbbox((0, 0), amount_text, font=font_info)
+                                        text_x_amount = (img_width - (bbox_amount[2] - bbox_amount[0])) // 2
+                                        draw.text((text_x_amount, current_y), amount_text, fill='black', font=font_info)
+                                        current_y += 30
+                                        
+                                        # Казино
+                                        casino_text = f"🎰 Казино: {casino_name}"
+                                        bbox_casino = draw.textbbox((0, 0), casino_text, font=font_info)
+                                        text_x_casino = (img_width - (bbox_casino[2] - bbox_casino[0])) // 2
+                                        draw.text((text_x_casino, current_y), casino_text, fill='black', font=font_info)
+                                        current_y += 30
+                                        
+                                        # ID игрока
+                                        player_id_text = f"🆔 ID игрока: {data['player_id']}"
+                                        bbox_player = draw.textbbox((0, 0), player_id_text, font=font_info)
+                                        text_x_player = (img_width - (bbox_player[2] - bbox_player[0])) // 2
+                                        draw.text((text_x_player, current_y), player_id_text, fill='black', font=font_info)
+                                        current_y += 30
+                                        
+                                        # Таймер
+                                        timer_text_display = f"⏰ Таймер: {timer_text}"
+                                        bbox_timer = draw.textbbox((0, 0), timer_text_display, font=font_info)
+                                        text_x_timer = (img_width - (bbox_timer[2] - bbox_timer[0])) // 2
+                                        draw.text((text_x_timer, current_y), timer_text_display, fill='red', font=font_info)
+                                        current_y += 30
+                                        
+                                        # Инструкция
+                                        instruction_text = "После оплаты отправьте фото чека:"
+                                        bbox_inst = draw.textbbox((0, 0), instruction_text, font=font_info)
+                                        text_x_inst = (img_width - (bbox_inst[2] - bbox_inst[0])) // 2
+                                        draw.text((text_x_inst, current_y), instruction_text, fill='black', font=font_info)
                                         
                                         # Сохраняем в BytesIO
                                         qr_image = BytesIO()
