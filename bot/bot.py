@@ -1276,8 +1276,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Добавляем детальную информацию под QR-кодом
                                         current_y = text_y3 + 50
                                         
-                                        # Заголовок "QR-код для оплаты"
-                                        title_text = "📱 QR-код для оплаты"
+                                        # Заголовок "QR-код для оплаты" (без эмодзи для совместимости)
+                                        title_text = "QR-код для оплаты"
                                         bbox_title = draw.textbbox((0, 0), title_text, font=font_medium)
                                         text_x_title = (img_width - (bbox_title[2] - bbox_title[0])) // 2
                                         draw.text((text_x_title, current_y), title_text, fill='black', font=font_medium)
@@ -1290,29 +1290,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         draw.text((text_x_dep, current_y), deposit_text, fill='black', font=font_small)
                                         current_y += 35
                                         
-                                        # Сумма
-                                        amount_text = f"💰 Сумма: {amount:.2f} сом"
+                                        # Сумма (без эмодзи)
+                                        amount_text = f"Сумма: {amount:.2f} сом"
                                         bbox_amount = draw.textbbox((0, 0), amount_text, font=font_info)
                                         text_x_amount = (img_width - (bbox_amount[2] - bbox_amount[0])) // 2
                                         draw.text((text_x_amount, current_y), amount_text, fill='black', font=font_info)
                                         current_y += 30
                                         
-                                        # Казино
-                                        casino_text = f"🎰 Казино: {casino_name}"
+                                        # Казино (без эмодзи)
+                                        casino_text = f"Казино: {casino_name}"
                                         bbox_casino = draw.textbbox((0, 0), casino_text, font=font_info)
                                         text_x_casino = (img_width - (bbox_casino[2] - bbox_casino[0])) // 2
                                         draw.text((text_x_casino, current_y), casino_text, fill='black', font=font_info)
                                         current_y += 30
                                         
-                                        # ID игрока
-                                        player_id_text = f"🆔 ID игрока: {data['player_id']}"
+                                        # ID игрока (без эмодзи)
+                                        player_id_text = f"ID игрока: {data['player_id']}"
                                         bbox_player = draw.textbbox((0, 0), player_id_text, font=font_info)
                                         text_x_player = (img_width - (bbox_player[2] - bbox_player[0])) // 2
                                         draw.text((text_x_player, current_y), player_id_text, fill='black', font=font_info)
                                         current_y += 30
                                         
-                                        # Таймер
-                                        timer_text_display = f"⏰ Таймер: {timer_text}"
+                                        # Таймер (без эмодзи)
+                                        timer_text_display = f"Таймер: {timer_text}"
                                         bbox_timer = draw.textbbox((0, 0), timer_text_display, font=font_info)
                                         text_x_timer = (img_width - (bbox_timer[2] - bbox_timer[0])) // 2
                                         draw.text((text_x_timer, current_y), timer_text_display, fill='red', font=font_info)
