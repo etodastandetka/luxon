@@ -1219,9 +1219,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Создаем новое изображение с белым фоном (компактное, как на оригинале)
                                         img_width = 500
                                         img_height = 600  # Компактная высота - только QR-код и базовый текст
-                                        img = Image.new('RGB', (img_width, img_height), 'white')
+                                        img = Image.new('RGBA', (img_width, img_height), (255, 255, 255, 255))  # RGBA для поддержки прозрачности водяных знаков
                                         
-                                        # Добавляем водяной знак "PAYSYSTEM" на фон (полупрозрачный серый)
+                                        # Добавляем водяной знак "LUXON" на фон (полупрозрачный серый)
                                         draw_bg = ImageDraw.Draw(img)
                                         try:
                                             # Пробуем найти шрифт для водяного знака
@@ -1240,18 +1240,44 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                         continue
                                             
                                             if watermark_font:
-                                                watermark_text = "PAYSYSTEM"
-                                                # Рисуем водяной знак повторяющимся паттерном по всему фону
-                                                for i in range(-3, 4):
-                                                    for j in range(-3, 4):
-                                                        x = img_width // 2 + i * 180
-                                                        y = img_height // 2 + j * 200
-                                                        bbox_wm = draw_bg.textbbox((0, 0), watermark_text, font=watermark_font)
+                                                watermark_text = "LUXON"
+                                                # Рисуем водяной знак повторяющимся паттерном по всему фону (красиво)
+                                                # Используем более крупный размер и разные углы для красоты
+                                                watermark_size = 60
+                                                try:
+                                                    # Пробуем загрузить больший шрифт для водяного знака
+                                                    watermark_font_large = None
+                                                    for path in watermark_font_paths:
+                                                        if os.path.exists(path):
+                                                            try:
+                                                                watermark_font_large = ImageFont.truetype(path, watermark_size)
+                                                                break
+                                                            except:
+                                                                continue
+                                                    if not watermark_font_large:
+                                                        watermark_font_large = watermark_font
+                                                except:
+                                                    watermark_font_large = watermark_font
+                                                
+                                                # Рисуем водяной знак с поворотами для красоты
+                                                for i in range(-4, 5):
+                                                    for j in range(-4, 5):
+                                                        x = img_width // 2 + i * 150
+                                                        y = img_height // 2 + j * 180
+                                                        # Чередуем углы поворота для красоты
+                                                        angle = (i + j) % 4 * 45  # 0, 45, 90, 135 градусов
+                                                        
+                                                        # Создаем временное изображение для повернутого текста
+                                                        wm_temp = Image.new('RGBA', (200, 200), (0, 0, 0, 0))
+                                                        wm_draw = ImageDraw.Draw(wm_temp)
+                                                        bbox_wm = wm_draw.textbbox((0, 0), watermark_text, font=watermark_font_large)
                                                         wm_width = bbox_wm[2] - bbox_wm[0]
                                                         wm_height = bbox_wm[3] - bbox_wm[1]
-                                                        # Полупрозрачный светло-серый цвет (водяной знак)
-                                                        draw_bg.text((x - wm_width//2, y - wm_height//2), watermark_text, 
-                                                                   fill=(230, 230, 230), font=watermark_font)
+                                                        wm_draw.text(((200 - wm_width) // 2, (200 - wm_height) // 2), watermark_text, 
+                                                                   fill=(240, 240, 240, 40), font=watermark_font_large)  # Очень прозрачный серый
+                                                        wm_rotated = wm_temp.rotate(angle, expand=False, fillcolor=(0, 0, 0, 0))
+                                                        # Накладываем повернутый водяной знак
+                                                        img.paste(wm_rotated, (x - 100, y - 100), wm_rotated)
                                         except Exception as e:
                                             logger.debug(f"Не удалось добавить водяной знак: {e}")
                                         
@@ -1339,17 +1365,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.error("❌ Шрифт не найден! Текст может не отображаться (стандартный шрифт не поддерживает кириллицу)")
                                                 logger.error("💡 Установите шрифты: sudo apt-get install fonts-dejavu fonts-liberation")
                                         
-                                        # Конвертируем изображение в RGBA для поддержки прозрачности при наложении текста
-                                        img = img.convert('RGBA')
-                                        # Пересоздаем draw для RGBA изображения
+                                        # Изображение уже в RGBA режиме, пересоздаем draw для работы с текстом
                                         draw = ImageDraw.Draw(img)
                                         
-                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода по диагонали (как на втором фото)
-                                        text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
+                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода по диагонали в две строки
+                                        text_line1 = "ПОПОЛНЕНИЕ ДЛЯ"
+                                        text_line2 = "КАЗИНО"
                                         
                                         # Увеличиваем размер шрифта для текста поверх QR-кода (более заметный)
                                         try:
-                                            font_overlay = ImageFont.truetype(font_path, 40) if font_path else font_large
+                                            font_overlay = ImageFont.truetype(font_path, 38) if font_path else font_large
                                         except:
                                             font_overlay = font_large
                                         
@@ -1359,17 +1384,35 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         temp_img = Image.new('RGBA', (temp_img_size, temp_img_size), (0, 0, 0, 0))
                                         temp_draw = ImageDraw.Draw(temp_img)
                                         
-                                        # Получаем размеры текста
-                                        bbox = temp_draw.textbbox((0, 0), text_overlay, font=font_overlay)
-                                        text_width = bbox[2] - bbox[0]
-                                        text_height = bbox[3] - bbox[1]
+                                        # Получаем размеры обеих строк текста
+                                        bbox1 = temp_draw.textbbox((0, 0), text_line1, font=font_overlay)
+                                        bbox2 = temp_draw.textbbox((0, 0), text_line2, font=font_overlay)
+                                        text_width1 = bbox1[2] - bbox1[0]
+                                        text_height1 = bbox1[3] - bbox1[1]
+                                        text_width2 = bbox2[2] - bbox2[0]
+                                        text_height2 = bbox2[3] - bbox2[1]
                                         
-                                        # Рисуем текст на временном изображении (красный, полупрозрачный)
+                                        # Общая ширина и высота блока из двух строк
+                                        block_width = max(text_width1, text_width2)
+                                        block_height = text_height1 + text_height2 + 8  # 8 пикселей между строками
+                                        
+                                        # Рисуем две строки текста одна под другой (красный, полупрозрачный)
                                         # Используем полупрозрачный красный цвет (R, G, B, Alpha)
                                         text_color = (220, 0, 0, 180)  # Красный с прозрачностью ~70% (более видимый)
-                                        text_x_temp = (temp_img_size - text_width) // 2
-                                        text_y_temp = (temp_img_size - text_height) // 2
-                                        temp_draw.text((text_x_temp, text_y_temp), text_overlay, fill=text_color, font=font_overlay)
+                                        
+                                        # Центрируем блок текста на временном изображении
+                                        block_x = (temp_img_size - block_width) // 2
+                                        block_y = (temp_img_size - block_height) // 2
+                                        
+                                        # Рисуем первую строку
+                                        text_x1 = block_x + (block_width - text_width1) // 2
+                                        text_y1 = block_y
+                                        temp_draw.text((text_x1, text_y1), text_line1, fill=text_color, font=font_overlay)
+                                        
+                                        # Рисуем вторую строку под первой
+                                        text_x2 = block_x + (block_width - text_width2) // 2
+                                        text_y2 = block_y + text_height1 + 8
+                                        temp_draw.text((text_x2, text_y2), text_line2, fill=text_color, font=font_overlay)
                                         
                                         # Поворачиваем текст по диагонали (около -40 градусов от нижнего левого к верхнему правому)
                                         rotation_angle = -40
@@ -1387,10 +1430,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Вырезаем область вокруг центра повернутого текста
                                         # Увеличиваем область crop для безопасности
                                         crop_padding = 100
-                                        crop_x1 = center_x - text_width // 2 - crop_padding
-                                        crop_y1 = center_y - text_height // 2 - crop_padding
-                                        crop_x2 = center_x + text_width // 2 + crop_padding
-                                        crop_y2 = center_y + text_height // 2 + crop_padding
+                                        crop_x1 = center_x - block_width // 2 - crop_padding
+                                        crop_y1 = center_y - block_height // 2 - crop_padding
+                                        crop_x2 = center_x + block_width // 2 + crop_padding
+                                        crop_y2 = center_y + block_height // 2 + crop_padding
                                         
                                         text_crop = rotated_text.crop((crop_x1, crop_y1, crop_x2, crop_y2))
                                         
