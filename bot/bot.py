@@ -1305,8 +1305,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.error("❌ Шрифт не найден! Текст может не отображаться (стандартный шрифт не поддерживает кириллицу)")
                                                 logger.error("💡 Установите шрифты: sudo apt-get install fonts-dejavu fonts-liberation")
                                         
-                                        # Убираем текст поверх QR-кода - он мешает сканированию
-                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" больше не рисуем поверх QR-кода
+                                        # Текст поверх QR-кода "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" (красным, как на оригинале)
+                                        text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
+                                        bbox = draw.textbbox((0, 0), text_overlay, font=font_large)
+                                        text_width = bbox[2] - bbox[0]
+                                        text_height = bbox[3] - bbox[1]
+                                        text_x = (img_width - text_width) // 2
+                                        text_y = qr_y + (qr_size - text_height) // 2
+                                        
+                                        # Рисуем белый фон для текста с красной рамкой
+                                        padding = 10
+                                        draw.rectangle(
+                                            [text_x - padding, text_y - padding, text_x + text_width + padding, text_y + text_height + padding],
+                                            fill='white',
+                                            outline='red',
+                                            width=2
+                                        )
+                                        draw.text((text_x, text_y), text_overlay, fill='red', font=font_large)
                                         
                                         # Текст под QR-кодом "ОТСКАНИРУЙТЕ QR"
                                         text_below1 = "ОТСКАНИРУЙТЕ QR"
