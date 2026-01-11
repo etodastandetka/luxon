@@ -34,7 +34,7 @@ export default function OperatorChatPage() {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch('/api/operator-chat?channel=bot')
+      const response = await fetch('/api/operator-chat?channel=mini_app')
       const data = await response.json()
 
       if (data.success && data.data.users) {
@@ -123,7 +123,7 @@ export default function OperatorChatPage() {
           {users.map((user) => (
             <Link
               key={user.userId}
-              href={`/dashboard/users/${user.userId}/chat?channel=bot`}
+              href={`/dashboard/users/${user.userId}/chat?channel=mini_app`}
               prefetch={false}
               className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 hover:bg-opacity-70 transition-all border border-gray-700"
             >

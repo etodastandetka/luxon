@@ -118,7 +118,7 @@ export default function SupportPage() {
 
     try {
       const apiUrl = getAdminApiUrl()
-      const response = await fetch(`${apiUrl}/api/public/chat/${userId}/messages?channel=bot&limit=50`)
+      const response = await fetch(`${apiUrl}/api/public/chat/${userId}/messages?channel=mini_app&limit=50`)
       const data = await response.json()
 
       if (data.success && data.data.messages) {
@@ -285,7 +285,7 @@ export default function SupportPage() {
       }
 
       const response = await fetch(
-        `${apiUrl}/api/public/chat/${userId}/send?channel=bot`,
+        `${apiUrl}/api/public/chat/${userId}/send?channel=mini_app`,
         {
           method: 'POST',
           body: formData,

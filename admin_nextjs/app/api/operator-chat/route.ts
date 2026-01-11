@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     requireAuth(request)
 
     const { searchParams } = new URL(request.url)
-    const channel = searchParams.get('channel') || 'bot'
+    const channel = searchParams.get('channel') || 'mini_app'
 
     // Получаем последние сообщения от пользователей (direction='in')
     // Берем больше сообщений, чтобы потом сгруппировать по userId
