@@ -1186,20 +1186,105 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             omoney_url = bank_links.get('O!Money') or bank_links.get('omoney') or (list(bank_links.values())[0] if bank_links else None)
                             if omoney_url:
                                 try:
-                                    qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(omoney_url, safe='')}"
-                                    async with httpx.AsyncClient(timeout=10.0) as qr_client:
-                                        qr_response = await qr_client.get(qr_code_url)
-                                        if qr_response.status_code == 200:
-                                            qr_image = BytesIO(qr_response.content)
-                                            qr_image.name = 'qr_code.png'
-                                            await update.message.reply_photo(
-                                                photo=qr_image,
-                                                caption="📱 QR-код для оплаты",
-                                                parse_mode='HTML'
-                                            )
-                                            logger.info(f"✅ QR-код отправлен пользователю {user_id}")
+                                    if QRCODE_AVAILABLE:
+                                        # Генерируем QR-код с текстом
+                                        qr = qrcode.QRCode(
+                                            version=1,
+                                            error_correction=qrcode.constants.ERROR_CORRECT_L,
+                                            box_size=10,
+                                            border=4,
+                                        )
+                                        qr.add_data(omoney_url)
+                                        qr.make(fit=True)
+                                        
+                                        # Создаем изображение QR-кода
+                                        qr_img = qr.make_image(fill_color="black", back_color="white")
+                                        
+                                        # Создаем новое изображение с белым фоном (больше места для текста)
+                                        img_width = 500
+                                        img_height = 600
+                                        img = Image.new('RGB', (img_width, img_height), 'white')
+                                        
+                                        # Вставляем QR-код в центр (с отступом сверху)
+                                        qr_size = 350
+                                        qr_img_resized = qr_img.resize((qr_size, qr_size))
+                                        qr_x = (img_width - qr_size) // 2
+                                        qr_y = 80
+                                        img.paste(qr_img_resized, (qr_x, qr_y))
+                                        
+                                        # Добавляем текст
+                                        draw = ImageDraw.Draw(img)
+                                        
+                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода
+                                        try:
+                                            font_large = ImageFont.truetype("arial.ttf", 32)
+                                            font_medium = ImageFont.truetype("arial.ttf", 24)
+                                            font_small = ImageFont.truetype("arial.ttf", 20)
+                                        except:
+                                            # Fallback на стандартный шрифт
+                                            font_large = ImageFont.load_default()
+                                            font_medium = ImageFont.load_default()
+                                            font_small = ImageFont.load_default()
+                                        
+                                        # Текст поверх QR-кода (диагонально)
+                                        text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
+                                        bbox = draw.textbbox((0, 0), text_overlay, font=font_large)
+                                        text_width = bbox[2] - bbox[0]
+                                        text_height = bbox[3] - bbox[1]
+                                        text_x = (img_width - text_width) // 2
+                                        text_y = qr_y + (qr_size - text_height) // 2
+                                        
+                                        # Рисуем белый фон для текста (чтобы был виден)
+                                        padding = 10
+                                        draw.rectangle(
+                                            [text_x - padding, text_y - padding, text_x + text_width + padding, text_y + text_height + padding],
+                                            fill='white',
+                                            outline='red',
+                                            width=2
+                                        )
+                                        draw.text((text_x, text_y), text_overlay, fill='red', font=font_large)
+                                        
+                                        # Текст под QR-кодом "ОТСКАНИРУЙТЕ QR"
+                                        text_below1 = "ОТСКАНИРУЙТЕ QR"
+                                        bbox2 = draw.textbbox((0, 0), text_below1, font=font_medium)
+                                        text_width2 = bbox2[2] - bbox2[0]
+                                        text_x2 = (img_width - text_width2) // 2
+                                        text_y2 = qr_y + qr_size + 30
+                                        draw.text((text_x2, text_y2), text_below1, fill='black', font=font_medium)
+                                        
+                                        # Текст "В любом банке"
+                                        text_below2 = "В любом банке"
+                                        bbox3 = draw.textbbox((0, 0), text_below2, font=font_small)
+                                        text_width3 = bbox3[2] - bbox3[0]
+                                        text_x3 = (img_width - text_width3) // 2
+                                        text_y3 = text_y2 + 40
+                                        draw.text((text_x3, text_y3), text_below2, fill='blue', font=font_small)
+                                        
+                                        # Сохраняем в BytesIO
+                                        qr_image = BytesIO()
+                                        img.save(qr_image, format='PNG')
+                                        qr_image.seek(0)
+                                        qr_image.name = 'qr_code.png'
+                                    else:
+                                        # Fallback на онлайн API если библиотеки нет
+                                        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(omoney_url, safe='')}"
+                                        async with httpx.AsyncClient(timeout=10.0) as qr_client:
+                                            qr_response = await qr_client.get(qr_code_url)
+                                            if qr_response.status_code == 200:
+                                                qr_image = BytesIO(qr_response.content)
+                                                qr_image.name = 'qr_code.png'
+                                            else:
+                                                qr_image = None
+                                    
+                                    if qr_image:
+                                        await update.message.reply_photo(
+                                            photo=qr_image,
+                                            caption="📱 QR-код для оплаты",
+                                            parse_mode='HTML'
+                                        )
+                                        logger.info(f"✅ QR-код отправлен пользователю {user_id}")
                                 except Exception as e:
-                                    logger.warning(f"⚠️ Не удалось отправить QR-код: {e}")
+                                    logger.warning(f"⚠️ Не удалось отправить QR-код: {e}", exc_info=True)
                             
                             # Отправляем сообщение с кнопками банков (заявка будет создана после отправки фото)
                             casino_name = get_casino_name(data.get('bookmaker', ''))
