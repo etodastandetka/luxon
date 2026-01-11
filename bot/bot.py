@@ -1339,15 +1339,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.error("❌ Шрифт не найден! Текст может не отображаться (стандартный шрифт не поддерживает кириллицу)")
                                                 logger.error("💡 Установите шрифты: sudo apt-get install fonts-dejavu fonts-liberation")
                                         
-                                        # Текст поверх QR-кода "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" (красным, как на оригинале)
+                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" под QR-кодом в красной рамке (как на оригинале)
                                         text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
                                         bbox = draw.textbbox((0, 0), text_overlay, font=font_large)
                                         text_width = bbox[2] - bbox[0]
                                         text_height = bbox[3] - bbox[1]
                                         text_x = (img_width - text_width) // 2
-                                        text_y = qr_y + (qr_size - text_height) // 2
+                                        text_y = qr_y + qr_size + 20  # Под QR-кодом
                                         
-                                        # Рисуем белый фон для текста с красной рамкой
+                                        # Рисуем красную рамку с белым фоном для текста
                                         padding = 10
                                         draw.rectangle(
                                             [text_x - padding, text_y - padding, text_x + text_width + padding, text_y + text_height + padding],
@@ -1355,14 +1355,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                             outline='red',
                                             width=2
                                         )
-                                        draw.text((text_x, text_y), text_overlay, fill='red', font=font_large)
+                                        draw.text((text_x, text_y), text_overlay, fill='black', font=font_large)  # Черный текст в красной рамке
                                         
-                                        # Текст под QR-кодом "ОТСКАНИРУЙТЕ QR"
+                                        # Текст "ОТСКАНИРУЙТЕ QR" под красной рамкой
                                         text_below1 = "ОТСКАНИРУЙТЕ QR"
                                         bbox2 = draw.textbbox((0, 0), text_below1, font=font_medium)
                                         text_width2 = bbox2[2] - bbox2[0]
                                         text_x2 = (img_width - text_width2) // 2
-                                        text_y2 = qr_y + qr_size + 30
+                                        text_y2 = text_y + text_height + padding + 20
                                         draw.text((text_x2, text_y2), text_below1, fill='black', font=font_medium)
                                         
                                         # Текст "В любом банке"
