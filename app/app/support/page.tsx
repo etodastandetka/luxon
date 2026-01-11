@@ -459,7 +459,7 @@ export default function SupportPage() {
                 return (
                   <div
                     key={message.id}
-                    className={`flex ${message.direction === 'out' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.direction === 'in' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div className="px-4 py-2 rounded-2xl bg-gray-800/60 backdrop-blur-sm text-white/50 text-sm italic border border-gray-700/30">
                       {t.deletedMessage}
@@ -468,7 +468,8 @@ export default function SupportPage() {
                 )
               }
 
-              const isOutgoing = message.direction === 'out'
+              // В мини-приложении: 'in' = от пользователя (зеленые, справа), 'out' = от поддержки (серые, слева)
+              const isOutgoing = message.direction === 'in'
               const mediaUrl = getMediaUrl(message.mediaUrl)
 
               return (
@@ -476,11 +477,11 @@ export default function SupportPage() {
                   key={message.id}
                   className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'} group`}
                 >
-                  <div className="relative">
+                  <div className="relative max-w-[85%] sm:max-w-[75%] md:max-w-md">
                     <div
-                      className={`max-w-[85%] sm:max-w-md px-4 py-2.5 rounded-2xl shadow-lg transition-all duration-200 ${
+                      className={`px-4 py-2.5 rounded-2xl shadow-lg transition-all duration-200 ${
                         isOutgoing
-                          ? 'bg-gradient-to-br from-green-500 to-green-600 text-black ml-auto shadow-green-500/30'
+                          ? 'bg-gradient-to-br from-green-500 to-green-600 text-black shadow-green-500/30'
                           : 'bg-gray-800/95 backdrop-blur-md text-white border border-gray-700/60 shadow-gray-900/30'
                       }`}
                     >
@@ -492,7 +493,7 @@ export default function SupportPage() {
                           <div className={`font-semibold mb-0.5 ${
                             isOutgoing ? 'text-gray-900' : 'text-white/90'
                           }`}>
-                            {message.replyTo.direction === 'out' ? 'Поддержка' : 'Вы'}
+                            {message.replyTo.direction === 'in' ? 'Вы' : 'Поддержка'}
                           </div>
                           <div className={`truncate ${
                             isOutgoing ? 'text-gray-700' : 'text-white/70'
@@ -661,7 +662,7 @@ export default function SupportPage() {
               ) : null}
             </div>
           )}
-          <div className="flex items-end space-x-2 relative">
+          <div className="flex items-end gap-2">
             <input
               type="file"
               ref={fileInputRef}
