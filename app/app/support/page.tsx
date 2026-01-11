@@ -421,16 +421,18 @@ export default function SupportPage() {
         </div>
       )}
 
-      <main className="flex flex-col h-screen max-h-screen">
+      <div className="fixed inset-0 flex flex-col bg-gradient-to-b from-green-950 to-green-900">
         <FixedHeaderControls />
         
         {/* Хедер */}
-        <div className="flex items-center justify-between p-4 bg-black/40 backdrop-blur border-b border-white/20 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <SupportIcon className="w-6 h-6 text-orange-400" />
+        <div className="flex items-center justify-between px-4 py-3 bg-black/60 backdrop-blur-sm border-b border-white/10 flex-shrink-0 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-500/20 rounded-lg">
+              <SupportIcon className="w-5 h-5 text-orange-400" />
+            </div>
             <div>
-              <h1 className="text-xl font-bold text-white">{t.title}</h1>
-              <p className="text-xs text-white/70">{t.responseTime}</p>
+              <h1 className="text-lg font-bold text-white">{t.title}</h1>
+              <p className="text-xs text-white/60">{t.responseTime}</p>
             </div>
           </div>
           <a 
@@ -444,12 +446,12 @@ export default function SupportPage() {
         {/* Сообщения */}
         <div 
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-green-950/50 to-green-900/50 min-h-0"
+          className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0"
         >
           {messages.length === 0 ? (
-            <div className="text-center text-white/70 py-12">
-              <p>{t.noMessages}</p>
-              <p className="text-sm mt-2">{t.startChat}</p>
+            <div className="text-center text-white/60 py-12">
+              <p className="text-base font-medium">{t.noMessages}</p>
+              <p className="text-sm mt-2 text-white/50">{t.startChat}</p>
             </div>
           ) : (
             messages.map((message) => {
@@ -459,7 +461,7 @@ export default function SupportPage() {
                     key={message.id}
                     className={`flex ${message.direction === 'out' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="px-4 py-2 rounded-2xl bg-gray-800/50 text-white/50 text-sm italic">
+                    <div className="px-4 py-2 rounded-2xl bg-gray-800/60 backdrop-blur-sm text-white/50 text-sm italic border border-gray-700/30">
                       {t.deletedMessage}
                     </div>
                   </div>
@@ -476,21 +478,25 @@ export default function SupportPage() {
                 >
                   <div className="relative">
                     <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                      className={`max-w-[85%] sm:max-w-md px-4 py-2.5 rounded-2xl shadow-lg transition-all duration-200 ${
                         isOutgoing
-                          ? 'bg-green-500 text-black'
-                          : 'bg-black/40 backdrop-blur text-white border border-white/20'
+                          ? 'bg-gradient-to-br from-green-500 to-green-600 text-black ml-auto shadow-green-500/30'
+                          : 'bg-gray-800/95 backdrop-blur-md text-white border border-gray-700/60 shadow-gray-900/30'
                       }`}
                     >
                       {/* Ответ на сообщение */}
                       {message.replyTo && (
-                        <div className={`mb-2 pb-2 border-l-2 ${
-                          isOutgoing ? 'border-gray-800' : 'border-white/30'
-                        } pl-2 text-xs opacity-75`}>
-                          <div className="font-semibold">
+                        <div className={`mb-2 pb-2 border-l-3 ${
+                          isOutgoing ? 'border-gray-800/50' : 'border-gray-500/70'
+                        } pl-3 pr-2 py-1.5 bg-black/25 rounded-r-lg text-xs backdrop-blur-sm`}>
+                          <div className={`font-semibold mb-0.5 ${
+                            isOutgoing ? 'text-gray-900' : 'text-white/90'
+                          }`}>
                             {message.replyTo.direction === 'out' ? 'Поддержка' : 'Вы'}
                           </div>
-                          <div className="truncate">{getReplyPreview(message.replyTo)}</div>
+                          <div className={`truncate ${
+                            isOutgoing ? 'text-gray-700' : 'text-white/70'
+                          }`}>{getReplyPreview(message.replyTo)}</div>
                         </div>
                       )}
 
@@ -549,8 +555,8 @@ export default function SupportPage() {
                       {message.messageText && (
                         <p className="text-sm whitespace-pre-wrap break-words">{message.messageText}</p>
                       )}
-                      <div className="flex items-center justify-between mt-1">
-                        <p className={`text-xs ${isOutgoing ? 'text-gray-800' : 'text-white/60'}`}>
+                      <div className="flex items-center justify-between mt-1.5 pt-1">
+                        <p className={`text-xs ${isOutgoing ? 'text-gray-700/80' : 'text-white/50'}`}>
                           {formatDate(message.createdAt)}
                           {message.editedAt && ' (изменено)'}
                         </p>
@@ -558,7 +564,7 @@ export default function SupportPage() {
                         {!isOutgoing && (
                           <button
                             onClick={() => setReplyingToId(message.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-xs hover:underline text-white/60 hover:text-white"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-white/70 hover:text-white"
                             title={t.reply}
                           >
                             {t.reply}
@@ -575,19 +581,19 @@ export default function SupportPage() {
         </div>
 
         {/* Поле ввода */}
-        <div className="p-4 bg-black/40 backdrop-blur border-t border-white/20 flex-shrink-0">
+        <div className="px-4 py-3 bg-black/70 backdrop-blur-md border-t border-white/15 flex-shrink-0 shadow-2xl">
           {/* Preview ответа */}
           {replyingToId && (() => {
             const replyToMessage = messages.find(m => m.id === replyingToId)
             return replyToMessage ? (
-              <div className="mb-2 p-2 bg-black/60 rounded-lg flex items-center justify-between">
+              <div className="mb-2 p-2.5 bg-gray-800/90 backdrop-blur-sm rounded-xl flex items-center justify-between border border-gray-700/60 shadow-lg">
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-white/60">{t.replyingTo}:</div>
+                  <div className="text-xs text-white/50 font-medium mb-0.5">{t.replyingTo}:</div>
                   <div className="text-sm text-white truncate">{getReplyPreview(replyToMessage as any)}</div>
                 </div>
                 <button
                   onClick={() => setReplyingToId(null)}
-                  className="ml-2 text-white/60 hover:text-white"
+                  className="ml-2 text-white/60 hover:text-white p-1.5 hover:bg-white/15 rounded-lg transition-colors"
                 >
                   ✕
                 </button>
@@ -599,9 +605,9 @@ export default function SupportPage() {
           {selectedRequestId && (() => {
             const request = requests.find(r => r.id === selectedRequestId)
             return request ? (
-              <div className="mb-2 p-2 bg-black/60 rounded-lg flex items-center justify-between">
+              <div className="mb-2 p-2.5 bg-gray-800/90 backdrop-blur-sm rounded-xl flex items-center justify-between border border-gray-700/60 shadow-lg">
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-white/60">{t.request}:</div>
+                  <div className="text-xs text-white/50 font-medium mb-0.5">{t.request}:</div>
                   <div className="text-sm text-white truncate">
                     #{request.id} ({request.requestType === 'deposit' ? t.deposit : t.withdraw})
                     {request.amount && ` - ${request.amount}`}
@@ -609,7 +615,7 @@ export default function SupportPage() {
                 </div>
                 <button
                   onClick={() => setSelectedRequestId(null)}
-                  className="ml-2 text-white/60 hover:text-white"
+                  className="ml-2 text-white/60 hover:text-white p-1.5 hover:bg-white/15 rounded-lg transition-colors"
                 >
                   ✕
                 </button>
@@ -665,7 +671,7 @@ export default function SupportPage() {
             />
             <button 
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
+              className="p-2.5 hover:bg-white/15 active:bg-white/25 rounded-xl transition-all duration-200 flex-shrink-0 hover:scale-105"
               title="Прикрепить файл"
             >
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -674,17 +680,17 @@ export default function SupportPage() {
             </button>
             <button 
               onClick={() => setShowRequests(!showRequests)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 relative"
+              className="p-2.5 hover:bg-white/15 active:bg-white/25 rounded-xl transition-all duration-200 flex-shrink-0 relative hover:scale-105"
               title={t.attachRequest}
             >
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               {showRequests && (
-                <div className="absolute bottom-full left-0 mb-2 w-64 bg-black/90 backdrop-blur rounded-lg border border-white/20 max-h-48 overflow-y-auto z-50">
-                  <div className="p-2 text-xs text-white/60 border-b border-white/10">{t.selectRequest}</div>
+                <div className="absolute bottom-full left-0 mb-2 w-64 bg-black/95 backdrop-blur-md rounded-xl border border-white/25 max-h-48 overflow-y-auto z-50 shadow-2xl">
+                  <div className="p-2.5 text-xs text-white/70 font-medium border-b border-white/15 bg-white/5">{t.selectRequest}</div>
                   {requests.length === 0 ? (
-                    <div className="p-4 text-center text-white/60 text-sm">{t.noRequests}</div>
+                    <div className="p-4 text-center text-white/50 text-sm">{t.noRequests}</div>
                   ) : (
                     requests.map((request) => (
                       <button
@@ -693,12 +699,12 @@ export default function SupportPage() {
                           setSelectedRequestId(request.id)
                           setShowRequests(false)
                         }}
-                        className="w-full p-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                        className="w-full p-3 text-left hover:bg-white/15 active:bg-white/20 transition-colors border-b border-white/5 last:border-0"
                       >
                         <div className="text-sm text-white font-semibold">
                           {t.request} #{request.id}
                         </div>
-                        <div className="text-xs text-white/60">
+                        <div className="text-xs text-white/60 mt-0.5">
                           {request.requestType === 'deposit' ? t.deposit : t.withdraw}
                           {request.amount && ` • ${request.amount}`}
                           {request.status && ` • ${request.status}`}
@@ -721,13 +727,13 @@ export default function SupportPage() {
                 }
               }}
               placeholder={t.enterMessage}
-              className="flex-1 bg-black/40 backdrop-blur text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 border border-white/20"
+              className="flex-1 bg-gray-800/95 backdrop-blur-md text-white rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 border border-gray-700/60 placeholder:text-white/40 transition-all duration-200"
               disabled={sending}
             />
             <button
               onClick={sendMessage}
               disabled={sending || (!newMessage.trim() && !selectedFile && !selectedRequestId)}
-              className="p-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 active:from-green-700 active:to-green-800 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg shadow-green-500/30 hover:scale-105 disabled:hover:scale-100"
             >
               <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
