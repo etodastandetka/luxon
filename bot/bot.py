@@ -9,6 +9,7 @@ import re
 import httpx
 import base64
 import random
+import os
 from io import BytesIO
 from urllib.parse import quote
 try:
@@ -1226,18 +1227,48 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Добавляем текст
                                         draw = ImageDraw.Draw(img)
                                         
-                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода
-                                        try:
-                                            font_large = ImageFont.truetype("arial.ttf", 32)
-                                            font_medium = ImageFont.truetype("arial.ttf", 24)
-                                            font_small = ImageFont.truetype("arial.ttf", 20)
-                                            font_info = ImageFont.truetype("arial.ttf", 16)
-                                        except:
-                                            # Fallback на стандартный шрифт
+                                        # Загружаем шрифты (пробуем разные варианты)
+                                        font_large = None
+                                        font_medium = None
+                                        font_small = None
+                                        font_info = None
+                                        
+                                        # Пробуем загрузить шрифты из разных мест
+                                        font_paths = [
+                                            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                                            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                                            "/System/Library/Fonts/Helvetica.ttc",
+                                            "arial.ttf",
+                                            "Arial.ttf",
+                                            "/Windows/Fonts/arial.ttf",
+                                        ]
+                                        
+                                        font_path = None
+                                        for path in font_paths:
+                                            try:
+                                                if os.path.exists(path):
+                                                    font_path = path
+                                                    break
+                                            except:
+                                                continue
+                                        
+                                        if font_path:
+                                            try:
+                                                font_large = ImageFont.truetype(font_path, 32)
+                                                font_medium = ImageFont.truetype(font_path, 24)
+                                                font_small = ImageFont.truetype(font_path, 20)
+                                                font_info = ImageFont.truetype(font_path, 16)
+                                                logger.info(f"✅ Загружен шрифт: {font_path}")
+                                            except Exception as e:
+                                                logger.warning(f"⚠️ Не удалось загрузить шрифт {font_path}: {e}")
+                                        
+                                        # Fallback на стандартный шрифт
+                                        if not font_large:
                                             font_large = ImageFont.load_default()
                                             font_medium = ImageFont.load_default()
                                             font_small = ImageFont.load_default()
                                             font_info = ImageFont.load_default()
+                                            logger.warning("⚠️ Используется стандартный шрифт (может не поддерживать кириллицу)")
                                         
                                         # Текст поверх QR-кода (диагонально)
                                         text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
@@ -1329,6 +1360,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         img.save(qr_image, format='PNG')
                                         qr_image.seek(0)
                                         qr_image.name = 'qr_code.png'
+                                        
+                                        # Логируем для отладки
+                                        logger.info(f"✅ QR-код сгенерирован: размер {img_width}x{img_height}, текст добавлен")
                                     else:
                                         # Fallback на онлайн API если библиотеки нет
                                         qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(omoney_url, safe='')}"
