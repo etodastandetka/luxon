@@ -1346,8 +1346,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         if font_path:
                                             try:
                                                 font_large = ImageFont.truetype(font_path, 32)
-                                                font_medium = ImageFont.truetype(font_path, 24)
-                                                font_small = ImageFont.truetype(font_path, 20)
+                                                font_medium = ImageFont.truetype(font_path, 40)  # Увеличен для текста "ОТСКАНИРУЙТЕ QR"
+                                                font_small = ImageFont.truetype(font_path, 32)  # Увеличен для текста "В любом банке"
                                                 font_info = ImageFont.truetype(font_path, 16)
                                                 logger.info(f"✅ Загружен шрифт: {font_path}")
                                             except Exception as e:
@@ -1369,8 +1369,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                                 font_file = line.split(':')[0].strip()
                                                                 if os.path.exists(font_file):
                                                                     font_large = ImageFont.truetype(font_file, 32)
-                                                                    font_medium = ImageFont.truetype(font_file, 24)
-                                                                    font_small = ImageFont.truetype(font_file, 20)
+                                                                    font_medium = ImageFont.truetype(font_file, 40)  # Увеличен для текста "ОТСКАНИРУЙТЕ QR"
+                                                                    font_small = ImageFont.truetype(font_file, 32)  # Увеличен для текста "В любом банке"
                                                                     font_info = ImageFont.truetype(font_file, 16)
                                                                     logger.info(f"✅ Найден шрифт через fc-list: {font_file}")
                                                                     font_path = font_file
@@ -1482,7 +1482,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         bbox3 = draw.textbbox((0, 0), text_below2, font=font_small)
                                         text_width3 = bbox3[2] - bbox3[0]
                                         text_x3 = (img_width - text_width3) // 2
-                                        text_y3 = text_y2 + 35
+                                        text_y3 = text_y2 + 50  # Увеличено расстояние для большего шрифта
                                         draw.text((text_x3, text_y3), text_below2, fill='blue', font=font_small)
                                         
                                         # НЕ добавляем детальную информацию на изображение - она будет только в caption
