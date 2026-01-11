@@ -314,7 +314,9 @@ export default function ChatPage() {
     )
   }
 
-  const displayName = user.firstName || user.username || `ID: ${user.userId}`
+  const displayName = user.firstName 
+    ? (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName)
+    : (user.username ? `@${user.username}` : `ID: ${user.userId}`)
 
   return (
     <>
