@@ -1339,30 +1339,62 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.error("❌ Шрифт не найден! Текст может не отображаться (стандартный шрифт не поддерживает кириллицу)")
                                                 logger.error("💡 Установите шрифты: sudo apt-get install fonts-dejavu fonts-liberation")
                                         
-                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" под QR-кодом в красной рамке (как на оригинале)
+                                        # Конвертируем изображение в RGBA для поддержки прозрачности при наложении текста
+                                        img = img.convert('RGBA')
+                                        # Пересоздаем draw для RGBA изображения
+                                        draw = ImageDraw.Draw(img)
+                                        
+                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода по диагонали (как на втором фото)
                                         text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
-                                        bbox = draw.textbbox((0, 0), text_overlay, font=font_large)
+                                        
+                                        # Создаем временное изображение для повернутого текста
+                                        # Размеры для временного изображения (больше, чтобы текст поместился при повороте)
+                                        temp_img_size = max(img_width, img_height) * 2
+                                        temp_img = Image.new('RGBA', (temp_img_size, temp_img_size), (0, 0, 0, 0))
+                                        temp_draw = ImageDraw.Draw(temp_img)
+                                        
+                                        # Получаем размеры текста
+                                        bbox = temp_draw.textbbox((0, 0), text_overlay, font=font_large)
                                         text_width = bbox[2] - bbox[0]
                                         text_height = bbox[3] - bbox[1]
-                                        text_x = (img_width - text_width) // 2
-                                        text_y = qr_y + qr_size + 20  # Под QR-кодом
                                         
-                                        # Рисуем красную рамку с белым фоном для текста
-                                        padding = 10
-                                        draw.rectangle(
-                                            [text_x - padding, text_y - padding, text_x + text_width + padding, text_y + text_height + padding],
-                                            fill='white',
-                                            outline='red',
-                                            width=2
-                                        )
-                                        draw.text((text_x, text_y), text_overlay, fill='black', font=font_large)  # Черный текст в красной рамке
+                                        # Рисуем текст на временном изображении (красный, полупрозрачный)
+                                        # Используем полупрозрачный красный цвет (R, G, B, Alpha)
+                                        text_color = (220, 0, 0, 200)  # Красный с прозрачностью ~78%
+                                        text_x_temp = (temp_img_size - text_width) // 2
+                                        text_y_temp = (temp_img_size - text_height) // 2
+                                        temp_draw.text((text_x_temp, text_y_temp), text_overlay, fill=text_color, font=font_large)
                                         
-                                        # Текст "ОТСКАНИРУЙТЕ QR" под красной рамкой
+                                        # Поворачиваем текст по диагонали (около -45 градусов от нижнего левого к верхнему правому)
+                                        rotated_text = temp_img.rotate(-35, expand=False, fillcolor=(0, 0, 0, 0))
+                                        
+                                        # Вычисляем позицию для наложения текста поверх QR-кода
+                                        # Размещаем по диагонали от нижнего левого к верхнему правому углу QR-кода
+                                        overlay_x = qr_x + 30  # Отступ от левого края QR-кода
+                                        overlay_y = qr_y + qr_size - 150  # Отступ от нижнего края QR-кода
+                                        
+                                        # Вырезаем нужную область из повернутого текста и накладываем на основное изображение
+                                        # Берем область вокруг центра повернутого изображения
+                                        center_x = temp_img_size // 2
+                                        center_y = temp_img_size // 2
+                                        crop_x1 = center_x - text_width // 2 - 50
+                                        crop_y1 = center_y - text_height // 2 - 50
+                                        crop_x2 = center_x + text_width // 2 + 50
+                                        crop_y2 = center_y + text_height // 2 + 50
+                                        
+                                        text_crop = rotated_text.crop((crop_x1, crop_y1, crop_x2, crop_y2))
+                                        
+                                        # Накладываем текст поверх QR-кода с альфа-каналом
+                                        paste_x = overlay_x
+                                        paste_y = overlay_y
+                                        img.paste(text_crop, (paste_x, paste_y), text_crop)
+                                        
+                                        # Текст "ОТСКАНИРУЙТЕ QR" под QR-кодом
                                         text_below1 = "ОТСКАНИРУЙТЕ QR"
                                         bbox2 = draw.textbbox((0, 0), text_below1, font=font_medium)
                                         text_width2 = bbox2[2] - bbox2[0]
                                         text_x2 = (img_width - text_width2) // 2
-                                        text_y2 = text_y + text_height + padding + 20
+                                        text_y2 = qr_y + qr_size + 20  # Под QR-кодом
                                         draw.text((text_x2, text_y2), text_below1, fill='black', font=font_medium)
                                         
                                         # Текст "В любом банке"
@@ -1381,6 +1413,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         red_line_y = text_y3 + 50
                                         red_line_height = 5
                                         draw.rectangle([0, red_line_y, img_width, red_line_y + red_line_height], fill='red', outline='red', width=0)
+                                        
+                                        # Конвертируем обратно в RGB для сохранения (PNG поддерживает RGBA, но RGB более совместим)
+                                        img = img.convert('RGB')
                                         
                                         # Сохраняем в BytesIO
                                         qr_image = BytesIO()
