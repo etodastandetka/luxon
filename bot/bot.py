@@ -1217,8 +1217,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         qr_img = qr.make_image(fill_color="black", back_color="white")
                                         
                                         # Создаем новое изображение с белым фоном (увеличенный размер для большего QR-кода)
-                                        img_width = 600
-                                        img_height = 750  # Увеличили высоту для большего QR-кода и текста
+                                        img_width = 650
+                                        img_height = 850  # Увеличили размер для большего QR-кода
                                         img = Image.new('RGBA', (img_width, img_height), (255, 255, 255, 255))  # RGBA для поддержки прозрачности водяных знаков
                                         
                                         # Добавляем водяной знак "LUXON" на фон (полупрозрачный серый)
@@ -1259,13 +1259,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 except:
                                                     watermark_font_large = watermark_font
                                                 
-                                                # Рисуем водяной знак с поворотами для красоты (более видимый)
+                                                # Рисуем водяной знак с одинаковым углом поворота (более видимый)
                                                 for i in range(-4, 5):
                                                     for j in range(-4, 5):
                                                         x = img_width // 2 + i * 150
                                                         y = img_height // 2 + j * 180
-                                                        # Чередуем углы поворота для красоты
-                                                        angle = (i + j) % 4 * 45  # 0, 45, 90, 135 градусов
+                                                        # Все водяные знаки в одну сторону (45 градусов)
+                                                        angle = 45  # Одинаковый угол для всех
                                                         
                                                         # Создаем временное изображение для повернутого текста (больший размер)
                                                         wm_temp_size = 300
@@ -1298,7 +1298,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.debug(f"Не удалось добавить fallback водяной знак: {e2}")
                                         
                                         # Вставляем QR-код в центр (с отступом сверху, увеличенный размер)
-                                        qr_size = 450  # Увеличенный размер QR-кода
+                                        qr_size = 520  # Значительно увеличенный размер QR-кода
                                         qr_img_resized = qr_img.resize((qr_size, qr_size))
                                         qr_x = (img_width - qr_size) // 2
                                         qr_y = 30
