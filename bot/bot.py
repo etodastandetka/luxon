@@ -1233,23 +1233,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         font_small = None
                                         font_info = None
                                         
-                                        # Пробуем загрузить шрифты из разных мест
+                                        # Пробуем загрузить шрифты из разных мест (Linux/Windows/Mac)
                                         font_paths = [
                                             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
                                             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                                            "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
                                             "/System/Library/Fonts/Helvetica.ttc",
                                             "arial.ttf",
                                             "Arial.ttf",
                                             "/Windows/Fonts/arial.ttf",
+                                            "/Windows/Fonts/ARIAL.TTF",
                                         ]
                                         
                                         font_path = None
                                         for path in font_paths:
                                             try:
                                                 if os.path.exists(path):
+                                                    # Пробуем загрузить шрифт
+                                                    test_font = ImageFont.truetype(path, 16)
                                                     font_path = path
                                                     break
-                                            except:
+                                            except Exception as e:
                                                 continue
                                         
                                         if font_path:
@@ -1261,14 +1265,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.info(f"✅ Загружен шрифт: {font_path}")
                                             except Exception as e:
                                                 logger.warning(f"⚠️ Не удалось загрузить шрифт {font_path}: {e}")
+                                                font_path = None
                                         
-                                        # Fallback на стандартный шрифт
-                                        if not font_large:
+                                        # Fallback на стандартный шрифт (НЕ поддерживает кириллицу!)
+                                        if not font_path:
                                             font_large = ImageFont.load_default()
                                             font_medium = ImageFont.load_default()
                                             font_small = ImageFont.load_default()
                                             font_info = ImageFont.load_default()
-                                            logger.warning("⚠️ Используется стандартный шрифт (может не поддерживать кириллицу)")
+                                            logger.error("❌ Шрифт не найден! Текст может не отображаться (стандартный шрифт не поддерживает кириллицу)")
                                         
                                         # Текст поверх QR-кода (диагонально)
                                         text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
