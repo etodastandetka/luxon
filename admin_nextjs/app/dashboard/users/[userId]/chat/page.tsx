@@ -666,11 +666,11 @@ export default function ChatPage() {
                   {templates.map((template) => (
                     <button
                       key={template.id}
-                      onClick={() => {
-                        setNewMessage(template.text)
-                        setShowTemplates(false)
-                        inputRef.current?.focus()
-                      }}
+                  onClick={() => {
+                    setNewMessage(template.text || template.content || '')
+                    setShowTemplates(false)
+                    inputRef.current?.focus()
+                  }}
                       className="w-full p-3 text-left hover:bg-gray-700 transition-colors border-b border-gray-700/50 last:border-0"
                     >
                       <div className="text-sm text-white font-medium">{template.title}</div>

@@ -19,11 +19,13 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, text, category } = body
+    const { title, text, content, category } = body
 
     const updateData: any = {}
     if (title !== undefined) updateData.title = title
+    // Поддерживаем оба варианта: text и content (для совместимости)
     if (text !== undefined) updateData.text = text
+    if (content !== undefined) updateData.text = content
     if (category !== undefined) updateData.category = category || null
 
     const template = await prisma.messageTemplate.update({
