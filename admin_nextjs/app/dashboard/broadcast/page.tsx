@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 interface Broadcast {
   id: number
@@ -233,10 +234,13 @@ export default function BroadcastPage() {
           </label>
           {photoPreview ? (
             <div className="relative mb-2">
-              <img
+              <Image
                 src={photoPreview}
                 alt="Preview"
+                width={800}
+                height={256}
                 className="w-full max-h-64 object-contain rounded-lg border border-gray-700 bg-gray-900"
+                unoptimized
               />
               <button
                 type="button"

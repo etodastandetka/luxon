@@ -217,7 +217,7 @@ export default function RequestDetailPage() {
       
       return newRequest
     })
-  }, [])
+  }, [fetchRequestPhoto, params.id])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -543,7 +543,7 @@ export default function RequestDetailPage() {
         intervalRef.current = null
       }
     }
-  }, [request?.status, params.id, fetchRequestPhoto, updateRequestPreservingPhoto])
+  }, [request, params.id, fetchRequestPhoto, updateRequestPreservingPhoto])
 
   // Закрываем меню при клике вне его
   useEffect(() => {
