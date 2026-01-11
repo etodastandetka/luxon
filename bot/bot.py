@@ -1305,23 +1305,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.error("❌ Шрифт не найден! Текст может не отображаться (стандартный шрифт не поддерживает кириллицу)")
                                                 logger.error("💡 Установите шрифты: sudo apt-get install fonts-dejavu fonts-liberation")
                                         
-                                        # Текст поверх QR-кода (диагонально)
-                                        text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
-                                        bbox = draw.textbbox((0, 0), text_overlay, font=font_large)
-                                        text_width = bbox[2] - bbox[0]
-                                        text_height = bbox[3] - bbox[1]
-                                        text_x = (img_width - text_width) // 2
-                                        text_y = qr_y + (qr_size - text_height) // 2
-                                        
-                                        # Рисуем белый фон для текста (чтобы был виден)
-                                        padding = 10
-                                        draw.rectangle(
-                                            [text_x - padding, text_y - padding, text_x + text_width + padding, text_y + text_height + padding],
-                                            fill='white',
-                                            outline='red',
-                                            width=2
-                                        )
-                                        draw.text((text_x, text_y), text_overlay, fill='red', font=font_large)
+                                        # Убираем текст поверх QR-кода - он мешает сканированию
+                                        # Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" больше не рисуем поверх QR-кода
                                         
                                         # Текст под QR-кодом "ОТСКАНИРУЙТЕ QR"
                                         text_below1 = "ОТСКАНИРУЙТЕ QR"
@@ -1345,26 +1330,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Добавляем детальную информацию под QR-кодом
                                         # Используем простой способ - рисуем каждую строку отдельно с проверкой
                                         
+                                        def clean_html_text(text):
+                                            """Убирает HTML-теги и эмодзи из текста для отображения на изображении"""
+                                            import re
+                                            # Убираем HTML-теги
+                                            text = re.sub(r'<[^>]+>', '', text)
+                                            # Убираем эмодзи (простые символы Unicode)
+                                            text = re.sub(r'[^\w\s\-:.,;!?()\[\]{}"\']', '', text)
+                                            return text.strip()
+                                        
                                         def draw_text_line(text, y_pos, font_obj, color='black'):
                                             """Рисует одну строку текста с центрированием"""
                                             try:
+                                                # Очищаем текст от HTML и эмодзи
+                                                clean_text = clean_html_text(text)
+                                                
                                                 # Проверяем что шрифт поддерживает текст
-                                                bbox = draw.textbbox((0, 0), text, font=font_obj)
+                                                bbox = draw.textbbox((0, 0), clean_text, font=font_obj)
                                                 text_width = bbox[2] - bbox[0]
                                                 text_height = bbox[3] - bbox[1]
                                                 
                                                 # Если ширина 0, значит шрифт не поддерживает символы
                                                 if text_width == 0:
-                                                    logger.warning(f"⚠️ Шрифт не поддерживает текст: '{text[:20]}...'")
-                                                    # Рисуем прямоугольник как индикатор
-                                                    draw.rectangle([img_width//2 - 50, y_pos, img_width//2 + 50, y_pos + 15], fill='gray', outline='black')
+                                                    logger.warning(f"⚠️ Шрифт не поддерживает текст: '{clean_text[:20]}...'")
                                                     return text_height if text_height > 0 else 20
                                                 
                                                 text_x = (img_width - text_width) // 2
-                                                draw.text((text_x, y_pos), text, fill=color, font=font_obj)
-                                                
-                                                # Логируем для отладки
-                                                logger.debug(f"✅ Текст нарисован: '{text[:30]}...' на позиции y={y_pos}, размер={text_width}x{text_height}")
+                                                draw.text((text_x, y_pos), clean_text, fill=color, font=font_obj)
                                                 
                                                 return text_height
                                             except Exception as e:
@@ -1373,11 +1365,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Заголовок "QR-код для оплаты"
                                         title_text = "QR-код для оплаты"
-                                        current_y += draw_text_line(title_text, current_y, font_medium, 'black') + 15
+                                        current_y += draw_text_line(title_text, current_y, font_medium, 'black') + 20
                                         
-                                        # Пополнение счета
-                                        deposit_text = deposit_title
-                                        current_y += draw_text_line(deposit_text, current_y, font_small, 'black') + 12
+                                        # Пополнение счета (очищаем от HTML)
+                                        deposit_text = clean_html_text(deposit_title) or "Пополнение счета"
+                                        current_y += draw_text_line(deposit_text, current_y, font_small, 'black') + 15
                                         
                                         # Сумма
                                         amount_text = f"Сумма: {amount:.2f} сом"
