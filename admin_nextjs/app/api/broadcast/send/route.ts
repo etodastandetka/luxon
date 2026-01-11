@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     let photoFile: File | null = null
     let photoBuffer: Buffer | null = null
     let photoMimeType: string | null = null
+    let includeMiniAppButton: boolean = true // По умолчанию включено
 
     const contentType = request.headers.get('content-type') || ''
     
@@ -24,6 +25,11 @@ export async function POST(request: NextRequest) {
         const formData = await request.formData()
         const messageField = formData.get('message')
         message = typeof messageField === 'string' ? messageField : (messageField?.toString() || '')
+        
+        const includeButtonField = formData.get('includeMiniAppButton')
+        if (includeButtonField !== null) {
+          includeMiniAppButton = includeButtonField === 'true' || includeButtonField.toString() === 'true'
+        }
         
         const photo = formData.get('photo')
         
@@ -49,12 +55,18 @@ export async function POST(request: NextRequest) {
         try {
           const body = await request.json()
           message = body.message || ''
+          includeMiniAppButton = body.includeMiniAppButton !== undefined ? body.includeMiniAppButton : true
         } catch (jsonError: any) {
           // Если не JSON, пробуем FormData (на случай если content-type не установлен правильно)
           try {
             const formData = await request.formData()
             const messageField = formData.get('message')
             message = typeof messageField === 'string' ? messageField : (messageField?.toString() || '')
+            
+            const includeButtonField = formData.get('includeMiniAppButton')
+            if (includeButtonField !== null) {
+              includeMiniAppButton = includeButtonField === 'true' || includeButtonField.toString() === 'true'
+            }
             
             const photo = formData.get('photo') as File | null
             if (photo && photo.size > 0 && photo instanceof File) {
@@ -234,7 +246,8 @@ export async function POST(request: NextRequest) {
         let requestBody: BodyInit
         let requestHeaders: HeadersInit
         
-        const replyMarkup = {
+        // Создаем replyMarkup только если включена кнопка мини-приложения
+        const replyMarkup = includeMiniAppButton ? {
           inline_keyboard: [
             [
               {
@@ -245,7 +258,7 @@ export async function POST(request: NextRequest) {
               }
             ]
           ]
-        }
+        } : undefined
 
         if (photoBuffer && photoMimeType) {
           // Отправка с фото через FormData
@@ -260,7 +273,9 @@ export async function POST(request: NextRequest) {
             formData.append('caption', message)
           }
           formData.append('parse_mode', 'HTML')
-          formData.append('reply_markup', JSON.stringify(replyMarkup))
+          if (replyMarkup) {
+            formData.append('reply_markup', JSON.stringify(replyMarkup))
+          }
           
           requestBody = formData
           requestHeaders = {} // FormData сам установит Content-Type с boundary
@@ -268,12 +283,17 @@ export async function POST(request: NextRequest) {
           // Отправка только текста через JSON
           apiEndpoint = `https://api.telegram.org/bot${botToken}/sendMessage`
           
-          requestBody = JSON.stringify({
+          const messageBody: any = {
             chat_id: user.userId.toString(),
             text: message,
             parse_mode: 'HTML',
-            reply_markup: replyMarkup
-          })
+          }
+          
+          if (replyMarkup) {
+            messageBody.reply_markup = replyMarkup
+          }
+          
+          requestBody = JSON.stringify(messageBody)
           requestHeaders = {
             'Content-Type': 'application/json',
           }

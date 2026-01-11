@@ -21,6 +21,7 @@ export default function BroadcastPage() {
   const [sending, setSending] = useState(false)
   const [totalUsers, setTotalUsers] = useState(0)
   const [sendProgress, setSendProgress] = useState<{ current: number; total: number; success: number; errors: number } | null>(null)
+  const [includeMiniAppButton, setIncludeMiniAppButton] = useState(true)
 
   useEffect(() => {
     fetchHistory()
@@ -111,6 +112,7 @@ export default function BroadcastPage() {
         const formData = new FormData()
         formData.append('message', message)
         formData.append('photo', photo)
+        formData.append('includeMiniAppButton', includeMiniAppButton.toString())
         
         response = await fetch('/api/broadcast/send', {
           method: 'POST',
@@ -121,7 +123,7 @@ export default function BroadcastPage() {
         response = await fetch('/api/broadcast/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({ message, includeMiniAppButton }),
         })
       }
 
@@ -204,10 +206,24 @@ export default function BroadcastPage() {
           <p className="text-xs text-gray-400 mt-2">
             Поддерживается HTML разметка: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;, &lt;code&gt;код&lt;/code&gt;
             <br />
-            <span className="text-green-400">✓ К каждой рассылке автоматически добавляется кнопка &quot;🚀 Открыть приложение&quot;</span>
-            <br />
             <span className="text-yellow-400">⚠️ Рассылка может занять некоторое время при большом количестве пользователей</span>
           </p>
+        </div>
+
+        {/* Чекбокс для инлайн кнопки */}
+        <div className="mb-4">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeMiniAppButton}
+              onChange={(e) => setIncludeMiniAppButton(e.target.checked)}
+              disabled={sending}
+              className="w-4 h-4 text-green-500 bg-gray-900 border-gray-700 rounded focus:ring-green-500 focus:ring-2"
+            />
+            <span className="text-sm text-gray-300">
+              Добавить кнопку &quot;🚀 Открыть приложение&quot;
+            </span>
+          </label>
         </div>
 
         {/* Загрузка фото */}
