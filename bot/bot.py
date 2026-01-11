@@ -1283,30 +1283,53 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                             else:
                                                 qr_image = None
                                     
+                                    # Подготавливаем текст для caption
+                                    casino_name = get_casino_name(data.get('bookmaker', ''))
+                                    deposit_title = get_text('deposit_title')
+                                    casino_label = get_text('casino_label', casino_name=casino_name)
+                                    
+                                    caption_text = (
+                                        f"📱 QR-код для оплаты\n\n"
+                                        f"{deposit_title}\n\n"
+                                        f"💰 <b>Сумма:</b> {amount} сом\n"
+                                        f"{casino_label}\n"
+                                        f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
+                                        f"⏰ <b>Таймер: {timer_text}</b>\n\n"
+                                        f"После оплаты отправьте фото чека:"
+                                    )
+                                    
                                     if qr_image:
-                                        await update.message.reply_photo(
+                                        timer_message = await update.message.reply_photo(
                                             photo=qr_image,
-                                            caption="📱 QR-код для оплаты",
+                                            caption=caption_text,
+                                            reply_markup=reply_markup,
                                             parse_mode='HTML'
                                         )
                                         logger.info(f"✅ QR-код отправлен пользователю {user_id}")
+                                    else:
+                                        # Если QR-код не был сгенерирован, отправляем текстовое сообщение
+                                        timer_message = await update.message.reply_text(
+                                            caption_text,
+                                            reply_markup=reply_markup,
+                                            parse_mode='HTML'
+                                        )
+                                        logger.warning(f"⚠️ QR-код не был сгенерирован для пользователя {user_id}")
                                 except Exception as e:
                                     logger.warning(f"⚠️ Не удалось отправить QR-код: {e}", exc_info=True)
-                            
-                            # Отправляем сообщение с кнопками банков (заявка будет создана после отправки фото)
-                            casino_name = get_casino_name(data.get('bookmaker', ''))
-                            deposit_title = get_text('deposit_title')
-                            casino_label = get_text('casino_label', casino_name=casino_name)
-                            timer_message = await update.message.reply_text(
-                                f"{deposit_title}\n\n"
-                                f"💰 <b>Сумма:</b> {amount} сом\n"
-                                f"{casino_label}\n"
-                                f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
-                                f"⏰ <b>Таймер: {timer_text}</b>\n\n"
-                                f"После оплаты отправьте фото чека:",
-                                reply_markup=reply_markup,
-                                parse_mode='HTML'
-                            )
+                                    # Если QR-код не удалось отправить, отправляем текстовое сообщение
+                                    casino_name = get_casino_name(data.get('bookmaker', ''))
+                                    deposit_title = get_text('deposit_title')
+                                    casino_label = get_text('casino_label', casino_name=casino_name)
+                                    timer_message = await update.message.reply_text(
+                                        f"{deposit_title}\n\n"
+                                        f"💰 <b>Сумма:</b> {amount} сом\n"
+                                        f"{casino_label}\n"
+                                        f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
+                                        f"⏰ <b>Таймер: {timer_text}</b>\n\n"
+                                        f"После оплаты отправьте фото чека:",
+                                        reply_markup=reply_markup,
+                                        parse_mode='HTML'
+                                    )
                             
                             # Сохраняем данные для таймера
                             data['timer_message_id'] = timer_message.message_id
