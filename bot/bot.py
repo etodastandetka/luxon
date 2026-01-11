@@ -1432,6 +1432,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                             reply_markup=reply_markup,
                                             parse_mode='HTML'
                                         )
+                                        # Сохраняем флаг что это фото-сообщение
+                                        data['is_photo_message'] = True
                                         logger.info(f"✅ QR-код отправлен пользователю {user_id}")
                                     else:
                                         # Если QR-код не был сгенерирован, отправляем текстовое сообщение
@@ -1440,6 +1442,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                             reply_markup=reply_markup,
                                             parse_mode='HTML'
                                         )
+                                        # Сохраняем флаг что это текстовое сообщение
+                                        data['is_photo_message'] = False
                                         logger.warning(f"⚠️ QR-код не был сгенерирован для пользователя {user_id}")
                                 except Exception as e:
                                     logger.warning(f"⚠️ Не удалось отправить QR-код: {e}", exc_info=True)
@@ -1457,6 +1461,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         reply_markup=reply_markup,
                                         parse_mode='HTML'
                                     )
+                                    # Сохраняем флаг что это текстовое сообщение
+                                    data['is_photo_message'] = False
                             
                             # Сохраняем данные для таймера
                             data['timer_message_id'] = timer_message.message_id
@@ -2425,18 +2431,38 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 casino_name = get_casino_name(current_data.get('bookmaker', ''))
                 deposit_title = get_text('deposit_title')
                 casino_label = get_text('casino_label', casino_name=casino_name)
-                await bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    text=f"{deposit_title}\n\n"
-                         f"💰 <b>Сумма:</b> {current_data.get('amount', 0)} сом\n"
-                         f"{casino_label}\n"
-                         f"🆔 <b>ID игрока:</b> {current_data.get('player_id', '')}\n\n"
-                         f"⏰ <b>Таймер: {timer_text}</b>\n\n"
-                         f"После оплаты отправьте фото чека:",
-                    reply_markup=reply_markup,
-                    parse_mode='HTML'
+                
+                # Формируем текст для обновления
+                updated_text = (
+                    f"📱 QR-код для оплаты\n\n"
+                    f"{deposit_title}\n\n"
+                    f"💰 <b>Сумма:</b> {current_data.get('amount', 0)} сом\n"
+                    f"{casino_label}\n"
+                    f"🆔 <b>ID игрока:</b> {current_data.get('player_id', '')}\n\n"
+                    f"⏰ <b>Таймер: {timer_text}</b>\n\n"
+                    f"После оплаты отправьте фото чека:"
                 )
+                
+                # Проверяем тип сообщения и используем соответствующий метод
+                is_photo_message = current_data.get('is_photo_message', False)
+                if is_photo_message:
+                    # Обновляем caption фото
+                    await bot.edit_message_caption(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        caption=updated_text,
+                        reply_markup=reply_markup,
+                        parse_mode='HTML'
+                    )
+                else:
+                    # Обновляем текстовое сообщение
+                    await bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=updated_text,
+                        reply_markup=reply_markup,
+                        parse_mode='HTML'
+                    )
             except Exception as e:
                 logger.warning(f"⚠️ Не удалось обновить таймер для пользователя {user_id}: {e}")
                 # Продолжаем работу таймера даже если не удалось обновить сообщение
