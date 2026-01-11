@@ -136,9 +136,39 @@ export default function SupportPage() {
   }, [userId])
 
   useEffect(() => {
-    const telegramUserId = getTelegramUserId()
-    if (telegramUserId) {
-      setUserId(telegramUserId)
+    const checkUserId = () => {
+      const telegramUserId = getTelegramUserId()
+      if (telegramUserId) {
+        setUserId(telegramUserId)
+      }
+    }
+    
+    // Проверяем сразу
+    checkUserId()
+    
+    // Периодически проверяем (на случай авторизации через Telegram Login Widget)
+    const interval = setInterval(checkUserId, 1000)
+    
+    // Также слушаем события storage (когда localStorage обновляется)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'telegram_user') {
+        checkUserId()
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Слушаем сообщения от Telegram Login Widget
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'telegram_auth_success') {
+        checkUserId()
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('message', handleMessage)
     }
   }, [])
 
@@ -332,7 +362,15 @@ export default function SupportPage() {
         </div>
         <div className="card space-y-3">
           <div className="text-center text-white/70">
-            Пожалуйста, откройте сайт через Telegram бота
+            Пожалуйста, авторизуйтесь через Telegram
+          </div>
+          <div className="text-center">
+            <a 
+              href="/" 
+              className="inline-flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors"
+            >
+              Авторизоваться
+            </a>
           </div>
         </div>
         <div className="text-center">

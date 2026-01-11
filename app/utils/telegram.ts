@@ -213,44 +213,43 @@ export const getTelegramUserId = (useCache: boolean = true): string | null => {
     return cachedUserId
   }
   
+  // Приоритет 1: Telegram WebApp (если доступен)
   const tg = getTelegramWebApp()
-  if (!tg) {
-    return null
-  }
-  
-  // Приоритет 1: initDataUnsafe (самый быстрый)
-  // Безопасный доступ для старых браузеров
-  try {
-    if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
-      cachedUserId = String(tg.initDataUnsafe.user.id)
-      cachedUser = tg.initDataUnsafe.user
-      cacheTimestamp = Date.now()
-      return cachedUserId
-    }
-  } catch (e) {
-    // Игнорируем ошибки доступа
-  }
-  
-  // Приоритет 2: парсинг initData
-  if (tg.initData) {
+  if (tg) {
+    // Приоритет 1.1: initDataUnsafe (самый быстрый)
+    // Безопасный доступ для старых браузеров
     try {
-      const params = new URLSearchParams(tg.initData)
-      const userParam = params.get('user')
-      if (userParam) {
-        const userData = JSON.parse(decodeURIComponent(userParam))
-        if (userData.id) {
-          cachedUserId = String(userData.id)
-          cachedUser = userData
-          cacheTimestamp = Date.now()
-          return cachedUserId
-        }
+      if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+        cachedUserId = String(tg.initDataUnsafe.user.id)
+        cachedUser = tg.initDataUnsafe.user
+        cacheTimestamp = Date.now()
+        return cachedUserId
       }
     } catch (e) {
-      // Тихая ошибка
+      // Игнорируем ошибки доступа
+    }
+    
+    // Приоритет 1.2: парсинг initData
+    if (tg.initData) {
+      try {
+        const params = new URLSearchParams(tg.initData)
+        const userParam = params.get('user')
+        if (userParam) {
+          const userData = JSON.parse(decodeURIComponent(userParam))
+          if (userData.id) {
+            cachedUserId = String(userData.id)
+            cachedUser = userData
+            cacheTimestamp = Date.now()
+            return cachedUserId
+          }
+        }
+      } catch (e) {
+        // Тихая ошибка
+      }
     }
   }
   
-  // Приоритет 3: localStorage
+  // Приоритет 2: localStorage (работает и для Telegram Login Widget)
   if (typeof window !== 'undefined') {
     try {
       const savedUser = localStorage.getItem('telegram_user')
