@@ -10,6 +10,13 @@ import httpx
 import base64
 import random
 from io import BytesIO
+from urllib.parse import quote
+try:
+    import qrcode
+    from PIL import Image, ImageDraw, ImageFont
+    QRCODE_AVAILABLE = True
+except ImportError:
+    QRCODE_AVAILABLE = False
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
