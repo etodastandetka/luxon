@@ -2626,6 +2626,10 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
         if user_id in user_states:
             logger.info(f"⏰ Таймер истек для пользователя {user_id}, отменяю заявку")
             
+            # Получаем данные перед очисткой состояния
+            current_data = user_states.get(user_id, {}).get('data', data)
+            is_photo_message = current_data.get('is_photo_message', False)
+            
             # Очищаем состояние
             del user_states[user_id]
             
@@ -2651,12 +2655,25 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 ]
                 reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
                 
-                await bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    text="⏰ <b>Пополнение отменено, время оплаты прошло</b>\n\n❌ <b>Не переводите по старым реквизитам</b>\n\nНачните заново, нажав на <b>Пополнить</b>",
-                    parse_mode='HTML'
-                )
+                cancel_text = "⏰ <b>Пополнение отменено, время оплаты прошло</b>\n\n❌ <b>Не переводите по старым реквизитам</b>\n\nНачните заново, нажав на <b>Пополнить</b>"
+                
+                # Проверяем тип сообщения и используем соответствующий метод
+                if is_photo_message:
+                    # Обновляем caption фото
+                    await bot.edit_message_caption(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        caption=cancel_text,
+                        parse_mode='HTML'
+                    )
+                else:
+                    # Обновляем текстовое сообщение
+                    await bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=cancel_text,
+                        parse_mode='HTML'
+                    )
                 
                 await bot.send_message(
                     chat_id=chat_id,
