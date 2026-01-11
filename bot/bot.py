@@ -1440,10 +1440,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         instruction_text = "После оплаты отправьте фото чека:"
                                         current_y += draw_text_line(instruction_text, current_y, font_info, 'black') + 10
                                         
-                                        # Проверяем что текст действительно добавлен (тестовая отрисовка)
-                                        # Рисуем тестовый прямоугольник внизу чтобы убедиться что draw работает
-                                        test_rect_y = img_height - 20
-                                        draw.rectangle([10, test_rect_y, img_width - 10, img_height - 5], fill='red', outline='black', width=2)
+                                        # Красная линия внизу изображения (как на оригинале)
+                                        red_line_height = 5
+                                        draw.rectangle([0, img_height - red_line_height, img_width, img_height], fill='red', outline='red', width=0)
                                         
                                         # Сохраняем в BytesIO
                                         qr_image = BytesIO()
