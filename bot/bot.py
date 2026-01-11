@@ -1346,8 +1346,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         if font_path:
                                             try:
                                                 font_large = ImageFont.truetype(font_path, 32)
-                                                font_medium = ImageFont.truetype(font_path, 40)  # Увеличен для текста "ОТСКАНИРУЙТЕ QR"
-                                                font_small = ImageFont.truetype(font_path, 32)  # Увеличен для текста "В любом банке"
+                                                font_medium = ImageFont.truetype(font_path, 55)  # Значительно увеличен для текста "ОТСКАНИРУЙТЕ QR"
+                                                font_small = ImageFont.truetype(font_path, 42)  # Увеличен для текста "В любом банке"
                                                 font_info = ImageFont.truetype(font_path, 16)
                                                 logger.info(f"✅ Загружен шрифт: {font_path}")
                                             except Exception as e:
@@ -1369,8 +1369,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                                 font_file = line.split(':')[0].strip()
                                                                 if os.path.exists(font_file):
                                                                     font_large = ImageFont.truetype(font_file, 32)
-                                                                    font_medium = ImageFont.truetype(font_file, 40)  # Увеличен для текста "ОТСКАНИРУЙТЕ QR"
-                                                                    font_small = ImageFont.truetype(font_file, 32)  # Увеличен для текста "В любом банке"
+                                                                    font_medium = ImageFont.truetype(font_file, 55)  # Значительно увеличен для текста "ОТСКАНИРУЙТЕ QR"
+                                                                    font_small = ImageFont.truetype(font_file, 42)  # Увеличен для текста "В любом банке"
                                                                     font_info = ImageFont.truetype(font_file, 16)
                                                                     logger.info(f"✅ Найден шрифт через fc-list: {font_file}")
                                                                     font_path = font_file
@@ -1397,7 +1397,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Увеличиваем размер шрифта для текста поверх QR-кода (более заметный)
                                         try:
-                                            font_overlay = ImageFont.truetype(font_path, 38) if font_path else font_large
+                                            font_overlay = ImageFont.truetype(font_path, 70) if font_path else font_large  # Увеличен для большей видимости
                                         except:
                                             font_overlay = font_large
                                         
@@ -1417,7 +1417,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Общая ширина и высота блока из двух строк
                                         block_width = max(text_width1, text_width2)
-                                        block_height = text_height1 + text_height2 + 8  # 8 пикселей между строками
+                                        block_height = text_height1 + text_height2 + 15  # Увеличено расстояние между строками для большего шрифта
                                         
                                         # Рисуем две строки текста одна под другой (красный, полупрозрачный)
                                         # Используем полупрозрачный красный цвет (R, G, B, Alpha)
@@ -1434,7 +1434,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Рисуем вторую строку под первой
                                         text_x2 = block_x + (block_width - text_width2) // 2
-                                        text_y2 = block_y + text_height1 + 8
+                                        text_y2 = block_y + text_height1 + 15  # Увеличено расстояние между строками
                                         temp_draw.text((text_x2, text_y2), text_line2, fill=text_color, font=font_overlay)
                                         
                                         # Поворачиваем текст по диагонали (около -40 градусов от нижнего левого к верхнему правому)
@@ -1474,7 +1474,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         bbox2 = draw.textbbox((0, 0), text_below1, font=font_medium)
                                         text_width2 = bbox2[2] - bbox2[0]
                                         text_x2 = (img_width - text_width2) // 2
-                                        text_y2 = qr_y + qr_size + 20  # Под QR-кодом
+                                        text_y2 = qr_y + qr_size + 30  # Под QR-кодом с отступом
                                         draw.text((text_x2, text_y2), text_below1, fill='black', font=font_medium)
                                         
                                         # Текст "В любом банке"
@@ -1482,7 +1482,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         bbox3 = draw.textbbox((0, 0), text_below2, font=font_small)
                                         text_width3 = bbox3[2] - bbox3[0]
                                         text_x3 = (img_width - text_width3) // 2
-                                        text_y3 = text_y2 + 50  # Увеличено расстояние для большего шрифта
+                                        text_y3 = text_y2 + 60  # Увеличено расстояние для большего шрифта
                                         draw.text((text_x3, text_y3), text_below2, fill='blue', font=font_small)
                                         
                                         # НЕ добавляем детальную информацию на изображение - она будет только в caption
