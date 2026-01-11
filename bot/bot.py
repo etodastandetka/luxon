@@ -1216,9 +1216,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Создаем изображение QR-кода
                                         qr_img = qr.make_image(fill_color="black", back_color="white")
                                         
-                                        # Создаем новое изображение с белым фоном (компактное, как на оригинале)
-                                        img_width = 500
-                                        img_height = 600  # Компактная высота - только QR-код и базовый текст
+                                        # Создаем новое изображение с белым фоном (увеличенный размер для большего QR-кода)
+                                        img_width = 600
+                                        img_height = 750  # Увеличили высоту для большего QR-кода и текста
                                         img = Image.new('RGBA', (img_width, img_height), (255, 255, 255, 255))  # RGBA для поддержки прозрачности водяных знаков
                                         
                                         # Добавляем водяной знак "LUXON" на фон (полупрозрачный серый)
@@ -1243,7 +1243,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 watermark_text = "LUXON"
                                                 # Рисуем водяной знак повторяющимся паттерном по всему фону (красиво)
                                                 # Используем более крупный размер и разные углы для красоты
-                                                watermark_size = 60
+                                                watermark_size = 80  # Увеличенный размер для лучшей видимости
                                                 try:
                                                     # Пробуем загрузить больший шрифт для водяного знака
                                                     watermark_font_large = None
@@ -1274,18 +1274,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                         wm_width = bbox_wm[2] - bbox_wm[0]
                                                         wm_height = bbox_wm[3] - bbox_wm[1]
                                                         wm_draw.text(((200 - wm_width) // 2, (200 - wm_height) // 2), watermark_text, 
-                                                                   fill=(240, 240, 240, 40), font=watermark_font_large)  # Очень прозрачный серый
+                                                                   fill=(200, 200, 200, 80), font=watermark_font_large)  # Более видимый серый водяной знак
                                                         wm_rotated = wm_temp.rotate(angle, expand=False, fillcolor=(0, 0, 0, 0))
                                                         # Накладываем повернутый водяной знак
                                                         img.paste(wm_rotated, (x - 100, y - 100), wm_rotated)
                                         except Exception as e:
                                             logger.debug(f"Не удалось добавить водяной знак: {e}")
                                         
-                                        # Вставляем QR-код в центр (с отступом сверху)
-                                        qr_size = 350
+                                        # Вставляем QR-код в центр (с отступом сверху, увеличенный размер)
+                                        qr_size = 450  # Увеличенный размер QR-кода
                                         qr_img_resized = qr_img.resize((qr_size, qr_size))
                                         qr_x = (img_width - qr_size) // 2
-                                        qr_y = 20
+                                        qr_y = 30
                                         img.paste(qr_img_resized, (qr_x, qr_y))
                                         
                                         # Добавляем текст
