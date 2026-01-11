@@ -1259,7 +1259,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 except:
                                                     watermark_font_large = watermark_font
                                                 
-                                                # Рисуем водяной знак с поворотами для красоты
+                                                # Рисуем водяной знак с поворотами для красоты (более видимый)
                                                 for i in range(-4, 5):
                                                     for j in range(-4, 5):
                                                         x = img_width // 2 + i * 150
@@ -1267,19 +1267,35 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                         # Чередуем углы поворота для красоты
                                                         angle = (i + j) % 4 * 45  # 0, 45, 90, 135 градусов
                                                         
-                                                        # Создаем временное изображение для повернутого текста
-                                                        wm_temp = Image.new('RGBA', (200, 200), (0, 0, 0, 0))
+                                                        # Создаем временное изображение для повернутого текста (больший размер)
+                                                        wm_temp_size = 300
+                                                        wm_temp = Image.new('RGBA', (wm_temp_size, wm_temp_size), (0, 0, 0, 0))
                                                         wm_draw = ImageDraw.Draw(wm_temp)
                                                         bbox_wm = wm_draw.textbbox((0, 0), watermark_text, font=watermark_font_large)
                                                         wm_width = bbox_wm[2] - bbox_wm[0]
                                                         wm_height = bbox_wm[3] - bbox_wm[1]
-                                                        wm_draw.text(((200 - wm_width) // 2, (200 - wm_height) // 2), watermark_text, 
-                                                                   fill=(200, 200, 200, 80), font=watermark_font_large)  # Более видимый серый водяной знак
+                                                        wm_draw.text(((wm_temp_size - wm_width) // 2, (wm_temp_size - wm_height) // 2), watermark_text, 
+                                                                   fill=(160, 160, 160, 150), font=watermark_font_large)  # Более видимый серый водяной знак (альфа 150 из 255, темнее цвет)
                                                         wm_rotated = wm_temp.rotate(angle, expand=False, fillcolor=(0, 0, 0, 0))
                                                         # Накладываем повернутый водяной знак
-                                                        img.paste(wm_rotated, (x - 100, y - 100), wm_rotated)
+                                                        img.paste(wm_rotated, (x - wm_temp_size // 2, y - wm_temp_size // 2), wm_rotated)
                                         except Exception as e:
-                                            logger.debug(f"Не удалось добавить водяной знак: {e}")
+                                            logger.warning(f"⚠️ Не удалось добавить водяной знак: {e}")
+                                            # Fallback: пробуем нарисовать простые водяные знаки без поворотов
+                                            try:
+                                                if watermark_font:
+                                                    for i in range(-3, 4):
+                                                        for j in range(-3, 4):
+                                                            x = img_width // 2 + i * 180
+                                                            y = img_height // 2 + j * 200
+                                                            bbox_wm = draw_bg.textbbox((0, 0), watermark_text, font=watermark_font)
+                                                            wm_width = bbox_wm[2] - bbox_wm[0]
+                                                            wm_height = bbox_wm[3] - bbox_wm[1]
+                                                            # Полупрозрачный светло-серый цвет (водяной знак)
+                                                            draw_bg.text((x - wm_width//2, y - wm_height//2), watermark_text, 
+                                                                       fill=(180, 180, 180), font=watermark_font)
+                                            except Exception as e2:
+                                                logger.debug(f"Не удалось добавить fallback водяной знак: {e2}")
                                         
                                         # Вставляем QR-код в центр (с отступом сверху, увеличенный размер)
                                         qr_size = 450  # Увеличенный размер QR-кода
