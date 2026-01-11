@@ -1216,9 +1216,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Создаем изображение QR-кода
                                         qr_img = qr.make_image(fill_color="black", back_color="white")
                                         
-                                        # Создаем новое изображение с белым фоном (больше места для текста)
+                                        # Создаем новое изображение с белым фоном (компактное, как на оригинале)
                                         img_width = 500
-                                        img_height = 800  # Увеличиваем высоту для размещения всей информации
+                                        img_height = 600  # Компактная высота - только QR-код и базовый текст
                                         img = Image.new('RGB', (img_width, img_height), 'white')
                                         
                                         # Добавляем водяной знак "PAYSYSTEM" на фон (полупрозрачный серый)
