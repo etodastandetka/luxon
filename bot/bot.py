@@ -1373,76 +1373,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         text_y3 = text_y2 + 35
                                         draw.text((text_x3, text_y3), text_below2, fill='blue', font=font_small)
                                         
-                                        # Добавляем детальную информацию под QR-кодом
-                                        current_y = text_y3 + 50
-                                        
-                                        # Добавляем детальную информацию под QR-кодом
-                                        # Используем простой способ - рисуем каждую строку отдельно с проверкой
-                                        
-                                        def clean_html_text(text):
-                                            """Убирает HTML-теги и эмодзи из текста для отображения на изображении"""
-                                            import re
-                                            # Убираем HTML-теги
-                                            text = re.sub(r'<[^>]+>', '', text)
-                                            # Убираем эмодзи (простые символы Unicode)
-                                            text = re.sub(r'[^\w\s\-:.,;!?()\[\]{}"\']', '', text)
-                                            return text.strip()
-                                        
-                                        def draw_text_line(text, y_pos, font_obj, color='black'):
-                                            """Рисует одну строку текста с центрированием"""
-                                            try:
-                                                # Очищаем текст от HTML и эмодзи
-                                                clean_text = clean_html_text(text)
-                                                
-                                                # Проверяем что шрифт поддерживает текст
-                                                bbox = draw.textbbox((0, 0), clean_text, font=font_obj)
-                                                text_width = bbox[2] - bbox[0]
-                                                text_height = bbox[3] - bbox[1]
-                                                
-                                                # Если ширина 0, значит шрифт не поддерживает символы
-                                                if text_width == 0:
-                                                    logger.warning(f"⚠️ Шрифт не поддерживает текст: '{clean_text[:20]}...'")
-                                                    return text_height if text_height > 0 else 20
-                                                
-                                                text_x = (img_width - text_width) // 2
-                                                draw.text((text_x, y_pos), clean_text, fill=color, font=font_obj)
-                                                
-                                                return text_height
-                                            except Exception as e:
-                                                logger.error(f"❌ Ошибка при рисовании текста '{text[:20]}...': {e}")
-                                                return 20
-                                        
-                                        # Заголовок "QR-код для оплаты"
-                                        title_text = "QR-код для оплаты"
-                                        current_y += draw_text_line(title_text, current_y, font_medium, 'black') + 20
-                                        
-                                        # Пополнение счета (очищаем от HTML)
-                                        deposit_text = clean_html_text(deposit_title) or "Пополнение счета"
-                                        current_y += draw_text_line(deposit_text, current_y, font_small, 'black') + 15
-                                        
-                                        # Сумма
-                                        amount_text = f"Сумма: {amount:.2f} сом"
-                                        current_y += draw_text_line(amount_text, current_y, font_info, 'black') + 10
-                                        
-                                        # Казино
-                                        casino_text = f"Казино: {casino_name}"
-                                        current_y += draw_text_line(casino_text, current_y, font_info, 'black') + 10
-                                        
-                                        # ID игрока
-                                        player_id_text = f"ID игрока: {data['player_id']}"
-                                        current_y += draw_text_line(player_id_text, current_y, font_info, 'black') + 10
-                                        
-                                        # Таймер
-                                        timer_text_display = f"Таймер: {timer_text}"
-                                        current_y += draw_text_line(timer_text_display, current_y, font_info, 'red') + 10
-                                        
-                                        # Инструкция
-                                        instruction_text = "После оплаты отправьте фото чека:"
-                                        current_y += draw_text_line(instruction_text, current_y, font_info, 'black') + 10
+                                        # НЕ добавляем детальную информацию на изображение - она будет только в caption
+                                        # Оставляем только QR-код, текст под ним и красную линию внизу
                                         
                                         # Красная линия внизу изображения (как на оригинале)
+                                        # Размещаем её после текста "В любом банке" с небольшим отступом
+                                        red_line_y = text_y3 + 50
                                         red_line_height = 5
-                                        draw.rectangle([0, img_height - red_line_height, img_width, img_height], fill='red', outline='red', width=0)
+                                        draw.rectangle([0, red_line_y, img_width, red_line_y + red_line_height], fill='red', outline='red', width=0)
                                         
                                         # Сохраняем в BytesIO
                                         qr_image = BytesIO()
