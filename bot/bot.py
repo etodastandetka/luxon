@@ -1181,6 +1181,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             
                             logger.info(f"📤 Отправляю сообщение с кнопками банков для пользователя {user_id}")
                             
+                            # Отправляем QR-код перед кнопками банков
+                            # Используем ссылку O!Money для QR-кода, если есть, иначе первую доступную
+                            omoney_url = bank_links.get('O!Money') or bank_links.get('omoney') or (list(bank_links.values())[0] if bank_links else None)
+                            if omoney_url:
+                                try:
+                                    qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={omoney_url}"
+                                    async with httpx.AsyncClient(timeout=10.0) as qr_client:
+                                        qr_response = await qr_client.get(qr_code_url)
+                                        if qr_response.status_code == 200:
+                                            qr_image = BytesIO(qr_response.content)
+                                            qr_image.name = 'qr_code.png'
+                                            await update.message.reply_photo(
+                                                photo=qr_image,
+                                                caption="📱 QR-код для оплаты",
+                                                parse_mode='HTML'
+                                            )
+                                            logger.info(f"✅ QR-код отправлен пользователю {user_id}")
+                                except Exception as e:
+                                    logger.warning(f"⚠️ Не удалось отправить QR-код: {e}")
+                            
                             # Отправляем сообщение с кнопками банков (заявка будет создана после отправки фото)
                             casino_name = get_casino_name(data.get('bookmaker', ''))
                             deposit_title = get_text('deposit_title')

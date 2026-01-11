@@ -989,6 +989,26 @@ function DepositStep3Content() {
         )}
       </section>
 
+      {/* QR-код для оплаты */}
+      {Object.keys(paymentUrls).length > 0 && (() => {
+        // Используем ссылку O!Money для QR-кода, если есть, иначе первую доступную
+        const omoneyUrl = paymentUrls['O!Money'] || paymentUrls['omoney'] || Object.values(paymentUrls)[0]
+        const qrCodeUrl = omoneyUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(omoneyUrl)}` : null
+        
+        return qrCodeUrl ? (
+          <section className="card space-y-3">
+            <div className="label text-center">QR-код для оплаты</div>
+            <div className="flex justify-center">
+              <img 
+                src={qrCodeUrl} 
+                alt="QR код для оплаты" 
+                className="w-64 h-64 rounded-lg border border-white/20"
+              />
+            </div>
+          </section>
+        ) : null
+      })()}
+
       {/* Выбор банка */}
       <section className="card space-y-3">
         <div className="label">{t.selectBank}</div>
