@@ -1338,53 +1338,62 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         # Добавляем детальную информацию под QR-кодом
                                         current_y = text_y3 + 50
                                         
-                                        # Заголовок "QR-код для оплаты" (без эмодзи для совместимости)
+                                        # Добавляем детальную информацию под QR-кодом
+                                        # Используем простой способ - рисуем каждую строку отдельно с проверкой
+                                        
+                                        def draw_text_line(text, y_pos, font_obj, color='black'):
+                                            """Рисует одну строку текста с центрированием"""
+                                            try:
+                                                # Проверяем что шрифт поддерживает текст
+                                                bbox = draw.textbbox((0, 0), text, font=font_obj)
+                                                text_width = bbox[2] - bbox[0]
+                                                text_height = bbox[3] - bbox[1]
+                                                
+                                                # Если ширина 0, значит шрифт не поддерживает символы
+                                                if text_width == 0:
+                                                    logger.warning(f"⚠️ Шрифт не поддерживает текст: '{text[:20]}...'")
+                                                    # Рисуем прямоугольник как индикатор
+                                                    draw.rectangle([img_width//2 - 50, y_pos, img_width//2 + 50, y_pos + 15], fill='gray', outline='black')
+                                                    return text_height if text_height > 0 else 20
+                                                
+                                                text_x = (img_width - text_width) // 2
+                                                draw.text((text_x, y_pos), text, fill=color, font=font_obj)
+                                                
+                                                # Логируем для отладки
+                                                logger.debug(f"✅ Текст нарисован: '{text[:30]}...' на позиции y={y_pos}, размер={text_width}x{text_height}")
+                                                
+                                                return text_height
+                                            except Exception as e:
+                                                logger.error(f"❌ Ошибка при рисовании текста '{text[:20]}...': {e}")
+                                                return 20
+                                        
+                                        # Заголовок "QR-код для оплаты"
                                         title_text = "QR-код для оплаты"
-                                        bbox_title = draw.textbbox((0, 0), title_text, font=font_medium)
-                                        text_x_title = (img_width - (bbox_title[2] - bbox_title[0])) // 2
-                                        draw.text((text_x_title, current_y), title_text, fill='black', font=font_medium)
-                                        current_y += 40
+                                        current_y += draw_text_line(title_text, current_y, font_medium, 'black') + 15
                                         
                                         # Пополнение счета
                                         deposit_text = deposit_title
-                                        bbox_dep = draw.textbbox((0, 0), deposit_text, font=font_small)
-                                        text_x_dep = (img_width - (bbox_dep[2] - bbox_dep[0])) // 2
-                                        draw.text((text_x_dep, current_y), deposit_text, fill='black', font=font_small)
-                                        current_y += 35
+                                        current_y += draw_text_line(deposit_text, current_y, font_small, 'black') + 12
                                         
-                                        # Сумма (без эмодзи)
+                                        # Сумма
                                         amount_text = f"Сумма: {amount:.2f} сом"
-                                        bbox_amount = draw.textbbox((0, 0), amount_text, font=font_info)
-                                        text_x_amount = (img_width - (bbox_amount[2] - bbox_amount[0])) // 2
-                                        draw.text((text_x_amount, current_y), amount_text, fill='black', font=font_info)
-                                        current_y += 30
+                                        current_y += draw_text_line(amount_text, current_y, font_info, 'black') + 10
                                         
-                                        # Казино (без эмодзи)
+                                        # Казино
                                         casino_text = f"Казино: {casino_name}"
-                                        bbox_casino = draw.textbbox((0, 0), casino_text, font=font_info)
-                                        text_x_casino = (img_width - (bbox_casino[2] - bbox_casino[0])) // 2
-                                        draw.text((text_x_casino, current_y), casino_text, fill='black', font=font_info)
-                                        current_y += 30
+                                        current_y += draw_text_line(casino_text, current_y, font_info, 'black') + 10
                                         
-                                        # ID игрока (без эмодзи)
+                                        # ID игрока
                                         player_id_text = f"ID игрока: {data['player_id']}"
-                                        bbox_player = draw.textbbox((0, 0), player_id_text, font=font_info)
-                                        text_x_player = (img_width - (bbox_player[2] - bbox_player[0])) // 2
-                                        draw.text((text_x_player, current_y), player_id_text, fill='black', font=font_info)
-                                        current_y += 30
+                                        current_y += draw_text_line(player_id_text, current_y, font_info, 'black') + 10
                                         
-                                        # Таймер (без эмодзи)
+                                        # Таймер
                                         timer_text_display = f"Таймер: {timer_text}"
-                                        bbox_timer = draw.textbbox((0, 0), timer_text_display, font=font_info)
-                                        text_x_timer = (img_width - (bbox_timer[2] - bbox_timer[0])) // 2
-                                        draw.text((text_x_timer, current_y), timer_text_display, fill='red', font=font_info)
-                                        current_y += 30
+                                        current_y += draw_text_line(timer_text_display, current_y, font_info, 'red') + 10
                                         
                                         # Инструкция
                                         instruction_text = "После оплаты отправьте фото чека:"
-                                        bbox_inst = draw.textbbox((0, 0), instruction_text, font=font_info)
-                                        text_x_inst = (img_width - (bbox_inst[2] - bbox_inst[0])) // 2
-                                        draw.text((text_x_inst, current_y), instruction_text, fill='black', font=font_info)
+                                        current_y += draw_text_line(instruction_text, current_y, font_info, 'black') + 10
                                         
                                         # Проверяем что текст действительно добавлен (тестовая отрисовка)
                                         # Рисуем тестовый прямоугольник внизу чтобы убедиться что draw работает
