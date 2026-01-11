@@ -1269,11 +1269,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Fallback на стандартный шрифт (НЕ поддерживает кириллицу!)
                                         if not font_path:
-                                            font_large = ImageFont.load_default()
-                                            font_medium = ImageFont.load_default()
-                                            font_small = ImageFont.load_default()
-                                            font_info = ImageFont.load_default()
-                                            logger.error("❌ Шрифт не найден! Текст может не отображаться (стандартный шрифт не поддерживает кириллицу)")
+                                            # Пробуем использовать встроенный шрифт PIL с большим размером
+                                            try:
+                                                # Пробуем загрузить любой доступный шрифт из системы
+                                                import subprocess
+                                                result = subprocess.run(['fc-list'], capture_output=True, text=True, timeout=2)
+                                                if result.returncode == 0 and result.stdout:
+                                                    # Парсим первый найденный шрифт
+                                                    for line in result.stdout.split('\n')[:5]:
+                                                        if '.ttf' in line or '.otf' in line:
+                                                            try:
+                                                                font_file = line.split(':')[0].strip()
+                                                                if os.path.exists(font_file):
+                                                                    font_large = ImageFont.truetype(font_file, 32)
+                                                                    font_medium = ImageFont.truetype(font_file, 24)
+                                                                    font_small = ImageFont.truetype(font_file, 20)
+                                                                    font_info = ImageFont.truetype(font_file, 16)
+                                                                    logger.info(f"✅ Найден шрифт через fc-list: {font_file}")
+                                                                    font_path = font_file
+                                                                    break
+                                                            except:
+                                                                continue
+                                            except:
+                                                pass
+                                            
+                                            if not font_path:
+                                                font_large = ImageFont.load_default()
+                                                font_medium = ImageFont.load_default()
+                                                font_small = ImageFont.load_default()
+                                                font_info = ImageFont.load_default()
+                                                logger.error("❌ Шрифт не найден! Текст может не отображаться (стандартный шрифт не поддерживает кириллицу)")
+                                                logger.error("💡 Установите шрифты: sudo apt-get install fonts-dejavu fonts-liberation")
                                         
                                         # Текст поверх QR-кода (диагонально)
                                         text_overlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
@@ -1360,6 +1386,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         text_x_inst = (img_width - (bbox_inst[2] - bbox_inst[0])) // 2
                                         draw.text((text_x_inst, current_y), instruction_text, fill='black', font=font_info)
                                         
+                                        # Проверяем что текст действительно добавлен (тестовая отрисовка)
+                                        # Рисуем тестовый прямоугольник внизу чтобы убедиться что draw работает
+                                        test_rect_y = img_height - 20
+                                        draw.rectangle([10, test_rect_y, img_width - 10, img_height - 5], fill='red', outline='black', width=2)
+                                        
                                         # Сохраняем в BytesIO
                                         qr_image = BytesIO()
                                         img.save(qr_image, format='PNG')
@@ -1367,7 +1398,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         qr_image.name = 'qr_code.png'
                                         
                                         # Логируем для отладки
-                                        logger.info(f"✅ QR-код сгенерирован: размер {img_width}x{img_height}, текст добавлен")
+                                        logger.info(f"✅ QR-код сгенерирован: размер {img_width}x{img_height}, шрифт: {font_path or 'default'}, текст добавлен")
                                     else:
                                         # Fallback на онлайн API если библиотеки нет
                                         qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={quote(omoney_url, safe='')}"
