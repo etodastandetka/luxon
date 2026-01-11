@@ -110,8 +110,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return pathname.startsWith(href)
   }
 
-  // Скрываем нижнее меню на странице чата
-  const isChatPage = pathname?.includes('/chat')
+  // Скрываем нижнее меню на странице чата с пользователем (но не на странице чата операторов)
+  const isChatPage = pathname?.includes('/users/') && pathname?.includes('/chat')
 
   return (
     <div className="h-screen bg-gradient-to-b from-green-950 to-green-900 flex justify-center items-center overflow-hidden">

@@ -1,224 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, createApiResponse } from '@/lib/api-helpers'
+import { requireAuth, createApiResponse, getAuthUser } from '@/lib/api-helpers'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-// Получение списка пользователей с сообщениями для операторов
+// Получение сообщений между операторами
 export async function GET(request: NextRequest) {
   try {
     requireAuth(request)
+    
+    const authUser = getAuthUser(request)
+    if (!authUser) {
+      return NextResponse.json(
+        createApiResponse(null, 'Unauthorized'),
+        { status: 401 }
+      )
+    }
 
     const { searchParams } = new URL(request.url)
-    const channel = searchParams.get('channel') || 'bot'
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const channel = 'operator' // Всегда используем channel='operator' для чата операторов
 
-    // Получаем последние сообщения от пользователей (direction='in')
-    // Берем больше сообщений, чтобы потом сгруппировать по userId
-    let messages
+    // Получаем сообщения из чата операторов
+    let messages: any[] = []
     try {
       messages = await prisma.chatMessage.findMany({
         where: { 
-          direction: 'in',
           channel,
           isDeleted: false,
-          NOT: [
-            { messageText: { startsWith: '/' } }
-          ]
         },
-        select: { userId: true },
+        include: {
+          replyTo: {
+            select: {
+              id: true,
+              userId: true,
+              messageText: true,
+              messageType: true,
+              mediaUrl: true,
+              direction: true,
+              isDeleted: true,
+            }
+          }
+        },
         orderBy: { createdAt: 'desc' },
-        take: 500, // Берем больше, чтобы потом отфильтровать уникальные
+        take: Math.min(limit, 200),
       })
     } catch (error: any) {
+      // Если колонка channel не существует, возвращаем пустой массив
       if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
-        messages = await prisma.chatMessage.findMany({
-          where: { 
-            direction: 'in',
-            isDeleted: false,
-            NOT: [
-              { messageText: { startsWith: '/' } }
-            ]
-          },
-          select: { userId: true },
-          orderBy: { createdAt: 'desc' },
-          take: 500,
-        })
+        console.warn('⚠️ Channel column not found, returning empty messages')
+        messages = []
       } else {
         throw error
       }
     }
 
-    // Получаем уникальные userId (сохраняем порядок по времени последнего сообщения)
-    const userIds: bigint[] = []
-    const seenUserIds = new Set<string>()
-    for (const message of messages) {
-      const userIdStr = message.userId.toString()
-      if (!seenUserIds.has(userIdStr)) {
-        seenUserIds.add(userIdStr)
-        userIds.push(message.userId)
+    // Получаем информацию об админах для сообщений
+    const adminIds = [...new Set(messages.map(m => Number(m.userId.toString())))]
+    const admins = await prisma.adminUser.findMany({
+      where: {
+        id: { in: adminIds }
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
       }
-    }
-
-    // Получаем информацию о пользователях и последние сообщения
-    const usersWithMessages = await Promise.all(
-      userIds.map(async (userId) => {
-        // Получаем информацию о пользователе
-        const user = await prisma.botUser.findUnique({
-          where: { userId },
-          select: {
-            userId: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-          }
-        })
-
-        // Получаем последнее сообщение от пользователя
-        let lastMessage
-        try {
-          lastMessage = await prisma.chatMessage.findFirst({
-            where: {
-              userId,
-              direction: 'in',
-              channel,
-              isDeleted: false,
-              NOT: [
-                { messageText: { startsWith: '/' } }
-              ]
-            },
-            include: {
-              replyTo: {
-                select: {
-                  id: true,
-                  userId: true,
-                  messageText: true,
-                  messageType: true,
-                  mediaUrl: true,
-                  direction: true,
-                  isDeleted: true,
-                }
-              }
-            },
-            orderBy: { createdAt: 'desc' },
-          })
-        } catch (error: any) {
-          if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
-            lastMessage = await prisma.chatMessage.findFirst({
-              where: {
-                userId,
-                direction: 'in',
-                isDeleted: false,
-                NOT: [
-                  { messageText: { startsWith: '/' } }
-                ]
-              },
-              include: {
-                replyTo: {
-                  select: {
-                    id: true,
-                    userId: true,
-                    messageText: true,
-                    messageType: true,
-                    mediaUrl: true,
-                    direction: true,
-                    isDeleted: true,
-                  }
-                }
-              },
-              orderBy: { createdAt: 'desc' },
-            })
-          }
-        }
-
-        // Получаем последнее исходящее сообщение для подсчета непрочитанных
-        let lastOutgoing
-        try {
-          lastOutgoing = await prisma.chatMessage.findFirst({
-            where: {
-              userId,
-              direction: 'out',
-              channel,
-            },
-            orderBy: { createdAt: 'desc' },
-            select: { createdAt: true }
-          })
-        } catch (error: any) {
-          if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
-            lastOutgoing = await prisma.chatMessage.findFirst({
-              where: {
-                userId,
-                direction: 'out',
-              },
-              orderBy: { createdAt: 'desc' },
-              select: { createdAt: true }
-            })
-          }
-        }
-
-        // Подсчитываем непрочитанные сообщения
-        let unreadCount = 0
-        if (lastOutgoing?.createdAt && lastMessage) {
-          try {
-            unreadCount = await prisma.chatMessage.count({
-              where: {
-                userId,
-                direction: 'in',
-                channel,
-                isDeleted: false,
-                createdAt: {
-                  gt: lastOutgoing.createdAt
-                }
-              }
-            })
-          } catch (error: any) {
-            if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
-              unreadCount = await prisma.chatMessage.count({
-                where: {
-                  userId,
-                  direction: 'in',
-                  isDeleted: false,
-                  createdAt: {
-                    gt: lastOutgoing.createdAt
-                  }
-                }
-              })
-            }
-          }
-        } else if (lastMessage) {
-          // Если нет исходящих сообщений, но есть входящие - все непрочитанные
-          unreadCount = 1
-        }
-
-        return {
-          userId: userId.toString(),
-          username: user?.username || null,
-          firstName: user?.firstName || null,
-          lastName: user?.lastName || null,
-          lastMessage: lastMessage ? {
-            ...lastMessage,
-            userId: lastMessage.userId.toString(),
-            telegramMessageId: lastMessage.telegramMessageId?.toString(),
-            replyTo: lastMessage.replyTo ? {
-              ...lastMessage.replyTo,
-              userId: lastMessage.replyTo.userId?.toString(),
-            } : null,
-          } : null,
-          unreadCount,
-        }
-      })
-    )
-
-    // Сортируем по времени последнего сообщения
-    usersWithMessages.sort((a, b) => {
-      if (!a.lastMessage && !b.lastMessage) return 0
-      if (!a.lastMessage) return 1
-      if (!b.lastMessage) return -1
-      return new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime()
     })
+
+    const adminMap = new Map(admins.map(a => [a.id, a]))
+
+    // Форматируем сообщения
+    const formattedMessages = messages.map(msg => ({
+      ...msg,
+      userId: msg.userId.toString(),
+      telegramMessageId: msg.telegramMessageId?.toString(),
+      admin: adminMap.get(Number(msg.userId.toString())) || null,
+      replyTo: msg.replyTo ? {
+        ...msg.replyTo,
+        userId: msg.replyTo.userId?.toString(),
+      } : null,
+    }))
+
+    // Разворачиваем, чтобы старые были первыми
+    formattedMessages.reverse()
 
     return NextResponse.json(
       createApiResponse({
-        users: usersWithMessages,
+        messages: formattedMessages,
       })
     )
   } catch (error: any) {
@@ -230,3 +99,132 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Отправка сообщения в чат операторов
+export async function POST(request: NextRequest) {
+  try {
+    requireAuth(request)
+    
+    const authUser = getAuthUser(request)
+    if (!authUser) {
+      return NextResponse.json(
+        createApiResponse(null, 'Unauthorized'),
+        { status: 401 }
+      )
+    }
+
+    const contentType = request.headers.get('content-type') || ''
+    const channel = 'operator'
+
+    let messageText: string | null = null
+    let file: File | null = null
+    let fileType: string | null = null
+    let mediaUrl: string | null = null
+    let messageType = 'text'
+    let replyToId: number | null = null
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData()
+      file = formData.get('file') as File | null
+      messageText = (formData.get('message') as string | null) || null
+      fileType = (formData.get('fileType') as string | null) || null
+      const replyToIdStr = formData.get('replyToId') as string | null
+      if (replyToIdStr) {
+        replyToId = parseInt(replyToIdStr)
+      }
+
+      if (!messageText?.trim() && !file) {
+        return NextResponse.json(
+          createApiResponse(null, 'Message text or file is required'),
+          { status: 400 }
+        )
+      }
+
+      if (file) {
+        // Сохраняем файл локально
+        const fs = await import('fs')
+        const path = await import('path')
+        const { randomUUID } = await import('crypto')
+        
+        const uploadDir = path.join(process.cwd(), 'tmp', 'operator_chat_uploads')
+        await fs.promises.mkdir(uploadDir, { recursive: true })
+        const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.')) : ''
+        const fileId = `${Date.now()}-${randomUUID()}${ext}`
+        const dest = path.join(uploadDir, fileId)
+        const buffer = Buffer.from(await file.arrayBuffer())
+        await fs.promises.writeFile(dest, buffer)
+        
+        mediaUrl = `/api/operator-chat/file/${fileId}`
+        const mime = fileType || file.type || ''
+        messageType = mime.startsWith('image/')
+          ? 'photo'
+          : mime.startsWith('video/')
+          ? 'video'
+          : mime.startsWith('audio/')
+          ? 'audio'
+          : 'document'
+      }
+    } else {
+      const body = await request.json()
+      messageText = body.message || null
+      replyToId = body.replyToId || null
+
+      if (!messageText?.trim()) {
+        return NextResponse.json(
+          createApiResponse(null, 'Message text is required'),
+          { status: 400 }
+        )
+      }
+    }
+
+    // Сохраняем сообщение в БД
+    // Используем userId = adminId (конвертированный в BigInt)
+    const adminId = BigInt(authUser.userId)
+    
+    let message
+    try {
+      message = await prisma.chatMessage.create({
+        data: {
+          userId: adminId,
+          messageText: messageText,
+          messageType,
+          direction: 'out', // Все сообщения операторов - исходящие
+          telegramMessageId: null,
+          mediaUrl: mediaUrl || null,
+          channel,
+          replyToId: replyToId || undefined,
+        },
+      })
+    } catch (error: any) {
+      if (error.code === 'P2022' && error.meta?.column === 'chat_messages.channel') {
+        console.warn('⚠️ Channel column not found, creating message without channel field')
+        message = await prisma.chatMessage.create({
+          data: {
+            userId: adminId,
+            messageText: messageText,
+            messageType,
+            direction: 'out',
+            telegramMessageId: null,
+            mediaUrl: mediaUrl || null,
+            replyToId: replyToId || undefined,
+          } as any,
+        })
+      } else {
+        throw error
+      }
+    }
+
+    return NextResponse.json(
+      createApiResponse({
+        success: true,
+        messageId: message.id,
+        mediaUrl: mediaUrl || null,
+      })
+    )
+  } catch (error: any) {
+    console.error('Operator chat send API error:', error)
+    return NextResponse.json(
+      createApiResponse(null, error.message || 'Failed to send message'),
+      { status: 500 }
+    )
+  }
+}
