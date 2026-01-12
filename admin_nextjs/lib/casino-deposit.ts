@@ -10,6 +10,8 @@ interface CasinoConfig {
   api_key?: string
   secret?: string
   cashpoint_id?: string | number
+  brand_id?: number
+  x_project?: string
 }
 
 // Конфигурация mob-cash API
@@ -278,26 +280,12 @@ export async function depositMostbetAPI(
       message: 'Missing required Mostbet API credentials. Please configure API settings in database or environment variables.',
     }
   }
-  
-  // Очищаем secret от возможных пробелов и невидимых символов
-  const cleanSecret = secret.trim()
-  if (cleanSecret !== secret) {
-    console.warn(`[Mostbet Deposit] ⚠️ Secret contained whitespace, cleaned`)
-  }
-  
-  // Логируем конфигурацию (без полного secret)
-  console.log(`[Mostbet Deposit] Configuration:`, {
-    apiKey: apiKey.substring(0, 30) + '...',
-    secretLength: cleanSecret.length,
-    secretPreview: cleanSecret.substring(0, 10) + '...',
-    cashpointId,
-  })
 
   try {
     // userId здесь - это ID казино (accountId), не Telegram ID
     console.log(`[Mostbet Deposit] Casino Player ID: ${userId}, Amount: ${amount}`)
     
-    // Получаем timestamp в UTC в формате YYYY-MM-DD HH:MM:SS (UTC+0)
+    // Получаем timestamp в формате YYYY-MM-DD HH:MM:SS в UTC+0 (как требует документация)
     const now = new Date()
     const year = now.getUTCFullYear()
     const month = String(now.getUTCMonth() + 1).padStart(2, '0')
@@ -308,38 +296,15 @@ export async function depositMostbetAPI(
     const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 
     // Формируем путь и тело запроса
-    // В URL всегда должны быть цифры (131864), без буквы C
-    // Извлекаем числовую часть из cashpoint_id (например "C131864" -> "131864")
-    let cashpointIdForUrl = String(cashpointId)
-    const numericMatch = cashpointIdForUrl.match(/\d+/)
-    if (numericMatch) {
-      cashpointIdForUrl = numericMatch[0]
-      console.log(`[Mostbet Deposit] Using numeric cashpoint_id in URL: ${cashpointId} -> ${cashpointIdForUrl}`)
-    }
-    
-    // Path для подписи и URL используем с числовым cashpoint_id (131864)
-    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/deposit`
-    const url = `${baseUrl}/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/deposit`
-    
+    const cashpointIdStr = String(cashpointId)
+    const path = `/mbc/gateway/v1/api/cashpoint/${cashpointIdStr}/player/deposit`
     const requestBodyData = {
-      brandId: 1, // Всегда 1 для Mostbet согласно документации
+      brandId: config.brand_id || 1, // По умолчанию Mostbet
       playerId: String(userId), // ID игрока в казино
       amount: amount,
-      currency: 'KGS', // Валюта в сомах (киргизских сомах)
+      currency: 'KGS', // KGS для Киргизии
     }
-    // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
-    // Используем JSON.stringify без пробелов (как в Python json.dumps(..., separators=(',', ':')))
-    // JSON.stringify по умолчанию добавляет пробелы, поэтому используем replace для их удаления
-    let requestBody = JSON.stringify(requestBodyData).replace(/\s+/g, '')
-    
-    // Дополнительная проверка и очистка на случай, если остались пробелы
-    if (requestBody.includes(' ') || requestBody.includes('\n') || requestBody.includes('\r') || requestBody.includes('\t')) {
-      console.warn(`[Mostbet Deposit] ⚠️ Request body contains whitespace! Removing...`)
-      const originalBody = requestBody
-      requestBody = requestBody.replace(/\s+/g, '')
-      console.log(`[Mostbet Deposit] Original length: ${originalBody.length}, Cleaned length: ${requestBody.length}`)
-      console.log(`[Mostbet Deposit] Original: "${originalBody.substring(0, 100)}...", Cleaned: "${requestBody.substring(0, 100)}..."`)
-    }
+    const requestBody = JSON.stringify(requestBodyData)
 
     // API key может быть с префиксом или без
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
@@ -347,51 +312,26 @@ export async function depositMostbetAPI(
       : `api-key:${apiKey}`
 
     // Генерируем подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
-    // Согласно документации: конкатенируем без разделителей
     const signatureString = `${apiKeyFormatted}${path}${requestBody}${timestamp}`
-    
-    console.log(`[Mostbet Deposit] Signature string components:`, {
-      apiKeyFormatted: apiKeyFormatted.substring(0, 50) + '...',
-      path,
-      requestBody,
-      timestamp,
-      signatureStringLength: signatureString.length,
-      signatureStringPreview: signatureString.substring(0, 100) + '...'
-    })
-    
-    // Используем SHA3-256 согласно документации Mostbet API
-    // В Node.js 18+ поддерживается sha3-256, но может называться по-разному
+    // Используем SHA3-256 (Node.js 10+ поддерживает)
     let signature: string
     try {
-      // Пробуем разные варианты названия алгоритма
-      const algorithms = ['sha3-256', 'SHA3-256', 'sha3_256']
-      let hmac: any = null
-      
-      for (const algo of algorithms) {
-        try {
-          hmac = crypto.createHmac(algo, cleanSecret)
-          break
-        } catch (e) {
-          // Пробуем следующий вариант
-          continue
-        }
-      }
-      
-      if (!hmac) {
-        throw new Error('SHA3-256 not supported')
-      }
-      
-      signature = hmac.update(signatureString).digest('hex')
-      console.log(`[Mostbet Deposit] Using SHA3-256 for signature`)
-    } catch (e: any) {
-      // Если SHA3-256 не поддерживается, выводим ошибку
-      console.error(`❌ SHA3-256 not available: ${e.message}`)
-      console.error(`❌ Mostbet API requires SHA3-256. Please use Node.js 18+ or install crypto-js library.`)
-      // Не используем SHA256 fallback - это не будет работать с реальным API
-      throw new Error('SHA3-256 is required for Mostbet API but not available')
+      signature = crypto
+        .createHmac('sha3-256', secret)
+        .update(signatureString)
+        .digest('hex')
+    } catch (e) {
+      // Fallback на SHA256 если SHA3-256 не поддерживается
+      console.warn('[Mostbet Deposit] SHA3-256 not supported, using SHA256')
+      signature = crypto
+        .createHmac('sha256', secret)
+        .update(signatureString)
+        .digest('hex')
     }
 
-    console.log(`[Mostbet Deposit] URL: ${url}, Path for signature: ${path}, Request body:`, requestBodyData)
+    const url = `${baseUrl}${path}`
+    
+    console.log(`[Mostbet Deposit] URL: ${url}, Request body:`, requestBodyData)
 
     const response = await fetch(url, {
       method: 'POST',
@@ -399,7 +339,7 @@ export async function depositMostbetAPI(
         'X-Api-Key': apiKeyFormatted,
         'X-Timestamp': timestamp,
         'X-Signature': signature,
-        'X-Project': 'MBC',
+        'X-Project': config.x_project || 'MBC',
         'Content-Type': 'application/json',
         'Accept': '*/*',
       },
@@ -420,69 +360,15 @@ export async function depositMostbetAPI(
     }
 
     console.log(`[Mostbet Deposit] Response status: ${response.status}, Data:`, data)
-    
-    // Детальное логирование при ошибке 401
-    if (response.status === 401) {
-      console.error(`[Mostbet Deposit] ❌ 401 Unauthorized - Authentication failed`)
-      console.error(`[Mostbet Deposit] Request details:`, {
-        url,
-        apiKey: apiKeyFormatted.substring(0, 50) + '...',
-        timestamp,
-        signature: signature.substring(0, 20) + '...',
-        requestBody,
-        headers: {
-          'X-Api-Key': apiKeyFormatted.substring(0, 50) + '...',
-          'X-Timestamp': timestamp,
-          'X-Signature': signature.substring(0, 20) + '...',
-          'X-Project': 'MBC',
-        }
-      })
-      console.error(`[Mostbet Deposit] Signature calculation details:`, {
-        signatureString: signatureString.substring(0, 200) + '...',
-        signatureStringLength: signatureString.length,
-        secretLength: cleanSecret.length,
-        secretPreview: cleanSecret.substring(0, 10) + '...',
-        fullSignatureString: signatureString, // Полная строка для отладки
-      })
-      console.error(`[Mostbet Deposit] API response:`, data)
-    }
 
     if (response.ok) {
-      // Согласно документации, статус может быть "NEW", "ACCEPTED", "PROCESSING", "COMPLETED" и т.д.
-      // Если статус "NEW_ERROR" или "PROCESSING_ERROR", это ошибка
-      if (data.status === 'NEW_ERROR' || data.status === 'PROCESSING_ERROR') {
-        return {
-          success: false,
-          message: data.message || data.error || data.Message || 'Transaction creation failed',
-          data,
-        }
-      }
-      
-      // Если статус "COMPLETED", операция успешно завершена
-      // Если статус "NEW", "ACCEPTED", "PROCESSING" - транзакция создана и обрабатывается
       return {
         success: true,
-        message: data.status === 'COMPLETED' 
-          ? 'Balance deposited successfully' 
-          : `Transaction created (status: ${data.status})`,
+        message: 'Balance deposited successfully',
         data,
       }
     }
 
-    // Для ошибки 401 возвращаем более детальное сообщение
-    if (response.status === 401) {
-      const errorMessage = data.message || data.error || data.Message || 'Unauthorized - проверьте API ключи и подпись'
-      return {
-        success: false,
-        message: `Ошибка аутентификации (401): ${errorMessage}. Проверьте правильность API ключа, Secret и формирование подписи.`,
-        data: {
-          ...data,
-          status: 'UNAUTHORIZED',
-          traceId: data.traceId || data.trace_id,
-        },
-      }
-    }
-    
     return {
       success: false,
       message: data.message || data.error || data.Message || `Failed to deposit balance (Status: ${response.status})`,
