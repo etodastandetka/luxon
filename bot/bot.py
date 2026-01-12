@@ -10,6 +10,7 @@ import httpx
 import base64
 import random
 import os
+import tempfile
 from io import BytesIO
 from urllib.parse import quote
 try:
@@ -19,7 +20,6 @@ try:
 except ImportError:
     QRCODE_AVAILABLE = False
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from telegram.files import BufferedInputFile
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
 from security import validate_input, sanitize_input
@@ -1614,17 +1614,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     )
                                     
                                     if qr_image:
-                                        # Используем BufferedInputFile для отправки фото из BytesIO
-                                        photo_file = BufferedInputFile(qr_image.getvalue(), filename='qr_code.png')
-                                        timer_message = await update.message.reply_photo(
-                                            photo=photo_file,
-                                            caption=caption_text,
-                                            reply_markup=reply_markup,
-                                            parse_mode='HTML'
-                                        )
-                                        # Сохраняем флаг что это фото-сообщение
-                                        data['is_photo_message'] = True
-                                        logger.info(f"✅ QR-код отправлен пользователю {user_id}")
+                                        # Сохраняем во временный файл и отправляем
+                                        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+                                            tmp_file.write(qr_image.getvalue())
+                                            tmp_file_path = tmp_file.name
+                                        
+                                        try:
+                                            timer_message = await update.message.reply_photo(
+                                                photo=tmp_file_path,
+                                                caption=caption_text,
+                                                reply_markup=reply_markup,
+                                                parse_mode='HTML'
+                                            )
+                                            # Сохраняем флаг что это фото-сообщение
+                                            data['is_photo_message'] = True
+                                            logger.info(f"✅ QR-код отправлен пользователю {user_id}")
+                                        finally:
+                                            # Удаляем временный файл
+                                            try:
+                                                os.unlink(tmp_file_path)
+                                            except Exception as e:
+                                                logger.warning(f"⚠️ Не удалось удалить временный файл: {e}")
                                     else:
                                         # Если QR-код не был сгенерирован, отправляем текстовое сообщение
                                         timer_message = await update.message.reply_text(
