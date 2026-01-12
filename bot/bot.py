@@ -1397,7 +1397,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Увеличиваем размер шрифта для текста поверх QR-кода (более заметный, чтобы закрывал QR-код)
                                         try:
-                                            font_overlay = ImageFont.truetype(font_path, 110) if font_path else font_large  # Увеличен до 110 для лучшего перекрытия QR-кода
+                                            font_overlay = ImageFont.truetype(font_path, 85) if font_path else font_large  # Оптимальный размер для перекрытия QR-кода
                                         except:
                                             font_overlay = font_large
                                         
