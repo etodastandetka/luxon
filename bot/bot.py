@@ -1207,7 +1207,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         qr = qrcode.QRCode(
                                             version=1,
                                             error_correction=qrcode.constants.ERROR_CORRECT_L,
-                                            box_size=30,  # Оптимальный размер модулей QR-кода
+                                            box_size=28,  # Оптимальный размер модулей QR-кода
                                             border=4,
                                         )
                                         qr.add_data(omoney_url)
@@ -1217,8 +1217,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         qr_img = qr.make_image(fill_color="black", back_color="white")
                                         
                                         # Создаем новое изображение с белым фоном
-                                        img_width = 1000  # Увеличенная ширина для размещения очень большого QR-кода
-                                        img_height = 1200  # Увеличенная высота изображения
+                                        img_width = 900  # Оптимальная ширина для QR-кода
+                                        img_height = 1200  # Временная высота, будет обрезана после красной линии
                                         img = Image.new('RGBA', (img_width, img_height), (255, 255, 255, 255))  # RGBA для поддержки прозрачности водяных знаков
                                         
                                         # Добавляем водяной знак "LUXON" на фон (полупрозрачный серый)
@@ -1305,7 +1305,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 logger.debug(f"Не удалось добавить fallback водяной знак: {e2}")
                                         
                                         # Вставляем QR-код в центр (с отступом сверху, увеличенный размер)
-                                        qr_size = 700  # Оптимальный размер QR-кода
+                                        qr_size = 780  # Увеличенный размер QR-кода как на втором фото
                                         qr_img_resized = qr_img.resize((qr_size, qr_size))
                                         qr_x = (img_width - qr_size) // 2
                                         qr_y = 50
@@ -1494,6 +1494,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         red_line_height = 5
                                         draw.rectangle([0, red_line_y, img_width, red_line_y + red_line_height], fill='red', outline='red', width=0)
                                         
+                                        # Обрезаем изображение после красной линии, чтобы убрать пустое пространство внизу
+                                        bottom_crop = red_line_y + red_line_height + 20  # Небольшой отступ после красной линии
+                                        img = img.crop((0, 0, img_width, bottom_crop))
+                                        
                                         # Конвертируем обратно в RGB для сохранения (PNG поддерживает RGBA, но RGB более совместим)
                                         img = img.convert('RGB')
                                         
@@ -1508,7 +1512,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     else:
                                         # Fallback на онлайн API если библиотеки нет
                                         logger.warning("⚠️ Библиотека qrcode недоступна, используем онлайн API")
-                                        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=800x800&data={quote(omoney_url, safe='')}"
+                                        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=900x900&data={quote(omoney_url, safe='')}"
                                         async with httpx.AsyncClient(timeout=10.0) as qr_client:
                                             qr_response = await qr_client.get(qr_code_url)
                                             if qr_response.status_code == 200:
@@ -1525,7 +1529,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                                 img = Image.new('RGB', (img_width, img_height), 'white')
                                                 
                                                 # Вставляем QR-код
-                                                qr_size = 700  # Оптимальный размер QR-кода
+                                                qr_size = 780  # Увеличенный размер QR-кода как на втором фото
                                                 qr_img_resized = qr_img_online.resize((qr_size, qr_size))
                                                 qr_x = (img_width - qr_size) // 2
                                                 qr_y = 50
