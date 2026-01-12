@@ -503,6 +503,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if message_text and ("отменить заявку" in message_text.lower() or message_text.strip() == "❌ Отменить заявку"):
         logger.info(f"🛑 Пользователь {user_id} отменил заявку через Reply-клавиатуру")
         
+        # Удаляем сообщение с QR-кодом если оно есть
+        if user_id in user_states:
+            data = user_states[user_id].get('data', {})
+            if 'timer_message_id' in data and 'timer_chat_id' in data:
+                try:
+                    await context.bot.delete_message(
+                        chat_id=data['timer_chat_id'],
+                        message_id=data['timer_message_id']
+                    )
+                    logger.info(f"✅ Сообщение с QR-кодом удалено для пользователя {user_id} при отмене заявки")
+                except Exception as delete_error:
+                    logger.warning(f"⚠️ Не удалось удалить сообщение с QR-кодом для пользователя {user_id}: {delete_error}")
+        
         # Останавливаем таймер если он активен
         if user_id in active_timers:
             try:
