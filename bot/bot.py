@@ -1615,11 +1615,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     
                                     if qr_image:
                                         # Сохраняем во временный файл и отправляем
-                                        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-                                            tmp_file.write(qr_image.getvalue())
-                                            tmp_file_path = tmp_file.name
-                                        
+                                        tmp_file_path = None
                                         try:
+                                            # Создаем временный файл
+                                            qr_image.seek(0)  # Убеждаемся, что мы в начале
+                                            with tempfile.NamedTemporaryFile(delete=False, suffix='.png', mode='wb') as tmp_file:
+                                                tmp_file.write(qr_image.read())
+                                                tmp_file_path = tmp_file.name
+                                            
+                                            logger.info(f"📁 QR-код сохранен во временный файл: {tmp_file_path}, размер: {os.path.getsize(tmp_file_path)} байт")
+                                            
+                                            # Передаем путь к файлу - python-telegram-bot сам откроет файл
                                             timer_message = await update.message.reply_photo(
                                                 photo=tmp_file_path,
                                                 caption=caption_text,
@@ -1629,12 +1635,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                             # Сохраняем флаг что это фото-сообщение
                                             data['is_photo_message'] = True
                                             logger.info(f"✅ QR-код отправлен пользователю {user_id}")
+                                        except Exception as photo_error:
+                                            logger.error(f"❌ Ошибка при отправке QR-кода: {photo_error}", exc_info=True)
+                                            # В случае ошибки отправляем текстовое сообщение
+                                            timer_message = await update.message.reply_text(
+                                                caption_text,
+                                                reply_markup=reply_markup,
+                                                parse_mode='HTML'
+                                            )
+                                            data['is_photo_message'] = False
                                         finally:
-                                            # Удаляем временный файл
-                                            try:
-                                                os.unlink(tmp_file_path)
-                                            except Exception as e:
-                                                logger.warning(f"⚠️ Не удалось удалить временный файл: {e}")
+                                            # Удаляем временный файл после отправки
+                                            if tmp_file_path and os.path.exists(tmp_file_path):
+                                                try:
+                                                    os.unlink(tmp_file_path)
+                                                    logger.debug(f"🗑️ Временный файл удален: {tmp_file_path}")
+                                                except Exception as e:
+                                                    logger.warning(f"⚠️ Не удалось удалить временный файл {tmp_file_path}: {e}")
                                     else:
                                         # Если QR-код не был сгенерирован, отправляем текстовое сообщение
                                         timer_message = await update.message.reply_text(
