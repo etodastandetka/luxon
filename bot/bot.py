@@ -1132,10 +1132,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             timer_seconds = 300
                             logger.info(f"🔗 Получены ссылки для банков: {list(bank_links.keys())}")
                             
-                            # Форматируем таймер
+                            # Форматируем таймер (без ведущих нулей)
                             minutes = timer_seconds // 60
                             seconds = timer_seconds % 60
-                            timer_text = f"{minutes:02d}:{seconds:02d}"
+                            timer_text = f"{minutes}:{seconds:02d}"
                             
                             # Загружаем настройки если они устарели
                             if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
@@ -1610,12 +1610,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     casino_label = get_text('casino_label', casino_name=casino_name)
                                     
                                     caption_text = (
-                                        f"📱 QR-код для оплаты\n\n"
-                                        f"{deposit_title}\n\n"
-                                        f"💰 <b>Сумма:</b> {amount} сом\n"
-                                        f"{casino_label}\n"
-                                        f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
-                                        f"⏰ <b>Таймер: {timer_text}</b>\n\n"
+                                        f"💰 <b>Сумма:</b> {amount} KGS\n\n"
+                                        f"🆔 <b>ID:</b> {data['player_id']}\n\n"
+                                        f"⏳ <b>Время на оплату: {timer_text}</b>\n\n"
                                         f"‼️ <b>Оплатите точно до копеек!</b>\n"
                                         f"📸 Ждём фото чека после оплаты"
                                     )
@@ -1647,11 +1644,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     deposit_title = get_text('deposit_title')
                                     casino_label = get_text('casino_label', casino_name=casino_name)
                                     timer_message = await update.message.reply_text(
-                                        f"{deposit_title}\n\n"
-                                        f"💰 <b>Сумма:</b> {amount} сом\n"
-                                        f"{casino_label}\n"
-                                        f"🆔 <b>ID игрока:</b> {data['player_id']}\n\n"
-                                        f"⏰ <b>Таймер: {timer_text}</b>\n\n"
+                                        f"💰 <b>Сумма:</b> {amount} KGS\n\n"
+                                        f"🆔 <b>ID:</b> {data['player_id']}\n\n"
+                                        f"⏳ <b>Время на оплату: {timer_text}</b>\n\n"
                                         f"‼️ <b>Оплатите точно до копеек!</b>\n"
                                         f"📸 Ждём фото чека после оплаты",
                                         reply_markup=reply_markup,
@@ -2567,10 +2562,10 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
             elapsed = int(asyncio.get_event_loop().time() - start_time)
             remaining_seconds = max(0, total_seconds - elapsed)
             
-            # Форматируем таймер
+            # Форматируем таймер (без ведущих нулей)
             minutes = remaining_seconds // 60
             seconds = remaining_seconds % 60
-            timer_text = f"{minutes:02d}:{seconds:02d}"
+            timer_text = f"{minutes}:{seconds:02d}"
             
             # Обновляем сообщение
             try:
