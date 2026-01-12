@@ -19,7 +19,6 @@ try:
 except ImportError:
     QRCODE_AVAILABLE = False
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from telegram import BufferedInputFile
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
 from security import validate_input, sanitize_input
@@ -1193,7 +1192,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             # Отправляем QR-код перед кнопками банков
                             # Используем ссылку O!Money для QR-кода, если есть, иначе первую доступную
                             omoney_url = bank_links.get('O!Money') or bank_links.get('omoney') or (list(bank_links.values())[0] if bank_links else None)
-                            qr_image = None  # Инициализируем переменную перед блоком try
                             if omoney_url:
                                 try:
                                     # Логируем доступность библиотеки
@@ -1510,11 +1508,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         qr_image.seek(0)
                                         qr_image.name = 'qr_code.png'
                                         
-                                        # Получаем реальный размер изображения после обрезки
-                                        actual_width, actual_height = img.size
-                                        
                                         # Логируем для отладки
-                                        logger.info(f"✅ QR-код сгенерирован: размер {actual_width}x{actual_height}, шрифт: {font_path or 'default'}, текст добавлен, размер BytesIO: {len(qr_image.getvalue())} байт")
+                                        logger.info(f"✅ QR-код сгенерирован: размер {img_width}x{img_height}, шрифт: {font_path or 'default'}, текст добавлен")
                                     else:
                                         # Fallback на онлайн API если библиотеки нет
                                         logger.warning("⚠️ Библиотека qrcode недоступна, используем онлайн API")
@@ -1614,10 +1609,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     )
                                     
                                     if qr_image:
-                                        # Используем BufferedInputFile для отправки фото из BytesIO
-                                        photo_file = BufferedInputFile(qr_image.getvalue(), filename='qr_code.png')
                                         timer_message = await update.message.reply_photo(
-                                            photo=photo_file,
+                                            photo=qr_image,
                                             caption=caption_text,
                                             reply_markup=reply_markup,
                                             parse_mode='HTML'
