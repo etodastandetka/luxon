@@ -1439,7 +1439,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Поворачиваем текст по диагонали (около -40 градусов от нижнего левого к верхнему правому)
                                         rotation_angle = -40
-                                        rotated_text = temp_img.rotate(rotation_angle, expand=False, fillcolor=(0, 0, 0, 0))
+                                        # Используем LANCZOS для лучшего качества поворота текста
+                                        rotated_text = temp_img.rotate(rotation_angle, expand=False, fillcolor=(0, 0, 0, 0), resample=Image.Resampling.LANCZOS)
                                         
                                         # Вычисляем позицию для центрирования текста по диагонали QR-кода
                                         # Центр QR-кода
