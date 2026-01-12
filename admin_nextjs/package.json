@@ -27,6 +27,7 @@
     "add-1win-api-key": "tsx scripts/add-1win-api-key.ts",
     "check-1win-limit": "tsx scripts/check-1win-limit.ts",
     "add-1xbet-config": "tsx scripts/add-1xbet-config.ts",
+    "add-mostbet-config": "tsx scripts/add-mostbet-config.ts",
     "add-referral-balance": "tsx scripts/add-referral-balance.ts",
     "check-deposits-24h": "tsx scripts/check-deposits-24h.ts"
   },
