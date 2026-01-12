@@ -19,7 +19,7 @@ try:
 except ImportError:
     QRCODE_AVAILABLE = False
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from telegram import BufferedInputFile
+from telegram.files import BufferedInputFile
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
 from security import validate_input, sanitize_input
