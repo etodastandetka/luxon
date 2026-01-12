@@ -153,14 +153,20 @@ export async function POST(request: NextRequest) {
 
     // 🛡️ Проверка на SQL инъекции и XSS в строковых полях
     const stringFields = [
-      telegram_username, telegram_first_name, telegram_last_name,
-      bookmaker, finalBank, phone, account_id, site_code
-    ].filter(Boolean)
+      { name: 'telegram_username', value: telegram_username },
+      { name: 'telegram_first_name', value: telegram_first_name },
+      { name: 'telegram_last_name', value: telegram_last_name },
+      { name: 'bookmaker', value: bookmaker },
+      { name: 'bank', value: finalBank },
+      { name: 'phone', value: phone },
+      { name: 'account_id', value: account_id },
+      { name: 'site_code', value: site_code }
+    ].filter(f => f.value)
     
     for (const field of stringFields) {
-      if (typeof field === 'string') {
-        if (containsSQLInjection(field) || containsXSS(field)) {
-          console.warn(`🚫 Security threat detected from ${getClientIP(request)}: ${field.substring(0, 50)}`)
+      if (typeof field.value === 'string') {
+        if (containsSQLInjection(field.value) || containsXSS(field.value)) {
+          console.warn(`🚫 Security threat detected in field '${field.name}' from ${getClientIP(request)}: ${field.value.substring(0, 100)}`)
           return NextResponse.json(
             { error: 'Invalid input detected' },
             { status: 400 }

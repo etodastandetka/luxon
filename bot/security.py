@@ -140,14 +140,24 @@ def validate_input(text: Optional[str], max_length: int = 4096):
     if len(text) > max_length:
         return False, f"Text too long. Maximum length is {max_length} characters."
     
-    # Проверка на SQL инъекции
+    # Проверка на SQL инъекции (более точная - только реальные паттерны атак)
+    import re
     sql_patterns = [
-        r'\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION)\b',
-        r'--|#|/\*|\*/|;',
+        # SQL команды в контексте (только если это не часть обычного текста)
+        r'\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\s+.*(FROM|INTO|TABLE|DATABASE|WHERE)',
+        # Комментарии SQL в контексте (-- или # за которыми следует SQL-подобный текст)
+        r'(--|#)\s*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION)',
+        # Многострочные комментарии SQL
+        r'/\*.*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION).*\*/',
+        # SQL инъекции через OR/AND с двойными равенствами
+        r'\bOR\b.*=.*=',
+        r'\bAND\b.*=.*=',
+        # SQL инъекции через кавычки с OR/AND
         r"('|`|\").*(\bOR\b|\bAND\b).*('|`|\")",
+        # Попытки завершить SQL запрос точкой с запятой перед SQL командами
+        r';.*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION)',
     ]
     
-    import re
     for pattern in sql_patterns:
         if re.search(pattern, text, re.IGNORECASE):
             return False, "Invalid input detected."

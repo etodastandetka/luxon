@@ -90,6 +90,44 @@ def get_casino_name(bookmaker: str) -> str:
     bookmaker_lower = bookmaker.lower()
     return CASINO_NAMES.get(bookmaker_lower, bookmaker.upper())
 
+# Функция для получения пути к изображению ID казино
+def get_casino_id_image_path(bookmaker: str) -> str:
+    """Возвращает путь к изображению с примером ID для казино"""
+    if not bookmaker:
+        return None
+    bookmaker_lower = bookmaker.lower()
+    
+    # Путь относительно bot.py (bot/bot.py -> ../images/)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    images_dir = os.path.join(script_dir, '..', 'images')
+    
+    # Маппинг казино на имена файлов изображений (может быть в разных форматах)
+    image_map = {
+        '1xbet': '1xbet-id.jpg',
+        '1win': '1win-id.jpg',
+        'melbet': 'melbet-id.jpg',
+        'mostbet': 'mostbet-id.jpg',
+        'winwin': None,  # Нет изображения
+        '888starz': None  # Нет изображения
+    }
+    
+    # Сначала пробуем найти файл из маппинга
+    image_filename = image_map.get(bookmaker_lower)
+    if image_filename:
+        image_path = os.path.join(images_dir, image_filename)
+        if os.path.exists(image_path):
+            return image_path
+    
+    # Если не найдено, пробуем найти файл по шаблону {casino}-id.{ext}
+    # Пробуем разные расширения
+    for ext in ['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG']:
+        image_filename = f"{bookmaker_lower}-id.{ext}"
+        image_path = os.path.join(images_dir, image_filename)
+        if os.path.exists(image_path):
+            return image_path
+    
+    return None
+
 # Словарь переводов
 TRANSLATIONS = {
     'ru': {
@@ -781,11 +819,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 deposit_title = get_text('deposit_title')
                 casino_label = get_text('casino_label', casino_name=casino_name)
                 enter_player_id = get_text('enter_player_id')
-                await update.message.reply_text(
-                    f"{deposit_title}\n\n{casino_label}\n\n{enter_player_id}",
-                    parse_mode='HTML',
-                    reply_markup=reply_markup
-                )
+                
+                # Формируем текст сообщения
+                message_text = f"{deposit_title}\n\n{casino_label}\n\n{enter_player_id}"
+                
+                # Пытаемся отправить фото с примером ID, если оно есть
+                casino_image_path = get_casino_id_image_path(bookmaker)
+                if casino_image_path:
+                    try:
+                        with open(casino_image_path, 'rb') as photo:
+                            await update.message.reply_photo(
+                                photo=photo,
+                                caption=message_text,
+                                parse_mode='HTML',
+                                reply_markup=reply_markup
+                            )
+                    except Exception as e:
+                        logger.warning(f"⚠️ Не удалось отправить фото ID казино {bookmaker}: {e}")
+                        # Если не удалось отправить фото, отправляем текстовое сообщение
+                        await update.message.reply_text(
+                            message_text,
+                            parse_mode='HTML',
+                            reply_markup=reply_markup
+                        )
+                else:
+                    # Если нет изображения для этого казино, отправляем текстовое сообщение
+                    await update.message.reply_text(
+                        message_text,
+                        parse_mode='HTML',
+                        reply_markup=reply_markup
+                    )
                 return
             except Exception as e:
                 logger.error(f"❌ Ошибка при обработке выбора казино для пополнения: {e}", exc_info=True)
@@ -1883,11 +1946,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             phone_label = get_text('phone_label', phone=data.get('phone', ''))
             qr_received = get_text('qr_received')
             enter_account_id = get_text('enter_account_id')
-            await update.message.reply_text(
-                f"{withdraw_title}\n\n{casino_label}\n{bank_label}\n{phone_label}\n{qr_received}\n\n{enter_account_id}",
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
+            
+            # Формируем текст сообщения
+            message_text = f"{withdraw_title}\n\n{casino_label}\n{bank_label}\n{phone_label}\n{qr_received}\n\n{enter_account_id}"
+            
+            # Пытаемся отправить фото с примером ID, если оно есть
+            casino_image_path = get_casino_id_image_path(data.get('bookmaker', ''))
+            if casino_image_path:
+                try:
+                    with open(casino_image_path, 'rb') as photo:
+                        await update.message.reply_photo(
+                            photo=photo,
+                            caption=message_text,
+                            parse_mode='HTML',
+                            reply_markup=reply_markup
+                        )
+                except Exception as e:
+                    logger.warning(f"⚠️ Не удалось отправить фото ID казино {data.get('bookmaker', '')}: {e}")
+                    # Если не удалось отправить фото, отправляем текстовое сообщение
+                    await update.message.reply_text(
+                        message_text,
+                        parse_mode='HTML',
+                        reply_markup=reply_markup
+                    )
+            else:
+                # Если нет изображения для этого казино, отправляем текстовое сообщение
+                await update.message.reply_text(
+                    message_text,
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
             return
         
         elif step == 'withdraw_player_id':

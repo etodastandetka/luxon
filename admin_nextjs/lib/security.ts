@@ -366,12 +366,21 @@ export function sanitizeInput(input: any): any {
  * Проверяет наличие SQL инъекций в строке
  */
 export function containsSQLInjection(input: string): boolean {
+  // Более точная проверка на SQL инъекции - только реальные паттерны атак
   const sqlPatterns = [
-    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\b)/i,
-    /(--|#|\/\*|\*\/|;)/,
+    // SQL команды (только если это не часть обычного текста)
+    /\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\s+.*(FROM|INTO|TABLE|DATABASE|WHERE)/i,
+    // Комментарии SQL в контексте (-- или # в начале строки или после пробела, за которыми следует SQL-подобный текст)
+    /(--|#)\s*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION)/i,
+    // Многострочные комментарии SQL
+    /\/\*.*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION).*\*\//i,
+    // SQL инъекции через OR/AND с двойными равенствами
     /(\bOR\b.*=.*=)/i,
     /(\bAND\b.*=.*=)/i,
+    // SQL инъекции через кавычки с OR/AND
     /('|"|`).*(\bOR\b|\bAND\b).*('|"|`)/i,
+    // Попытки завершить SQL запрос точкой с запятой перед SQL командами
+    /;.*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION)/i,
   ]
   
   return sqlPatterns.some(pattern => pattern.test(input))
