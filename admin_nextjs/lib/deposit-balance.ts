@@ -112,26 +112,74 @@ export async function getCasinoConfig(bookmaker: string) {
   
   // Mostbet нужны: api_key, secret, cashpoint_id
   if (normalizedBookmaker.includes('mostbet') || normalizedBookmaker === 'mostbet') {
+    console.log(`[getCasinoConfig] Looking for Mostbet config in database...`)
     const setting = await prisma.botConfiguration.findFirst({
       where: { key: 'mostbet_api_config' },
     })
 
     if (setting) {
-      const config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
-      if (config.api_key && config.secret && config.cashpoint_id) {
-        return {
-          api_key: config.api_key,
-          secret: config.secret,
-          cashpoint_id: String(config.cashpoint_id),
-        }
+      console.log(`[getCasinoConfig] ✅ Mostbet config found in database`)
+      let config: any
+      try {
+        config = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value
+        console.log(`[getCasinoConfig] Mostbet config parsed:`, {
+          hasApiKey: !!config.api_key,
+          hasSecret: !!config.secret,
+          hasCashpointId: !!config.cashpoint_id,
+          apiKeyLength: config.api_key?.length || 0,
+          secretLength: config.secret?.length || 0,
+          cashpointId: config.cashpoint_id,
+          apiKeyPreview: config.api_key ? config.api_key.substring(0, 30) + '...' : 'missing',
+        })
+      } catch (parseError: any) {
+        console.error(`[getCasinoConfig] ❌ Failed to parse Mostbet config from database:`, parseError.message)
+        console.error(`[getCasinoConfig] Raw value type:`, typeof setting.value)
+        console.error(`[getCasinoConfig] Raw value preview:`, typeof setting.value === 'string' 
+          ? setting.value.substring(0, 100) 
+          : JSON.stringify(setting.value).substring(0, 100))
       }
+
+      if (config && config.api_key && config.secret && config.cashpoint_id) {
+        // Проверяем, что значения не пустые
+        if (config.api_key.trim() === '' || config.secret.trim() === '' || String(config.cashpoint_id).trim() === '') {
+          console.warn(`[getCasinoConfig] ⚠️ Mostbet config in DB has empty values, using fallback`)
+        } else {
+          console.log(`[getCasinoConfig] ✅ Using Mostbet config from database`)
+          return {
+            api_key: config.api_key,
+            secret: config.secret,
+            cashpoint_id: String(config.cashpoint_id),
+          }
+        }
+      } else {
+        console.warn(`[getCasinoConfig] ⚠️ Mostbet config in DB is missing required fields:`, {
+          hasApiKey: !!config?.api_key,
+          hasSecret: !!config?.secret,
+          hasCashpointId: !!config?.cashpoint_id,
+        })
+      }
+    } else {
+      console.warn(`[getCasinoConfig] ⚠️ Mostbet config not found in database, using environment variables/fallback`)
     }
 
-    return {
+    // Fallback на переменные окружения или дефолтные значения
+    const envConfig = {
       api_key: process.env.MOSTBET_API_KEY || 'api-key:1b896249-f0dc-45ff-826e-4175c72d1e0e',
       secret: process.env.MOSTBET_SECRET || '73353b6b-868e-4561-9128-dce1c91bd24e',
-      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C92905', // Полный cashpoint_id с буквой C 
+      cashpoint_id: process.env.MOSTBET_CASHPOINT_ID || 'C92905',
     }
+    
+    console.log(`[getCasinoConfig] Using Mostbet fallback config:`, {
+      hasApiKey: !!envConfig.api_key,
+      hasSecret: !!envConfig.secret,
+      hasCashpointId: !!envConfig.cashpoint_id,
+      apiKeyLength: envConfig.api_key?.length || 0,
+      secretLength: envConfig.secret?.length || 0,
+      cashpointId: envConfig.cashpoint_id,
+      source: process.env.MOSTBET_API_KEY ? 'environment' : 'default',
+    })
+    
+    return envConfig
   }
 
   // 1win нужен только api_key

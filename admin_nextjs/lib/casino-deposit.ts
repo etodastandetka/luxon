@@ -272,9 +272,28 @@ export async function depositMostbetAPI(
   const secret = config.secret
   const cashpointId = config.cashpoint_id
 
+  console.log(`[Mostbet Deposit] Config validation:`, {
+    hasApiKey: !!apiKey,
+    hasSecret: !!secret,
+    hasCashpointId: !!cashpointId,
+    apiKeyLength: apiKey?.length || 0,
+    secretLength: secret?.length || 0,
+    cashpointId: cashpointId,
+    apiKeyPreview: apiKey ? apiKey.substring(0, 30) + '...' : 'missing',
+    secretPreview: secret ? secret.substring(0, 10) + '...' : 'missing',
+  })
+
   if (!apiKey || !secret || !cashpointId ||
       apiKey.trim() === '' || secret.trim() === '' || 
       String(cashpointId).trim() === '' || String(cashpointId).trim() === '0') {
+    console.error(`[Mostbet Deposit] ❌ Missing or empty credentials:`, {
+      apiKey: apiKey ? 'present' : 'missing',
+      secret: secret ? 'present' : 'missing',
+      cashpointId: cashpointId ? 'present' : 'missing',
+      apiKeyEmpty: apiKey ? apiKey.trim() === '' : true,
+      secretEmpty: secret ? secret.trim() === '' : true,
+      cashpointIdEmpty: cashpointId ? String(cashpointId).trim() === '' : true,
+    })
     return {
       success: false,
       message: 'Missing required Mostbet API credentials. Please configure API settings in database or environment variables.',
