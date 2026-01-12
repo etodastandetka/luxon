@@ -278,6 +278,20 @@ export async function depositMostbetAPI(
       message: 'Missing required Mostbet API credentials. Please configure API settings in database or environment variables.',
     }
   }
+  
+  // Очищаем secret от возможных пробелов и невидимых символов
+  const cleanSecret = secret.trim()
+  if (cleanSecret !== secret) {
+    console.warn(`[Mostbet Deposit] ⚠️ Secret contained whitespace, cleaned`)
+  }
+  
+  // Логируем конфигурацию (без полного secret)
+  console.log(`[Mostbet Deposit] Configuration:`, {
+    apiKey: apiKey.substring(0, 30) + '...',
+    secretLength: cleanSecret.length,
+    secretPreview: cleanSecret.substring(0, 10) + '...',
+    cashpointId,
+  })
 
   try {
     // userId здесь - это ID казино (accountId), не Telegram ID
@@ -316,7 +330,16 @@ export async function depositMostbetAPI(
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
     // Используем JSON.stringify без пробелов (как в Python json.dumps(..., separators=(',', ':')))
     // JSON.stringify по умолчанию добавляет пробелы, поэтому используем replace для их удаления
-    const requestBody = JSON.stringify(requestBodyData).replace(/\s+/g, '')
+    let requestBody = JSON.stringify(requestBodyData).replace(/\s+/g, '')
+    
+    // Дополнительная проверка и очистка на случай, если остались пробелы
+    if (requestBody.includes(' ') || requestBody.includes('\n') || requestBody.includes('\r') || requestBody.includes('\t')) {
+      console.warn(`[Mostbet Deposit] ⚠️ Request body contains whitespace! Removing...`)
+      const originalBody = requestBody
+      requestBody = requestBody.replace(/\s+/g, '')
+      console.log(`[Mostbet Deposit] Original length: ${originalBody.length}, Cleaned length: ${requestBody.length}`)
+      console.log(`[Mostbet Deposit] Original: "${originalBody.substring(0, 100)}...", Cleaned: "${requestBody.substring(0, 100)}..."`)
+    }
 
     // API key может быть с префиксом или без
     const apiKeyFormatted = apiKey.startsWith('api-key:') 
@@ -346,7 +369,7 @@ export async function depositMostbetAPI(
       
       for (const algo of algorithms) {
         try {
-          hmac = crypto.createHmac(algo, secret)
+          hmac = crypto.createHmac(algo, cleanSecret)
           break
         } catch (e) {
           // Пробуем следующий вариант
@@ -397,6 +420,32 @@ export async function depositMostbetAPI(
     }
 
     console.log(`[Mostbet Deposit] Response status: ${response.status}, Data:`, data)
+    
+    // Детальное логирование при ошибке 401
+    if (response.status === 401) {
+      console.error(`[Mostbet Deposit] ❌ 401 Unauthorized - Authentication failed`)
+      console.error(`[Mostbet Deposit] Request details:`, {
+        url,
+        apiKey: apiKeyFormatted.substring(0, 50) + '...',
+        timestamp,
+        signature: signature.substring(0, 20) + '...',
+        requestBody,
+        headers: {
+          'X-Api-Key': apiKeyFormatted.substring(0, 50) + '...',
+          'X-Timestamp': timestamp,
+          'X-Signature': signature.substring(0, 20) + '...',
+          'X-Project': 'MBC',
+        }
+      })
+      console.error(`[Mostbet Deposit] Signature calculation details:`, {
+        signatureString: signatureString.substring(0, 200) + '...',
+        signatureStringLength: signatureString.length,
+        secretLength: cleanSecret.length,
+        secretPreview: cleanSecret.substring(0, 10) + '...',
+        fullSignatureString: signatureString, // Полная строка для отладки
+      })
+      console.error(`[Mostbet Deposit] API response:`, data)
+    }
 
     if (response.ok) {
       // Согласно документации, статус может быть "NEW", "ACCEPTED", "PROCESSING", "COMPLETED" и т.д.
@@ -420,6 +469,20 @@ export async function depositMostbetAPI(
       }
     }
 
+    // Для ошибки 401 возвращаем более детальное сообщение
+    if (response.status === 401) {
+      const errorMessage = data.message || data.error || data.Message || 'Unauthorized - проверьте API ключи и подпись'
+      return {
+        success: false,
+        message: `Ошибка аутентификации (401): ${errorMessage}. Проверьте правильность API ключа, Secret и формирование подписи.`,
+        data: {
+          ...data,
+          status: 'UNAUTHORIZED',
+          traceId: data.traceId || data.trace_id,
+        },
+      }
+    }
+    
     return {
       success: false,
       message: data.message || data.error || data.Message || `Failed to deposit balance (Status: ${response.status})`,
