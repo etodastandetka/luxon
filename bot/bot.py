@@ -2625,12 +2625,9 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 
                 # Формируем текст для обновления
                 updated_text = (
-                    f"📱 QR-код для оплаты\n\n"
-                    f"{deposit_title}\n\n"
-                    f"💰 <b>Сумма:</b> {current_data.get('amount', 0)} сом\n"
-                    f"{casino_label}\n"
-                    f"🆔 <b>ID игрока:</b> {current_data.get('player_id', '')}\n\n"
-                    f"⏰ <b>Таймер: {timer_text}</b>\n\n"
+                    f"💰 <b>Сумма:</b> {current_data.get('amount', 0)} KGS\n\n"
+                    f"🆔 <b>ID:</b> {current_data.get('player_id', '')}\n\n"
+                    f"⏳ <b>Время на оплату: {timer_text}</b>\n\n"
                     f"‼️ <b>Оплатите точно до копеек!</b>\n"
                     f"📸 Ждём фото чека после оплаты"
                 )
