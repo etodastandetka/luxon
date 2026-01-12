@@ -2685,23 +2685,23 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 
                 cancel_text = "⏰ <b>Пополнение отменено, время оплаты прошло</b>\n\n❌ <b>Не переводите по старым реквизитам</b>\n\nНачните заново, нажав на <b>Пополнить</b>"
                 
-                # Проверяем тип сообщения и используем соответствующий метод
-                if is_photo_message:
-                    # Обновляем caption фото
-                    await bot.edit_message_caption(
+                # Удаляем сообщение с QR-кодом полностью, чтобы пользователи случайно не перевели деньги по старым реквизитам
+                try:
+                    await bot.delete_message(
                         chat_id=chat_id,
-                        message_id=message_id,
-                        caption=cancel_text,
-                        parse_mode='HTML'
+                        message_id=message_id
                     )
-                else:
-                    # Обновляем текстовое сообщение
-                    await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_id,
-                        text=cancel_text,
-                        parse_mode='HTML'
-                    )
+                    logger.info(f"✅ Сообщение с QR-кодом удалено для пользователя {user_id} после истечения таймера")
+                except Exception as delete_error:
+                    logger.warning(f"⚠️ Не удалось удалить сообщение с QR-кодом для пользователя {user_id}: {delete_error}")
+                
+                # Отправляем новое сообщение об отмене
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=cancel_text,
+                    reply_markup=reply_markup,
+                    parse_mode='HTML'
+                )
                 
                 await bot.send_message(
                     chat_id=chat_id,
