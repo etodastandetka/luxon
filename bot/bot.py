@@ -1232,88 +1232,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         img_height = 1200  # Временная высота, будет обрезана после красной линии
                                         img = Image.new('RGBA', (img_width, img_height), (255, 255, 255, 255))  # RGBA для поддержки прозрачности водяных знаков
                                         
-                                        # Добавляем водяной знак "LUXON" на фон (полупрозрачный серый)
-                                        draw_bg = ImageDraw.Draw(img)
-                                        try:
-                                            # Пробуем найти шрифт для водяного знака
-                                            watermark_font_paths = [
-                                                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                                                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                                                "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-                                            ]
-                                            watermark_font = None
-                                            for path in watermark_font_paths:
-                                                if os.path.exists(path):
-                                                    try:
-                                                        watermark_font = ImageFont.truetype(path, 50)
-                                                        break
-                                                    except:
-                                                        continue
-                                            
-                                            if watermark_font:
-                                                watermark_text = "LUXON"
-                                                # Рисуем водяной знак повторяющимся паттерном по всему фону (красиво)
-                                                # Используем более крупный размер и разные углы для красоты
-                                                watermark_size = 80  # Увеличенный размер для лучшей видимости
-                                                try:
-                                                    # Пробуем загрузить больший шрифт для водяного знака
-                                                    watermark_font_large = None
-                                                    for path in watermark_font_paths:
-                                                        if os.path.exists(path):
-                                                            try:
-                                                                watermark_font_large = ImageFont.truetype(path, watermark_size)
-                                                                break
-                                                            except:
-                                                                continue
-                                                    if not watermark_font_large:
-                                                        watermark_font_large = watermark_font
-                                                except:
-                                                    watermark_font_large = watermark_font
-                                                
-                                                # Рисуем водяной знак с одинаковым углом поворота (без перекрытий)
-                                                # Все водяные знаки в одну сторону (45 градусов)
-                                                angle = 45  # Одинаковый угол для всех
-                                                
-                                                # Сначала получаем реальный размер текста
-                                                temp_measure = Image.new('RGBA', (500, 500), (0, 0, 0, 0))
-                                                temp_measure_draw = ImageDraw.Draw(temp_measure)
-                                                bbox_wm = temp_measure_draw.textbbox((0, 0), watermark_text, font=watermark_font_large)
-                                                wm_text_width = bbox_wm[2] - bbox_wm[0]
-                                                wm_text_height = bbox_wm[3] - bbox_wm[1]
-                                                # Размер временного изображения должен быть достаточно большим для поворота
-                                                wm_temp_size = int(max(wm_text_width, wm_text_height) * 1.8)
-                                                
-                                                for i in range(-4, 5):
-                                                    for j in range(-4, 5):
-                                                        # Увеличиваем шаг между водяными знаками, чтобы они не перекрывались
-                                                        x = img_width // 2 + i * 200
-                                                        y = img_height // 2 + j * 220
-                                                        
-                                                        # Создаем временное изображение для повернутого текста
-                                                        wm_temp = Image.new('RGBA', (wm_temp_size, wm_temp_size), (0, 0, 0, 0))
-                                                        wm_draw = ImageDraw.Draw(wm_temp)
-                                                        wm_draw.text(((wm_temp_size - wm_text_width) // 2, (wm_temp_size - wm_text_height) // 2), watermark_text, 
-                                                                   fill=(160, 160, 160, 150), font=watermark_font_large)  # Более видимый серый водяной знак
-                                                        wm_rotated = wm_temp.rotate(angle, expand=False, fillcolor=(0, 0, 0, 0))
-                                                        # Накладываем повернутый водяной знак
-                                                        img.paste(wm_rotated, (x - wm_temp_size // 2, y - wm_temp_size // 2), wm_rotated)
-                                        except Exception as e:
-                                            logger.warning(f"⚠️ Не удалось добавить водяной знак: {e}")
-                                            # Fallback: пробуем нарисовать простые водяные знаки без поворотов
-                                            try:
-                                                if watermark_font:
-                                                    for i in range(-3, 4):
-                                                        for j in range(-3, 4):
-                                                            x = img_width // 2 + i * 180
-                                                            y = img_height // 2 + j * 200
-                                                            bbox_wm = draw_bg.textbbox((0, 0), watermark_text, font=watermark_font)
-                                                            wm_width = bbox_wm[2] - bbox_wm[0]
-                                                            wm_height = bbox_wm[3] - bbox_wm[1]
-                                                            # Полупрозрачный светло-серый цвет (водяной знак)
-                                                            draw_bg.text((x - wm_width//2, y - wm_height//2), watermark_text, 
-                                                                       fill=(180, 180, 180), font=watermark_font)
-                                            except Exception as e2:
-                                                logger.debug(f"Не удалось добавить fallback водяной знак: {e2}")
+                                        # Водяной знак удален по запросу пользователя
                                         
                                         # Вставляем QR-код в центр (с отступом сверху, увеличенный размер)
                                         qr_size = 780  # Увеличенный размер QR-кода как на втором фото
@@ -1463,8 +1382,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         center_y = temp_img_size // 2
                                         
                                         # Вырезаем область вокруг центра повернутого текста
-                                        # Увеличиваем область crop для безопасности (больше padding для крупного текста)
-                                        crop_padding = 150
+                                        # Увеличиваем область crop для безопасности, чтобы текст не обрезался по краям
+                                        crop_padding = 250
                                         crop_x1 = center_x - block_width // 2 - crop_padding
                                         crop_y1 = center_y - block_height // 2 - crop_padding
                                         crop_x2 = center_x + block_width // 2 + crop_padding
