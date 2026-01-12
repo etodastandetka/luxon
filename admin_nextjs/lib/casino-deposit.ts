@@ -314,7 +314,7 @@ export async function depositMostbetAPI(
       currency: 'KGS', // Валюта в сомах (киргизских сомах)
     }
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
-    // Используем JSON.stringify с replacer для удаления пробелов (как в Python json.dumps(..., separators=(',', ':')))
+    // Используем JSON.stringify без пробелов (как в Python json.dumps(..., separators=(',', ':')))
     // JSON.stringify по умолчанию добавляет пробелы, поэтому используем replace для их удаления
     const requestBody = JSON.stringify(requestBodyData).replace(/\s+/g, '')
 
@@ -326,6 +326,15 @@ export async function depositMostbetAPI(
     // Генерируем подпись: HMAC SHA3-256 от <API_KEY><PATH><REQUEST_BODY><TIMESTAMP>
     // Согласно документации: конкатенируем без разделителей
     const signatureString = `${apiKeyFormatted}${path}${requestBody}${timestamp}`
+    
+    console.log(`[Mostbet Deposit] Signature string components:`, {
+      apiKeyFormatted: apiKeyFormatted.substring(0, 50) + '...',
+      path,
+      requestBody,
+      timestamp,
+      signatureStringLength: signatureString.length,
+      signatureStringPreview: signatureString.substring(0, 100) + '...'
+    })
     
     // Используем SHA3-256 согласно документации Mostbet API
     // В Node.js 18+ поддерживается sha3-256, но может называться по-разному

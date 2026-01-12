@@ -291,7 +291,17 @@ export async function checkWithdrawsExistMostbet(
     }
 
     const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/list/page?page=1&size=10&searchString=${playerId}`
+    // Для GET запросов REQUEST_BODY пустой (пустая строка)
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
+    
+    console.log(`[Mostbet Check Withdrawals] List signature string components:`, {
+      apiKeyFormatted: apiKeyFormatted.substring(0, 50) + '...',
+      listPath,
+      requestBody: '(empty for GET)',
+      timestamp,
+      listStringLength: listString.length,
+      listStringPreview: listString.substring(0, 100) + '...'
+    })
     
     // Генерируем подпись: HMAC SHA3-256
     // Пробуем разные варианты названия алгоритма
@@ -401,7 +411,17 @@ export async function checkWithdrawAmountMostbet(
 
     // Сначала получаем список запросов на вывод
     const listPath = `/mbc/gateway/v1/api/cashpoint/${cashpointIdForUrl}/player/cashout/list/page?page=1&size=10&searchString=${playerId}`
+    // Для GET запросов REQUEST_BODY пустой (пустая строка)
     const listString = `${apiKeyFormatted}${listPath}${timestamp}`
+    
+    console.log(`[Mostbet Withdraw Check] List signature string components:`, {
+      apiKeyFormatted: apiKeyFormatted.substring(0, 50) + '...',
+      listPath,
+      requestBody: '(empty for GET)',
+      timestamp,
+      listStringLength: listString.length,
+      listStringPreview: listString.substring(0, 100) + '...'
+    })
     
     // Генерируем подпись: HMAC SHA3-256
     // Пробуем разные варианты названия алгоритма
@@ -484,6 +504,15 @@ export async function checkWithdrawAmountMostbet(
     // Тело запроса в JSON без пробелов и переводов строк (согласно документации)
     const confirmBodyString = JSON.stringify(confirmBody).replace(/\s+/g, '')
     const confirmString = `${apiKeyFormatted}${confirmPath}${confirmBodyString}${timestamp}`
+    
+    console.log(`[Mostbet Withdraw Check] Confirm signature string components:`, {
+      apiKeyFormatted: apiKeyFormatted.substring(0, 50) + '...',
+      confirmPath,
+      confirmBodyString,
+      timestamp,
+      confirmStringLength: confirmString.length,
+      confirmStringPreview: confirmString.substring(0, 100) + '...'
+    })
     
     // Генерируем подпись: HMAC SHA3-256
     // Пробуем разные варианты названия алгоритма
