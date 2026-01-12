@@ -1395,9 +1395,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         text_line1 = "ПОПОЛНЕНИЕ ДЛЯ"
                                         text_line2 = "КАЗИНО"
                                         
-                                        # Увеличиваем размер шрифта для текста поверх QR-кода (более заметный)
+                                        # Увеличиваем размер шрифта для текста поверх QR-кода (более заметный, чтобы закрывал QR-код)
                                         try:
-                                            font_overlay = ImageFont.truetype(font_path, 70) if font_path else font_large  # Увеличен для большей видимости
+                                            font_overlay = ImageFont.truetype(font_path, 110) if font_path else font_large  # Увеличен до 110 для лучшего перекрытия QR-кода
                                         except:
                                             font_overlay = font_large
                                         
@@ -1417,7 +1417,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Общая ширина и высота блока из двух строк
                                         block_width = max(text_width1, text_width2)
-                                        block_height = text_height1 + text_height2 + 15  # Увеличено расстояние между строками для большего шрифта
+                                        block_height = text_height1 + text_height2 + 20  # Увеличено расстояние между строками для большего шрифта
                                         
                                         # Рисуем две строки текста одна под другой (красный, полупрозрачный)
                                         # Используем полупрозрачный красный цвет (R, G, B, Alpha)
@@ -1434,7 +1434,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         
                                         # Рисуем вторую строку под первой
                                         text_x2 = block_x + (block_width - text_width2) // 2
-                                        text_y2 = block_y + text_height1 + 15  # Увеличено расстояние между строками
+                                        text_y2 = block_y + text_height1 + 20  # Увеличено расстояние между строками
                                         temp_draw.text((text_x2, text_y2), text_line2, fill=text_color, font=font_overlay)
                                         
                                         # Поворачиваем текст по диагонали (около -40 градусов от нижнего левого к верхнему правому)
@@ -1452,8 +1452,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                         center_y = temp_img_size // 2
                                         
                                         # Вырезаем область вокруг центра повернутого текста
-                                        # Увеличиваем область crop для безопасности
-                                        crop_padding = 100
+                                        # Увеличиваем область crop для безопасности (больше padding для крупного текста)
+                                        crop_padding = 150
                                         crop_x1 = center_x - block_width // 2 - crop_padding
                                         crop_y1 = center_y - block_height // 2 - crop_padding
                                         crop_x2 = center_x + block_width // 2 + crop_padding
