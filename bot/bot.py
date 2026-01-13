@@ -874,7 +874,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     return
                 
                 data['bookmaker'] = bookmaker
-                state['step'] = 'withdraw_bank'
+                state['step'] = 'withdraw_qr'
                 user_states[user_id] = state
                 
                 # Получаем сохраненный ID для этого казино
@@ -896,190 +896,71 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     except Exception as e:
                         logger.warning(f"Не удалось получить сохраненный ID из API: {e}")
                 
-                # Загружаем настройки если они устарели
-                if asyncio.get_event_loop().time() - settings_cache.get('last_update', 0) > 300:
-                    await load_settings()
+                # Получаем сохраненный номер телефона
+                saved_phone = None
+                try:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        response = await client.get(
+                            f"{API_URL}/api/public/casino-account",
+                            params={"user_id": str(user_id), "casino_id": "phone"}
+                        )
+                        if response.status_code == 200:
+                            result = response.json()
+                            if result.get('success'):
+                                phone_value = result.get('data', {}).get('phone')
+                                if phone_value and phone_value != 'null' and phone_value != '':
+                                    saved_phone = str(phone_value).strip()
+                                    if 'saved_phones' not in data:
+                                        data['saved_phones'] = {}
+                                    data['saved_phones']['phone'] = saved_phone
+                except Exception as e:
+                    logger.warning(f"Не удалось получить сохраненный телефон: {e}")
                 
-                # Формируем список банков через Reply клавиатуру
-                enabled_banks = settings_cache.get('withdrawal_banks', [])
-                all_banks = [
-                    ('kompanion', 'Компаньон'),
-                    ('demirbank', 'DemirBank'),
-                    ('omoney', 'O!Money'),
-                    ('balance', 'Balance.kg'),
-                    ('bakai', 'Bakai'),
-                    ('megapay', 'MegaPay'),
-                    ('mbank', 'MBank')
-                ]
-                
-                # Фильтруем доступные банки
-                enabled_banks_list = []
-                for bank_key, bank_name in all_banks:
-                    is_enabled = bank_key in enabled_banks or bank_key == 'kompanion'
-                    if is_enabled:
-                        enabled_banks_list.append((bank_key, bank_name))
-                
-                # Группируем кнопки по 2 в ряд
-                keyboard_buttons = []
-                for i in range(0, len(enabled_banks_list), 2):
-                    row = [KeyboardButton(enabled_banks_list[i][1])]
-                    if i + 1 < len(enabled_banks_list):
-                        row.append(KeyboardButton(enabled_banks_list[i + 1][1]))
-                    keyboard_buttons.append(row)
-                
-                keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
-                reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
-                
-                casino_name = get_casino_name(bookmaker)
-                withdraw_title = get_text('withdraw_title')
-                casino_label = get_text('casino_label', casino_name=casino_name)
-                select_bank = get_text('select_bank')
-                await update.message.reply_text(
-                    f"{withdraw_title}\n\n{casino_label}\n\n{select_bank}",
-                    parse_mode='HTML',
-                    reply_markup=reply_markup
-                )
+                # Сохраняем телефон если есть
+                if saved_phone:
+                    data['phone'] = saved_phone
+                    state['step'] = 'withdraw_qr'
+                    user_states[user_id] = state
+                    
+                    # Создаем Reply клавиатуру с кнопкой отмены
+                    keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
+                    reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+                    
+                    casino_name = get_casino_name(bookmaker)
+                    withdraw_title = get_text('withdraw_title')
+                    casino_label = get_text('casino_label', casino_name=casino_name)
+                    phone_label = get_text('phone_label', phone=saved_phone)
+                    send_qr = get_text('send_qr_code')
+                    
+                    await update.message.reply_text(
+                        f"{withdraw_title}\n\n{casino_label}\n{phone_label}\n\n{send_qr}",
+                        parse_mode='HTML',
+                        reply_markup=reply_markup
+                    )
+                else:
+                    # Если телефона нет, переходим к шагу ввода телефона
+                    state['step'] = 'withdraw_phone'
+                    user_states[user_id] = state
+                    
+                    # Создаем Reply клавиатуру с кнопкой отмены
+                    keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
+                    reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+                    
+                    casino_name = get_casino_name(bookmaker)
+                    withdraw_title = get_text('withdraw_title')
+                    casino_label = get_text('casino_label', casino_name=casino_name)
+                    enter_phone = get_text('enter_phone')
+                    
+                    await update.message.reply_text(
+                        f"{withdraw_title}\n\n{casino_label}\n\n{enter_phone}",
+                        parse_mode='HTML',
+                        reply_markup=reply_markup
+                    )
                 return
             except Exception as e:
                 logger.error(f"❌ Ошибка при обработке выбора казино для вывода: {e}", exc_info=True)
                 await update.message.reply_text(get_text('error_processing_casino'))
                 return
-        
-        # Обработка выбора банка для вывода
-        if step == 'withdraw_bank':
-            # Определяем банк по тексту кнопки
-            bank_map = {
-                'Компаньон': 'kompanion',
-                'DemirBank': 'demirbank',
-                'O!Money': 'omoney',
-                'Balance.kg': 'balance',
-                'Bakai': 'bakai',
-                'MegaPay': 'megapay',
-                'MBank': 'mbank'
-            }
-            
-            bank = bank_map.get(message_text)
-            if not bank:
-                await update.message.reply_text(get_text('please_select_from_buttons'))
-                return
-            
-            data['bank'] = bank
-            state['step'] = 'withdraw_phone'
-            user_states[user_id] = state
-            
-            # Получаем сохраненный номер телефона (всегда проверяем API для актуальности)
-            saved_phone = None
-            local_phone = data.get('saved_phones', {}).get('phone')
-            logger.info(f"🔍 Локальный сохраненный телефон для пользователя {user_id}: {local_phone}")
-            
-            # Всегда пытаемся получить из API (локальное состояние может быть устаревшим)
-            try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    response = await client.get(
-                        f"{API_URL}/api/public/casino-account",
-                        params={"user_id": str(user_id), "casino_id": "phone"}
-                    )
-                    logger.info(f"🔍 Запрос сохраненного телефона: статус {response.status_code} для пользователя {user_id}")
-                    if response.status_code == 200:
-                        result = response.json()
-                        logger.info(f"📋 Полный ответ API для телефона: {result}")
-                        
-                        # Проверяем успешность и наличие телефона (может быть строкой или None)
-                        phone_value = None
-                        if result.get('success'):
-                            phone_value = result.get('data', {}).get('phone')
-                            logger.info(f"📋 phone_value из API: {phone_value} (type: {type(phone_value)})")
-                        else:
-                            logger.warning(f"⚠️ API вернул success=false: {result}")
-                        
-                        # Проверяем что телефон есть и не пустой
-                        if phone_value is not None and phone_value != 'null' and phone_value != '' and str(phone_value).strip():
-                            phone_str = str(phone_value).strip()
-                            saved_phone = phone_str
-                            # Сохраняем в локальное состояние для быстрого доступа
-                            if 'saved_phones' not in data:
-                                data['saved_phones'] = {}
-                            data['saved_phones']['phone'] = saved_phone
-                            # Обновляем состояние правильно
-                            state['data'] = data
-                            user_states[user_id] = state
-                            logger.info(f"✅ Получен сохраненный телефон из API для пользователя {user_id}: {saved_phone}")
-                        else:
-                            logger.info(f"ℹ️ Сохраненный телефон не найден в API для пользователя {user_id} (phone_value: {repr(phone_value)}, type: {type(phone_value)})")
-                            # Если в локальном состоянии есть телефон, используем его как запасной вариант
-                            if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
-                                saved_phone = str(local_phone).strip()
-                                # Обновляем состояние правильно
-                                if 'saved_phones' not in data:
-                                    data['saved_phones'] = {}
-                                data['saved_phones']['phone'] = saved_phone
-                                state['data'] = data
-                                user_states[user_id] = state
-                                logger.info(f"📱 Используем локальный сохраненный телефон как запасной вариант: {saved_phone}")
-                    else:
-                        try:
-                            error_text = response.text[:200]
-                            logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона: {error_text}")
-                            # Если API не работает, используем локальное состояние
-                            if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
-                                saved_phone = str(local_phone).strip()
-                                # Обновляем состояние правильно
-                                if 'saved_phones' not in data:
-                                    data['saved_phones'] = {}
-                                data['saved_phones']['phone'] = saved_phone
-                                state['data'] = data
-                                user_states[user_id] = state
-                                logger.info(f"📱 Используем локальный сохраненный телефон (API недоступен): {saved_phone}")
-                        except:
-                            logger.warning(f"⚠️ API вернул статус {response.status_code} при получении телефона")
-                            # Если API не работает, используем локальное состояние
-                            if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
-                                saved_phone = str(local_phone).strip()
-                                # Обновляем состояние правильно
-                                if 'saved_phones' not in data:
-                                    data['saved_phones'] = {}
-                                data['saved_phones']['phone'] = saved_phone
-                                state['data'] = data
-                                user_states[user_id] = state
-                                logger.info(f"📱 Используем локальный сохраненный телефон (API недоступен): {saved_phone}")
-            except Exception as e:
-                logger.warning(f"❌ Не удалось получить сохраненный телефон из API: {e}", exc_info=True)
-                # Если API не работает, используем локальное состояние
-                if local_phone and local_phone != 'None' and local_phone != 'null' and str(local_phone).strip():
-                    saved_phone = str(local_phone).strip()
-                    # Обновляем состояние правильно
-                    if 'saved_phones' not in data:
-                        data['saved_phones'] = {}
-                    data['saved_phones']['phone'] = saved_phone
-                    state['data'] = data
-                    user_states[user_id] = state
-                    logger.info(f"📱 Используем локальный сохраненный телефон (ошибка API): {saved_phone}")
-            
-            # Создаем Reply клавиатуру с сохраненным номером и кнопкой отмены
-            keyboard_buttons = []
-            logger.info(f"🔍 Проверка сохраненного телефона для пользователя {user_id}: saved_phone = {saved_phone} (type: {type(saved_phone)})")
-            if saved_phone and saved_phone != 'None' and saved_phone != 'null' and str(saved_phone).strip():
-                # Всегда показываем сохраненный номер как кнопку для быстрой отправки
-                phone_str = str(saved_phone).strip()
-                keyboard_buttons.append([KeyboardButton(f"📱 {phone_str}")])
-                logger.info(f"📱 ✅ Добавлена кнопка с сохраненным телефоном: {phone_str}")
-            else:
-                logger.info(f"📱 ❌ Сохраненный телефон не найден или пустой: {saved_phone}")
-            keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
-            reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
-            
-            bookmaker_name = get_casino_name(data.get('bookmaker', ''))
-            bank_name = BANK_NAMES.get(bank.lower(), bank)
-            withdraw_title = get_text('withdraw_title')
-            casino_label = get_text('casino_label', casino_name=bookmaker_name)
-            bank_label = get_text('bank_label', bank_name=bank_name)
-            enter_phone = get_text('enter_phone')
-            await update.message.reply_text(
-                f"{withdraw_title}\n\n{casino_label}\n{bank_label}\n\n{enter_phone}",
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
-            return
         
         # Обработка пополнения
         if step == 'deposit_player_id':
@@ -1849,14 +1730,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
             casino_name = get_casino_name(data.get('bookmaker', ''))
-            bank_name = BANK_NAMES.get(data.get('bank', '').lower(), data.get('bank', ''))
             withdraw_title = get_text('withdraw_title')
             casino_label = get_text('casino_label', casino_name=casino_name)
-            bank_label = get_text('bank_label', bank_name=bank_name)
             phone_label = get_text('phone_label', phone=phone)
             send_qr = get_text('send_qr_code')
             await update.message.reply_text(
-                f"{withdraw_title}\n\n{casino_label}\n{bank_label}\n{phone_label}\n\n{send_qr}",
+                f"{withdraw_title}\n\n{casino_label}\n{phone_label}\n\n{send_qr}",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
@@ -1939,16 +1818,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
             
             casino_name = get_casino_name(data.get('bookmaker', ''))
-            bank_name = BANK_NAMES.get(data.get('bank', '').lower(), data.get('bank', ''))
             withdraw_title = get_text('withdraw_title')
             casino_label = get_text('casino_label', casino_name=casino_name)
-            bank_label = get_text('bank_label', bank_name=bank_name)
             phone_label = get_text('phone_label', phone=data.get('phone', ''))
             qr_received = get_text('qr_received')
             enter_account_id = get_text('enter_account_id')
             
             # Формируем текст сообщения
-            message_text = f"{withdraw_title}\n\n{casino_label}\n{bank_label}\n{phone_label}\n{qr_received}\n\n{enter_account_id}"
+            message_text = f"{withdraw_title}\n\n{casino_label}\n{phone_label}\n{qr_received}\n\n{enter_account_id}"
             
             # Пытаемся отправить фото с примером ID, если оно есть
             casino_image_path = get_casino_id_image_path(data.get('bookmaker', ''))
@@ -2022,17 +1899,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             # Используем переводы с динамическим названием казино
             casino_name = get_casino_name(data.get('bookmaker', ''))
-            bank_name = BANK_NAMES.get(data.get('bank', '').lower(), data.get('bank', ''))
             withdraw_title = get_text('withdraw_title')
             casino_label = get_text('casino_label', casino_name=casino_name)
-            bank_label = get_text('bank_label', bank_name=bank_name)
             phone_label = get_text('phone_label', phone=data.get('phone', ''))
             account_id_label = f"🆔 ID игрока: {data.get('player_id', '')}"
             
             instruction_text = f"""{withdraw_title}
 
 {casino_label}
-{bank_label}
 {phone_label}
 {account_id_label}
 
@@ -2818,13 +2692,15 @@ async def submit_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
         
         # Создаем заявку (используем те же поля, что и в клиентском сайте)
         user = update.effective_user
+        # Устанавливаем значение по умолчанию для банка, если не указан
+        bank = data.get('bank', '')
         request_body = {
             "type": "withdraw",  # Как в клиентском сайте
             "telegram_user_id": str(user_id),
             "userId": str(user_id),  # Добавляем userId как в клиентском сайте
             "amount": withdraw_amount,
             "bookmaker": bookmaker,
-            "bank": data['bank'],
+            "bank": bank,
             "phone": data['phone'],
             "account_id": data['player_id'],
             "playerId": data['player_id'],  # Добавляем playerId как в клиентском сайте
