@@ -916,46 +916,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 except Exception as e:
                     logger.warning(f"Не удалось получить сохраненный телефон: {e}")
                 
-                # Сохраняем телефон если есть
+                # Всегда переходим к шагу ввода телефона (даже если номер сохранен)
+                state['step'] = 'withdraw_phone'
+                user_states[user_id] = state
+                
+                # Создаем Reply клавиатуру с сохраненным номером (если есть) и кнопкой отмены
+                keyboard_buttons = []
                 if saved_phone:
-                    data['phone'] = saved_phone
-                    state['step'] = 'withdraw_qr'
-                    user_states[user_id] = state
-                    
-                    # Создаем Reply клавиатуру с кнопкой отмены
-                    keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
-                    reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
-                    
-                    casino_name = get_casino_name(bookmaker)
-                    withdraw_title = get_text('withdraw_title')
-                    casino_label = get_text('casino_label', casino_name=casino_name)
-                    phone_label = get_text('phone_label', phone=saved_phone)
-                    send_qr = get_text('send_qr_code')
-                    
-                    await update.message.reply_text(
-                        f"{withdraw_title}\n\n{casino_label}\n{phone_label}\n\n{send_qr}",
-                        parse_mode='HTML',
-                        reply_markup=reply_markup
-                    )
-                else:
-                    # Если телефона нет, переходим к шагу ввода телефона
-                    state['step'] = 'withdraw_phone'
-                    user_states[user_id] = state
-                    
-                    # Создаем Reply клавиатуру с кнопкой отмены
-                    keyboard_buttons = [[KeyboardButton("❌ Отменить заявку")]]
-                    reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
-                    
-                    casino_name = get_casino_name(bookmaker)
-                    withdraw_title = get_text('withdraw_title')
-                    casino_label = get_text('casino_label', casino_name=casino_name)
-                    enter_phone = get_text('enter_phone')
-                    
-                    await update.message.reply_text(
-                        f"{withdraw_title}\n\n{casino_label}\n\n{enter_phone}",
-                        parse_mode='HTML',
-                        reply_markup=reply_markup
-                    )
+                    # Показываем сохраненный номер как кнопку для быстрой отправки
+                    keyboard_buttons.append([KeyboardButton(f"📱 {saved_phone}")])
+                keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
+                reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
+                
+                casino_name = get_casino_name(bookmaker)
+                withdraw_title = get_text('withdraw_title')
+                casino_label = get_text('casino_label', casino_name=casino_name)
+                enter_phone = get_text('enter_phone')
+                
+                await update.message.reply_text(
+                    f"{withdraw_title}\n\n{casino_label}\n\n{enter_phone}",
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
                 return
             except Exception as e:
                 logger.error(f"❌ Ошибка при обработке выбора казино для вывода: {e}", exc_info=True)
