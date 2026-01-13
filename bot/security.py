@@ -51,7 +51,7 @@ def block_user(user_id: int, duration: int = BLOCK_DURATION) -> None:
     logger.warning(f"🚫 User {user_id} blocked for {duration} seconds")
 
 
-    def check_rate_limit(user_id: int):
+def check_rate_limit(user_id: int):
     """
     Проверяет rate limit для пользователя
     Возвращает (is_allowed, error_message)
