@@ -924,7 +924,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 keyboard_buttons = []
                 if saved_phone:
                     # Показываем сохраненный номер как кнопку для быстрой отправки
-                    keyboard_buttons.append([KeyboardButton(f"📱 {saved_phone}")])
+                    keyboard_buttons.append([KeyboardButton(saved_phone)])
                 keyboard_buttons.append([KeyboardButton("❌ Отменить заявку")])
                 reply_markup = ReplyKeyboardMarkup(keyboard_buttons, resize_keyboard=True, one_time_keyboard=False)
                 
@@ -1652,11 +1652,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         
         # Обработка вывода
         elif step == 'withdraw_phone':
-            # Проверяем, не нажата ли кнопка с сохраненным номером
-            if message_text and message_text.startswith("📱 "):
-                phone = message_text.replace("📱 ", "").strip()
-            else:
-                phone = message_text.strip()
+            # Получаем номер телефона
+            phone = message_text.strip() if message_text else ""
             
             # Проверка формата телефона
             if not phone.startswith('+996'):
