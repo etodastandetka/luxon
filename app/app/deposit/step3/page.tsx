@@ -10,7 +10,7 @@ import { DEPOSIT_CONFIG } from '../../../config/app'
 import { compressImage, fileToBase64 } from '../../../utils/imageCompression'
 import { useRequireAuth } from '../../../hooks/useRequireAuth'
 
-// Компонент QR-кода с текстом
+// Компонент QR-кода с текстом (как в боте)
 function QRCodeWithText({ url }: { url: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
@@ -20,8 +20,8 @@ function QRCodeWithText({ url }: { url: string }) {
       if (!canvasRef.current || !url) return
 
       try {
-        // Загружаем QR-код через API
-        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(url)}`
+        // Загружаем QR-код через API (900x900 как в боте)
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=900x900&data=${encodeURIComponent(url)}`
         
         // Создаем изображение QR-кода
         const qrImage = new Image()
@@ -31,61 +31,92 @@ function QRCodeWithText({ url }: { url: string }) {
           const canvas = canvasRef.current!
           const ctx = canvas.getContext('2d')!
           
-          // Размеры canvas
-          const canvasWidth = 500
-          const canvasHeight = 600
-          canvas.width = canvasWidth
-          canvas.height = canvasHeight
+          // Размеры canvas (как в боте: 900x1200, обрезается после красной линии)
+          const imgWidth = 900
+          const imgHeight = 1200
+          canvas.width = imgWidth
+          canvas.height = imgHeight
           
           // Белый фон
           ctx.fillStyle = 'white'
-          ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+          ctx.fillRect(0, 0, imgWidth, imgHeight)
           
-          // Рисуем QR-код
-          const qrSize = 350
-          const qrX = (canvasWidth - qrSize) / 2
-          const qrY = 80
+          // Рисуем QR-код (780x780 как в боте)
+          const qrSize = 780
+          const qrX = (imgWidth - qrSize) / 2
+          const qrY = 50
+          
+          // Масштабируем QR-код с 900x900 до 780x780
           ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
+          
+          // Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода по диагонали (как в боте)
+          const textLine1 = "ПОПОЛНЕНИЕ ДЛЯ"
+          const textLine2 = "КАЗИНО"
+          
+          // Сохраняем контекст для поворота
+          ctx.save()
+          
+          // Переходим в центр QR-кода
+          const qrCenterX = qrX + qrSize / 2
+          const qrCenterY = qrY + qrSize / 2
+          ctx.translate(qrCenterX, qrCenterY)
+          
+          // Поворачиваем на -40 градусов (как в боте)
+          ctx.rotate(-40 * Math.PI / 180)
           
           // Настройки текста
           ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          
+          // Красный полупрозрачный текст (rgba(220, 0, 0, 0.7) как в боте)
+          ctx.fillStyle = 'rgba(220, 0, 0, 0.7)'
+          ctx.font = 'bold 85px Arial' // Размер шрифта 85 как в боте
+          
+          // Рисуем первую строку
+          ctx.fillText(textLine1, 0, -30)
+          
+          // Рисуем вторую строку под первой
+          ctx.fillText(textLine2, 0, 50)
+          
+          // Восстанавливаем контекст
+          ctx.restore()
+          
+          // Текст "ОТСКАНИРУЙТЕ QR" под QR-кодом (черный, размер 55 как в боте)
+          ctx.textAlign = 'center'
           ctx.textBaseline = 'top'
-          
-          // Текст "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО" поверх QR-кода
-          const textOverlay = "ПОПОЛНЕНИЕ ДЛЯ КАЗИНО"
-          ctx.font = 'bold 32px Arial'
-          const textMetrics = ctx.measureText(textOverlay)
-          const textWidth = textMetrics.width
-          const textHeight = 40
-          const textX = canvasWidth / 2
-          const textY = qrY + (qrSize - textHeight) / 2
-          
-          // Белый фон для текста с красной рамкой
-          const padding = 10
-          ctx.fillStyle = 'white'
-          ctx.fillRect(textX - textWidth / 2 - padding, textY - padding, textWidth + padding * 2, textHeight + padding * 2)
-          ctx.strokeStyle = 'red'
-          ctx.lineWidth = 2
-          ctx.strokeRect(textX - textWidth / 2 - padding, textY - padding, textWidth + padding * 2, textHeight + padding * 2)
-          
-          // Красный текст
-          ctx.fillStyle = 'red'
-          ctx.fillText(textOverlay, textX, textY)
-          
-          // Текст "ОТСКАНИРУЙТЕ QR" под QR-кодом
-          ctx.font = 'bold 24px Arial'
           ctx.fillStyle = 'black'
+          ctx.font = 'bold 55px Arial'
           const textBelow1 = "ОТСКАНИРУЙТЕ QR"
-          ctx.fillText(textBelow1, canvasWidth / 2, qrY + qrSize + 30)
+          const textY2 = qrY + qrSize + 30
+          ctx.fillText(textBelow1, imgWidth / 2, textY2)
           
-          // Текст "В любом банке"
-          ctx.font = '20px Arial'
+          // Текст "В любом банке" (синий, размер 42 как в боте)
+          ctx.font = 'bold 42px Arial'
           ctx.fillStyle = 'blue'
           const textBelow2 = "В любом банке"
-          ctx.fillText(textBelow2, canvasWidth / 2, qrY + qrSize + 70)
+          const textY3 = textY2 + 60
+          ctx.fillText(textBelow2, imgWidth / 2, textY3)
+          
+          // Красная линия внизу (высота 5px как в боте)
+          const redLineY = textY3 + 50
+          const redLineHeight = 5
+          ctx.fillStyle = 'red'
+          ctx.fillRect(0, redLineY, imgWidth, redLineHeight)
+          
+          // Обрезаем изображение после красной линии (как в боте)
+          const bottomCrop = redLineY + redLineHeight + 20
+          
+          // Создаем новый canvas с обрезанной высотой
+          const croppedCanvas = document.createElement('canvas')
+          croppedCanvas.width = imgWidth
+          croppedCanvas.height = bottomCrop
+          const croppedCtx = croppedCanvas.getContext('2d')!
+          
+          // Копируем нужную часть изображения
+          croppedCtx.drawImage(canvas, 0, 0, imgWidth, bottomCrop, 0, 0, imgWidth, bottomCrop)
           
           // Преобразуем canvas в data URL
-          setQrImageUrl(canvas.toDataURL('image/png'))
+          setQrImageUrl(croppedCanvas.toDataURL('image/png'))
         }
         
         qrImage.onerror = () => {
@@ -97,7 +128,7 @@ function QRCodeWithText({ url }: { url: string }) {
       } catch (error) {
         console.error('Error generating QR code:', error)
         // Fallback на простой QR-код
-        setQrImageUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`)
+        setQrImageUrl(`https://api.qrserver.com/v1/create-qr-code/?size=900x900&data=${encodeURIComponent(url)}`)
       }
     }
 
@@ -123,7 +154,7 @@ function QRCodeWithText({ url }: { url: string }) {
           <img 
             src={qrImageUrl} 
             alt="QR код для оплаты" 
-            className="w-full max-w-[500px] h-auto rounded-lg border border-white/20"
+            className="w-full max-w-[900px] h-auto rounded-lg border border-white/20"
           />
           <canvas ref={canvasRef} className="hidden" />
         </div>
@@ -1115,19 +1146,9 @@ function DepositStep3Content() {
       {Object.keys(paymentUrls).length > 0 && (() => {
         // Используем ссылку O!Money для QR-кода, если есть, иначе первую доступную
         const omoneyUrl = paymentUrls['O!Money'] || paymentUrls['omoney'] || Object.values(paymentUrls)[0]
-        const qrCodeUrl = omoneyUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(omoneyUrl)}` : null
         
-        return qrCodeUrl ? (
-          <section className="card space-y-3">
-            <div className="label text-center">QR-код для оплаты</div>
-            <div className="flex justify-center">
-              <img 
-                src={qrCodeUrl} 
-                alt="QR код для оплаты" 
-                className="w-64 h-64 rounded-lg border border-white/20"
-              />
-            </div>
-          </section>
+        return omoneyUrl ? (
+          <QRCodeWithText url={omoneyUrl} />
         ) : null
       })()}
 
