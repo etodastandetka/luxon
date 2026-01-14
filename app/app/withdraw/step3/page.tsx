@@ -448,15 +448,6 @@ export default function WithdrawStep3() {
       }
 
       
-      const submitKey = `withdraw_submitted_${telegramUserId}`
-      const hasSubmitted = localStorage.getItem(submitKey)
-      if (hasSubmitted) {
-        alert('Вы уже отправили заявку на вывод. Дождитесь обработки.')
-        router.push('/')
-        return
-      }
-
-      
       const normalizedBookmaker = bookmaker.toLowerCase()
       if (normalizedBookmaker.includes('1xbet') || normalizedBookmaker === '1xbet') {
         const withdrawResponse = await safeFetch(`${base}/api/withdraw-execute`, {
@@ -579,11 +570,8 @@ export default function WithdrawStep3() {
       }
       
       if (result.success !== false) {
-        // Сохраняем общий флаг для пользователя
-        const submitKey = `withdraw_submitted_${telegramUserId}`
-        localStorage.setItem(submitKey, 'true')
-        
         // Сохраняем специфичный ключ для этого конкретного вывода (bookmaker + playerId)
+        // Это предотвращает повторную отправку той же заявки
         const withdrawKey = `withdraw_${bookmaker}_${userId}`
         localStorage.setItem(withdrawKey, 'true')
         setIsAlreadySubmitted(true)
