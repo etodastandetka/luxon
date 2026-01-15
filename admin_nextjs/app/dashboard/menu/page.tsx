@@ -18,6 +18,7 @@ export default function MenuPage() {
     { href: '/dashboard/referral-withdrawals', label: 'Реф. вывод', icon: '💸' },
     { href: '/dashboard/broadcast', label: 'Рассылка', icon: '📢' },
     { href: '/dashboard/banners', label: 'Баннеры', icon: '🎨' },
+    { href: '/dashboard/chat-templates', label: 'Шаблоны чата', icon: '💬' },
     { href: '/dashboard/settings', label: 'Настройки', icon: '🔧' },
   ]
 

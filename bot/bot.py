@@ -1052,6 +1052,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         qr_data = qr_response.json()
                         logger.info(f"📋 Данные QR: {qr_data}")
                         if qr_data.get('success'):
+                            # Используем скорректированную сумму из API (с копейками, если были добавлены)
+                            adjusted_amount = qr_data.get('amount', amount)
+                            if adjusted_amount != amount:
+                                logger.info(f"💰 API скорректировал сумму: {amount} → {adjusted_amount}")
+                                amount = adjusted_amount
+                                data['amount'] = amount
+                            
                             # API возвращает all_bank_urls напрямую, а не внутри data
                             bank_links = qr_data.get('all_bank_urls', {})
                             # Таймер по умолчанию 5 минут (300 секунд)
@@ -1454,8 +1461,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     deposit_title = get_text('deposit_title')
                                     casino_label = get_text('casino_label', casino_name=casino_name)
                                     
+                                    # Форматируем сумму с копейками (2 знака после запятой)
+                                    formatted_amount = f"{amount:.2f}"
                                     caption_text = (
-                                        f"💰 <b>Сумма:</b> {amount} KGS\n\n"
+                                        f"💰 <b>Сумма:</b> {formatted_amount} KGS\n\n"
                                         f"🆔 <b>ID:</b> {data['player_id']}\n\n"
                                         f"⏳ <b>Время на оплату: {timer_text}</b>\n\n"
                                         f"‼️ <b>Оплатите точно до копеек!</b>\n"
@@ -1488,8 +1497,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                     casino_name = get_casino_name(data.get('bookmaker', ''))
                                     deposit_title = get_text('deposit_title')
                                     casino_label = get_text('casino_label', casino_name=casino_name)
+                                    # Форматируем сумму с копейками (2 знака после запятой)
+                                    formatted_amount = f"{amount:.2f}"
                                     timer_message = await update.message.reply_text(
-                                        f"💰 <b>Сумма:</b> {amount} KGS\n\n"
+                                        f"💰 <b>Сумма:</b> {formatted_amount} KGS\n\n"
                                         f"🆔 <b>ID:</b> {data['player_id']}\n\n"
                                         f"⏳ <b>Время на оплату: {timer_text}</b>\n\n"
                                         f"‼️ <b>Оплатите точно до копеек!</b>\n"
@@ -1583,6 +1594,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 receipt_photo_base64 = await get_photo_base64(context.bot, photo_file_id)
                 logger.info(f"📤 Создаю заявку с фото чека, длина base64: {len(receipt_photo_base64)}")
                 
+                # Проверяем, что все необходимые данные есть
+                if not data.get('amount'):
+                    logger.error(f"❌ Отсутствует сумма в данных: {data}")
+                    await update.message.reply_text("❌ Ошибка: отсутствует сумма. Начните заново.")
+                    return
+                if not data.get('player_id'):
+                    logger.error(f"❌ Отсутствует player_id в данных: {data}")
+                    await update.message.reply_text("❌ Ошибка: отсутствует ID игрока. Начните заново.")
+                    return
+                if not data.get('bookmaker'):
+                    logger.error(f"❌ Отсутствует bookmaker в данных: {data}")
+                    await update.message.reply_text("❌ Ошибка: отсутствует название казино. Начните заново.")
+                    return
+                
                 # Создаем заявку с фото чека
                 user = update.effective_user
                 # По умолчанию используем omoney (о деньги), но не сохраняем выбор банка для отслеживания
@@ -1604,19 +1629,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     "source": "bot"
                 }
                 
-                async with httpx.AsyncClient(timeout=10.0) as client:
+                async with httpx.AsyncClient(timeout=30.0) as client:
                     # Создаем заявку с фото
-                    payment_response = await client.post(
-                        f"{API_URL}/api/payment",
-                        json=request_body,
-                        headers={"Content-Type": "application/json"}
-                    )
+                    logger.info(f"📤 Отправляю заявку на создание: amount={data.get('amount')}, bookmaker={data.get('bookmaker')}, player_id={data.get('player_id')}")
+                    logger.info(f"📤 Размер фото в base64: {len(receipt_photo_base64)} символов")
+                    
+                    try:
+                        payment_response = await client.post(
+                            f"{API_URL}/api/payment",
+                            json=request_body,
+                            headers={"Content-Type": "application/json"}
+                        )
+                    except httpx.TimeoutException:
+                        logger.error(f"❌ Таймаут при создании заявки (превышено 30 секунд)")
+                        await update.message.reply_text("❌ Превышено время ожидания. Попробуйте отправить фото еще раз.")
+                        return
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка сети при создании заявки: {e}", exc_info=True)
+                        await update.message.reply_text(f"❌ Ошибка сети: {str(e)[:200]}")
+                        return
                     
                     logger.info(f"📥 Ответ от API payment: status={payment_response.status_code}")
                     
-                    if payment_response.status_code == 200:
+                    # Пытаемся получить ответ в любом случае
+                    try:
                         result = payment_response.json()
                         logger.info(f"📋 Результат создания заявки: {result}")
+                    except Exception as e:
+                        error_text = payment_response.text
+                        logger.error(f"❌ Не удалось распарсить ответ API: {e}, текст ответа: {error_text[:500]}")
+                        await update.message.reply_text(f"❌ Ошибка сервера. Попробуйте позже или обратитесь в поддержку.")
+                        return
+                    
+                    if payment_response.status_code == 200:
                         if result.get('success') != False:
                             request_id = result.get('id') or result.get('data', {}).get('id') or 'N/A'
                             
@@ -1634,20 +1679,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                                 parse_mode='HTML',
                                 reply_markup=ReplyKeyboardRemove()
                             )
+                            
+                            # Очищаем состояние только после успешного создания
+                            if user_id in user_states:
+                                del user_states[user_id]
                         else:
-                            error_msg = result.get('error') or 'Неизвестная ошибка'
-                            logger.error(f"❌ Заявка не создана: {error_msg}")
+                            error_msg = result.get('error') or result.get('message') or 'Неизвестная ошибка'
+                            logger.error(f"❌ Заявка не создана (success=false): {error_msg}, полный ответ: {result}")
                             await update.message.reply_text(get_text('error_creating_request', error=error_msg))
                     else:
-                        error_text = payment_response.text
-                        logger.error(f"❌ Ошибка создания заявки: {error_text}")
-                        await update.message.reply_text(get_text('error_creating_request', error=error_text[:200]))
-                
-                # Очищаем состояние
-                del user_states[user_id]
+                        error_msg = result.get('error') or result.get('message') or payment_response.text[:200] or f'HTTP {payment_response.status_code}'
+                        logger.error(f"❌ Ошибка создания заявки (status {payment_response.status_code}): {error_msg}, полный ответ: {result}")
+                        await update.message.reply_text(get_text('error_creating_request', error=error_msg))
+            except httpx.TimeoutException as e:
+                logger.error(f"❌ Таймаут при обработке фото чека: {e}", exc_info=True)
+                await update.message.reply_text("❌ Превышено время ожидания при обработке фото. Попробуйте отправить фото еще раз.")
             except Exception as e:
                 logger.error(f"❌ Ошибка при обработке фото чека: {e}", exc_info=True)
-                await update.message.reply_text(get_text('error_processing_photo', error=str(e)[:200]))
+                error_msg = str(e)
+                # Если это ошибка получения фото, даем более понятное сообщение
+                if "get_file" in error_msg.lower() or "file" in error_msg.lower():
+                    await update.message.reply_text("❌ Не удалось загрузить фото. Попробуйте отправить фото еще раз.")
+                else:
+                    await update.message.reply_text(get_text('error_processing_photo', error=error_msg[:200]))
             return
         
         # Обработка вывода
@@ -2485,7 +2539,7 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 
                 # Формируем текст для обновления
                 updated_text = (
-                    f"💰 <b>Сумма:</b> {current_data.get('amount', 0)} KGS\n\n"
+                    f"💰 <b>Сумма:</b> {current_data.get('amount', 0):.2f} KGS\n\n"
                     f"🆔 <b>ID:</b> {current_data.get('player_id', '')}\n\n"
                     f"⏳ <b>Время на оплату: {timer_text}</b>\n\n"
                     f"‼️ <b>Оплатите точно до копеек!</b>\n"

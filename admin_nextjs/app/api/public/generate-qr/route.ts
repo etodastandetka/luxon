@@ -546,6 +546,7 @@ export async function POST(request: NextRequest) {
       qr_hash: qrHash,
       primary_url: primaryUrl,
       all_bank_urls: bankLinks,
+      amount: amount, // Возвращаем скорректированную сумму с копейками
       settings: {
         enabled_banks: enabledBanks,
         deposits_enabled: true

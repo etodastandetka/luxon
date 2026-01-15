@@ -47,10 +47,45 @@ export default function SupportPage() {
   const [userName, setUserName] = useState<string>('')
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
   const [editingText, setEditingText] = useState<string>('')
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [messageTemplates, setMessageTemplates] = useState<{ id: number; text: string }[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  
+  // Дефолтные шаблоны (на случай если API не работает или БД пустая)
+  const defaultTemplates = [
+    { id: 1, text: 'Здравствуйте! Чем могу помочь?' },
+    { id: 2, text: 'Спасибо за обращение! Обрабатываю вашу заявку.' },
+    { id: 3, text: 'Ваша заявка одобрена. Средства поступят в течение 5-30 минут.' },
+    { id: 4, text: 'К сожалению, ваша заявка отклонена. Причина: неверные данные.' },
+    { id: 5, text: 'Проверяю информацию, пожалуйста, подождите.' },
+    { id: 6, text: 'Все вопросы решены? Если что-то еще нужно - пишите!' },
+  ]
+  
+  // Загрузка шаблонов из API
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const apiUrl = getAdminApiUrl()
+      const response = await fetch(`${apiUrl}/api/public/chat/templates`)
+      const data = await response.json()
+      if (data.success && data.data && data.data.length > 0) {
+        setMessageTemplates(data.data)
+      } else {
+        // Если шаблонов нет в БД, используем дефолтные
+        setMessageTemplates(defaultTemplates)
+      }
+    } catch (error) {
+      console.error('Failed to fetch templates:', error)
+      // При ошибке используем дефолтные шаблоны
+      setMessageTemplates(defaultTemplates)
+    }
+  }, [])
+  
+  useEffect(() => {
+    fetchTemplates()
+  }, [fetchTemplates])
 
   const translations = {
     ru: {
@@ -83,6 +118,8 @@ export default function SupportPage() {
       request: 'Заявка',
       deposit: 'Пополнение',
       withdraw: 'Вывод',
+      templates: 'Шаблоны',
+      selectTemplate: 'Выберите шаблон',
     },
     en: {
       title: 'Support',
@@ -114,6 +151,8 @@ export default function SupportPage() {
       request: 'Request',
       deposit: 'Deposit',
       withdraw: 'Withdrawal',
+      templates: 'Templates',
+      selectTemplate: 'Select template',
     }
   }
 
@@ -275,8 +314,9 @@ export default function SupportPage() {
     }
   }
 
-  const sendMessage = async () => {
-    if ((!newMessage.trim() && !selectedFile && !selectedRequestId) || sending || !userId) return
+  const sendMessage = async (templateText?: string) => {
+    const messageToSend = templateText || newMessage.trim()
+    if ((!messageToSend && !selectedFile && !selectedRequestId) || sending || !userId) return
 
     setSending(true)
     try {
@@ -284,7 +324,7 @@ export default function SupportPage() {
       const formData = new FormData()
       
       // Формируем текст сообщения с информацией о заявке, если она прикреплена
-      let messageText = newMessage.trim()
+      let messageText = messageToSend
       if (selectedRequestId) {
         const request = requests.find(r => r.id === selectedRequestId)
         if (request) {
@@ -322,6 +362,7 @@ export default function SupportPage() {
         setNewMessage('')
         setReplyingToId(null)
         setSelectedRequestId(null)
+        setShowTemplates(false)
         removeFile()
         // Обновляем чат
         await fetchChatData()
@@ -336,6 +377,15 @@ export default function SupportPage() {
     } finally {
       setSending(false)
     }
+  }
+
+  const handleTemplateSelect = (templateText: string) => {
+    setNewMessage(templateText)
+    setShowTemplates(false)
+    // Автоматически отправляем шаблон
+    setTimeout(() => {
+      sendMessage(templateText)
+    }, 100)
   }
 
   const editMessage = async (messageId: number, newText: string) => {
@@ -707,6 +757,24 @@ export default function SupportPage() {
 
         {/* Поле ввода */}
         <div className="px-4 py-3 bg-black/70 backdrop-blur-md border-t border-white/15 flex-shrink-0 shadow-2xl">
+          {/* Шаблоны сообщений */}
+          {showTemplates && (
+            <div className="mb-2 p-2 bg-gray-800/95 backdrop-blur-sm rounded-xl border border-gray-700/60 shadow-lg max-h-48 overflow-y-auto">
+              <div className="text-xs text-white/70 font-medium mb-2 px-2">{t.selectTemplate}</div>
+              <div className="space-y-1">
+                {messageTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => handleTemplateSelect(template.text)}
+                    className="w-full text-left p-2.5 hover:bg-white/15 active:bg-white/20 transition-colors rounded-lg border border-white/5 hover:border-white/20"
+                  >
+                    <div className="text-sm text-white">{template.text}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
           {/* Preview ответа */}
           {replyingToId && (() => {
             const replyToMessage = messages.find(m => m.id === replyingToId)
@@ -794,6 +862,16 @@ export default function SupportPage() {
               onChange={handleFileSelect}
               className="hidden"
             />
+            {/* Кнопка шаблонов */}
+            <button 
+              onClick={() => setShowTemplates(!showTemplates)}
+              className={`p-2.5 hover:bg-white/15 active:bg-white/25 rounded-xl transition-all duration-200 flex-shrink-0 hover:scale-105 ${showTemplates ? 'bg-white/20' : ''}`}
+              title={t.templates}
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="p-2.5 hover:bg-white/15 active:bg-white/25 rounded-xl transition-all duration-200 flex-shrink-0 hover:scale-105"
@@ -851,6 +929,7 @@ export default function SupportPage() {
                   sendMessage()
                 }
               }}
+              onFocus={() => setShowTemplates(false)}
               placeholder={t.enterMessage}
               className="flex-1 bg-gray-800/95 backdrop-blur-md text-white rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 border border-gray-700/60 placeholder:text-white/40 transition-all duration-200"
               disabled={sending}

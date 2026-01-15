@@ -315,6 +315,19 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+// Chat Message Templates
+model ChatMessageTemplate {
+  id          Int      @id @default(autoincrement())
+  text        String   @db.Text
+  order       Int      @default(0) // Порядок отображения
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive, order])
+  @@map("chat_message_templates")
+}
+
 // Broadcast Messages
 model BroadcastMessage {
   id        Int       @id @default(autoincrement())
