@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useLanguage } from '../../components/LanguageContext'
 import FixedHeaderControls from '../../components/FixedHeaderControls'
+import BottomNavigation from '../../components/BottomNavigation'
 import { SupportIcon, BackIcon } from '../../components/Icons'
 import { getTelegramUserId, getTelegramUser } from '../../utils/telegram'
 import { getAdminApiUrl } from '../../config/domains'
@@ -43,6 +44,9 @@ export default function SupportPage() {
   const [showRequests, setShowRequests] = useState(false)
   const [requests, setRequests] = useState<any[]>([])
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
+  const [userName, setUserName] = useState<string>('')
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
+  const [editingText, setEditingText] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -70,6 +74,9 @@ export default function SupportPage() {
       reply: 'Ответить',
       replyingTo: 'Ответ на',
       cancel: 'Отмена',
+      edit: 'Редактировать',
+      save: 'Сохранить',
+      delete: 'Удалить',
       attachRequest: 'Прикрепить заявку',
       selectRequest: 'Выберите заявку',
       noRequests: 'Нет заявок',
@@ -98,6 +105,9 @@ export default function SupportPage() {
       reply: 'Reply',
       replyingTo: 'Replying to',
       cancel: 'Cancel',
+      edit: 'Edit',
+      save: 'Save',
+      delete: 'Delete',
       attachRequest: 'Attach request',
       selectRequest: 'Select request',
       noRequests: 'No requests',
@@ -140,6 +150,20 @@ export default function SupportPage() {
       const telegramUserId = getTelegramUserId()
       if (telegramUserId) {
         setUserId(telegramUserId)
+      }
+      
+      // Получаем имя пользователя
+      const telegramUser = getTelegramUser()
+      if (telegramUser) {
+        const name = telegramUser.first_name || ''
+        const lastName = telegramUser.last_name || ''
+        const fullName = `${name} ${lastName}`.trim() || telegramUser.username || `ID: ${telegramUserId}`
+        setUserName(fullName)
+      } else {
+        // Если нет данных пользователя, используем ID как fallback
+        if (telegramUserId) {
+          setUserName(`ID: ${telegramUserId}`)
+        }
       }
     }
     
@@ -314,6 +338,35 @@ export default function SupportPage() {
     }
   }
 
+  const editMessage = async (messageId: number, newText: string) => {
+    if (!userId || !newText.trim()) return
+
+    try {
+      const apiUrl = getAdminApiUrl()
+      const response = await fetch(
+        `${apiUrl}/api/public/chat/${userId}/messages/${messageId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageText: newText }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (data.success) {
+        setEditingMessageId(null)
+        setEditingText('')
+        await fetchChatData()
+      } else {
+        alert(data.error || 'Ошибка при редактировании сообщения')
+      }
+    } catch (error) {
+      console.error('Failed to edit message:', error)
+      alert('Ошибка при редактировании сообщения')
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const today = new Date()
@@ -426,18 +479,18 @@ export default function SupportPage() {
         
         {/* Хедер */}
         <div className="flex items-center justify-between px-4 py-3 bg-black/60 backdrop-blur-sm border-b border-white/10 flex-shrink-0 shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-500/20 rounded-lg">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="p-2 bg-orange-500/20 rounded-lg flex-shrink-0">
               <SupportIcon className="w-5 h-5 text-orange-400" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">{t.title}</h1>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg font-bold text-white truncate">{userName || t.title}</h1>
               <p className="text-xs text-white/60">{t.responseTime}</p>
             </div>
           </div>
           <a 
             href="/" 
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
           >
             <BackIcon className="w-5 h-5 text-white" />
           </a>
@@ -553,23 +606,92 @@ export default function SupportPage() {
                       )}
 
                       {/* Текст сообщения */}
-                      {message.messageText && (
-                        <p className="text-sm whitespace-pre-wrap break-words">{message.messageText}</p>
+                      {editingMessageId === message.id ? (
+                        <input
+                          type="text"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              if (editingText.trim()) {
+                                editMessage(message.id, editingText)
+                              }
+                            }
+                            if (e.key === 'Escape') {
+                              setEditingMessageId(null)
+                              setEditingText('')
+                            }
+                          }}
+                          className="w-full bg-white/10 text-white text-sm rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                          autoFocus
+                        />
+                      ) : (
+                        message.messageText && (
+                          <p className="text-sm whitespace-pre-wrap break-words">{message.messageText}</p>
+                        )
                       )}
                       <div className="flex items-center justify-between mt-1.5 pt-1">
-                        <p className={`text-xs ${isOutgoing ? 'text-gray-700/80' : 'text-white/50'}`}>
-                          {formatDate(message.createdAt)}
-                          {message.editedAt && ' (изменено)'}
-                        </p>
-                        {/* Кнопка ответа для входящих сообщений */}
-                        {!isOutgoing && (
-                          <button
-                            onClick={() => setReplyingToId(message.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-white/70 hover:text-white"
-                            title={t.reply}
-                          >
-                            {t.reply}
-                          </button>
+                        <div className="flex items-center gap-2">
+                          <p className={`text-xs ${isOutgoing ? 'text-gray-700/80' : 'text-white/50'}`}>
+                            {formatDate(message.createdAt)}
+                            {message.editedAt && ' (изменено)'}
+                          </p>
+                          {/* Кнопка ответа слева, скрыта по умолчанию */}
+                          {!isOutgoing && (
+                            <button
+                              onClick={() => setReplyingToId(message.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-white/70 hover:text-white"
+                              title={t.reply}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        {/* Кнопки редактирования и удаления для своих сообщений */}
+                        {isOutgoing && !message.isDeleted && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {editingMessageId === message.id ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    if (editingText.trim()) {
+                                      editMessage(message.id, editingText)
+                                    }
+                                  }}
+                                  className="text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-green-400 hover:text-green-300"
+                                  title={t.save}
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingMessageId(null)
+                                    setEditingText('')
+                                  }}
+                                  className="text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-white/70 hover:text-white"
+                                  title={t.cancel}
+                                >
+                                  ✕
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingMessageId(message.id)
+                                    setEditingText(message.messageText || '')
+                                  }}
+                                  className="text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-white/70 hover:text-white"
+                                  title={t.edit}
+                                >
+                                  ✎
+                                </button>
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -735,6 +857,7 @@ export default function SupportPage() {
               onClick={sendMessage}
               disabled={sending || (!newMessage.trim() && !selectedFile && !selectedRequestId)}
               className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 active:from-green-700 active:to-green-800 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg shadow-green-500/30 hover:scale-105 disabled:hover:scale-100"
+              style={{ display: 'flex' }}
             >
               <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -743,6 +866,7 @@ export default function SupportPage() {
           </div>
         </div>
       </div>
+      <BottomNavigation />
     </>
   )
 }
