@@ -174,6 +174,13 @@ export default function SupportPage() {
         // Разворачиваем, чтобы старые были сверху
         const reversedMessages = [...data.data.messages].reverse()
         setMessages(reversedMessages)
+        
+        // Обновляем имя пользователя из API, если оно есть
+        if (data.data.userInfo) {
+          const { firstName, lastName, username } = data.data.userInfo
+          const fullName = `${firstName || ''} ${lastName || ''}`.trim() || username || `ID: ${userId}`
+          setUserName(fullName)
+        }
       } else {
         console.warn('⚠️ Chat: Не удалось загрузить сообщения:', data)
       }

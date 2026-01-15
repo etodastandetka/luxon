@@ -148,6 +148,28 @@ export async function GET(
       }
     }
 
+    // Получаем информацию о пользователе для отображения имени
+    let userInfo = null
+    try {
+      const user = await prisma.botUser.findUnique({
+        where: { userId: userIdBigInt },
+        select: {
+          firstName: true,
+          lastName: true,
+          username: true,
+        },
+      })
+      if (user) {
+        userInfo = {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          username: user.username,
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch user info:', error)
+    }
+
     return NextResponse.json(
       createApiResponse({
         messages: messages.map(msg => ({
@@ -159,6 +181,7 @@ export async function GET(
             userId: msg.replyTo.userId?.toString(),
           } : null,
         })),
+        userInfo, // Добавляем информацию о пользователе
       })
     )
   } catch (error: any) {
