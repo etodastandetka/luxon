@@ -499,7 +499,7 @@ export default function SupportPage() {
         {/* Сообщения */}
         <div 
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0"
+          className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 space-y-4 min-h-0"
         >
           {messages.length === 0 ? (
             <div className="text-center text-white/60 py-12">
@@ -528,9 +528,22 @@ export default function SupportPage() {
               return (
                 <div
                   key={message.id}
-                  className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'} group`}
+                  className={`flex items-start gap-2 ${isOutgoing ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className="relative max-w-[85%] sm:max-w-[75%] md:max-w-md">
+                  {/* Кнопка ответа для входящих сообщений - всегда видна слева */}
+                  {!isOutgoing && (
+                    <button
+                      onClick={() => setReplyingToId(message.id)}
+                      className="mt-1.5 p-2 hover:bg-white/10 active:bg-white/20 rounded-full transition-all flex-shrink-0"
+                      title={t.reply}
+                    >
+                      <svg className="w-5 h-5 text-white/80 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                      </svg>
+                    </button>
+                  )}
+                  
+                  <div className="relative max-w-[80%] sm:max-w-[70%] md:max-w-md">
                     <div
                       className={`px-4 py-2.5 rounded-2xl shadow-lg transition-all duration-200 ${
                         isOutgoing
@@ -632,27 +645,13 @@ export default function SupportPage() {
                         )
                       )}
                       <div className="flex items-center justify-between mt-1.5 pt-1">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-xs ${isOutgoing ? 'text-gray-700/80' : 'text-white/50'}`}>
-                            {formatDate(message.createdAt)}
-                            {message.editedAt && ' (изменено)'}
-                          </p>
-                          {/* Кнопка ответа слева, скрыта по умолчанию */}
-                          {!isOutgoing && (
-                            <button
-                              onClick={() => setReplyingToId(message.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-white/70 hover:text-white"
-                              title={t.reply}
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                        {/* Кнопки редактирования и удаления для своих сообщений */}
+                        <p className={`text-xs ${isOutgoing ? 'text-gray-700/80' : 'text-white/50'}`}>
+                          {formatDate(message.createdAt)}
+                          {message.editedAt && ' (изменено)'}
+                        </p>
+                        {/* Кнопки редактирования для своих сообщений */}
                         {isOutgoing && !message.isDeleted && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1">
                             {editingMessageId === message.id ? (
                               <>
                                 <button
@@ -661,7 +660,7 @@ export default function SupportPage() {
                                       editMessage(message.id, editingText)
                                     }
                                   }}
-                                  className="text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-green-400 hover:text-green-300"
+                                  className="text-xs px-2 py-0.5 hover:bg-black/20 rounded-md text-green-400 hover:text-green-300"
                                   title={t.save}
                                 >
                                   ✓
@@ -671,31 +670,34 @@ export default function SupportPage() {
                                     setEditingMessageId(null)
                                     setEditingText('')
                                   }}
-                                  className="text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-white/70 hover:text-white"
+                                  className="text-xs px-2 py-0.5 hover:bg-black/20 rounded-md text-gray-700 hover:text-black"
                                   title={t.cancel}
                                 >
                                   ✕
                                 </button>
                               </>
                             ) : (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setEditingMessageId(message.id)
-                                    setEditingText(message.messageText || '')
-                                  }}
-                                  className="text-xs px-2 py-0.5 hover:bg-white/10 rounded-md text-white/70 hover:text-white"
-                                  title={t.edit}
-                                >
-                                  ✎
-                                </button>
-                              </>
+                              <button
+                                onClick={() => {
+                                  setEditingMessageId(message.id)
+                                  setEditingText(message.messageText || '')
+                                }}
+                                className="text-xs px-2 py-0.5 hover:bg-black/20 rounded-md text-gray-700 hover:text-black opacity-70 hover:opacity-100"
+                                title={t.edit}
+                              >
+                                ✎
+                              </button>
                             )}
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Отступ для выравнивания исходящих сообщений */}
+                  {isOutgoing && (
+                    <div className="mt-1.5 flex-shrink-0 w-10"></div>
+                  )}
                 </div>
               )
             })
@@ -856,8 +858,7 @@ export default function SupportPage() {
             <button
               onClick={sendMessage}
               disabled={sending || (!newMessage.trim() && !selectedFile && !selectedRequestId)}
-              className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 active:from-green-700 active:to-green-800 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg shadow-green-500/30 hover:scale-105 disabled:hover:scale-100"
-              style={{ display: 'flex' }}
+              className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 active:from-green-700 active:to-green-800 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg shadow-green-500/30 hover:scale-105 disabled:hover:scale-100 flex items-center justify-center"
             >
               <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
