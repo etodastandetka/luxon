@@ -35,7 +35,6 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="color-scheme" content="dark" />
         <meta name="application-name" content="Luxon Admin" />
         <meta name="msapplication-TileColor" content="#22c55e" />
         <meta name="msapplication-TileImage" content="/icon.jpg" />

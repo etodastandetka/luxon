@@ -6,20 +6,17 @@
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 16, 28, 20;
   --background-end-rgb: 20, 32, 24;
-  color-scheme: dark;
 }
 
 html, body {
   height: 100%;
   overflow: hidden;
-  color-scheme: dark;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-start-rgb));
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-  background-color: #07150d;
 }
 
 /* Мобильный контейнер */
