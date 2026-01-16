@@ -1514,8 +1514,8 @@ export default function RequestDetailPage() {
         </div>
       )}
 
-      {/* Входящие платежи с поиском - показываем для всех pending заявок */}
-      {request.requestType === 'deposit' && request.status === 'pending' && (
+      {/* Входящие платежи с поиском - показываем для всех заявок на пополнение */}
+      {request.requestType === 'deposit' && (
         <div className="mx-4 mb-4 bg-gray-800 rounded-2xl p-4 border border-gray-700">
           <h3 className="text-lg font-semibold text-white mb-3">Переводы по QR</h3>
           
