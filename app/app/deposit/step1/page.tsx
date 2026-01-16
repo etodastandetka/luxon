@@ -249,6 +249,10 @@ export default function DepositStep1() {
   }
 
   const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+      return
+    }
     router.push('/')
   }
 

@@ -539,7 +539,6 @@ export default function HomePage() {
         <section className="wb-hero">
           <div className="wb-hero-top">
             <div className="wb-hero-title">
-              <div className="wb-kicker">{t.secure}</div>
               <h1 className="wb-h1">
                 {greeting}
                 {user ? `, ${user.first_name}` : ""}!
@@ -767,19 +766,6 @@ export default function HomePage() {
           gap: 14px;
           justify-content: space-between;
           align-items: flex-start;
-        }
-
-        .wb-kicker {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.82);
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          background: rgba(255, 255, 255, 0.06);
-          padding: 6px 10px;
-          border-radius: 999px;
-          width: fit-content;
         }
 
         .wb-h1 {
