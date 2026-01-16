@@ -26,6 +26,11 @@ export default function HistoryPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true) // Флаг первой загрузки
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
+  const [amountMin, setAmountMin] = useState('')
+  const [amountMax, setAmountMax] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [sortByAmountDesc, setSortByAmountDesc] = useState(true)
   const limit = 1000 // Крупные порции для полной загрузки истории
 
   const fetchHistory = useCallback(async (reset = false) => {
@@ -279,6 +284,34 @@ export default function HistoryPage() {
     })
   }, [transactions, getStatusLabel, getProcessedBy, getStatusState, getBankImage, formatDate])
 
+  const filteredTransactions = useMemo(() => {
+    const minValue = amountMin.trim() ? parseFloat(amountMin.replace(',', '.')) : null
+    const maxValue = amountMax.trim() ? parseFloat(amountMax.replace(',', '.')) : null
+    const fromDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null
+    const toDate = dateTo ? new Date(`${dateTo}T23:59:59`) : null
+
+    const filtered = processedTransactions.filter((tx) => {
+      if (minValue !== null && !Number.isNaN(minValue) && tx.amount < minValue) return false
+      if (maxValue !== null && !Number.isNaN(maxValue) && tx.amount > maxValue) return false
+
+      const txDate = new Date(tx.created_at)
+      if (fromDate && txDate < fromDate) return false
+      if (toDate && txDate > toDate) return false
+
+      return true
+    })
+
+    if (sortByAmountDesc) {
+      return [...filtered].sort((a, b) => {
+        const amountDiff = b.amount - a.amount
+        if (amountDiff !== 0) return amountDiff
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+    }
+
+    return filtered
+  }, [processedTransactions, amountMin, amountMax, dateFrom, dateTo, sortByAmountDesc])
+
   // Показываем скелетон только если нет данных И идет загрузка (не при первой загрузке)
   const showSkeleton = transactions.length === 0 && loading && !isInitialLoad
 
@@ -367,7 +400,7 @@ export default function HistoryPage() {
   TransactionItem.displayName = 'TransactionItem'
 
   return (
-    <div className="py-4">
+    <div className="py-4 overflow-x-hidden">
       {/* Хедер */}
       <div className="flex items-center justify-between mb-4">
         <div className="w-10"></div>
@@ -449,6 +482,66 @@ export default function HistoryPage() {
         </button>
       </div>
 
+      {/* Фильтры по сумме и датам */}
+      <div className="mb-4 bg-gray-800/60 rounded-xl p-3 border border-gray-700">
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Мин сумма"
+              value={amountMin}
+              onChange={(e) => setAmountMin(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Макс сумма"
+              value={amountMax}
+              onChange={(e) => setAmountMax(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-green-500"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-green-500"
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={sortByAmountDesc}
+              onChange={(e) => setSortByAmountDesc(e.target.checked)}
+              className="w-3.5 h-3.5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-300">Сортировать по сумме ↓</span>
+          </label>
+          <button
+            onClick={() => {
+              setAmountMin('')
+              setAmountMax('')
+              setDateFrom('')
+              setDateTo('')
+            }}
+            className="text-xs text-gray-400 hover:text-gray-200"
+          >
+            Сбросить
+          </button>
+        </div>
+      </div>
+
       {/* Список транзакций */}
       {transactions.length === 0 && !loading && !isInitialLoad ? (
         // Показываем пустое состояние только если данных нет, не идет загрузка И не первая загрузка
@@ -478,7 +571,7 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {processedTransactions.map((tx) => (
+            {filteredTransactions.map((tx) => (
             <TransactionItem key={tx.id} tx={tx} />
           ))}
           {/* Индикатор загрузки при подгрузке дополнительных данных */}
