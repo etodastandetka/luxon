@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, memo } from 'react'
+import { useEffect, useState, useCallback, useMemo, memo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -31,7 +32,123 @@ export default function HistoryPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [sortByAmountDesc, setSortByAmountDesc] = useState(true)
-  const limit = 1000 // Крупные порции для полной загрузки истории
+  const [appliedAmountMin, setAppliedAmountMin] = useState('')
+  const [appliedAmountMax, setAppliedAmountMax] = useState('')
+  const [appliedDateFrom, setAppliedDateFrom] = useState('')
+  const [appliedDateTo, setAppliedDateTo] = useState('')
+  const [appliedSortByAmountDesc, setAppliedSortByAmountDesc] = useState(true)
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [selectedDates, setSelectedDates] = useState<Date[]>([])
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
+  const calendarRef = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
+  const limit = 300 // Крупные порции для быстрой первой отрисовки
+  const loadTokenRef = useRef(0)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (dateFrom && dateTo) {
+      setSelectedDates([new Date(dateFrom), new Date(dateTo)])
+    } else if (!dateFrom && !dateTo) {
+      setSelectedDates([])
+    }
+  }, [dateFrom, dateTo])
+
+  const handleDateClick = (date: Date) => {
+    if (selectedDates.length === 0) {
+      setSelectedDates([date])
+    } else if (selectedDates.length === 1) {
+      const firstDate = selectedDates[0]
+      if (date < firstDate) {
+        setSelectedDates([date, firstDate])
+      } else {
+        setSelectedDates([firstDate, date])
+      }
+    } else {
+      setSelectedDates([date])
+    }
+  }
+
+  const handleApplyPeriod = () => {
+    if (selectedDates.length >= 1) {
+      const start = selectedDates[0].toISOString().split('T')[0]
+      const end = selectedDates.length === 2 ? selectedDates[1].toISOString().split('T')[0] : start
+      setDateFrom(start)
+      setDateTo(end)
+      setShowCalendar(false)
+    }
+  }
+
+  const handleClearPeriod = () => {
+    setSelectedDates([])
+    setDateFrom('')
+    setDateTo('')
+    setShowCalendar(false)
+  }
+
+  const goToPreviousMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11)
+      setCurrentYear(currentYear - 1)
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
+  }
+
+  const goToNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0)
+      setCurrentYear(currentYear + 1)
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
+  }
+
+  const generateCalendar = () => {
+    const firstDay = new Date(currentYear, currentMonth, 1)
+    const lastDay = new Date(currentYear, currentMonth + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    const startingDayOfWeek = firstDay.getDay()
+
+    const days: (Date | null)[] = []
+
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null)
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(currentYear, currentMonth, day))
+    }
+
+    return days
+  }
+
+  const getMonthName = () => {
+    return new Date(currentYear, currentMonth).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  }
+
+  const isDateInRange = (date: Date) => {
+    if (selectedDates.length === 0) return false
+    if (selectedDates.length === 1) {
+      return date.toDateString() === selectedDates[0].toDateString()
+    }
+    return date >= selectedDates[0] && date <= selectedDates[1]
+  }
+
+  const isDateSelected = (date: Date) => {
+    return selectedDates.some(d => d.toDateString() === date.toDateString())
+  }
+
+  const formatDateRange = () => {
+    if (dateFrom && dateTo) {
+      return `${dateFrom} — ${dateTo}`
+    }
+    return 'Выберите период'
+  }
 
   const fetchHistory = useCallback(async (reset = false) => {
     // При первой загрузке не показываем лоадер - данные загружаются в фоне
@@ -61,68 +178,69 @@ export default function HistoryPage() {
         return params
       }
 
-      if (reset) {
-        let collected: Transaction[] = []
-        let currentOffset = 0
-        let more = true
-
-        while (more) {
-          const params = buildParams(currentOffset)
-          const response = await fetch(`/api/transaction-history?${params.toString()}`, {
-            cache: 'default', // Используем кэш браузера и сервера
-            priority: 'high', // Высокий приоритет для быстрой загрузки
-          })
-
-          if (response.status === 429) {
-            console.warn('⚠️ Rate limit exceeded for history API')
-            break
-          }
-
-          const data = await response.json()
-          if (!data.success) {
-            console.error('❌ [History] Ошибка загрузки:', data.error)
-            break
-          }
-
-          const newTransactions = data.data.transactions || []
-          console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
-          collected = [...collected, ...newTransactions]
-          currentOffset += newTransactions.length
-          more = data.data.pagination?.hasMore || false
-        }
-
-        setTransactions(collected)
-        setOffset(collected.length)
-        setHasMore(false)
-      } else {
-        const params = buildParams(offset)
-        // Используем кеширование для ускорения загрузки (API теперь кэширует на 5 сек)
+      const fetchPage = async (offsetValue: number) => {
+        const params = buildParams(offsetValue)
         const response = await fetch(`/api/transaction-history?${params.toString()}`, {
-          cache: 'default', // Используем кэш браузера и сервера
-          priority: 'high', // Высокий приоритет для быстрой загрузки
+          cache: 'default',
+          priority: 'high',
         })
-        
-        // Проверяем rate limiting
+
         if (response.status === 429) {
           console.warn('⚠️ Rate limit exceeded for history API')
-          return
+          return { success: false, data: null }
         }
-        
-        const data = await response.json()
 
-        if (data.success) {
-          const newTransactions = data.data.transactions || []
-          console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
-          
-          setTransactions(prev => {
-            const combined = [...prev, ...newTransactions]
-            setOffset(combined.length)
-            return combined
-          })
-          setHasMore(data.data.pagination?.hasMore || false)
-        } else {
+        const data = await response.json()
+        if (!data.success) {
           console.error('❌ [History] Ошибка загрузки:', data.error)
         }
+        return data
+      }
+
+      if (reset) {
+        const token = ++loadTokenRef.current
+
+        // Быстро грузим первую порцию и показываем сразу
+        const firstPage = await fetchPage(0)
+        if (!firstPage?.success || loadTokenRef.current !== token) return
+
+        const firstTransactions = firstPage.data?.transactions || []
+        setTransactions(firstTransactions)
+        setOffset(firstTransactions.length)
+        setHasMore(firstPage.data?.pagination?.hasMore || false)
+
+        // Догружаем остальное в фоне, не блокируя UI
+        let currentOffset = firstTransactions.length
+        let more = firstPage.data?.pagination?.hasMore || false
+        while (more && loadTokenRef.current === token) {
+          const nextPage = await fetchPage(currentOffset)
+          if (!nextPage?.success || loadTokenRef.current !== token) break
+
+          const nextTransactions = nextPage.data?.transactions || []
+          if (nextTransactions.length === 0) {
+            more = false
+            break
+          }
+
+          setTransactions(prev => [...prev, ...nextTransactions])
+          currentOffset += nextTransactions.length
+          setOffset(currentOffset)
+          more = nextPage.data?.pagination?.hasMore || false
+        }
+
+        setHasMore(false)
+      } else {
+        const data = await fetchPage(offset)
+        if (!data?.success) return
+
+        const newTransactions = data.data?.transactions || []
+        console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
+        setTransactions(prev => {
+          const combined = [...prev, ...newTransactions]
+          setOffset(combined.length)
+          return combined
+        })
+        setHasMore(data.data?.pagination?.hasMore || false)
       }
       
       // Сбрасываем флаг первой загрузки после успешной загрузки
@@ -285,10 +403,10 @@ export default function HistoryPage() {
   }, [transactions, getStatusLabel, getProcessedBy, getStatusState, getBankImage, formatDate])
 
   const filteredTransactions = useMemo(() => {
-    const minValue = amountMin.trim() ? parseFloat(amountMin.replace(',', '.')) : null
-    const maxValue = amountMax.trim() ? parseFloat(amountMax.replace(',', '.')) : null
-    const fromDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null
-    const toDate = dateTo ? new Date(`${dateTo}T23:59:59`) : null
+    const minValue = appliedAmountMin.trim() ? parseFloat(appliedAmountMin.replace(',', '.')) : null
+    const maxValue = appliedAmountMax.trim() ? parseFloat(appliedAmountMax.replace(',', '.')) : null
+    const fromDate = appliedDateFrom ? new Date(`${appliedDateFrom}T00:00:00`) : null
+    const toDate = appliedDateTo ? new Date(`${appliedDateTo}T23:59:59`) : null
 
     const filtered = processedTransactions.filter((tx) => {
       if (minValue !== null && !Number.isNaN(minValue) && tx.amount < minValue) return false
@@ -301,7 +419,7 @@ export default function HistoryPage() {
       return true
     })
 
-    if (sortByAmountDesc) {
+    if (appliedSortByAmountDesc) {
       return [...filtered].sort((a, b) => {
         const amountDiff = b.amount - a.amount
         if (amountDiff !== 0) return amountDiff
@@ -310,7 +428,14 @@ export default function HistoryPage() {
     }
 
     return filtered
-  }, [processedTransactions, amountMin, amountMax, dateFrom, dateTo, sortByAmountDesc])
+  }, [
+    processedTransactions,
+    appliedAmountMin,
+    appliedAmountMax,
+    appliedDateFrom,
+    appliedDateTo,
+    appliedSortByAmountDesc,
+  ])
 
   // Показываем скелетон только если нет данных И идет загрузка (не при первой загрузке)
   const showSkeleton = transactions.length === 0 && loading && !isInitialLoad
@@ -484,7 +609,7 @@ export default function HistoryPage() {
 
       {/* Фильтры по сумме и датам */}
       <div className="mb-4 bg-gray-800/60 rounded-xl p-3 border border-gray-700">
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="grid grid-cols-1 gap-2 mb-2">
           <div className="flex items-center space-x-2">
             <input
               type="text"
@@ -503,19 +628,115 @@ export default function HistoryPage() {
               className="w-full px-3 py-2 text-xs bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
             />
           </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-green-500"
-            />
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-green-500"
-            />
+          <div className="relative" ref={calendarRef}>
+            <button
+              type="button"
+              onClick={() => setShowCalendar(!showCalendar)}
+              className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center justify-between"
+            >
+              <span className={dateFrom && dateTo ? 'text-white' : 'text-gray-400'}>
+                {formatDateRange()}
+              </span>
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+
+            {mounted && showCalendar && createPortal(
+              <>
+                <div
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                  onClick={() => setShowCalendar(false)}
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}
+                />
+                <div
+                  className="fixed flex items-start justify-center pt-16 px-4 pointer-events-none"
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100000, pointerEvents: 'none' }}
+                >
+                  <div
+                    className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-2xl max-w-xs w-full relative"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ pointerEvents: 'auto' }}
+                  >
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <button
+                          type="button"
+                          onClick={goToPreviousMonth}
+                          className="p-0.5 hover:bg-gray-700 rounded transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <h3 className="text-white font-semibold text-sm">{getMonthName()}</h3>
+                        <button
+                          type="button"
+                          onClick={goToNextMonth}
+                          className="p-0.5 hover:bg-gray-700 rounded transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-7 gap-0.5 mb-1">
+                        {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((day) => (
+                          <div key={day} className="text-center text-[10px] text-gray-400 py-0.5">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-0.5">
+                        {generateCalendar().map((date, index) => {
+                          if (!date) {
+                            return <div key={index} className="aspect-square" />
+                          }
+                          const inRange = isDateInRange(date)
+                          const isSelected = isDateSelected(date)
+                          const isToday = date.toDateString() === new Date().toDateString()
+
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => handleDateClick(date)}
+                              className={`aspect-square rounded text-xs transition-colors ${
+                                isSelected
+                                  ? 'bg-green-500 text-black font-bold'
+                                  : inRange
+                                  ? 'bg-green-500/30 text-white'
+                                  : isToday
+                                  ? 'bg-gray-700 text-white font-semibold'
+                                  : 'text-white hover:bg-gray-700'
+                              }`}
+                            >
+                              {date.getDate()}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={handleClearPeriod}
+                        className="text-xs text-gray-300 hover:text-white"
+                      >
+                        Сбросить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleApplyPeriod}
+                        className="px-3 py-1 bg-green-500 text-black text-xs font-medium rounded-md hover:bg-green-600"
+                      >
+                        Готово
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            , document.body)}
           </div>
         </div>
         <div className="flex items-center justify-between">
@@ -528,17 +749,37 @@ export default function HistoryPage() {
             />
             <span className="text-xs text-gray-300">Сортировать по сумме ↓</span>
           </label>
-          <button
-            onClick={() => {
-              setAmountMin('')
-              setAmountMax('')
-              setDateFrom('')
-              setDateTo('')
-            }}
-            className="text-xs text-gray-400 hover:text-gray-200"
-          >
-            Сбросить
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => {
+                setAppliedAmountMin(amountMin)
+                setAppliedAmountMax(amountMax)
+                setAppliedDateFrom(dateFrom)
+                setAppliedDateTo(dateTo)
+                setAppliedSortByAmountDesc(sortByAmountDesc)
+              }}
+              className="text-xs text-green-400 hover:text-green-300"
+            >
+              Применить
+            </button>
+            <button
+              onClick={() => {
+                setAmountMin('')
+                setAmountMax('')
+                setDateFrom('')
+                setDateTo('')
+                setSortByAmountDesc(true)
+                setAppliedAmountMin('')
+                setAppliedAmountMax('')
+                setAppliedDateFrom('')
+                setAppliedDateTo('')
+                setAppliedSortByAmountDesc(true)
+              }}
+              className="text-xs text-gray-400 hover:text-gray-200"
+            >
+              Сбросить
+            </button>
+          </div>
         </div>
       </div>
 
