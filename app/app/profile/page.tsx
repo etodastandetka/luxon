@@ -129,6 +129,25 @@ export default function ProfilePage() {
 
   const t = translations[language as keyof typeof translations] || translations.ru
 
+  const activity = stats
+    ? (() => {
+        const totalOps = (stats.totalDeposits || 0) + (stats.totalWithdraws || 0)
+        const tiers = [
+          { min: 0, max: 9, ru: 'Новичок', en: 'Beginner' },
+          { min: 10, max: 49, ru: 'Активный', en: 'Active' },
+          { min: 50, max: 99, ru: 'Профи', en: 'Pro' },
+          { min: 100, max: 199, ru: 'Элита', en: 'Elite' },
+          { min: 200, max: Infinity, ru: 'Легенда', en: 'Legend' },
+        ]
+        const current = tiers.find((tier) => totalOps >= tier.min && totalOps <= tier.max) || tiers[0]
+        const nextTarget = current.max === Infinity ? current.min : current.max + 1
+        const progress = current.max === Infinity ? 100 : Math.min(100, (totalOps / nextTarget) * 100)
+        const label = language === 'en' ? current.en : current.ru
+        const nextLabel = language === 'en' ? 'Next level at' : 'Следующий уровень с'
+        return { totalOps, label, nextTarget, progress, nextLabel }
+      })()
+    : null
+
   if (loading) {
     return (
       <main style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -242,6 +261,30 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+          {activity && (
+            <div className="card p-4 bg-gradient-to-br from-green-500/15 to-emerald-500/10 border border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-white/70">
+                  {language === 'en' ? 'Activity level' : 'Уровень активности'}
+                </div>
+                <div className="text-sm font-semibold text-green-300">{activity.label}</div>
+              </div>
+              <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-green-400 to-emerald-500"
+                  style={{ width: `${activity.progress}%` }}
+                />
+              </div>
+              <div className="mt-2 text-xs text-white/60 flex items-center justify-between">
+                <span>
+                  {language === 'en' ? 'Operations' : 'Операций'}: {activity.totalOps}
+                </span>
+                <span>
+                  {activity.nextLabel} {activity.nextTarget}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Последние операции */}
           {stats.recentTransactions.length > 0 && (

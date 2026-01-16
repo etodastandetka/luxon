@@ -11,14 +11,10 @@ export default function MenuPage() {
   const menuItems = [
     { href: '/dashboard/search', label: 'Поиск', icon: '🔍' },
     { href: '/dashboard/requisites', label: 'Реквизиты', icon: '💳' },
-    { href: '/dashboard/payment-by-number', label: 'Пополнение по номеру', icon: '📱' },
-    { href: '/dashboard/history', label: 'История транзакций', icon: '🕐' },
-    { href: '/dashboard/wallet', label: 'Кошельки', icon: '💰' },
     { href: '/dashboard/limits', label: 'Лимиты', icon: '⚙️' },
     { href: '/dashboard/referral-withdrawals', label: 'Реф. вывод', icon: '💸' },
     { href: '/dashboard/broadcast', label: 'Рассылка', icon: '📢' },
     { href: '/dashboard/banners', label: 'Баннеры', icon: '🎨' },
-    { href: '/dashboard/chat-templates', label: 'Шаблоны чата', icon: '💬' },
     { href: '/dashboard/settings', label: 'Настройки', icon: '🔧' },
   ]
 

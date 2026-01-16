@@ -113,18 +113,9 @@ function HolidayEffects() {
     }
   }, [])
 
-  const bulbs = useMemo(() => Array.from({ length: 42 }, (_, i) => i), [])
-
   return (
     <>
       <canvas ref={canvasRef} className="wb-snow" aria-hidden="true" />
-      <div className="wb-garland" aria-hidden="true">
-        <ul className="lightrope">
-          {bulbs.map((i) => (
-            <li key={i} />
-          ))}
-        </ul>
-      </div>
     </>
   )
 }
@@ -556,15 +547,6 @@ export default function HomePage() {
               <p className="wb-p">{t.subtitle}</p>
             </div>
 
-            <div className="wb-hero-badges">
-              <div className="wb-badge">
-                <span className="wb-dot" />
-                <span className="wb-badge-text">{language === "en" ? "Online" : "Онлайн"}</span>
-              </div>
-              <div className="wb-badge wb-badge-soft">
-                <span className="wb-badge-text">{language === "en" ? "Fast load" : "Быстро"}</span>
-              </div>
-            </div>
           </div>
 
           <div className="wb-hero-cards">
@@ -765,131 +747,6 @@ export default function HomePage() {
           filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.07));
         }
 
-        .wb-garland {
-          position: fixed;
-          left: 0;
-          top: 0;
-          width: 100%;
-          z-index: 6;
-          pointer-events: none;
-        }
-
-        .lightrope {
-          text-align: center;
-          white-space: nowrap;
-          overflow: hidden;
-          margin: -14px 0 0 0;
-          padding: 0;
-          width: 100%;
-          transform: translateZ(0);
-          filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.35));
-        }
-
-        .lightrope li {
-          position: relative;
-          list-style: none;
-          margin: 20px;
-          padding: 0;
-          display: inline-block;
-          width: 12px;
-          height: 28px;
-          border-radius: 50%;
-          background: rgba(0, 247, 165, 1);
-          box-shadow: 0px 4.6667px 24px 3px rgba(0, 247, 165, 1);
-          animation-name: flash-1;
-          animation-duration: 2s;
-          animation-iteration-count: infinite;
-          animation-fill-mode: both;
-          transform: translateZ(0);
-        }
-
-        .lightrope li:nth-child(2n + 1) {
-          background: rgba(0, 255, 255, 1);
-          box-shadow: 0px 4.6667px 24px 3px rgba(0, 255, 255, 0.5);
-          animation-name: flash-2;
-          animation-duration: 0.4s;
-        }
-
-        .lightrope li:nth-child(4n + 2) {
-          background: rgba(247, 0, 148, 1);
-          box-shadow: 0px 4.6667px 24px 3px rgba(247, 0, 148, 1);
-          animation-name: flash-3;
-          animation-duration: 1.1s;
-        }
-
-        .lightrope li:nth-child(odd) {
-          animation-duration: 1.8s;
-        }
-
-        .lightrope li:nth-child(3n + 1) {
-          animation-duration: 1.4s;
-        }
-
-        .lightrope li:before {
-          content: "";
-          position: absolute;
-          background: #222;
-          width: 10px;
-          height: 9.3333px;
-          border-radius: 3px;
-          top: -4.6667px;
-          left: 1px;
-        }
-
-        .lightrope li:after {
-          content: "";
-          top: -14px;
-          left: 9px;
-          position: absolute;
-          width: 52px;
-          height: 18.6667px;
-          border-bottom: solid #222 2px;
-          border-radius: 50%;
-          opacity: 0.9;
-        }
-
-        .lightrope li:last-child:after {
-          content: none;
-        }
-
-        .lightrope li:first-child {
-          margin-left: -40px;
-        }
-
-        @keyframes flash-1 {
-          0%,
-          100% {
-            background: rgba(0, 247, 165, 1);
-            box-shadow: 0px 4.6667px 24px 3px rgba(0, 247, 165, 1);
-          }
-          50% {
-            background: rgba(0, 247, 165, 0.4);
-            box-shadow: 0px 4.6667px 24px 3px rgba(0, 247, 165, 0.2);
-          }
-        }
-        @keyframes flash-2 {
-          0%,
-          100% {
-            background: rgba(0, 255, 255, 1);
-            box-shadow: 0px 4.6667px 24px 3px rgba(0, 255, 255, 1);
-          }
-          50% {
-            background: rgba(0, 255, 255, 0.4);
-            box-shadow: 0px 4.6667px 24px 3px rgba(0, 255, 255, 0.2);
-          }
-        }
-        @keyframes flash-3 {
-          0%,
-          100% {
-            background: rgba(247, 0, 148, 1);
-            box-shadow: 0px 4.6667px 24px 3px rgba(247, 0, 148, 1);
-          }
-          50% {
-            background: rgba(247, 0, 148, 0.4);
-            box-shadow: 0px 4.6667px 24px 3px rgba(247, 0, 148, 0.2);
-          }
-        }
-
         .wb-hero {
           position: relative;
           border-radius: 22px;
@@ -942,40 +799,6 @@ export default function HomePage() {
           max-width: 320px;
         }
 
-        .wb-hero-badges {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          align-items: flex-end;
-          min-width: 112px;
-        }
-
-        .wb-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 10px;
-          border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          background: rgba(255, 255, 255, 0.06);
-          color: rgba(255, 255, 255, 0.88);
-          font-size: 12px;
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-        }
-
-        .wb-badge-soft {
-          background: rgba(255, 255, 255, 0.04);
-          color: rgba(255, 255, 255, 0.78);
-        }
-
-        .wb-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 999px;
-          background: var(--p-3);
-          box-shadow: 0 0 0 6px rgba(82, 209, 106, 0.12);
-        }
 
         .wb-hero-cards {
           display: grid;
@@ -1286,7 +1109,6 @@ export default function HomePage() {
 
 
         @media (prefers-reduced-motion: reduce) {
-          .lightrope li,
           .wb-hero-sheen,
           .wb-primary-shine {
             animation: none !important;

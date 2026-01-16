@@ -464,6 +464,7 @@ export default function ReferralPage() {
   }
 
   return (
+    <>
     <main className="space-y-6">
       <FixedHeaderControls />
       {/* Заголовок */}
@@ -663,7 +664,7 @@ export default function ReferralPage() {
         {topPlayers.length > 0 ? (
           <>
             {/* Призы - Топ-5 (показываем только если есть данные) */}
-            <div className="flex gap-3 overflow-x-auto pb-1">
+            <div className="referral-prizes-scroll flex gap-3 overflow-x-auto pb-1">
               <div className="min-w-[160px] rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-400/25 to-emerald-500/10 p-3 text-center">
                 <div className="mx-auto mb-2 w-9 h-9 rounded-full bg-green-500 flex items-center justify-center text-black font-bold">1</div>
                 <div className="text-sm text-white/80 font-semibold">{t.firstPlace()}</div>
@@ -701,7 +702,7 @@ export default function ReferralPage() {
             {/* Топ-5 реферов */}
             <div className="space-y-3">
               {topPlayers.slice(0, 5).map((player: any, index: number) => (
-                <div key={player.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div key={player.id} className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-green-500/10 to-emerald-500/5 p-3">
                   <div className="flex items-center space-x-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${
                       index === 0 ? 'bg-yellow-500 text-black' :
@@ -783,21 +784,21 @@ export default function ReferralPage() {
       </section>
 
       {/* Следующая выплата */}
-      <section className="card text-center space-y-2">
+      <section className="card text-center space-y-2 border-white/10 bg-gradient-to-br from-green-500/10 to-emerald-500/5">
         <div className="flex items-center justify-center space-x-2">
-          <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <div className="text-lg font-semibold text-white">{t.nextPayout}</div>
         </div>
-        <div className="text-2xl font-bold text-yellow-400">{referralSettings.next_payout_date}</div>
+        <div className="text-2xl font-bold text-emerald-300">{referralSettings.next_payout_date}</div>
         <div className="text-sm text-white/70 mt-1">Автоматическая выплата</div>
       </section>
 
       {/* Как это работает */}
-      <section className="card space-y-4">
+      <section className="card space-y-4 border-white/10 bg-gradient-to-br from-green-500/10 to-emerald-500/5">
         <div className="flex items-center space-x-2">
-          <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <h2 className="text-lg font-semibold text-white">{t.howItWorks}</h2>
@@ -805,7 +806,7 @@ export default function ReferralPage() {
         <div className="space-y-3">
           {t.steps().map((step, index) => (
             <div key={index} className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 text-black rounded-full flex items-center justify-center text-sm font-semibold">
                 {index + 1}
               </div>
               <p className="text-sm text-white/80 leading-relaxed flex-1">{step}</p>
@@ -832,5 +833,23 @@ export default function ReferralPage() {
         @lux_on_bot
       </div>
     </main>
+    <style jsx global>{`
+      .referral-prizes-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(52, 211, 153, 0.6) rgba(255, 255, 255, 0.08);
+      }
+      .referral-prizes-scroll::-webkit-scrollbar {
+        height: 6px;
+      }
+      .referral-prizes-scroll::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+      }
+      .referral-prizes-scroll::-webkit-scrollbar-thumb {
+        background: linear-gradient(90deg, rgba(52, 211, 153, 0.8), rgba(16, 185, 129, 0.8));
+        border-radius: 999px;
+      }
+    `}</style>
+    </>
   )
 }
