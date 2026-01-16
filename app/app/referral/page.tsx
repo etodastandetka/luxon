@@ -467,11 +467,11 @@ export default function ReferralPage() {
     <main className="space-y-6">
       <FixedHeaderControls />
       {/* Заголовок */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-purple-600/20 via-blue-500/10 to-emerald-500/10 p-5 text-center">
-        <div className="absolute -top-10 -right-10 h-24 w-24 rounded-full bg-purple-500/20 blur-2xl" />
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-green-500/20 via-emerald-500/10 to-teal-500/10 p-5 text-center">
+        <div className="absolute -top-10 -right-10 h-24 w-24 rounded-full bg-green-500/20 blur-2xl" />
         <div className="absolute -bottom-12 -left-10 h-28 w-28 rounded-full bg-emerald-500/20 blur-2xl" />
         <div className="relative flex items-center justify-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+          <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/30">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -567,9 +567,9 @@ export default function ReferralPage() {
 
       {/* Реферальная ссылка */}
       <section className="card relative overflow-hidden space-y-4 border-white/10 bg-white/5">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-blue-500/10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-transparent to-emerald-500/10 pointer-events-none" />
         <div className="relative flex items-center space-x-2">
-          <svg className="w-5 h-5 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
           <h2 className="text-lg font-semibold text-white/90">{t.yourLink}</h2>
@@ -581,7 +581,7 @@ export default function ReferralPage() {
           <div className="flex gap-3">
             <button 
               onClick={copyToClipboard}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-400 text-black px-4 py-2.5 rounded-xl font-semibold hover:from-blue-400 hover:to-cyan-300 transition-colors flex items-center justify-center space-x-2"
+              className="flex-1 bg-gradient-to-r from-green-400 to-emerald-400 text-black px-4 py-2.5 rounded-xl font-semibold hover:from-green-300 hover:to-emerald-300 transition-colors flex items-center justify-center space-x-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -590,7 +590,7 @@ export default function ReferralPage() {
             </button>
             <button 
               onClick={shareLink}
-              className="flex-1 bg-gradient-to-r from-emerald-400 to-green-500 text-black px-4 py-2.5 rounded-xl font-semibold hover:from-emerald-300 hover:to-green-400 transition-colors flex items-center justify-center space-x-2"
+              className="flex-1 bg-gradient-to-r from-teal-400 to-green-500 text-black px-4 py-2.5 rounded-xl font-semibold hover:from-teal-300 hover:to-green-400 transition-colors flex items-center justify-center space-x-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342c-.400 0-.584-.046-.869-.16a2.47 2.47 0 01-.88-.731 2.48 2.48 0 01-.23-1.08 2.45 2.45 0 01.23-1.08 2.47 2.47 0 01.88-.731c.285-.113.469-.16.869-.16h.892a2.48 2.48 0 012.316-1.674c.896 0 1.656.673 2.316 1.674H15.3c.4 0 .584.047.869.16.345.136.638.319.88.731.137.284.23.603.23 1.08 0 .477-.093.796-.23 1.08a2.48 2.48 0 01-.88.731c-.285.113-.469.16-.869.16h-.892a2.48 2.48 0 01-2.316 1.674c-.896 0-1.656-.673-2.316-1.674H8.684z" />
@@ -603,7 +603,7 @@ export default function ReferralPage() {
 
       {/* Статистика */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="card text-center space-y-2 border-white/10 bg-gradient-to-br from-green-500/10 to-emerald-500/5">
+        <div className="card text-center space-y-2 border-white/10 bg-gradient-to-br from-green-500/15 to-emerald-500/10">
           <div className="flex items-center justify-center">
             <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
               <svg className="w-6 h-6 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -614,15 +614,15 @@ export default function ReferralPage() {
           <div className="text-2xl font-bold text-green-300">{earned} сом</div>
           <div className="text-sm text-white/70">{t.earned}</div>
         </div>
-        <div className="card text-center space-y-2 border-white/10 bg-gradient-to-br from-blue-500/10 to-purple-500/5">
+        <div className="card text-center space-y-2 border-white/10 bg-gradient-to-br from-emerald-500/15 to-teal-500/10">
           <div className="flex items-center justify-center">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+              <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
-          <div className="text-2xl font-bold text-blue-300">{referralCount}</div>
+          <div className="text-2xl font-bold text-emerald-300">{referralCount}</div>
           <div className="text-sm text-white/70">{t.referrals}</div>
         </div>
       </div>
@@ -652,9 +652,9 @@ export default function ReferralPage() {
       )}
 
       {/* Топ игроков - показываем всегда, даже если не из бота */}
-      <section className="card space-y-4 border-white/10 bg-gradient-to-br from-yellow-500/10 via-white/5 to-purple-500/10">
+      <section className="card space-y-4 border-white/10 bg-gradient-to-br from-green-500/10 via-white/5 to-emerald-500/10">
         <div className="flex items-center space-x-2">
-          <svg className="w-5 h-5 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
           </svg>
           <h2 className="text-lg font-semibold text-white/90">{t.topPlayers}</h2>
@@ -664,33 +664,33 @@ export default function ReferralPage() {
           <>
             {/* Призы - Топ-5 (показываем только если есть данные) */}
             <div className="grid grid-cols-5 gap-2 text-center">
-              <div className="bg-gradient-to-br from-yellow-400/30 to-yellow-500/10 border border-yellow-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center mx-auto">
+              <div className="bg-gradient-to-br from-green-400/30 to-green-500/10 border border-green-500/30 rounded-xl p-2 space-y-1">
+                <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center mx-auto">
                   <span className="text-black font-bold text-xs">1</span>
                 </div>
                 <div className="text-xs text-white/80 font-medium leading-tight">{t.firstPlace()}</div>
               </div>
-              <div className="bg-gradient-to-br from-gray-400/30 to-gray-500/10 border border-gray-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-gray-400 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-white font-bold text-xs">2</span>
+              <div className="bg-gradient-to-br from-emerald-400/30 to-emerald-500/10 border border-emerald-500/30 rounded-xl p-2 space-y-1">
+                <div className="w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                  <span className="text-black font-bold text-xs">2</span>
                 </div>
                 <div className="text-xs text-white/80 font-medium leading-tight">{t.secondPlace()}</div>
               </div>
-              <div className="bg-gradient-to-br from-orange-400/30 to-orange-500/10 border border-orange-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-white font-bold text-xs">3</span>
+              <div className="bg-gradient-to-br from-teal-400/30 to-teal-500/10 border border-teal-500/30 rounded-xl p-2 space-y-1">
+                <div className="w-7 h-7 bg-teal-500 rounded-full flex items-center justify-center mx-auto">
+                  <span className="text-black font-bold text-xs">3</span>
                 </div>
                 <div className="text-xs text-white/80 font-medium leading-tight">{t.thirdPlace()}</div>
               </div>
-              <div className="bg-gradient-to-br from-blue-400/30 to-blue-500/10 border border-blue-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-white font-bold text-xs">4</span>
+              <div className="bg-gradient-to-br from-lime-400/30 to-lime-500/10 border border-lime-500/30 rounded-xl p-2 space-y-1">
+                <div className="w-7 h-7 bg-lime-500 rounded-full flex items-center justify-center mx-auto">
+                  <span className="text-black font-bold text-xs">4</span>
                 </div>
                 <div className="text-xs text-white/80 font-medium leading-tight">{t.fourthPlace()}</div>
               </div>
-              <div className="bg-gradient-to-br from-purple-400/30 to-purple-500/10 border border-purple-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-purple-500 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-white font-bold text-xs">5</span>
+              <div className="bg-gradient-to-br from-green-400/30 to-emerald-500/10 border border-emerald-500/30 rounded-xl p-2 space-y-1">
+                <div className="w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                  <span className="text-black font-bold text-xs">5</span>
                 </div>
                 <div className="text-xs text-white/80 font-medium leading-tight">{t.fifthPlace()}</div>
               </div>
@@ -698,12 +698,12 @@ export default function ReferralPage() {
 
             {/* Ваше место */}
             {userRank > 0 && (
-              <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl p-3 text-center">
+              <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl p-3 text-center">
                 <div className="flex items-center justify-center space-x-2">
-                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
-                  <div className="text-sm text-purple-300 font-semibold">{t.yourRank}: #{userRank}</div>
+                  <div className="text-sm text-green-200 font-semibold">{t.yourRank}: #{userRank}</div>
                 </div>
               </div>
             )}
@@ -729,10 +729,10 @@ export default function ReferralPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-green-300 font-bold text-lg">{player.total_deposits?.toLocaleString() || 0} сом</div>
+                    <div className="text-emerald-300 font-bold text-lg">{player.total_deposits?.toLocaleString() || 0} сом</div>
                     <div className="text-sm text-white/60">пополнений рефералов</div>
                     {player.prize && (
-                      <div className="text-xs text-yellow-300 font-medium mt-1">Приз: {player.prize.toLocaleString()} сом</div>
+                      <div className="text-xs text-green-300 font-medium mt-1">Приз: {player.prize.toLocaleString()} сом</div>
                     )}
                   </div>
                 </div>
