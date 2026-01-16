@@ -452,7 +452,7 @@ export default function RatingPage() {
                   </div>
                   <div>
                     <div className="font-bold text-white">#{user.rank}</div>
-                    <div className="text-sm text-white/70">{user.displayName}</div>
+                    <div className="text-sm text-white/70">ID {user.userId}</div>
                   </div>
                 </div>
                 <div className="text-right">

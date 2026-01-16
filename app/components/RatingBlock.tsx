@@ -74,7 +74,7 @@ export default function RatingBlock() {
                 </span>
                 <div>
                   <div className="text-sm font-medium text-white">
-                    #{player.rank} {player.displayName}
+                    #{player.rank} ID {player.userId}
                   </div>
                 </div>
               </div>

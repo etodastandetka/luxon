@@ -942,7 +942,9 @@ export default function SupportPage() {
               disabled={sending}
             />
             <button
-              onClick={sendMessage}
+              onClick={() => {
+                void sendMessage()
+              }}
               disabled={sending || (!newMessage.trim() && !selectedFile && !selectedRequestId)}
               className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 active:from-green-700 active:to-green-800 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg shadow-green-500/30 hover:scale-105 disabled:hover:scale-100 flex items-center justify-center"
             >

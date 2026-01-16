@@ -719,7 +719,7 @@ export default function ReferralPage() {
                       {index + 1}
                     </div>
                     <div>
-                      <div className="text-white font-semibold text-base">{player.username || `Игрок #${player.id}`}</div>
+                      <div className="text-white font-semibold text-base">ID {player.id}</div>
                       <div className="text-sm text-white/70">{player.referral_count || 0} рефералов</div>
                     </div>
                   </div>
