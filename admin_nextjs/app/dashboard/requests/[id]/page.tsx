@@ -1657,23 +1657,11 @@ export default function RequestDetailPage() {
                           }`}
                           onClick={() => !isDisabled && setSelectedPaymentId(isSelected ? null : payment.id)}
                         >
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-start space-x-3">
                             {/* Серый для обработанных, зеленый для необработанных */}
-                            <div className={`w-1 h-10 rounded-full ${isProcessed ? 'bg-gray-600' : 'bg-green-500'}`}></div>
+                            <div className={`w-1 h-10 rounded-full mt-1 ${isProcessed ? 'bg-gray-600' : 'bg-green-500'}`}></div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2">
-                                <p className="text-sm font-medium text-white truncate">Перевод по QR</p>
-                                {(isAttached || (payment.isProcessed && payment.requestId === request.id)) && (
-                                  <span className="px-2 py-0.5 bg-gray-600 text-gray-300 rounded text-xs font-medium flex-shrink-0">
-                                    Обработан
-                                  </span>
-                                )}
-                                {payment.isProcessed && payment.requestId !== request.id && payment.requestId !== null && (
-                                  <span className="px-2 py-0.5 bg-gray-600 text-gray-300 rounded text-xs font-medium flex-shrink-0">
-                                    Обработан
-                                  </span>
-                                )}
-                              </div>
+                              <p className="text-sm font-medium text-white truncate">Перевод по QR</p>
                               <div className="flex items-center space-x-2 mt-0.5">
                                 <p className="text-xs text-gray-400">{formatDate(payment.paymentDate)}</p>
                                 {payment.bank && (
@@ -1681,29 +1669,31 @@ export default function RequestDetailPage() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2 flex-shrink-0">
-                              {/* Серый текст для обработанных, зеленый для необработанных */}
-                              <p className={`text-base font-bold ${isProcessed ? 'text-gray-500' : 'text-green-500'}`}>
-                                +{parseFloat(payment.amount).toFixed(2).replace('.', ',')}
-                              </p>
-                              {payment.isProcessed && payment.requestId && (
-                                <Link
-                                  href={`/dashboard/requests/${payment.requestId}`}
-                                  prefetch={false}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="p-1 rounded-md bg-gray-800 hover:bg-gray-700 transition-colors"
-                                  title={`Открыть заявку #${payment.requestId}`}
-                                >
-                                  <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <div className="flex flex-col items-end space-y-1 flex-shrink-0">
+                              <div className="flex items-center space-x-2">
+                                {/* Серый текст для обработанных, зеленый для необработанных */}
+                                <p className={`text-base font-bold ${isProcessed ? 'text-gray-500' : 'text-green-500'}`}>
+                                  +{parseFloat(payment.amount).toFixed(2).replace('.', ',')}
+                                </p>
+                                {payment.isProcessed && payment.requestId && (
+                                  <Link
+                                    href={`/dashboard/requests/${payment.requestId}`}
+                                    prefetch={false}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="p-1 rounded-md bg-gray-800 hover:bg-gray-700 transition-colors"
+                                    title={`Открыть заявку #${payment.requestId}`}
+                                  >
+                                    <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </Link>
+                                )}
+                                {isSelected && !isDisabled && (
+                                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                   </svg>
-                                </Link>
-                              )}
-                              {isSelected && !isDisabled && (
-                                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
