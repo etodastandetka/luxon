@@ -152,8 +152,6 @@ export async function GET(
             // Убрали ограничение по paymentDate - показываем за все время
           },
           orderBy: { paymentDate: 'desc' },
-          // Увеличиваем лимит до 100 платежей
-          take: 100,
           select: {
             id: true,
             amount: true,

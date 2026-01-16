@@ -60,6 +60,9 @@ export default function RequestDetailPage() {
   const [searchAmount, setSearchAmount] = useState('')
   const [exactAmount, setExactAmount] = useState(false)
   const [processedOnly, setProcessedOnly] = useState(false)
+  const [appliedSearchAmount, setAppliedSearchAmount] = useState('')
+  const [appliedExactAmount, setAppliedExactAmount] = useState(false)
+  const [appliedProcessedOnly, setAppliedProcessedOnly] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [searchId, setSearchId] = useState('')
@@ -620,22 +623,32 @@ export default function RequestDetailPage() {
   const filteredPayments = useMemo(() => {
     if (!paymentsSource.length) return []
 
+    const normalizeAmount = (value: string) => {
+      const parsed = parseFloat(value.replace(',', '.'))
+      if (isNaN(parsed)) return null
+      return parsed.toFixed(2)
+    }
+
     return paymentsSource.filter((payment: MatchingPayment) => {
-      if (searchAmount) {
-        const searchValue = parseFloat(searchAmount.replace(',', '.'))
-        const paymentAmount = parseFloat(payment.amount)
-        if (!isNaN(searchValue)) {
-          if (exactAmount) {
-            if (Math.abs(paymentAmount - searchValue) > 0.01) return false
+      if (appliedSearchAmount) {
+        const normalizedSearch = normalizeAmount(appliedSearchAmount)
+        const paymentNumeric = parseFloat(payment.amount.replace(',', '.'))
+        const normalizedPayment = normalizeAmount(payment.amount)
+
+        if (normalizedSearch) {
+          if (appliedExactAmount) {
+            if (!normalizedPayment || normalizedPayment !== normalizedSearch) return false
           } else {
-            if (paymentAmount < searchValue * 0.9 || paymentAmount > searchValue * 1.1) return false
+            if (isNaN(paymentNumeric)) return false
+            const searchValue = parseFloat(normalizedSearch)
+            if (paymentNumeric < searchValue * 0.9 || paymentNumeric > searchValue * 1.1) return false
           }
         }
       }
-      if (processedOnly && !payment.isProcessed) return false
+      if (appliedProcessedOnly && !payment.isProcessed) return false
       return true
     })
-  }, [paymentsSource, searchAmount, exactAmount, processedOnly])
+  }, [paymentsSource, appliedSearchAmount, appliedExactAmount, appliedProcessedOnly])
 
   // Показываем все платежи (убрали ограничение)
   const limitedPayments = useMemo(() => filteredPayments, [filteredPayments])
@@ -1550,10 +1563,13 @@ export default function RequestDetailPage() {
                   <button
                     onClick={async () => {
                       if (allPaymentsLoading) return
+                      setAppliedSearchAmount(searchAmount)
+                      setAppliedExactAmount(exactAmount)
+                      setAppliedProcessedOnly(processedOnly)
                       setAllPaymentsLoading(true)
                       setAllPaymentsError(null)
                       try {
-                        const response = await fetch('/api/incoming-payments?limit=100&offset=0', {
+                        const response = await fetch('/api/incoming-payments?limit=10000&offset=0', {
                           cache: 'no-store',
                         })
                         const data = await response.json()
@@ -1606,11 +1622,6 @@ export default function RequestDetailPage() {
                     <span className="text-xs text-gray-300">Обработанные</span>
                   </label>
                 </div>
-                {showAllPayments && (
-                  <div className="mt-2 text-[11px] text-blue-300">
-                    Показаны все платежи (не ограничены суммой заявки)
-                  </div>
-                )}
                 {allPaymentsError && (
                   <div className="mt-2 text-[11px] text-red-400">
                     {allPaymentsError}
@@ -1675,6 +1686,19 @@ export default function RequestDetailPage() {
                               <p className={`text-base font-bold ${isProcessed ? 'text-gray-500' : 'text-green-500'}`}>
                                 +{parseFloat(payment.amount).toFixed(2).replace('.', ',')}
                               </p>
+                              {payment.isProcessed && payment.requestId && (
+                                <Link
+                                  href={`/dashboard/requests/${payment.requestId}`}
+                                  prefetch={false}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1 rounded-md bg-gray-800 hover:bg-gray-700 transition-colors"
+                                  title={`Открыть заявку #${payment.requestId}`}
+                                >
+                                  <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </Link>
+                              )}
                               {isSelected && !isDisabled && (
                                 <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -1686,11 +1710,6 @@ export default function RequestDetailPage() {
                       )
                     })}
                   </div>
-                  {filteredPayments.length > 5 && (
-                    <p className="text-[11px] text-gray-500 mt-2">
-                      Найдено {filteredPayments.length} платежей. Прокрутите вниз, чтобы увидеть все.
-                    </p>
-                  )}
                 </>
               )}
             </>

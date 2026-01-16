@@ -195,17 +195,24 @@ async function processEmail(
             
             console.log(`🕐 [Email Watcher] Payment date: ${paymentDate.toISOString()} (UTC)`)
 
-            // ВАЖНО: Проверяем, не существует ли уже такой платеж (по сумме, дате и банку)
-            // Это предотвращает дубликаты при повторной обработке писем
-            // Увеличиваем окно поиска до ±10 минут для более надежной проверки
+            const notificationSnippet = text.substring(0, 500)
+
+            // ВАЖНО: Проверяем, не существует ли уже такой платеж
+            // 1) По тексту письма (защита от повторной обработки одного и того же письма)
+            // 2) По сумме/банку/дате (±10 минут) для дубликатов с одинаковыми параметрами
             const existingPayment = await prisma.incomingPayment.findFirst({
               where: {
-                amount: amount,
-                bank: bank,
-                paymentDate: {
-                  gte: new Date(paymentDate.getTime() - 10 * 60000), // ±10 минут
-                  lte: new Date(paymentDate.getTime() + 10 * 60000),
-                },
+                OR: [
+                  { notificationText: notificationSnippet },
+                  {
+                    amount: amount,
+                    bank: bank,
+                    paymentDate: {
+                      gte: new Date(paymentDate.getTime() - 10 * 60000), // ±10 минут
+                      lte: new Date(paymentDate.getTime() + 10 * 60000),
+                    },
+                  },
+                ],
               },
             })
 
@@ -232,7 +239,7 @@ async function processEmail(
                 amount,
                 bank,
                 paymentDate,
-                notificationText: text.substring(0, 500), // Первые 500 символов
+                notificationText: notificationSnippet, // Первые 500 символов
                 isProcessed: false,
               },
             })
