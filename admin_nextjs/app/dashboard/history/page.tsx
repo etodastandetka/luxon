@@ -455,6 +455,7 @@ export default function HistoryPage() {
         href={`/dashboard/requests/${tx.id}`}
         prefetch={false}
         className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm cursor-pointer"
+        style={{ contentVisibility: 'auto', containIntrinsicSize: '140px' }}
       >
         <div className="flex items-start justify-between">
           {/* Левая часть: Аватар и информация о пользователе */}
