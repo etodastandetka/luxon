@@ -2671,9 +2671,7 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
             del active_timers[user_id]
     except Exception as e:
         logger.error(f"❌ Ошибка в таймере для пользователя {user_id}: {e}", exc_info=True)
-        # Очищаем состояние при ошибке
-        if user_id in user_states:
-            del user_states[user_id]
+        # Не очищаем состояние, чтобы случайная ошибка не ломала ожидание чека
         if user_id in active_timers:
             del active_timers[user_id]
     finally:
