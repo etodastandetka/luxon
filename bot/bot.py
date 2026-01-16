@@ -352,7 +352,7 @@ async def send_main_menu(bot, chat_id: int, user_name: str) -> None:
     except Exception as e:
         logger.error(f"❌ Ошибка при отправке главного меню: {e}")
     
-    # Отправляем сообщение с клавиатурой и сразу удаляем текст
+    # Отправляем сообщение с клавиатурой и удаляем текст после короткой паузы
     try:
         temp_message = await bot.send_message(
             chat_id=chat_id,
@@ -360,6 +360,7 @@ async def send_main_menu(bot, chat_id: int, user_name: str) -> None:
             reply_markup=get_main_menu_keyboard()
         )
         try:
+            await asyncio.sleep(0.6)
             await bot.delete_message(chat_id=chat_id, message_id=temp_message.message_id)
         except Exception as delete_error:
             logger.warning(f"⚠️ Не удалось удалить временное сообщение меню: {delete_error}")
