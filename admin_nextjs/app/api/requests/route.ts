@@ -127,9 +127,23 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    const serializeBigInt = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj
+      if (typeof obj === 'bigint') return obj.toString()
+      if (Array.isArray(obj)) return obj.map(serializeBigInt)
+      if (typeof obj === 'object') {
+        const serialized: any = {}
+        for (const [key, value] of Object.entries(obj)) {
+          serialized[key] = serializeBigInt(value)
+        }
+        return serialized
+      }
+      return obj
+    }
+
     return NextResponse.json(
       createApiResponse({
-        ...newRequest,
+        ...serializeBigInt(newRequest),
         amount: newRequest.amount ? newRequest.amount.toString() : null,
       })
     )
