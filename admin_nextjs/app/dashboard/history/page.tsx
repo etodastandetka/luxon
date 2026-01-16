@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, memo, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, memo, useRef, useDeferredValue } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -402,13 +402,22 @@ export default function HistoryPage() {
     })
   }, [transactions, getStatusLabel, getProcessedBy, getStatusState, getBankImage, formatDate])
 
-  const filteredTransactions = useMemo(() => {
-    const minValue = appliedAmountMin.trim() ? parseFloat(appliedAmountMin.replace(',', '.')) : null
-    const maxValue = appliedAmountMax.trim() ? parseFloat(appliedAmountMax.replace(',', '.')) : null
-    const fromDate = appliedDateFrom ? new Date(`${appliedDateFrom}T00:00:00`) : null
-    const toDate = appliedDateTo ? new Date(`${appliedDateTo}T23:59:59`) : null
+  const deferredTransactions = useDeferredValue(processedTransactions)
+  const deferredFilters = useDeferredValue({
+    amountMin: appliedAmountMin,
+    amountMax: appliedAmountMax,
+    dateFrom: appliedDateFrom,
+    dateTo: appliedDateTo,
+    sortByAmountDesc: appliedSortByAmountDesc,
+  })
 
-    const filtered = processedTransactions.filter((tx) => {
+  const filteredTransactions = useMemo(() => {
+    const minValue = deferredFilters.amountMin.trim() ? parseFloat(deferredFilters.amountMin.replace(',', '.')) : null
+    const maxValue = deferredFilters.amountMax.trim() ? parseFloat(deferredFilters.amountMax.replace(',', '.')) : null
+    const fromDate = deferredFilters.dateFrom ? new Date(`${deferredFilters.dateFrom}T00:00:00`) : null
+    const toDate = deferredFilters.dateTo ? new Date(`${deferredFilters.dateTo}T23:59:59`) : null
+
+    const filtered = deferredTransactions.filter((tx) => {
       if (minValue !== null && !Number.isNaN(minValue) && tx.amount < minValue) return false
       if (maxValue !== null && !Number.isNaN(maxValue) && tx.amount > maxValue) return false
 
@@ -419,7 +428,7 @@ export default function HistoryPage() {
       return true
     })
 
-    if (appliedSortByAmountDesc) {
+    if (deferredFilters.sortByAmountDesc) {
       return [...filtered].sort((a, b) => {
         const amountDiff = b.amount - a.amount
         if (amountDiff !== 0) return amountDiff
@@ -428,14 +437,7 @@ export default function HistoryPage() {
     }
 
     return filtered
-  }, [
-    processedTransactions,
-    appliedAmountMin,
-    appliedAmountMax,
-    appliedDateFrom,
-    appliedDateTo,
-    appliedSortByAmountDesc,
-  ])
+  }, [deferredTransactions, deferredFilters])
 
   // Показываем скелетон только если нет данных И идет загрузка (не при первой загрузке)
   const showSkeleton = transactions.length === 0 && loading && !isInitialLoad
