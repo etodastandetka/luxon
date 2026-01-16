@@ -213,6 +213,9 @@ TRANSLATIONS = {
     'ru': {
         'welcome': "Привет, {user_name}!\n\nПополнение | Вывод\nиз букмекерских контор!\n\n📥 Пополнение — 0%\n📤 Вывод — 0%\n🕒 Работаем 24/7\n\n👨‍💻 Поддержка: @operator_luxon_bot\n💬 Чат для всех: @luxon_chat\n\n🔒 Финансовый контроль обеспечен личным отделом безопасности",
         'select_action': "Выберите действие:",
+        'main_menu_text': "Здравствуйте, {user_name} | LUX ON.\n\n• Авто-пополнение: активировано\n• Авто-вывод: активировано\n• Поддержка 24/7: @GlobalKassa\n\n“Проверьте ID перед оплатой и следуйте подсказкам меню.”\nСпасибо, что пользуетесь GlobalKassa.",
+        'main_menu_webapp_button': "🌐 ОТКРЫТЬ LUX-ON.ORG",
+        'menu_ready_text': "✨ Меню готово",
         'deposit': "💰 Пополнить",
         'withdraw': "💸 Вывести",
         'support': "👨‍💻 Тех поддержка",
@@ -309,6 +312,59 @@ TRANSLATIONS = {
         'invalid_amount_format_deposit': "❌ Введите корректную сумму (число) или выберите из кнопок",
     }
 }
+
+def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
+    """Создает Reply клавиатуру основного меню."""
+    reply_keyboard = [
+        [
+            KeyboardButton("💰 Пополнить"),
+            KeyboardButton("💸 Вывести")
+        ],
+        [
+            KeyboardButton("👨‍💻 Тех поддержка"),
+            KeyboardButton("📊 История")
+        ],
+        [
+            KeyboardButton("📖 Инструкция")
+        ]
+    ]
+    return ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+async def send_main_menu(bot, chat_id: int, user_name: str) -> None:
+    """Отправляет главное меню с WebApp кнопкой и клавиатурой."""
+    safe_name = user_name if user_name else "друг"
+    main_menu_text = get_text('main_menu_text', user_name=safe_name)
+    webapp_button_text = get_text('main_menu_webapp_button')
+    menu_ready_text = get_text('menu_ready_text')
+    
+    inline_keyboard = [
+        [InlineKeyboardButton(webapp_button_text, web_app=WebAppInfo(url="https://lux-on.org"))]
+    ]
+    inline_markup = InlineKeyboardMarkup(inline_keyboard)
+    
+    try:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=main_menu_text,
+            reply_markup=inline_markup,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"❌ Ошибка при отправке главного меню: {e}")
+    
+    # Отправляем сообщение с клавиатурой и сразу удаляем текст
+    try:
+        temp_message = await bot.send_message(
+            chat_id=chat_id,
+            text=menu_ready_text,
+            reply_markup=get_main_menu_keyboard()
+        )
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=temp_message.message_id)
+        except Exception as delete_error:
+            logger.warning(f"⚠️ Не удалось удалить временное сообщение меню: {delete_error}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при отправке клавиатуры главного меню: {e}")
 
 def get_text(key: str, lang: str = 'ru', **kwargs) -> str:
     """Получает переведенный текст с подстановкой переменных"""
@@ -564,32 +620,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 except ValueError:
                     logger.warning(f"⚠️ Неверный формат реферального кода: {referral_code}")
     
-    # Создаем Reply клавиатуру с кнопками
-    reply_keyboard = [
-        [
-            KeyboardButton("💰 Пополнить"),
-            KeyboardButton("💸 Вывести")
-        ],
-        [
-            KeyboardButton("👨‍💻 Тех поддержка"),
-            KeyboardButton("📊 История")
-        ],
-        [
-            KeyboardButton("📖 Инструкция")
-        ]
-    ]
-    reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
-    
-    # Текст приветствия (используем переводы)
-    welcome_text = get_text('welcome', user_name=user.first_name)
-    select_action = get_text('select_action')
-    
-    # Отправляем текст с Reply клавиатурой
+    # Отправляем главное меню
     try:
-        await update.message.reply_text(
-            f"{welcome_text}\n\n{select_action}",
-            reply_markup=reply_markup
-        )
+        await send_main_menu(context.bot, update.message.chat.id, user.first_name)
         logger.info(f"✅ Ответ отправлен пользователю {user_id}")
     except Exception as e:
         # Игнорируем ошибки заблокированных пользователей
@@ -648,32 +681,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             del user_states[user_id]
             logger.info(f"✅ Состояние очищено для пользователя {user_id}")
         clear_pending_deposit_state(user_id)
-        clear_pending_deposit_state(user_id)
         
-        # Создаем Reply клавиатуру с кнопками
-        reply_keyboard = [
-            [
-                KeyboardButton("💰 Пополнить"),
-                KeyboardButton("💸 Вывести")
-            ],
-            [
-                KeyboardButton("👨‍💻 Тех поддержка"),
-                KeyboardButton("📊 История")
-            ],
-            [
-                KeyboardButton("📖 Инструкция")
-            ]
-        ]
-        reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
-        
-        # Отправляем приветственное сообщение (как в /start)
-        welcome_text = get_text('welcome', user_name=user.first_name)
-        select_action = get_text('select_action')
-        
-        await update.message.reply_text(
-            f"{welcome_text}\n\n{select_action}",
-            reply_markup=reply_markup
-        )
+        # Отправляем главное меню
+        await send_main_menu(context.bot, update.message.chat.id, user.first_name)
         return
     
     # Обработка кнопок Reply клавиатуры (должна быть ПЕРЕД проверкой user_states)
@@ -2423,46 +2433,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         await query.answer("Заявка отменена")
         
-        # Создаем Reply клавиатуру с кнопками
-        reply_keyboard = [
-            [
-                KeyboardButton("💰 Пополнить"),
-                KeyboardButton("💸 Вывести")
-            ],
-            [
-                KeyboardButton("👨‍💻 Тех поддержка"),
-                KeyboardButton("📊 История")
-            ],
-            [
-                KeyboardButton("📖 Инструкция")
-            ]
-        ]
-        reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
-        
-        # Отправляем приветственное сообщение (как в /start)
+        # Отправляем главное меню
         user = query.from_user
-        welcome_text = f"""Привет, {user.first_name}!
-
-Пополнение | Вывод
-из букмекерских контор!
-
-📥 Пополнение — 0%
-📤 Вывод — 0%
-🕒 Работаем 24/7
-
-👨‍💻 Поддержка: @operator_luxon_bot
-💬 Чат для всех: @luxon_chat
-
-🔒 Финансовый контроль обеспечен личным отделом безопасности"""
-        
-        # Отправляем приветственное сообщение
-        try:
-            await query.message.reply_text(
-                f"{welcome_text}\n\nВыберите действие:",
-                reply_markup=reply_markup
-            )
-        except Exception as e:
-            logger.error(f"❌ Ошибка при отправке приветственного сообщения: {e}")
+        await send_main_menu(context.bot, query.message.chat.id, user.first_name)
         return
     
     # Обработка возврата в главное меню
@@ -2470,54 +2443,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if user_id in user_states:
             del user_states[user_id]
         await query.answer("Возврат в главное меню")
-        
-        # Создаем Reply клавиатуру с кнопками
-        reply_keyboard = [
-            [
-                KeyboardButton("💰 Пополнить"),
-                KeyboardButton("💸 Вывести")
-            ],
-            [
-                KeyboardButton("👨‍💻 Тех поддержка"),
-                KeyboardButton("📊 История")
-            ],
-            [
-                KeyboardButton("📖 Инструкция")
-            ]
-        ]
-        reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
-        
         user = query.from_user
-        welcome_text = f"""Привет, {user.first_name}!
-
-Пополнение | Вывод
-из букмекерских контор!
-
-📥 Пополнение — 0%
-📤 Вывод — 0%
-🕒 Работаем 24/7
-
-👨‍💻 Поддержка: @operator_luxon_bot
-💬 Чат для всех: @luxon_chat
-
-🔒 Финансовый контроль обеспечен личным отделом безопасности"""
-        
-        try:
-            await query.edit_message_text(
-                f"{welcome_text}\n\nВыберите действие:",
-                parse_mode='HTML'
-            )
-            await query.message.reply_text(
-                " ",
-                reply_markup=reply_markup
-            )
-        except:
-            # Если не удалось отредактировать сообщение, отправляем новое
-            await query.message.reply_text(
-                f"{welcome_text}\n\nВыберите действие:",
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
+        await send_main_menu(context.bot, query.message.chat.id, user.first_name)
         return
     
     # Обработка проверки подписки
@@ -2530,55 +2457,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if is_subscribed:
             # Пользователь подписан, отправляем основное меню
             try:
-                # Получаем настройки канала для username
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    response = await client.get(f"{API_URL}/api/channel/settings")
-                    channel_username = ''
-                    if response.status_code == 200:
-                        data = response.json()
-                        if data.get('success'):
-                            channel_username = data.get('data', {}).get('username', '')
-                
-                # Создаем Reply клавиатуру с кнопками
-                reply_keyboard = [
-                    [
-                        KeyboardButton("💰 Пополнить"),
-                        KeyboardButton("💸 Вывести")
-                    ],
-                    [
-                        KeyboardButton("👨‍💻 Тех поддержка"),
-                        KeyboardButton("📊 История")
-                    ],
-                    [
-                        KeyboardButton("📖 Инструкция")
-                    ]
-                ]
-                reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
-                
-                welcome_text = f"""✅ <b>Спасибо за подписку!</b>
-
-Привет, {user.first_name}!
-
-Пополнение | Вывод
-из букмекерских контор!
-
-📥 Пополнение — 0%
-📤 Вывод — 0%
-🕒 Работаем 24/7
-
-👨‍💻 Поддержка: @operator_luxon_bot
-💬 Чат для всех: @luxon_chat
-
-🔒 Финансовый контроль обеспечен личным отделом безопасности"""
-                
-                await query.edit_message_text(
-                    f"{welcome_text}\n\nВыберите действие:",
-                    parse_mode='HTML'
-                )
-                await query.message.reply_text(
-                    " ",
-                    reply_markup=reply_markup
-                )
+                try:
+                    await query.edit_message_text("✅ Подписка подтверждена.", parse_mode='HTML')
+                except Exception:
+                    pass
+                await send_main_menu(context.bot, query.message.chat.id, user.first_name)
                 logger.info(f"✅ Основное меню отправлено пользователю {user_id} после проверки подписки")
             except Exception as e:
                 logger.error(f"❌ Ошибка при отправке основного меню: {e}")
@@ -2732,22 +2615,6 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
             
             # Отправляем сообщение об отмене
             try:
-                # Создаем Reply клавиатуру с кнопками
-                reply_keyboard = [
-                    [
-                        KeyboardButton("💰 Пополнить"),
-                        KeyboardButton("💸 Вывести")
-                    ],
-                    [
-                        KeyboardButton("👨‍💻 Тех поддержка"),
-                        KeyboardButton("📊 История")
-                    ],
-                    [
-                        KeyboardButton("📖 Инструкция")
-                    ]
-                ]
-                reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=False)
-                
                 cancel_text = "⏰ <b>Пополнение отменено, время оплаты прошло</b>\n\n❌ <b>Не переводите по старым реквизитам</b>\n\nНачните заново, нажав на <b>Пополнить</b>"
                 
                 # Удаляем сообщение с QR-кодом полностью, чтобы пользователи случайно не перевели деньги по старым реквизитам
@@ -2764,15 +2631,9 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
                 await bot.send_message(
                     chat_id=chat_id,
                     text=cancel_text,
-                    reply_markup=reply_markup,
                     parse_mode='HTML'
                 )
-                
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text="Выберите действие:",
-                    reply_markup=reply_markup
-                )
+                await send_main_menu(bot, chat_id, "")
             except Exception as e:
                 logger.error(f"❌ Ошибка при отправке сообщения об отмене для пользователя {user_id}: {e}")
     except asyncio.CancelledError:
