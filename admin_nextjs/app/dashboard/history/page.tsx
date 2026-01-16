@@ -741,15 +741,20 @@ export default function HistoryPage() {
           </div>
         </div>
         <div className="flex items-center justify-between">
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={sortByAmountDesc}
-              onChange={(e) => setSortByAmountDesc(e.target.checked)}
-              className="w-3.5 h-3.5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-xs text-gray-300">Сортировать по сумме ↓</span>
-          </label>
+          <button
+            type="button"
+            onClick={() => setSortByAmountDesc(prev => !prev)}
+            className="flex items-center space-x-1.5 text-xs text-gray-300 hover:text-white"
+          >
+            <span>Сортировать по сумме</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {sortByAmountDesc ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              )}
+            </svg>
+          </button>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => {
