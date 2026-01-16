@@ -73,6 +73,10 @@ export default function RequestDetailPage() {
   const [pendingStatus, setPendingStatus] = useState<'completed' | 'approved' | 'rejected' | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [photoError, setPhotoError] = useState(false) // Флаг ошибки загрузки фото
+  const [showAllPayments, setShowAllPayments] = useState(false)
+  const [allPayments, setAllPayments] = useState<MatchingPayment[]>([])
+  const [allPaymentsLoading, setAllPaymentsLoading] = useState(false)
+  const [allPaymentsError, setAllPaymentsError] = useState<string | null>(null)
   const isMountedRef = useRef(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const photoLoadedRef = useRef(false) // Флаг, что фото уже загружено для текущей заявки
@@ -606,11 +610,17 @@ export default function RequestDetailPage() {
     return request?.amount ? parseFloat(request.amount).toFixed(2).replace('.', ',') : '0,00'
   }, [selectedPaymentId, request?.amount, request?.matchingPayments])
 
+  // Источник платежей для блока "Переводы по QR"
+  const paymentsSource = useMemo(() => {
+    if (showAllPayments) return allPayments
+    return request?.matchingPayments ?? []
+  }, [showAllPayments, allPayments, request?.matchingPayments])
+
   // Отфильтрованные платежи для блока "Переводы по QR"
   const filteredPayments = useMemo(() => {
-    if (!request?.matchingPayments) return []
+    if (!paymentsSource.length) return []
 
-    return request.matchingPayments.filter((payment: MatchingPayment) => {
+    return paymentsSource.filter((payment: MatchingPayment) => {
       if (searchAmount) {
         const searchValue = parseFloat(searchAmount.replace(',', '.'))
         const paymentAmount = parseFloat(payment.amount)
@@ -625,7 +635,7 @@ export default function RequestDetailPage() {
       if (processedOnly && !payment.isProcessed) return false
       return true
     })
-  }, [request?.matchingPayments, searchAmount, exactAmount, processedOnly])
+  }, [paymentsSource, searchAmount, exactAmount, processedOnly])
 
   // Показываем все платежи (убрали ограничение)
   const limitedPayments = useMemo(() => filteredPayments, [filteredPayments])
@@ -1520,7 +1530,7 @@ export default function RequestDetailPage() {
           <h3 className="text-lg font-semibold text-white mb-3">Переводы по QR</h3>
           
           {/* Проверяем есть ли платежи */}
-          {request.matchingPayments && request.matchingPayments.length > 0 ? (
+          {(paymentsSource && paymentsSource.length > 0) ? (
             <>
               {/* Поиск и фильтры */}
               <div className="mb-3">
@@ -1537,6 +1547,44 @@ export default function RequestDetailPage() {
                       className="w-full pl-9 pr-3 py-1.5 text-sm bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
                     />
                   </div>
+                  <button
+                    onClick={async () => {
+                      if (allPaymentsLoading) return
+                      setAllPaymentsLoading(true)
+                      setAllPaymentsError(null)
+                      try {
+                        const response = await fetch('/api/incoming-payments?limit=100&offset=0', {
+                          cache: 'no-store',
+                        })
+                        const data = await response.json()
+                        if (data?.success) {
+                          const mappedPayments = (data.data?.payments || []).map((p: any) => ({
+                            id: p.id,
+                            amount: String(p.amount),
+                            bank: p.bank ?? null,
+                            paymentDate: p.paymentDate,
+                            requestId: p.requestId ?? null,
+                            isProcessed: Boolean(p.isProcessed),
+                          })) as MatchingPayment[]
+                          setAllPayments(mappedPayments)
+                          setShowAllPayments(true)
+                        } else {
+                          setAllPaymentsError(data?.error || data?.message || 'Не удалось загрузить платежи')
+                        }
+                      } catch (error: any) {
+                        setAllPaymentsError(error?.message || 'Не удалось загрузить платежи')
+                      } finally {
+                        setAllPaymentsLoading(false)
+                      }
+                    }}
+                    className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                      allPaymentsLoading
+                        ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    {allPaymentsLoading ? 'Поиск...' : 'Найти'}
+                  </button>
                 </div>
                 <div className="flex space-x-3">
                   <label className="flex items-center space-x-1.5 cursor-pointer">
@@ -1558,6 +1606,16 @@ export default function RequestDetailPage() {
                     <span className="text-xs text-gray-300">Обработанные</span>
                   </label>
                 </div>
+                {showAllPayments && (
+                  <div className="mt-2 text-[11px] text-blue-300">
+                    Показаны все платежи (не ограничены суммой заявки)
+                  </div>
+                )}
+                {allPaymentsError && (
+                  <div className="mt-2 text-[11px] text-red-400">
+                    {allPaymentsError}
+                  </div>
+                )}
               </div>
               
               {filteredPayments.length === 0 ? (
