@@ -10,6 +10,8 @@ import httpx
 import base64
 import random
 import os
+import json
+import time
 from io import BytesIO
 from urllib.parse import quote
 try:
@@ -46,6 +48,84 @@ user_states = {}
 
 # Словарь для хранения активных таймеров (user_id -> task)
 active_timers = {}
+
+# Путь к файлу для сохранения ожидания фото чека (переживает рестарт бота)
+PENDING_DEPOSIT_STATE_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'pending_deposit_states.json'
+)
+
+# Кеш ожиданий фото чека (user_id -> {data, expires_at})
+pending_deposit_states = {}
+
+def _write_pending_deposit_states(states: dict) -> None:
+    """Сохраняет ожидания фото чека в файл (атомарно)."""
+    try:
+        tmp_path = f"{PENDING_DEPOSIT_STATE_FILE}.tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(states, f, ensure_ascii=True)
+        os.replace(tmp_path, PENDING_DEPOSIT_STATE_FILE)
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось сохранить pending_deposit_states: {e}")
+
+def _load_pending_deposit_states() -> dict:
+    """Загружает ожидания фото чека из файла и очищает истекшие."""
+    if not os.path.exists(PENDING_DEPOSIT_STATE_FILE):
+        return {}
+    try:
+        with open(PENDING_DEPOSIT_STATE_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return {}
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось загрузить pending_deposit_states: {e}")
+        return {}
+    
+    now_ts = time.time()
+    cleaned = {}
+    for key, value in data.items():
+        if not isinstance(value, dict):
+            continue
+        expires_at = value.get('expires_at')
+        if isinstance(expires_at, (int, float)) and expires_at > now_ts:
+            cleaned[key] = value
+    
+    if cleaned != data:
+        _write_pending_deposit_states(cleaned)
+    return cleaned
+
+def set_pending_deposit_state(user_id: int, data: dict, expires_at: float) -> None:
+    """Сохраняет ожидание фото чека для пользователя."""
+    if not data:
+        return
+    pending_deposit_states[str(user_id)] = {
+        'data': data,
+        'expires_at': expires_at
+    }
+    _write_pending_deposit_states(pending_deposit_states)
+
+def get_pending_deposit_state(user_id: int) -> dict | None:
+    """Возвращает сохраненные данные ожидания фото чека, если они актуальны."""
+    key = str(user_id)
+    state = pending_deposit_states.get(key)
+    if not state:
+        return None
+    expires_at = state.get('expires_at')
+    if not isinstance(expires_at, (int, float)) or expires_at <= time.time():
+        pending_deposit_states.pop(key, None)
+        _write_pending_deposit_states(pending_deposit_states)
+        return None
+    return state.get('data')
+
+def clear_pending_deposit_state(user_id: int) -> None:
+    """Очищает ожидание фото чека для пользователя."""
+    key = str(user_id)
+    if key in pending_deposit_states:
+        pending_deposit_states.pop(key, None)
+        _write_pending_deposit_states(pending_deposit_states)
+
+# Загружаем ожидания фото чека при старте
+pending_deposit_states = _load_pending_deposit_states()
 
 # Кеш настроек (обновляется при старте и периодически)
 settings_cache = {
@@ -567,6 +647,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         if user_id in user_states:
             del user_states[user_id]
             logger.info(f"✅ Состояние очищено для пользователя {user_id}")
+        clear_pending_deposit_state(user_id)
+        clear_pending_deposit_state(user_id)
         
         # Создаем Reply клавиатуру с кнопками
         reply_keyboard = [
@@ -753,6 +835,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 parse_mode='HTML'
             )
         return
+    
+    # Пытаемся восстановить ожидание фото чека, если бот перезапускался
+    if user_id not in user_states:
+        photo_file_id = None
+        if update.message.photo:
+            photo_file_id = update.message.photo[-1].file_id
+        elif update.message.document and update.message.document.mime_type and update.message.document.mime_type.startswith('image/'):
+            photo_file_id = update.message.document.file_id
+        
+        if photo_file_id:
+            pending_data = get_pending_deposit_state(user_id)
+            if pending_data and pending_data.get('amount') and pending_data.get('player_id') and pending_data.get('bookmaker'):
+                user_states[user_id] = {
+                    'step': 'deposit_receipt_photo',
+                    'data': pending_data
+                }
+                logger.info(f"♻️ Восстановлено ожидание фото чека для пользователя {user_id}")
+            else:
+                clear_pending_deposit_state(user_id)
     
     # Проверяем, есть ли активный диалог
     if user_id in user_states:
@@ -1526,6 +1627,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             user_states[user_id]['data']['bank_links'] = bank_links
                             user_states[user_id]['data']['timer_seconds'] = timer_seconds
                             
+                            # Сохраняем ожидание фото чека (для восстановления после рестарта)
+                            pending_data = {
+                                'amount': data.get('amount'),
+                                'player_id': data.get('player_id'),
+                                'bookmaker': data.get('bookmaker')
+                            }
+                            set_pending_deposit_state(user_id, pending_data, time.time() + timer_seconds)
+                            
                             # Удаляем сообщение "Генерирую QR code..."
                             try:
                                 await generating_message.delete()
@@ -1689,6 +1798,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                             # Очищаем состояние только после успешного создания
                             if user_id in user_states:
                                 del user_states[user_id]
+                            clear_pending_deposit_state(user_id)
                         else:
                             error_msg = result.get('error') or result.get('message') or 'Неизвестная ошибка'
                             logger.error(f"❌ Заявка не создана (success=false): {error_msg}, полный ответ: {result}")
@@ -2614,6 +2724,7 @@ async def update_timer(bot, user_id: int, total_seconds: int, data: dict, messag
             
             # Очищаем состояние
             del user_states[user_id]
+            clear_pending_deposit_state(user_id)
             
             # Удаляем таймер из активных
             if user_id in active_timers:
