@@ -364,7 +364,7 @@ async def send_main_menu(bot, chat_id: int, user_name: str) -> None:
             await bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=temp_message.message_id,
-                text=".",
+                text="\u200B",
                 reply_markup=get_main_menu_keyboard()
             )
         except Exception as delete_error:
