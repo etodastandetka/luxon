@@ -449,49 +449,51 @@ export default function HistoryPage(){
       <FixedHeaderControls />
       {/* Заголовок */}
       <div className="text-center space-y-3">
-        <div className="flex items-center justify-center space-x-2 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-            <HistoryIcon className="w-6 h-6 text-white" />
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <div className="flex items-center justify-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/30">
+              <HistoryIcon className="w-6 h-6 text-black" />
+            </div>
+            <h1 className="text-2xl font-semibold text-white/90">{t.title}</h1>
           </div>
-          <h1 className="text-2xl font-bold text-white pr-20">{t.title}</h1>
         </div>
         <div className="px-4 overflow-x-auto -mx-4 scrollbar-hide">
-          <div className="flex justify-start gap-1 min-w-max px-4 pb-2">
+          <div className="flex justify-center gap-2 min-w-max px-4 pb-2">
             <button
               onClick={() => setFilter('all')}
-              className={`px-1.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap shrink-0 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 ${
                 filter === 'all'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-700 text-gray-300'
+                  ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-black'
+                  : 'bg-white/10 text-white/70 hover:bg-white/15'
               }`}
             >
-              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
               <span>{t.all}</span>
             </button>
             <button
               onClick={() => setFilter('deposit')}
-              className={`px-1.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap shrink-0 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 ${
                 filter === 'deposit'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-700 text-gray-300'
+                  ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-black'
+                  : 'bg-white/10 text-white/70 hover:bg-white/15'
               }`}
             >
-              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
               <span>{t.deposit}</span>
             </button>
             <button
               onClick={() => setFilter('withdraw')}
-              className={`px-1.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-0.5 whitespace-nowrap shrink-0 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 ${
                 filter === 'withdraw'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-700 text-gray-300'
+                  ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-black'
+                  : 'bg-white/10 text-white/70 hover:bg-white/15'
               }`}
             >
-              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
               </svg>
               <span>{t.withdraw}</span>
@@ -536,35 +538,37 @@ export default function HistoryPage(){
             {transactions.map((transaction) => {
               const bankIcon = getBankIcon(transaction.bank || '')
               return (
-              <div key={transaction.id} className="card hover:bg-white/5 transition-colors">
+              <div key={transaction.id} className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors p-4">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 space-y-2">
-                    <div className="flex items-center space-x-2">
-                      {bankIcon && bankIcon.image ? (
-                        <div className="relative w-8 h-8 flex-shrink-0">
-                          <Image 
-                            src={bankIcon.image} 
-                            alt={bankIcon.name}
-                            fill
-                            sizes="32px"
-                            loading="lazy"
-                            quality={75}
-                            className="object-contain rounded"
-                          />
-                        </div>
-                      ) : (
-                        <div className={`w-2 h-2 rounded-full ${
-                          transaction.type === 'deposit' ? 'bg-green-400' : 'bg-red-400'
-                        }`}></div>
-                      )}
-                      <div className="font-semibold text-white text-base">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                        {bankIcon && bankIcon.image ? (
+                          <div className="relative w-6 h-6">
+                            <Image 
+                              src={bankIcon.image} 
+                              alt={bankIcon.name}
+                              fill
+                              sizes="24px"
+                              loading="lazy"
+                              quality={75}
+                              className="object-contain rounded-full"
+                            />
+                          </div>
+                        ) : (
+                          <div className={`w-2.5 h-2.5 rounded-full ${
+                            transaction.type === 'deposit' ? 'bg-green-400' : 'bg-red-400'
+                          }`}></div>
+                        )}
+                      </div>
+                      <div className="font-semibold text-white/90 text-base">
                         {getTypeText(transaction.type)}
                       </div>
                       <div className="text-white/60 text-sm">
                         • {getBookmakerName(transaction.bookmaker)}
                       </div>
                     </div>
-                    <div className="text-xs text-white/50">
+                    <div className="text-xs text-white/60">
                       {formatDate(transaction.date)}
                     </div>
                     {transaction.type === 'withdraw' && transaction.withdrawalCode && (
