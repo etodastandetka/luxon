@@ -36,21 +36,15 @@ export default function TelegramInit() {
             // Игнорируем ошибки, если метод не поддерживается
           }
           
-          // Используем цвета из themeParams Telegram (если доступны)
-          // Это важно для iOS, чтобы цвета соответствовали теме Telegram
-          const themeParams = tg.themeParams || {}
-          const colorScheme = tg.colorScheme || 'dark'
-          
-          // Устанавливаем цвета фона и заголовка
-          // Используем цвета из themeParams или fallback на темные цвета
-          const bgColor = themeParams.bg_color || '#111827'
-          const headerColor = themeParams.bg_color || '#1f2937'
-          const textColor = themeParams.text_color || '#ffffff'
-          const hintColor = themeParams.hint_color || '#999999'
-          const linkColor = themeParams.link_color || '#2481cc'
-          const buttonColor = themeParams.button_color || '#2481cc'
-          const buttonTextColor = themeParams.button_text_color || '#ffffff'
-          const secondaryBgColor = themeParams.secondary_bg_color || '#1e2732'
+          // Принудительно используем фирменные темные цвета
+          const bgColor = '#07150d'
+          const headerColor = '#07150d'
+          const textColor = '#ffffff'
+          const hintColor = 'rgba(255, 255, 255, 0.6)'
+          const linkColor = '#52d16a'
+          const buttonColor = '#4eab3f'
+          const buttonTextColor = '#0b2014'
+          const secondaryBgColor = '#0b2014'
           
           tg.headerColor = headerColor
           tg.backgroundColor = bgColor
@@ -66,21 +60,22 @@ export default function TelegramInit() {
           root.style.setProperty('--tg-theme-secondary-bg-color', secondaryBgColor)
           
           // Принудительно устанавливаем темную тему для body
-          if (colorScheme === 'dark') {
+          document.documentElement.style.colorScheme = 'dark'
+          document.body.style.backgroundColor = bgColor
+          document.body.style.color = textColor
+          
+          // Слушаем изменения темы и принудительно возвращаем фирменные цвета
+          tg.onEvent('themeChanged', () => {
+            root.style.setProperty('--tg-theme-bg-color', bgColor)
+            root.style.setProperty('--tg-theme-text-color', textColor)
+            root.style.setProperty('--tg-theme-hint-color', hintColor)
+            root.style.setProperty('--tg-theme-link-color', linkColor)
+            root.style.setProperty('--tg-theme-button-color', buttonColor)
+            root.style.setProperty('--tg-theme-button-text-color', buttonTextColor)
+            root.style.setProperty('--tg-theme-secondary-bg-color', secondaryBgColor)
+            document.documentElement.style.colorScheme = 'dark'
             document.body.style.backgroundColor = bgColor
             document.body.style.color = textColor
-          }
-          
-          // Слушаем изменения темы
-          tg.onEvent('themeChanged', () => {
-            const newThemeParams = tg.themeParams || {}
-            const newBgColor = newThemeParams.bg_color || bgColor
-            const newTextColor = newThemeParams.text_color || textColor
-            
-            root.style.setProperty('--tg-theme-bg-color', newBgColor)
-            root.style.setProperty('--tg-theme-text-color', newTextColor)
-            document.body.style.backgroundColor = newBgColor
-            document.body.style.color = newTextColor
           })
           
           // Готовим WebApp (только один раз)
