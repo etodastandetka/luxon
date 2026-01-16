@@ -58,7 +58,7 @@ export default function RequestDetailPage() {
   const [request, setRequest] = useState<RequestDetail | null>(null)
   const [loading, setLoading] = useState(true) // Начинаем с true - показываем скелетон сразу
   const [searchAmount, setSearchAmount] = useState('')
-  const [exactAmount, setExactAmount] = useState(false)
+  const [exactAmount, setExactAmount] = useState(true)
   const [processedOnly, setProcessedOnly] = useState(false)
   const [appliedSearchAmount, setAppliedSearchAmount] = useState('')
   const [appliedExactAmount, setAppliedExactAmount] = useState(false)
@@ -1664,36 +1664,33 @@ export default function RequestDetailPage() {
                               <p className="text-sm font-medium text-white truncate">Перевод по QR</p>
                               <div className="flex items-center space-x-2 mt-0.5">
                                 <p className="text-xs text-gray-400">{formatDate(payment.paymentDate)}</p>
-                                {payment.bank && (
-                                  <span className="text-xs text-gray-500">• {payment.bank}</span>
-                                )}
                               </div>
                             </div>
-                            <div className="flex flex-col items-end space-y-1 flex-shrink-0">
+                            <div className="flex flex-col items-center space-y-1 flex-shrink-0 min-w-[70px]">
                               <div className="flex items-center space-x-2">
                                 {/* Серый текст для обработанных, зеленый для необработанных */}
                                 <p className={`text-base font-bold ${isProcessed ? 'text-gray-500' : 'text-green-500'}`}>
                                   +{parseFloat(payment.amount).toFixed(2).replace('.', ',')}
                                 </p>
-                                {payment.isProcessed && payment.requestId && (
-                                  <Link
-                                    href={`/dashboard/requests/${payment.requestId}`}
-                                    prefetch={false}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="p-1 rounded-md bg-gray-800 hover:bg-gray-700 transition-colors"
-                                    title={`Открыть заявку #${payment.requestId}`}
-                                  >
-                                    <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                  </Link>
-                                )}
                                 {isSelected && !isDisabled && (
                                   <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                   </svg>
                                 )}
                               </div>
+                              {payment.isProcessed && payment.requestId && (
+                                <Link
+                                  href={`/dashboard/requests/${payment.requestId}`}
+                                  prefetch={false}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1 rounded-md bg-gray-800 hover:bg-gray-700 transition-colors"
+                                  title={`Открыть заявку #${payment.requestId}`}
+                                >
+                                  <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </Link>
+                              )}
                             </div>
                           </div>
                         </div>

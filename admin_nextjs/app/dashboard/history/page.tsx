@@ -26,7 +26,7 @@ export default function HistoryPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true) // Флаг первой загрузки
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
-  const limit = 200 // Загружаем по 200 записей за раз для быстрой загрузки
+  const limit = 1000 // Крупные порции для полной загрузки истории
 
   const fetchHistory = useCallback(async (reset = false) => {
     // При первой загрузке не показываем лоадер - данные загружаются в фоне
@@ -44,47 +44,80 @@ export default function HistoryPage() {
     }
     
     try {
-      const params = new URLSearchParams()
-      if (activeTab === 'manual') {
-        params.append('manual', 'true')
-      } else if (activeTab !== 'all') {
-        params.append('type', activeTab === 'deposit' ? 'deposit' : 'withdraw')
+      const buildParams = (offsetValue: number) => {
+        const params = new URLSearchParams()
+        if (activeTab === 'manual') {
+          params.append('manual', 'true')
+        } else if (activeTab !== 'all') {
+          params.append('type', activeTab === 'deposit' ? 'deposit' : 'withdraw')
+        }
+        params.append('limit', limit.toString())
+        params.append('offset', offsetValue.toString())
+        return params
       }
-      params.append('limit', limit.toString())
-      params.append('offset', reset ? '0' : offset.toString())
 
-      // Используем кеширование для ускорения загрузки (API теперь кэширует на 5 сек)
-      const response = await fetch(`/api/transaction-history?${params.toString()}`, {
-        cache: 'default', // Используем кэш браузера и сервера
-        priority: 'high', // Высокий приоритет для быстрой загрузки
-      })
-      
-      // Проверяем rate limiting
-      if (response.status === 429) {
-        console.warn('⚠️ Rate limit exceeded for history API')
-        // Не показываем ошибку, просто не обновляем данные
-        return
-      }
-      
-      const data = await response.json()
+      if (reset) {
+        let collected: Transaction[] = []
+        let currentOffset = 0
+        let more = true
 
-      if (data.success) {
-        const newTransactions = data.data.transactions || []
-        console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
+        while (more) {
+          const params = buildParams(currentOffset)
+          const response = await fetch(`/api/transaction-history?${params.toString()}`, {
+            cache: 'default', // Используем кэш браузера и сервера
+            priority: 'high', // Высокий приоритет для быстрой загрузки
+          })
+
+          if (response.status === 429) {
+            console.warn('⚠️ Rate limit exceeded for history API')
+            break
+          }
+
+          const data = await response.json()
+          if (!data.success) {
+            console.error('❌ [History] Ошибка загрузки:', data.error)
+            break
+          }
+
+          const newTransactions = data.data.transactions || []
+          console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
+          collected = [...collected, ...newTransactions]
+          currentOffset += newTransactions.length
+          more = data.data.pagination?.hasMore || false
+        }
+
+        setTransactions(collected)
+        setOffset(collected.length)
+        setHasMore(false)
+      } else {
+        const params = buildParams(offset)
+        // Используем кеширование для ускорения загрузки (API теперь кэширует на 5 сек)
+        const response = await fetch(`/api/transaction-history?${params.toString()}`, {
+          cache: 'default', // Используем кэш браузера и сервера
+          priority: 'high', // Высокий приоритет для быстрой загрузки
+        })
         
-        if (reset) {
-          setTransactions(newTransactions)
-          setOffset(newTransactions.length)
-        } else {
+        // Проверяем rate limiting
+        if (response.status === 429) {
+          console.warn('⚠️ Rate limit exceeded for history API')
+          return
+        }
+        
+        const data = await response.json()
+
+        if (data.success) {
+          const newTransactions = data.data.transactions || []
+          console.log('✅ [History] Загружено транзакций:', newTransactions.length, 'для таба:', activeTab)
+          
           setTransactions(prev => {
             const combined = [...prev, ...newTransactions]
             setOffset(combined.length)
             return combined
           })
+          setHasMore(data.data.pagination?.hasMore || false)
+        } else {
+          console.error('❌ [History] Ошибка загрузки:', data.error)
         }
-        setHasMore(data.data.pagination?.hasMore || false)
-      } else {
-        console.error('❌ [History] Ошибка загрузки:', data.error)
       }
       
       // Сбрасываем флаг первой загрузки после успешной загрузки
