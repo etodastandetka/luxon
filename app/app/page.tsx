@@ -386,10 +386,10 @@ export default function HomePage() {
     let withdraws = 0
     for (let i = 0; i < transactions.length; i++) {
       const t: any = transactions[i]
-      const ok = t?.status === "completed" || t?.status === "approved"
-      if (!ok) continue
-      if (t?.type === "deposit") deposits++
-      else if (t?.type === "withdraw") withdraws++
+      const rawType = t?.type || t?.requestType || t?.request_type
+      const type = typeof rawType === "string" ? rawType.toLowerCase() : ""
+      if (type === "deposit") deposits++
+      else if (type === "withdraw" || type === "withdrawal") withdraws++
     }
     return { deposits, withdraws }
   }, [transactions])
