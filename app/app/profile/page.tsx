@@ -67,13 +67,17 @@ export default function ProfilePage() {
         }
       }
       
-      // Считаем только успешные транзакции (completed или approved)
-      const deposits = allTransactions.filter((t: any) => 
-        t.type === 'deposit' && (t.status === 'completed' || t.status === 'approved')
-      )
-      const withdraws = allTransactions.filter((t: any) => 
-        t.type === 'withdraw' && (t.status === 'completed' || t.status === 'approved')
-      )
+      // Считаем все транзакции по типу (включая заявки из бота)
+      const deposits = allTransactions.filter((t: any) => {
+        const rawType = t?.type || t?.requestType || t?.request_type
+        const type = typeof rawType === 'string' ? rawType.toLowerCase() : ''
+        return type === 'deposit'
+      })
+      const withdraws = allTransactions.filter((t: any) => {
+        const rawType = t?.type || t?.requestType || t?.request_type
+        const type = typeof rawType === 'string' ? rawType.toLowerCase() : ''
+        return type === 'withdraw' || type === 'withdrawal'
+      })
       
       const userStats: UserStats = {
         totalDeposits: deposits.length, // Все пополнения, включая pending, failed и т.д.

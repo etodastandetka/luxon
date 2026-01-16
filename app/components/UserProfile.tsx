@@ -69,12 +69,16 @@ export default function UserProfile() {
     // Используем новый массив для гарантии обновления
     const transactionsArray = Array.isArray(transactions) ? transactions : []
     
-    const deposits = transactionsArray.filter((t: any) => 
-      t?.type === 'deposit' && (t?.status === 'completed' || t?.status === 'approved')
-    )
-    const withdraws = transactionsArray.filter((t: any) => 
-      t?.type === 'withdraw' && (t?.status === 'completed' || t?.status === 'approved')
-    )
+    const deposits = transactionsArray.filter((t: any) => {
+      const rawType = t?.type || t?.requestType || t?.request_type
+      const type = typeof rawType === 'string' ? rawType.toLowerCase() : ''
+      return type === 'deposit'
+    })
+    const withdraws = transactionsArray.filter((t: any) => {
+      const rawType = t?.type || t?.requestType || t?.request_type
+      const type = typeof rawType === 'string' ? rawType.toLowerCase() : ''
+      return type === 'withdraw' || type === 'withdrawal'
+    })
     
     const result = {
       totalDeposits: deposits.length,
