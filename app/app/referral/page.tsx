@@ -663,36 +663,26 @@ export default function ReferralPage() {
         {topPlayers.length > 0 ? (
           <>
             {/* Призы - Топ-5 (показываем только если есть данные) */}
-            <div className="grid grid-cols-5 gap-2 text-center">
-              <div className="bg-gradient-to-br from-green-400/30 to-green-500/10 border border-green-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-black font-bold text-xs">1</span>
-                </div>
-                <div className="text-xs text-white/80 font-medium leading-tight">{t.firstPlace()}</div>
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              <div className="min-w-[160px] rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-400/25 to-emerald-500/10 p-3 text-center">
+                <div className="mx-auto mb-2 w-9 h-9 rounded-full bg-green-500 flex items-center justify-center text-black font-bold">1</div>
+                <div className="text-sm text-white/80 font-semibold">{t.firstPlace()}</div>
               </div>
-              <div className="bg-gradient-to-br from-emerald-400/30 to-emerald-500/10 border border-emerald-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-black font-bold text-xs">2</span>
-                </div>
-                <div className="text-xs text-white/80 font-medium leading-tight">{t.secondPlace()}</div>
+              <div className="min-w-[160px] rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-400/25 to-emerald-500/10 p-3 text-center">
+                <div className="mx-auto mb-2 w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-black font-bold">2</div>
+                <div className="text-sm text-white/80 font-semibold">{t.secondPlace()}</div>
               </div>
-              <div className="bg-gradient-to-br from-teal-400/30 to-teal-500/10 border border-teal-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-teal-500 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-black font-bold text-xs">3</span>
-                </div>
-                <div className="text-xs text-white/80 font-medium leading-tight">{t.thirdPlace()}</div>
+              <div className="min-w-[160px] rounded-2xl border border-teal-500/30 bg-gradient-to-br from-teal-400/25 to-teal-500/10 p-3 text-center">
+                <div className="mx-auto mb-2 w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center text-black font-bold">3</div>
+                <div className="text-sm text-white/80 font-semibold">{t.thirdPlace()}</div>
               </div>
-              <div className="bg-gradient-to-br from-lime-400/30 to-lime-500/10 border border-lime-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-lime-500 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-black font-bold text-xs">4</span>
-                </div>
-                <div className="text-xs text-white/80 font-medium leading-tight">{t.fourthPlace()}</div>
+              <div className="min-w-[160px] rounded-2xl border border-lime-500/30 bg-gradient-to-br from-lime-400/25 to-lime-500/10 p-3 text-center">
+                <div className="mx-auto mb-2 w-9 h-9 rounded-full bg-lime-500 flex items-center justify-center text-black font-bold">4</div>
+                <div className="text-sm text-white/80 font-semibold">{t.fourthPlace()}</div>
               </div>
-              <div className="bg-gradient-to-br from-green-400/30 to-emerald-500/10 border border-emerald-500/30 rounded-xl p-2 space-y-1">
-                <div className="w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center mx-auto">
-                  <span className="text-black font-bold text-xs">5</span>
-                </div>
-                <div className="text-xs text-white/80 font-medium leading-tight">{t.fifthPlace()}</div>
+              <div className="min-w-[160px] rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-400/25 to-emerald-500/10 p-3 text-center">
+                <div className="mx-auto mb-2 w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-black font-bold">5</div>
+                <div className="text-sm text-white/80 font-semibold">{t.fifthPlace()}</div>
               </div>
             </div>
 
