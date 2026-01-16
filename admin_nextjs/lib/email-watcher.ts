@@ -413,16 +413,9 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
           return
         }
 
-        // Ищем непрочитанные письма за последние 15 минут (обычный режим)
-        const fifteenMinutesAgo = new Date()
-        fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15)
-        const searchDate = [
-          'SINCE',
-          fifteenMinutesAgo.toISOString().split('T')[0].replace(/-/g, '-')
-        ]
-        
-        // Используем более строгий фильтр: только UNSEEN письма за последние 15 минут
-        imap.search(['UNSEEN', searchDate], (err: Error | null, results?: number[]) => {
+        // Ищем ВСЕ непрочитанные письма (без фильтра по дате)
+        // Это исключает задержки, когда письмо имеет "старую" дату и не попадает в окно
+        imap.search(['UNSEEN'], (err: Error | null, results?: number[]) => {
           if (err) {
             reject(err)
             return
@@ -437,7 +430,7 @@ async function checkEmails(settings: WatcherSettings): Promise<void> {
             return
           }
 
-          console.log(`📬 Found ${results.length} new email(s) (since ${fifteenMinutesAgo.toISOString().split('T')[0]})`)
+          console.log(`📬 Found ${results.length} new unread email(s)`)
 
           // Обрабатываем каждое письмо последовательно (не параллельно), чтобы избежать конфликтов
           const processSequentially = async () => {
