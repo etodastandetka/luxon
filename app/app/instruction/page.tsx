@@ -18,7 +18,7 @@ export default function InstructionPage() {
         {
           number: '1',
           title: 'Выбор букмекера',
-          description: 'Выберите букмекера из списка: 1XBET, 1WIN, MELBET, MOSTBET, WINWIN, 888STARZ'
+          description: 'Выберите казино из списка: 1XBET, 1WIN, MELBET, MOSTBET, WINWIN, 888STARZ'
         },
         {
           number: '2',
@@ -28,22 +28,22 @@ export default function InstructionPage() {
         {
           number: '3',
           title: 'Указание суммы',
-          description: 'Укажите сумму пополнения от 35 до 100,000 сом'
+          description: 'Укажите сумму пополнения (лимиты указаны в форме)'
         },
         {
           number: '4',
-          title: 'Выбор банка',
-          description: 'Выберите банк для оплаты: DemirBank, O! bank, Balance.kg, Bakai, MegaPay, MBank'
+          title: 'Выбор банка и QR',
+          description: 'Выберите банк и отсканируйте QR-код для оплаты'
         },
         {
           number: '5',
-          title: 'Оплата',
-          description: 'Перейдите по сгенерированной ссылке и произведите оплату'
+          title: 'Оплата и чек',
+          description: 'Оплатите в приложении банка и загрузите фото чека'
         },
         {
           number: '6',
-          title: 'Ожидание',
-          description: 'Дождитесь автоматического пополнения баланса (обычно 1-5 минут)'
+          title: 'Подтверждение',
+          description: 'Нажмите «Оплатил» и дождитесь пополнения (обычно 1-5 минут)'
         }
       ],
       withdrawTitle: '💸 Вывод средств',
@@ -52,40 +52,30 @@ export default function InstructionPage() {
         {
           number: '1',
           title: 'Выбор букмекера',
-          description: 'Выберите букмекера из списка, с баланса которого хотите вывести средства'
+          description: 'Выберите казино, с баланса которого хотите вывести средства'
         },
         {
           number: '2',
-          title: 'Ввод ID игрока',
-          description: 'Введите ваш ID игрока в казино'
-        },
-        {
-          number: '3',
-          title: 'Указание суммы',
-          description: 'Укажите сумму вывода от 100 до 50,000 сом'
-        },
-        {
-          number: '4',
           title: 'Выбор банка',
           description: 'Выберите банк для получения средств'
         },
         {
-          number: '5',
+          number: '3',
           title: 'Номер телефона',
           description: 'Введите номер телефона для получения средств (в формате +996XXXXXXXXX)'
         },
         {
-          number: '6',
-          title: 'Загрузка QR-кода',
-          description: 'Загрузите скриншот QR-кода с сайта букмекера'
+          number: '4',
+          title: 'QR-код кошелька',
+          description: 'Загрузите фото QR-кода кошелька'
         },
         {
-          number: '7',
+          number: '5',
           title: 'Код подтверждения',
           description: 'Введите код подтверждения с сайта букмекера'
         },
         {
-          number: '8',
+          number: '6',
           title: 'Ожидание',
           description: 'Ожидайте подтверждения администратора (обычно 5-30 минут)'
         }
@@ -131,7 +121,7 @@ export default function InstructionPage() {
         {
           number: '1',
           title: 'Choose bookmaker',
-          description: 'Select a bookmaker from the list: 1XBET, 1WIN, MELBET, MOSTBET, WINWIN, 888STARZ'
+          description: 'Select a casino from the list: 1XBET, 1WIN, MELBET, MOSTBET, WINWIN, 888STARZ'
         },
         {
           number: '2',
@@ -141,22 +131,22 @@ export default function InstructionPage() {
         {
           number: '3',
           title: 'Specify amount',
-          description: 'Specify the deposit amount from 35 to 100,000 som'
+          description: 'Specify the deposit amount (limits are shown in the form)'
         },
         {
           number: '4',
-          title: 'Choose bank',
-          description: 'Select a bank for payment: DemirBank, O! bank, Balance.kg, Bakai, MegaPay, MBank'
+          title: 'Choose bank and QR',
+          description: 'Select a bank and scan the QR code for payment'
         },
         {
           number: '5',
-          title: 'Payment',
-          description: 'Follow the generated link and make payment'
+          title: 'Payment and receipt',
+          description: 'Pay in your banking app and upload the receipt photo'
         },
         {
           number: '6',
-          title: 'Wait',
-          description: 'Wait for automatic balance deposit (usually 1-5 minutes)'
+          title: 'Confirmation',
+          description: 'Tap “Paid” and wait for crediting (usually 1-5 minutes)'
         }
       ],
       withdrawTitle: '💸 Withdraw Funds',
@@ -165,40 +155,30 @@ export default function InstructionPage() {
         {
           number: '1',
           title: 'Choose bookmaker',
-          description: 'Select a bookmaker from whose balance you want to withdraw funds'
+          description: 'Select a casino from whose balance you want to withdraw funds'
         },
         {
           number: '2',
-          title: 'Enter player ID',
-          description: 'Enter your player ID in the casino'
-        },
-        {
-          number: '3',
-          title: 'Specify amount',
-          description: 'Specify the withdrawal amount from 100 to 50,000 som'
-        },
-        {
-          number: '4',
           title: 'Choose bank',
           description: 'Select a bank to receive funds'
         },
         {
-          number: '5',
+          number: '3',
           title: 'Phone number',
           description: 'Enter phone number to receive funds (format: +996XXXXXXXXX)'
         },
         {
-          number: '6',
-          title: 'Upload QR code',
-          description: 'Upload a screenshot of QR code from bookmaker website'
+          number: '4',
+          title: 'Wallet QR code',
+          description: 'Upload a photo of your wallet QR code'
         },
         {
-          number: '7',
+          number: '5',
           title: 'Confirmation code',
           description: 'Enter confirmation code from bookmaker website'
         },
         {
-          number: '8',
+          number: '6',
           title: 'Wait',
           description: 'Wait for administrator confirmation (usually 5-30 minutes)'
         }
