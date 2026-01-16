@@ -389,7 +389,7 @@ export default function ReferralPage() {
   const translations = {
     ru: {
       title: 'Реферальная программа',
-      subtitle: 'Приглашайте друзей и зарабатывайте вместе',
+      subtitle: 'VIP платформа с быстрыми выводами, повышенными лимитами и приоритетной обработкой',
       yourLink: 'Ваша реферальная ссылка',
       copyLink: 'Скопировать ссылку',
       shareLink: 'Поделиться ссылкой',
@@ -411,14 +411,14 @@ export default function ReferralPage() {
         'Топ игроки по сумме пополнений рефералов получают призы',
         'Призы распределяются по местам (1-5 место) в конце месяца'
       ],
-      shareText: 'Присоединяйся к платформе пополнений и выводов!\nБыстро пополняй 1xBet, Melbet, Mostbet, 1Win, Winwin, 888starz и выводи средства без задержек\nРегистрируйся по моей ссылке',
+      shareText: 'Присоединяйся к VIP платформе пополнений и выводов!\nБыстрые выводы, повышенные лимиты и приоритетная обработка заявок\nПополняй 1xBet, Melbet, Mostbet, 1Win, Winwin, 888starz и выводи средства без задержек\nРегистрируйся по моей ссылке',
       copied: 'Ссылка скопирована!',
       error: 'Ошибка при копировании',
       backToMain: 'На главную'
     },
     en: {
       title: 'Referral Program',
-      subtitle: 'Invite friends and earn together',
+      subtitle: 'VIP platform with fast withdrawals, higher limits, and priority processing',
       yourLink: 'Your referral link',
       copyLink: 'Copy link',
       shareLink: 'Share link',
@@ -440,7 +440,7 @@ export default function ReferralPage() {
         'Top players by total referral deposits receive prizes',
         'Prizes are distributed by ranking (1st-5th place) at the end of the month'
       ],
-      shareText: 'Join the deposit and withdrawal platform!\nQuickly top up 1xBet, Melbet, Mostbet, 1Win, Winwin, 888starz and withdraw funds without delays\nRegister using my link',
+      shareText: 'Join the VIP deposit and withdrawal platform!\nFast withdrawals, higher limits, and priority request processing\nQuickly top up 1xBet, Melbet, Mostbet, 1Win, Winwin, 888starz and withdraw funds without delays\nRegister using my link',
       copied: 'Link copied!',
       error: 'Error copying',
       backToMain: 'Back to main'
