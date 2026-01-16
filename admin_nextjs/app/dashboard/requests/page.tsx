@@ -61,10 +61,9 @@ export default function RequestsPage() {
       params.append('page', reset ? '1' : page.toString())
       params.append('limit', limit.toString())
 
-      // Используем кэширование для более быстрой загрузки
+      // Всегда получаем свежие данные для быстрого отображения автопополнения
       const response = await fetch(`/api/requests?${params.toString()}`, {
-        cache: 'default',
-        next: { revalidate: 3 } // Перевалидируем каждые 3 секунды
+        cache: 'no-store',
       })
       const data = await response.json()
 
@@ -93,12 +92,15 @@ export default function RequestsPage() {
   useEffect(() => {
     fetchRequests(true, true) // Первая загрузка с сбросом
     
-    // Автоматическое обновление каждые 5 секунд (увеличено для снижения нагрузки)
+    const shouldFastRefresh = !filter.status || filter.status === 'pending'
+    const refreshInterval = shouldFastRefresh ? 2000 : 5000
+
+    // Автоматическое обновление (чаще для pending/все)
     const interval = setInterval(() => {
       if (!document.hidden) {
         fetchRequests(false, true) // Обновляем только первую страницу
       }
-    }, 5000)
+    }, refreshInterval)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {

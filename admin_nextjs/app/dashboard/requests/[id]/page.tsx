@@ -253,12 +253,10 @@ export default function RequestDetailPage() {
         }
         
         try {
-          // Используем кэш для быстрой загрузки, но с перевалидацией для свежих данных
-          // Для первого запроса используем 'default' для свежих данных, для повторных - 'force-cache'
+          // Всегда получаем свежие данные для быстрого отображения автопополнения
           const response = await fetch(`/api/requests/${requestId}`, {
             signal: abortController.signal,
-            cache: showLoading ? 'default' : 'force-cache', // Первый запрос - свежие данные, повторные - из кэша
-            next: { revalidate: 5 }, // Перевалидируем каждые 5 секунд для свежих данных
+            cache: 'no-store',
           })
           
           if (abortController.signal.aborted || !isMountedRef.current) return
@@ -456,7 +454,7 @@ export default function RequestDetailPage() {
       if (!document.hidden && isMountedRef.current) {
           fetchRequest(false)
         }
-    }, 5000)
+    }, 2000)
     
     // Обновление при фокусе страницы
     const handleVisibilityChange = () => {
@@ -508,7 +506,7 @@ export default function RequestDetailPage() {
     }
 
     // Определяем интервал на основе статуса
-    const interval = request.status === 'pending' ? 5000 : 15000
+    const interval = request.status === 'pending' ? 2000 : 10000
     const requestId = Array.isArray(params.id) ? params.id[0] : params.id
 
     // Создаем новый интервал
