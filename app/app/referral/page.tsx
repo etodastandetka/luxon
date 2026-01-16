@@ -140,7 +140,7 @@ export default function ReferralPage() {
         }
         
         setLoading(false)
-        setReferralLink('https://t.me/lux_on_bot')
+        setReferralLink('https://t.me/luxservices_bot')
         return
       }
       
@@ -154,7 +154,7 @@ export default function ReferralPage() {
 
       // Генерируем реферальную ссылку с правильным именем бота
       // TODO: Обновить имя бота на актуальное после создания бота
-      const link = `https://t.me/lux_on_bot?start=ref${userId}`
+      const link = `https://t.me/luxservices_bot?start=ref${userId}`
       setReferralLink(link)
       
       console.log('🔗 Реферальная ссылка сгенерирована:', link)
@@ -830,7 +830,7 @@ export default function ReferralPage() {
 
       {/* Footer с именем бота */}
       <div className="text-center text-white/60 text-sm mt-4">
-        @lux_on_bot
+        @luxservices_bot
       </div>
     </main>
     <style jsx global>{`

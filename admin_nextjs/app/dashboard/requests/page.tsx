@@ -16,6 +16,8 @@ interface Request {
   processedBy: string | null
   bank: string | null
   createdAt: string
+  isVip?: boolean
+  is_vip?: boolean
 }
 
 export default function RequestsPage() {
@@ -26,6 +28,18 @@ export default function RequestsPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const limit = 10
+
+  const isVipRequest = (request: Request) => {
+    return Boolean((request as any).is_vip ?? (request as any).isVip)
+  }
+
+  const sortRequests = (items: Request[]) => {
+    return [...items].sort((a, b) => {
+      const vipDiff = Number(isVipRequest(b)) - Number(isVipRequest(a))
+      if (vipDiff !== 0) return vipDiff
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }
 
   const fetchRequests = useCallback(async (showLoading = true, reset = false) => {
     if (reset) {
@@ -57,9 +71,9 @@ export default function RequestsPage() {
       if (data.success) {
         const newRequests = data.data.requests || []
         if (reset) {
-          setRequests(newRequests)
+          setRequests(sortRequests(newRequests))
         } else {
-          setRequests(prev => [...prev, ...newRequests])
+          setRequests(prev => sortRequests([...prev, ...newRequests]))
         }
         setHasMore(data.data.pagination?.totalPages > page)
         if (!reset) {
@@ -333,12 +347,18 @@ export default function RequestsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {requests.map((request) => (
+          {requests.map((request) => {
+            const isVip = isVipRequest(request)
+            return (
             <Link
               key={request.id}
               href={`/dashboard/requests/${request.id}`}
               prefetch={false}
-              className="block bg-gray-800 bg-opacity-50 rounded-xl p-4 border border-gray-700 hover:border-green-500 transition-colors backdrop-blur-sm"
+              className={`block rounded-xl p-4 border transition-colors backdrop-blur-sm ${
+                isVip
+                  ? 'bg-[#0b0f1a]/90 border-blue-500/40 hover:border-blue-400/70 shadow-[0_0_0_1px_rgba(78,161,255,0.08)]'
+                  : 'bg-gray-800 bg-opacity-50 border-gray-700 hover:border-green-500'
+              }`}
             >
               <div className="flex items-start justify-between">
                 {/* Левая часть: Иконка банка и информация */}
@@ -372,6 +392,11 @@ export default function RequestsPage() {
                       <span className="text-sm font-medium text-white">
                         {request.username || request.firstName || request.userId}
                       </span>
+                      {isVip && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                          VIP
+                        </span>
+                      )}
                       {/* Бейдж статуса */}
                       <span className={`text-xs font-medium whitespace-nowrap px-2 py-0.5 rounded-md ${getStatusTextColor(request.status)}`}>
                         {getStatusState(request.status)}
@@ -405,7 +430,7 @@ export default function RequestsPage() {
                 </div>
               </div>
             </Link>
-          ))}
+          )})}
         </div>
       )}
 

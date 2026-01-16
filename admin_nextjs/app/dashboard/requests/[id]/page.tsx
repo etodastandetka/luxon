@@ -26,6 +26,8 @@ interface RequestDetail {
   userNote: string | null
   paymentMethod: string | null
   cryptoPayment: any | null
+  isVip?: boolean
+  is_vip?: boolean
   createdAt: string
   updatedAt: string
   processedAt: string | null
@@ -1211,6 +1213,7 @@ export default function RequestDetailPage() {
     const showActionButtons = requestComputed?.showActionButtons ?? false
     const userName = requestComputed?.userName ?? ''
     const displayName = requestComputed?.displayName ?? ''
+    const isVip = Boolean((request as any)?.is_vip ?? (request as any)?.isVip)
 
   return (
     <div className="py-4">
@@ -1253,7 +1256,14 @@ export default function RequestDetailPage() {
               </div>
             )}
             <div className="text-left flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{displayName}</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm font-medium text-white truncate">{displayName}</p>
+                {isVip && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    VIP
+                  </span>
+                )}
+              </div>
               {request.username && (
                 <p className="text-xs text-gray-400 truncate">@{request.username}</p>
               )}
