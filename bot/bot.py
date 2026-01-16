@@ -2061,6 +2061,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 del user_states[user_id]
             return
     
+    # Если нет активного диалога, но пришло фото/скрин — сообщаем, что заявки нет
+    if (
+        update.message.photo
+        or (
+            update.message.document
+            and update.message.document.mime_type
+            and update.message.document.mime_type.startswith('image/')
+        )
+    ):
+        await update.message.reply_text(
+            "❌ Нет активной заявки для фото чека. Нажмите «Пополнить» и пройдите шаги заново."
+        )
+        return
+    
     # Если нет активного диалога, сохраняем сообщение в чат как обычно
     # 🛡️ Валидация входных данных
     if message_text:
@@ -2262,6 +2276,20 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Обработка отмены заявки
     if callback_data == "cancel_request":
         logger.info(f"🛑 Пользователь {user_id} отменил заявку через инлайн-кнопку")
+        
+        # Удаляем сообщение с QR-кодом/кнопками, если оно есть
+        try:
+            data = user_states.get(user_id, {}).get('data', {})
+            if 'timer_message_id' in data and 'timer_chat_id' in data:
+                await context.bot.delete_message(
+                    chat_id=data['timer_chat_id'],
+                    message_id=data['timer_message_id']
+                )
+                logger.info(f"✅ Сообщение с QR-кодом удалено для пользователя {user_id} при отмене (inline)")
+            elif query.message:
+                await query.message.delete()
+        except Exception as delete_error:
+            logger.warning(f"⚠️ Не удалось удалить сообщение с QR-кодом при отмене (inline): {delete_error}")
         
         # Останавливаем таймер если он активен
         if user_id in active_timers:
