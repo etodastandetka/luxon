@@ -130,18 +130,18 @@ export async function GET(
     }
 
     // Оптимизация: загружаем дополнительные данные только если они действительно нужны
-    // Для завершенных заявок не загружаем matchingPayments и casinoTransactions
-    const isPendingDeposit = requestData.status === 'pending' && requestData.requestType === 'deposit'
+    // Matching payments нужны для всех депозитов (независимо от статуса)
+    const isDeposit = requestData.requestType === 'deposit'
     const requestAmountInt = requestData.amount ? Math.floor(parseFloat(requestData.amount.toString())) : null
     
     // Загружаем только критичные данные в основном запросе
     // Остальное загружаем асинхронно через отдельные endpoints если нужно
     const [matchingPaymentsResult, casinoTransactionsResult, userResult] = await Promise.all([
-      // Matching payments - для pending депозитов с суммой
+      // Matching payments - для депозитов с суммой
       // Показываем ВСЕ платежи с той же целой частью суммы (независимо от копеек)
       // Показываем и обработанные, и необработанные
       // Показываем за ВСЕ время (без ограничения по дате)
-      (isPendingDeposit && requestAmountInt) ? prisma.incomingPayment.findMany({
+      (isDeposit && requestAmountInt) ? prisma.incomingPayment.findMany({
           where: {
             amount: {
               gte: requestAmountInt,
