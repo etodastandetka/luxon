@@ -987,8 +987,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
             deposit_title = get_text('deposit_title')
             deposit_amount_prompt = get_text('deposit_amount_prompt')
-            min_amount = get_text('min_amount_deposit')
-            max_amount = get_text('max_amount_deposit')
+            min_amount_value = 100 if data.get('bookmaker') == '1win' else 35
+            max_amount_value = 100000
+            min_amount = get_text('min_amount', min=min_amount_value)
+            max_amount = f"Максимум: {max_amount_value:,} KGS".replace(',', ' ')
             await update.message.reply_text(
                 f"{deposit_title}\n\n{min_amount}\n{max_amount}\n\n{deposit_amount_prompt}",
                 parse_mode='HTML',
@@ -1011,9 +1013,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     return
             
             logger.info(f"💰 Сумма распознана: {amount}")
-            if amount < 35 or amount > 100000:
+            min_amount_value = 100 if data.get('bookmaker') == '1win' else 35
+            max_amount_value = 100000
+            if amount < min_amount_value or amount > max_amount_value:
                 logger.warning(f"⚠️ Сумма вне диапазона: {amount}")
-                await update.message.reply_text(get_text('amount_range_error_deposit'))
+                await update.message.reply_text(
+                    f"❌ Сумма должна быть от {min_amount_value} до {max_amount_value:,} сом".replace(',', ' ')
+                )
                 return
             
             # Добавляем случайные копейки к сумме (1-99 копеек), если сумма целая
