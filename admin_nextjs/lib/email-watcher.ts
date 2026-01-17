@@ -66,9 +66,34 @@ async function processEmail(
   settings: WatcherSettings
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    let seqno: number | null = null
+    const markSeen = (context: string) => {
+      const seq = (imap as any).seq
+      if (seq && typeof seq.setFlags === 'function' && seqno) {
+        seq.setFlags(seqno, ['\\Seen'], (err: Error | null) => {
+          if (err) {
+            console.error(`❌ Error marking email as seen (${context}):`, err)
+          } else {
+            console.log(`✅ Email marked as read (${context})`)
+          }
+          resolve()
+        })
+        return
+      }
+      imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
+        if (err) {
+          console.error(`❌ Error marking email as seen (${context}):`, err)
+        } else {
+          console.log(`✅ Email marked as read (${context})`)
+        }
+        resolve()
+      })
+    }
+
     const fetch = imap.fetch(uid, { bodies: '' })
 
-    fetch.on('message', (msg) => {
+    fetch.on('message', (msg, messageSeqno) => {
+      seqno = messageSeqno
       msg.on('body', (stream) => {
         const chunks: Buffer[] = []
 
@@ -106,14 +131,7 @@ async function processEmail(
             
             if (isOutgoingNotification) {
               console.log(`⏭️ Email UID ${uid} is outgoing transfer notification, marking as read immediately`)
-              imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
-                if (err) {
-                  console.error(`❌ Error marking outgoing notification email as seen:`, err)
-                } else {
-                  console.log(`✅ Outgoing notification email UID ${uid} marked as read (skipped)`)
-                }
-                resolve()
-              })
+              markSeen('outgoing_notification')
               return
             }
 
@@ -124,15 +142,7 @@ async function processEmail(
             
             if (emailDate < sevenDaysAgo) {
               console.log(`⚠️ Email UID ${uid} is too old (${emailDate.toISOString()}), marking as read without processing`)
-              // Используем setFlags вместо addFlags для более надежной установки флага
-              imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
-                if (err) {
-                  console.error(`❌ Error marking old email as seen:`, err)
-                } else {
-                  console.log(`✅ Old email UID ${uid} marked as read (skipped)`)
-                }
-                resolve()
-              })
+              markSeen('too_old')
               return
             }
 
@@ -155,29 +165,14 @@ async function processEmail(
             }
             // Помечаем как прочитанное, даже если не смогли распарсить
             // Используем setFlags вместо addFlags для более надежной установки флага
-            imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
-              if (err) {
-                console.error(`❌ Error marking unparseable email as seen:`, err)
-              } else {
-                console.log(`✅ Unparseable email UID ${uid} marked as read`)
-              }
-              resolve()
-            })
+            markSeen('unparseable')
             return
           }
 
           // Проверяем, не является ли это исходящим переводом (который нужно пропустить)
           if ((paymentData as any)._skip) {
             console.log(`⏭️ Skipping outgoing transfer email (UID: ${uid}), marking as read`)
-            // Помечаем как прочитанное
-            imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
-              if (err) {
-                console.error(`❌ Error marking outgoing transfer email as seen:`, err)
-              } else {
-                console.log(`✅ Outgoing transfer email UID ${uid} marked as read`)
-              }
-              resolve()
-            })
+            markSeen('skip_outgoing')
             return
           }
 
@@ -219,17 +214,7 @@ async function processEmail(
             if (existingPayment) {
               console.log(`⚠️ Payment already exists: ID ${existingPayment.id}, amount: ${amount}, date: ${paymentDate.toISOString()}`)
               console.log(`   Skipping duplicate payment. Marking email as read immediately.`)
-              
-              // СРАЗУ помечаем письмо как прочитанное, чтобы не обрабатывать его снова
-              // Используем setFlags вместо addFlags для более надежной установки флага
-              imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
-                if (err) {
-                  console.error(`❌ Error marking email as seen:`, err)
-                } else {
-                  console.log(`✅ Email UID ${uid} marked as read (duplicate skipped)`)
-                }
-                resolve()
-              })
+              markSeen('duplicate')
               return
             }
 
@@ -264,15 +249,7 @@ async function processEmail(
             // СРАЗУ помечаем письмо как прочитанное ПОСЛЕ успешной обработки
             // Это критично важно, чтобы не обрабатывать письмо повторно
             // Используем setFlags вместо addFlags для более надежной установки флага
-            imap.setFlags(uid, ['\\Seen'], (err: Error | null) => {
-              if (err) {
-                console.error(`❌ Error marking email as seen:`, err)
-                // Даже при ошибке помечания как прочитанное, считаем обработку завершенной
-              } else {
-                console.log(`✅ Email UID ${uid} marked as read (payment saved: ID ${incomingPayment.id})`)
-              }
-              resolve()
-            })
+            markSeen(`processed:${incomingPayment.id}`)
           } catch (error: any) {
             console.error(`❌ Error processing email (UID: ${uid}):`, error)
             reject(error)
