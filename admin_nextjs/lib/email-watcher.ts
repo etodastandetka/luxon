@@ -213,6 +213,20 @@ async function processEmail(
 
             if (existingPayment) {
               console.log(`⚠️ Payment already exists: ID ${existingPayment.id}, amount: ${amount}, date: ${paymentDate.toISOString()}`)
+              // Если платеж существует, но еще не обработан — пробуем матчить снова
+              if (!existingPayment.isProcessed) {
+                console.log(`🔁 Existing payment ${existingPayment.id} is not processed, retrying auto-match...`)
+                try {
+                  const result = await matchAndProcessPayment(existingPayment.id, amount)
+                  if (result && result.success) {
+                    console.log(`✅ [Email Watcher] Auto-deposit completed on retry for payment ${existingPayment.id}`)
+                  } else {
+                    console.log(`ℹ️ [Email Watcher] Retry auto-match completed, but no match found for payment ${existingPayment.id}`)
+                  }
+                } catch (error: any) {
+                  console.error(`❌ [Email Watcher] Retry auto-match failed for payment ${existingPayment.id}:`, error.message)
+                }
+              }
               console.log(`   Skipping duplicate payment. Marking email as read immediately.`)
               markSeen('duplicate')
               return
