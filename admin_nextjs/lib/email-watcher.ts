@@ -90,7 +90,7 @@ async function processEmail(
       })
     }
 
-    const fetch = imap.fetch(uid, { bodies: '' })
+    const fetch = imap.fetch(uid, { bodies: '', markSeen: true })
 
     fetch.on('message', (msg, messageSeqno) => {
       seqno = messageSeqno
@@ -192,45 +192,7 @@ async function processEmail(
 
             const notificationSnippet = text.substring(0, 500)
 
-            // ВАЖНО: Проверяем, не существует ли уже такой платеж
-            // 1) По тексту письма (защита от повторной обработки одного и того же письма)
-            // 2) По сумме/банку/дате (±10 минут) для дубликатов с одинаковыми параметрами
-            const existingPayment = await prisma.incomingPayment.findFirst({
-              where: {
-                OR: [
-                  { notificationText: notificationSnippet },
-                  {
-                    amount: amount,
-                    bank: bank,
-                    paymentDate: {
-                      gte: new Date(paymentDate.getTime() - 10 * 60000), // ±10 минут
-                      lte: new Date(paymentDate.getTime() + 10 * 60000),
-                    },
-                  },
-                ],
-              },
-            })
-
-            if (existingPayment) {
-              console.log(`⚠️ Payment already exists: ID ${existingPayment.id}, amount: ${amount}, date: ${paymentDate.toISOString()}`)
-              // Если платеж существует, но еще не обработан — пробуем матчить снова
-              if (!existingPayment.isProcessed) {
-                console.log(`🔁 Existing payment ${existingPayment.id} is not processed, retrying auto-match...`)
-                try {
-                  const result = await matchAndProcessPayment(existingPayment.id, amount)
-                  if (result && result.success) {
-                    console.log(`✅ [Email Watcher] Auto-deposit completed on retry for payment ${existingPayment.id}`)
-                  } else {
-                    console.log(`ℹ️ [Email Watcher] Retry auto-match completed, but no match found for payment ${existingPayment.id}`)
-                  }
-                } catch (error: any) {
-                  console.error(`❌ [Email Watcher] Retry auto-match failed for payment ${existingPayment.id}:`, error.message)
-                }
-              }
-              console.log(`   Skipping duplicate payment. Marking email as read immediately.`)
-              markSeen('duplicate')
-              return
-            }
+            // ВАЖНО: дубликаты отключены — сохраняем все письма как новые платежи
 
             // Создаем новый платеж только если его еще нет
             const incomingPayment = await prisma.incomingPayment.create({
@@ -685,6 +647,7 @@ async function checkTimeouts(): Promise<void> {
   }
 }
 
+
 // Флаг для отслеживания первого запуска после перезапуска
 let isFirstRun = true
 
@@ -700,6 +663,8 @@ export async function startWatcher(): Promise<void> {
       console.warn('⚠️ Timeout check failed:', error.message)
     })
   }, 60000) // Каждую минуту
+
+  // Периодически повторяем автопополнение для необработанных платежей
 
   // Проверяем таймауты сразу при запуске
   checkTimeouts().catch((error) => {
