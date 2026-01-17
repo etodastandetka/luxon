@@ -702,9 +702,18 @@ export async function POST(request: NextRequest) {
         where: {
           isProcessed: false,
           amount: requestAmount,
-          paymentDate: {
-            gte: new Date(Date.now() - AUTO_DEPOSIT_CONFIG.REQUEST_SEARCH_WINDOW_MS)
-          }
+          OR: [
+            {
+              paymentDate: {
+                gte: new Date(Date.now() - AUTO_DEPOSIT_CONFIG.REQUEST_SEARCH_WINDOW_MS)
+              }
+            },
+            {
+              createdAt: {
+                gte: new Date(Date.now() - AUTO_DEPOSIT_CONFIG.REQUEST_SEARCH_WINDOW_MS)
+              }
+            }
+          ]
         },
           orderBy: {
             paymentDate: 'desc' // Берем самый свежий
