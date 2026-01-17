@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, memo, useRef, useDeferredValue } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { FixedSizeList as List, type ListChildComponentProps } from 'react-window'
 
 interface Transaction {
   id: number
@@ -26,8 +27,11 @@ export default function HistoryPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true) // Флаг первой загрузки
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
-  const limit = 300 // Крупные порции для быстрой первой отрисовки
+  const limit = 100 // Меньше данных за раз, чтобы не тормозить UI
   const loadTokenRef = useRef(0)
+  const listContainerRef = useRef<HTMLDivElement | null>(null)
+  const [listHeight, setListHeight] = useState(520)
+  const ITEM_HEIGHT = 120
 
   const fetchHistory = useCallback(async (reset = false) => {
     // При первой загрузке не показываем лоадер - данные загружаются в фоне
@@ -88,26 +92,7 @@ export default function HistoryPage() {
         setOffset(firstTransactions.length)
         setHasMore(firstPage.data?.pagination?.hasMore || false)
 
-        // Догружаем остальное в фоне, не блокируя UI
-        let currentOffset = firstTransactions.length
-        let more = firstPage.data?.pagination?.hasMore || false
-        while (more && loadTokenRef.current === token) {
-          const nextPage = await fetchPage(currentOffset)
-          if (!nextPage?.success || loadTokenRef.current !== token) break
-
-          const nextTransactions = nextPage.data?.transactions || []
-          if (nextTransactions.length === 0) {
-            more = false
-            break
-          }
-
-          setTransactions(prev => [...prev, ...nextTransactions])
-          currentOffset += nextTransactions.length
-          setOffset(currentOffset)
-          more = nextPage.data?.pagination?.hasMore || false
-        }
-
-        setHasMore(false)
+        // Дальнейшие данные грузим только по скроллу
       } else {
         const data = await fetchPage(offset)
         if (!data?.success) return
@@ -142,24 +127,31 @@ export default function HistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
-  // Автоматическая подгрузка при скролле вниз
   useEffect(() => {
-    const handleScroll = () => {
-      // Проверяем, достигли ли мы 80% от конца страницы
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-      const windowHeight = window.innerHeight
-      const documentHeight = document.documentElement.scrollHeight
-      
-      const scrollPercentage = (scrollTop + windowHeight) / documentHeight
-      
-      if (scrollPercentage > 0.8 && hasMore && !loadingMore && !loading) {
-        fetchHistory(false)
+    if (!listContainerRef.current) return
+
+    const updateHeight = () => {
+      if (!listContainerRef.current) return
+      const nextHeight = listContainerRef.current.clientHeight
+      if (nextHeight) {
+        setListHeight(nextHeight)
       }
     }
 
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [hasMore, loadingMore, loading, fetchHistory])
+    updateHeight()
+
+    let observer: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(updateHeight)
+      observer.observe(listContainerRef.current)
+    }
+
+    window.addEventListener('resize', updateHeight)
+    return () => {
+      window.removeEventListener('resize', updateHeight)
+      observer?.disconnect()
+    }
+  }, [])
 
   // Мемоизируем функции форматирования
   const formatDate = useCallback((dateString: string) => {
@@ -283,6 +275,19 @@ export default function HistoryPage() {
 
   const deferredTransactions = useDeferredValue(processedTransactions)
 
+  const handleListScroll = useCallback(
+    ({ scrollOffset, scrollDirection }: { scrollOffset: number; scrollDirection: 'forward' | 'backward' }) => {
+      if (scrollDirection !== 'forward') return
+      if (!hasMore || loadingMore || loading) return
+      const totalHeight = deferredTransactions.length * ITEM_HEIGHT
+      if (totalHeight === 0) return
+      if (scrollOffset + listHeight >= totalHeight - ITEM_HEIGHT * 2) {
+        fetchHistory(false)
+      }
+    },
+    [deferredTransactions.length, hasMore, loadingMore, loading, listHeight, fetchHistory]
+  )
+
   // Показываем скелетон только если нет данных И идет загрузка (не при первой загрузке)
   const showSkeleton = transactions.length === 0 && loading && !isInitialLoad
 
@@ -369,6 +374,40 @@ export default function HistoryPage() {
     )
   })
   TransactionItem.displayName = 'TransactionItem'
+
+  type ItemData = {
+    items: typeof deferredTransactions
+    loadingMore: boolean
+  }
+
+  const itemData = useMemo<ItemData>(
+    () => ({
+      items: deferredTransactions,
+      loadingMore,
+    }),
+    [deferredTransactions, loadingMore]
+  )
+
+  const Row = memo(({ index, style, data }: ListChildComponentProps<ItemData>) => {
+    if (index >= data.items.length) {
+      return (
+        <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="inline-flex items-center gap-2 text-gray-400">
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm">Загрузка...</span>
+          </div>
+        </div>
+      )
+    }
+
+    const tx = data.items[index]
+    return (
+      <div style={{ ...style, paddingBottom: 12, boxSizing: 'border-box' }}>
+        <TransactionItem tx={tx} />
+      </div>
+    )
+  })
+  Row.displayName = 'HistoryRow'
 
   return (
     <div className="py-4 overflow-x-hidden">
@@ -481,19 +520,22 @@ export default function HistoryPage() {
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
-            {deferredTransactions.map((tx) => (
-            <TransactionItem key={tx.id} tx={tx} />
-          ))}
-          {/* Индикатор загрузки при подгрузке дополнительных данных */}
-          {loadingMore && (
-            <div className="text-center py-4">
-              <div className="inline-flex items-center gap-2 text-gray-400">
-                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm">Загрузка...</span>
-              </div>
-            </div>
-          )}
+        <div
+          ref={listContainerRef}
+          style={{ height: 'calc(100vh - 260px)', minHeight: 320 }}
+        >
+          <List
+            height={listHeight}
+            width="100%"
+            itemCount={deferredTransactions.length + (loadingMore ? 1 : 0)}
+            itemSize={ITEM_HEIGHT}
+            itemData={itemData}
+            onScroll={({ scrollOffset, scrollDirection }) =>
+              handleListScroll({ scrollOffset, scrollDirection })
+            }
+          >
+            {Row}
+          </List>
         </div>
       )}
     </div>

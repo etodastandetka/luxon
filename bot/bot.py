@@ -214,7 +214,7 @@ TRANSLATIONS = {
         'welcome': "Привет, {user_name}!\n\nПополнение | Вывод\nиз букмекерских контор!\n\n📥 Пополнение — 0%\n📤 Вывод — 0%\n🕒 Работаем 24/7\n\n👨‍💻 Поддержка: @operator_luxon_bot\n💬 Чат для всех: @luxon_chat\n\n🔒 Финансовый контроль обеспечен личным отделом безопасности",
         'select_action': "Выберите действие:",
         'main_menu_text': "Привет, {user_name} | LUX ON!\n\nПополнение | Вывод\nиз букмекерских контор!\n\n📥 Пополнение — 0%\n📤 Вывод — 0%\n🕒 Работаем 24/7\n\n👨‍💻 Поддержка: @operator_luxon_bot\n💬 Чат для всех: @luxon_chat\n\n🔒 Финансовый контроль обеспечен личным отделом безопасности",
-        'main_menu_webapp_button': "🌐 ОТКРЫТЬ LUX-ON.ORG",
+        'main_menu_webapp_button': "LUX ON",
         'menu_ready_text': "✨ Меню готово",
         'deposit': "💰 Пополнить",
         'withdraw': "💸 Вывести",
@@ -1720,23 +1720,35 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 return
             
             # Получаем фото в base64 и создаем заявку
+            processing_message = await update.message.reply_text("⏳ Обрабатываю фото чека и создаю заявку...")
             try:
-                await update.message.reply_text("⏳ Обрабатываю фото чека и создаю заявку...")
-                receipt_photo_base64 = await get_photo_base64(context.bot, photo_file_id)
+                receipt_photo_base64 = await asyncio.wait_for(
+                    get_photo_base64(context.bot, photo_file_id),
+                    timeout=20.0
+                )
                 logger.info(f"📤 Создаю заявку с фото чека, длина base64: {len(receipt_photo_base64)}")
                 
                 # Проверяем, что все необходимые данные есть
                 if not data.get('amount'):
                     logger.error(f"❌ Отсутствует сумма в данных: {data}")
                     await update.message.reply_text("❌ Ошибка: отсутствует сумма. Начните заново.")
+                    if user_id in user_states:
+                        del user_states[user_id]
+                    clear_pending_deposit_state(user_id)
                     return
                 if not data.get('player_id'):
                     logger.error(f"❌ Отсутствует player_id в данных: {data}")
                     await update.message.reply_text("❌ Ошибка: отсутствует ID игрока. Начните заново.")
+                    if user_id in user_states:
+                        del user_states[user_id]
+                    clear_pending_deposit_state(user_id)
                     return
                 if not data.get('bookmaker'):
                     logger.error(f"❌ Отсутствует bookmaker в данных: {data}")
                     await update.message.reply_text("❌ Ошибка: отсутствует название казино. Начните заново.")
+                    if user_id in user_states:
+                        del user_states[user_id]
+                    clear_pending_deposit_state(user_id)
                     return
                 
                 # Создаем заявку с фото чека
@@ -1823,6 +1835,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         error_msg = result.get('error') or result.get('message') or payment_response.text[:200] or f'HTTP {payment_response.status_code}'
                         logger.error(f"❌ Ошибка создания заявки (status {payment_response.status_code}): {error_msg}, полный ответ: {result}")
                         await update.message.reply_text(get_text('error_creating_request', error=error_msg))
+            except asyncio.TimeoutError:
+                logger.error("❌ Таймаут при загрузке фото чека (20 секунд)")
+                await update.message.reply_text("❌ Фото обрабатывается слишком долго. Попробуйте отправить фото еще раз.")
             except httpx.TimeoutException as e:
                 logger.error(f"❌ Таймаут при обработке фото чека: {e}", exc_info=True)
                 await update.message.reply_text("❌ Превышено время ожидания при обработке фото. Попробуйте отправить фото еще раз.")
@@ -1834,6 +1849,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     await update.message.reply_text("❌ Не удалось загрузить фото. Попробуйте отправить фото еще раз.")
                 else:
                     await update.message.reply_text(get_text('error_processing_photo', error=error_msg[:200]))
+            finally:
+                try:
+                    await processing_message.delete()
+                except Exception:
+                    pass
             return
         
         # Обработка вывода
