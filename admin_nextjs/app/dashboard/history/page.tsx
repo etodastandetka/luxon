@@ -28,6 +28,7 @@ export default function HistoryPage() {
   const [offset, setOffset] = useState(0)
   const limit = 100 // Меньше данных за раз, чтобы не тормозить UI
   const loadTokenRef = useRef(0)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
   const fetchHistory = useCallback(async (reset = false) => {
     // При первой загрузке не показываем лоадер - данные загружаются в фоне
@@ -123,22 +124,23 @@ export default function HistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
-  // Автоматическая подгрузка при скролле вниз
+  // Автоподгрузка через IntersectionObserver, чтобы в WebView не залипало
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-      const windowHeight = window.innerHeight
-      const documentHeight = document.documentElement.scrollHeight
+    if (!loadMoreRef.current) return
+    if (!hasMore || loadingMore || loading) return
 
-      const scrollPercentage = (scrollTop + windowHeight) / documentHeight
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (entry?.isIntersecting && hasMore && !loadingMore && !loading) {
+          fetchHistory(false)
+        }
+      },
+      { root: null, rootMargin: '200px', threshold: 0.01 }
+    )
 
-      if (scrollPercentage > 0.8 && hasMore && !loadingMore && !loading) {
-        fetchHistory(false)
-      }
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
   }, [hasMore, loadingMore, loading, fetchHistory])
 
   // Мемоизируем функции форматирования
@@ -466,6 +468,7 @@ export default function HistoryPage() {
           {deferredTransactions.map((tx) => (
             <TransactionItem key={tx.id} tx={tx} />
           ))}
+          <div ref={loadMoreRef} />
           {loadingMore && (
             <div className="text-center py-4">
               <div className="inline-flex items-center gap-2 text-gray-400">
