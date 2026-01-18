@@ -522,7 +522,7 @@ export default function HistoryPage() {
       ) : (
         <div
           ref={listContainerRef}
-          style={{ height: 'calc(100vh - 260px)', minHeight: 320 }}
+          style={{ height: 'calc(100vh - 210px)', minHeight: 380 }}
         >
           <List
             height={listHeight}
