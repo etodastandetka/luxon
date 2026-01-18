@@ -31,7 +31,7 @@ export default function HistoryPage() {
   const loadTokenRef = useRef(0)
   const listContainerRef = useRef<HTMLDivElement | null>(null)
   const [listHeight, setListHeight] = useState(520)
-  const ITEM_HEIGHT = 120
+  const ITEM_HEIGHT = 150
 
   const fetchHistory = useCallback(async (reset = false) => {
     // При первой загрузке не показываем лоадер - данные загружаются в фоне
